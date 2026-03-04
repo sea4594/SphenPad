@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import type { PuzzleDefinition, PuzzleProgress, CellRC } from "../core/model";
 
 function rcKey(rc: CellRC) { return `${rc.r},${rc.c}`; }
@@ -18,6 +18,20 @@ export function GridCanvas(props: {
   const sizePx = pad * 2 + cellPx * n;
 
   const selectionSet = useMemo(() => new Set(progress.selection.map(rcKey)), [progress.selection]);
+  const [bgImage, setBgImage] = useState<HTMLImageElement | null>(null);
+
+  // Load background image
+  useEffect(() => {
+    if (!def.cosmetics.backgroundImageUrl) {
+      setBgImage(null);
+      return;
+    }
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => setBgImage(img);
+    img.onerror = () => setBgImage(null);
+    img.src = def.cosmetics.backgroundImageUrl;
+  }, [def.cosmetics.backgroundImageUrl]);
 
   useEffect(() => {
     const cv = canvasRef.current;
@@ -30,6 +44,13 @@ export function GridCanvas(props: {
     ctx.scale(devicePixelRatio, devicePixelRatio);
 
     ctx.clearRect(0, 0, sizePx, sizePx);
+
+    // background image if available
+    if (bgImage) {
+      ctx.globalAlpha = 0.3;
+      ctx.drawImage(bgImage, pad, pad, cellPx * n, cellPx * n);
+      ctx.globalAlpha = 1;
+    }
 
     // background
     ctx.fillStyle = "rgba(255,255,255,.02)";
@@ -201,7 +222,7 @@ export function GridCanvas(props: {
 
       // selection overlay already handled
     }
-  }, [def, progress, selectionSet, sizePx, n]);
+  }, [def, progress, selectionSet, sizePx, n, bgImage]);
 
   // pointer interactions
   function hitRC(clientX: number, clientY: number): CellRC | null {

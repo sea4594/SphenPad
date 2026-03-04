@@ -81,10 +81,24 @@ export function Keyboard(props: {
   // line tool
   return (
     <div className="card">
-      <div className="row" style={{ justifyContent: "space-between" }}>
-        <div style={{ fontWeight: 700 }}>Line tool</div>
+      <div style={{ fontWeight: 700, marginBottom: 10 }}>Line tool</div>
+
+      <Grid3x4>
+        {baseColors0.map((c) => (
+          <ColorKey key={c} color={c} onClick={() => props.onColor?.(c)} />
+        ))}
         <select
-          className="btn"
+          style={{
+            gridColumn: "1 / span 3",
+            height: 52,
+            padding: "8px 12px",
+            borderRadius: 12,
+            border: "1px solid rgba(255,255,255,.12)",
+            background: "rgba(255,255,255,.05)",
+            color: "inherit",
+            font: "inherit",
+            cursor: "pointer",
+          }}
           value={progress.linePaletteKind}
           onChange={(e) => props.onLineKind?.(e.target.value as any)}
         >
@@ -92,15 +106,6 @@ export function Keyboard(props: {
           <option value="center">center only</option>
           <option value="edge">edge only</option>
         </select>
-      </div>
-
-      <Grid3x4>
-        {baseColors0.map((c) => (
-          <ColorKey key={c} color={c} onClick={() => props.onColor?.(c)} />
-        ))}
-        <Key style={{ gridColumn: "1 / span 3" }} onClick={() => { /* no-op */ }}>
-          (draw on grid)
-        </Key>
       </Grid3x4>
     </div>
   );
