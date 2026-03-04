@@ -198,5 +198,75 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
       .filter(Boolean) as any;
   }
 
+  // line constraints
+  const extractPathConstraint = (arr: any[], color?: string): Array<{ path: CellRC[]; color?: string }> => 
+    arr
+      ?.map((item: any) => {
+        const path = (item?.cells ?? []).map(asRC).filter(Boolean) as CellRC[];
+        if (path.length < 2) return null;
+        return { path, color: item?.color ?? color };
+      })
+      .filter((x): x is NonNullable<typeof x> => x !== null) ?? [];
+
+  if (Array.isArray(scl?.thermos)) cosmetics.thermolines = extractPathConstraint(scl.thermos, "#ff6b6b") as any;
+  if (Array.isArray(scl?.whispers)) cosmetics.whispers = extractPathConstraint(scl.whispers, "#00c2a8") as any;
+  if (Array.isArray(scl?.palindromes)) cosmetics.palindromes = extractPathConstraint(scl.palindromes, "#ffa500") as any;
+  if (Array.isArray(scl?.renban)) cosmetics.renbanlines = extractPathConstraint(scl.renban, "#7c3aed") as any;
+  if (Array.isArray(scl?.entropic)) cosmetics.entropics = extractPathConstraint(scl.entropic, "#f72585") as any;
+  if (Array.isArray(scl?.germanwhispers)) cosmetics.germanwhispers = extractPathConstraint(scl.germanwhispers, "#00d4ff") as any;
+  if (Array.isArray(scl?.modular)) cosmetics.modularlines = extractPathConstraint(scl.modular, "#ffb703") as any;
+
+  // Clues around grid
+  if (scl?.clues) {
+    const clues = scl.clues;
+    if (clues.skyscraper) cosmetics.skyscraper = clues.skyscraper;
+    if (clues.sandwich) cosmetics.sandwich = clues.sandwich;
+    if (clues.xsum) cosmetics.xsum = clues.xsum;
+  }
+
+  // Little killer clues
+  if (Array.isArray(scl?.littlekillers)) {
+    cosmetics.littlekillers = scl.littlekillers
+      .map((lk: any) => {
+        const rc = asRC(lk?.cell ?? lk?.rc);
+        if (!rc) return null;
+        return {
+          rc,
+          direction: lk?.direction ?? "tl",
+          value: String(lk?.value ?? ""),
+          color: lk?.color,
+        };
+      })
+      .filter(Boolean) as any;
+  }
+
+  // Irregular regions (jigsaw)
+  if (Array.isArray(scl?.irregularRegions) || Array.isArray(scl?.jigsaw)) {
+    const regions = scl?.irregularRegions ?? scl?.jigsaw;
+    cosmetics.irregularRegions = regions
+      .map((region: any) => {
+        const cells = (region?.cells ?? []).map(asRC).filter(Boolean) as CellRC[];
+        if (!cells.length) return null;
+        return { cells, color: region?.color };
+      })
+      .filter(Boolean) as any;
+  }
+
+  // Disjoint groups
+  if (Array.isArray(scl?.disjointGroups)) {
+    cosmetics.disjointGroups = scl.disjointGroups
+      .map((group: any) => {
+        const cells = (group?.cells ?? []).map(asRC).filter(Boolean) as CellRC[];
+        if (!cells.length) return null;
+        return { cells, color: group?.color };
+      })
+      .filter(Boolean) as any;
+  }
+
+  // Anti-constraints
+  if (scl?.antiKnight) cosmetics.antiKnight = true;
+  if (scl?.antiKing) cosmetics.antiKing = true;
+  if (scl?.antiRook) cosmetics.antiRook = true;
+
   return cosmetics;
 }

@@ -30,6 +30,30 @@ export type PuzzleCosmetics = {
   cages?: Array<{ cells: CellRC[]; sum?: string; color?: string }>;
   arrows?: Array<{ bulb: CellRC; path: CellRC[] }>;
   dots?: Array<{ a: CellRC; b: CellRC; kind: "black" | "white" }>;
+  
+  // Line constraints
+  thermolines?: Array<{ path: CellRC[]; color?: string }>;
+  whispers?: Array<{ path: CellRC[]; color?: string }>;
+  palindromes?: Array<{ path: CellRC[]; color?: string }>;
+  renbanlines?: Array<{ path: CellRC[]; color?: string }>;
+  entropics?: Array<{ path: CellRC[]; color?: string }>;
+  germanwhispers?: Array<{ path: CellRC[]; color?: string }>;
+  modularlines?: Array<{ path: CellRC[]; color?: string }>;
+  
+  // Clues around grid
+  skyscraper?: { top?: string[]; bottom?: string[]; left?: string[]; right?: string[] };
+  sandwich?: { top?: string[]; bottom?: string[]; left?: string[]; right?: string[] };
+  xsum?: { top?: string[]; bottom?: string[]; left?: string[]; right?: string[] };
+  littlekillers?: Array<{ rc: CellRC; direction: "tl" | "tr" | "bl" | "br"; value: string; color?: string }>;
+  
+  // Regions
+  irregularRegions?: Array<{ cells: CellRC[]; color?: string }>;
+  disjointGroups?: Array<{ cells: CellRC[]; color?: string }>;
+  
+  // Anti-constraints
+  antiKnight?: boolean;
+  antiKing?: boolean;
+  antiRook?: boolean;
 };
 
 export type PuzzleDefinition = {

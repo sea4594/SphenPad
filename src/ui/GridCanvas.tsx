@@ -148,6 +148,125 @@ export function GridCanvas(props: {
       }
     }
 
+    // Helper function to draw path constraints (thermolines, whispers, etc.)
+    const drawPathConstraint = (paths: any[], defaultColor: string, strokeWidth = 3) => {
+      for (const item of paths) {
+        const path = item.path;
+        ctx.strokeStyle = item.color ?? defaultColor;
+        ctx.lineWidth = strokeWidth;
+        ctx.beginPath();
+        path.forEach((rc: CellRC, i: number) => {
+          const x = pad + rc.c * cellPx + cellPx / 2;
+          const y = pad + rc.r * cellPx + cellPx / 2;
+          if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        });
+        ctx.stroke();
+      }
+    };
+
+    // Thermolines
+    if (def.cosmetics.thermolines) drawPathConstraint(def.cosmetics.thermolines, "#ff6b6b", 2.5);
+
+    // Whisper lines
+    if (def.cosmetics.whispers) drawPathConstraint(def.cosmetics.whispers, "#00c2a8", 2.5);
+
+    // Palindromes
+    if (def.cosmetics.palindromes) drawPathConstraint(def.cosmetics.palindromes, "#ffa500", 2.5);
+
+    // Renban lines
+    if (def.cosmetics.renbanlines) drawPathConstraint(def.cosmetics.renbanlines, "#7c3aed", 2.5);
+
+    // Entropic lines
+    if (def.cosmetics.entropics) drawPathConstraint(def.cosmetics.entropics, "#f72585", 2.5);
+
+    // German whispers
+    if (def.cosmetics.germanwhispers) drawPathConstraint(def.cosmetics.germanwhispers, "#00d4ff", 2.5);
+
+    // Modular lines
+    if (def.cosmetics.modularlines) drawPathConstraint(def.cosmetics.modularlines, "#ffb703", 2.5);
+
+    // Irregular regions with subtle borders
+    if (def.cosmetics.irregularRegions) {
+      for (const region of def.cosmetics.irregularRegions) {
+        ctx.fillStyle = region.color ?? "rgba(255,255,255,.08)";
+        for (const rc of region.cells) {
+          ctx.fillRect(pad + rc.c * cellPx + 1, pad + rc.r * cellPx + 1, cellPx - 2, cellPx - 2);
+        }
+      }
+    }
+
+    // Disjoint groups (similar rendering to irregular regions)
+    if (def.cosmetics.disjointGroups) {
+      for (const group of def.cosmetics.disjointGroups) {
+        ctx.fillStyle = group.color ?? "rgba(200,200,200,.06)";
+        for (const rc of group.cells) {
+          ctx.fillRect(pad + rc.c * cellPx + 1, pad + rc.r * cellPx + 1, cellPx - 2, cellPx - 2);
+        }
+      }
+    }
+
+    // Little killer clues
+    if (def.cosmetics.littlekillers) {
+      ctx.fillStyle = "rgba(255,255,255,.85)";
+      ctx.font = "11px ui-sans-serif";
+      for (const lk of def.cosmetics.littlekillers) {
+        const x = pad + lk.rc.c * cellPx;
+        const y = pad + lk.rc.r * cellPx;
+        // Position based on direction (top-left, top-right, bottom-left, bottom-right)
+        let tx = x, ty = y;
+        if (lk.direction === "tl") { tx = x + 2; ty = y + 12; }
+        else if (lk.direction === "tr") { tx = x + cellPx - 2; ty = y + 12; ctx.textAlign = "right"; }
+        else if (lk.direction === "bl") { tx = x + 2; ty = y + cellPx - 2; }
+        else if (lk.direction === "br") { tx = x + cellPx - 2; ty = y + cellPx - 2; ctx.textAlign = "right"; }
+        ctx.fillText(lk.value, tx, ty);
+        ctx.textAlign = "center";
+      }
+    }
+
+    // Grid clues (skyscraper, sandwich, x-sum)
+    const drawGridClues = (clues: any, offset: number, side: "top" | "bottom" | "left" | "right") => {
+      if (!clues) return;
+      ctx.fillStyle = "rgba(255,255,255,.85)";
+      ctx.font = "11px ui-sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      
+      const clueArray = clues[side.toLowerCase()] as string[] | undefined;
+      if (!clueArray) return;
+
+      for (let i = 0; i < clueArray.length && i < 9; i++) {
+        const clue = clueArray[i];
+        if (!clue) continue;
+        let x, y;
+        if (side === "top") { x = pad + (i + 0.5) * cellPx; y = offset / 2; }
+        else if (side === "bottom") { x = pad + (i + 0.5) * cellPx; y = pad + n * cellPx + offset / 2; }
+        else if (side === "left") { x = offset / 2; y = pad + (i + 0.5) * cellPx; }
+        else { x = pad + n * cellPx + offset / 2; y = pad + (i + 0.5) * cellPx; }
+        ctx.fillText(clue, x, y);
+      }
+    };
+
+    // Draw clues (would require more space, so just draw if available)
+    const clueOffset = 30;
+    if (def.cosmetics.skyscraper) {
+      drawGridClues(def.cosmetics.skyscraper, clueOffset, "top");
+      drawGridClues(def.cosmetics.skyscraper, clueOffset, "bottom");
+      drawGridClues(def.cosmetics.skyscraper, clueOffset, "left");
+      drawGridClues(def.cosmetics.skyscraper, clueOffset, "right");
+    }
+    if (def.cosmetics.sandwich) {
+      drawGridClues(def.cosmetics.sandwich, clueOffset, "top");
+      drawGridClues(def.cosmetics.sandwich, clueOffset, "bottom");
+      drawGridClues(def.cosmetics.sandwich, clueOffset, "left");
+      drawGridClues(def.cosmetics.sandwich, clueOffset, "right");
+    }
+    if (def.cosmetics.xsum) {
+      drawGridClues(def.cosmetics.xsum, clueOffset, "top");
+      drawGridClues(def.cosmetics.xsum, clueOffset, "bottom");
+      drawGridClues(def.cosmetics.xsum, clueOffset, "left");
+      drawGridClues(def.cosmetics.xsum, clueOffset, "right");
+    }
+
     // user lines
     for (const stroke of progress.lines) {
       ctx.strokeStyle = stroke.color;
