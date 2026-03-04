@@ -1,0 +1,125 @@
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { loadFromSudokuPad } from "../core/sudokupad";
+import { deletePuzzle, listPuzzles, upsertPuzzle } from "../core/storage";
+import { makeInitialProgress } from "../core/scl";
+import { fmtHMS } from "../core/time";
+import { firebaseEnabled, googleLogin, googleLogout } from "../firebase/client";
+
+export function MainMenu() {
+  const nav = useNavigate();
+  const [url, setUrl] = useState("");
+  const [rows, setRows] = useState<any[]>([]);
+  const [busy, setBusy] = useState<string>("");
+
+  async function refresh() {
+    setRows(await listPuzzles());
+  }
+  useEffect(() => { refresh(); }, []);
+
+  const totals = useMemo(() => {
+    const ms = rows.reduce((a, r) => a + (r.progress?.totalMillis ?? 0), 0);
+    return fmtHMS(ms);
+  }, [rows]);
+
+  async function onLoad() {
+    setBusy("Loading puzzle…");
+    try {
+      const { key, def } = await loadFromSudokuPad(url);
+      const progress = makeInitialProgress(def);
+      await upsertPuzzle(key, { def, progress, undo: [], redo: [], updatedAt: Date.now() });
+      await refresh();
+      nav(`/p/${encodeURIComponent(key)}`);
+    } catch (e: any) {
+      alert(e?.message ?? String(e));
+    } finally {
+      setBusy("");
+    }
+  }
+
+  return (
+    <div className="shell">
+      <div className="topbar">
+        <div className="brand">SphenPad</div>
+        <div className="muted">Total time: {totals}</div>
+        <div className="spacer" />
+        {firebaseEnabled ? (
+          <div className="row">
+            <button className="btn" onClick={() => googleLogin().catch((e)=>alert(e.message))}>Google login</button>
+            <button className="btn" onClick={() => googleLogout().catch((e)=>alert(e.message))}>Logout</button>
+          </div>
+        ) : (
+          <div className="muted">Google sync: disabled (no env vars)</div>
+        )}
+      </div>
+
+      <div className="page">
+        <div className="card">
+          <div className="row">
+            <input
+              className="url"
+              placeholder="Paste a sudokupad.app URL or puzzle id…"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+            />
+            <button className="btn primary" onClick={onLoad} disabled={!url || !!busy}>
+              Load
+            </button>
+          </div>
+          {busy && <div className="muted" style={{ marginTop: 10 }}>{busy}</div>}
+        </div>
+
+        <div className="card">
+          <div className="row" style={{ justifyContent: "space-between" }}>
+            <div style={{ fontWeight: 650 }}>Your puzzles</div>
+            <div className="muted">{rows.length} total</div>
+          </div>
+
+          <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
+            {rows.map((r) => (
+              <div
+                key={r.key}
+                className="card"
+                style={{ cursor: "pointer" }}
+                onClick={() => nav(`/p/${encodeURIComponent(r.key)}`)}
+              >
+                <div className="row" style={{ justifyContent: "space-between" }}>
+                  <div>
+                    <div style={{ fontWeight: 650 }}>
+                      {r.def?.meta?.title || "(untitled)"}{" "}
+                      <span className="muted" style={{ fontWeight: 500 }}>
+                        {r.def?.meta?.author ? `— ${r.def.meta.author}` : ""}
+                      </span>
+                    </div>
+                    <div className="muted" style={{ fontSize: 13 }}>
+                      {r.key}
+                    </div>
+                  </div>
+                  <div style={{ textAlign: "right" }}>
+                    <div>{fmtHMS(r.progress?.totalMillis ?? 0)}</div>
+                    <div className="muted" style={{ fontSize: 13 }}>
+                      {r.progress?.status ?? "not_started"}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="row" style={{ marginTop: 10 }}>
+                  <button
+                    className="btn danger"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      deletePuzzle(r.key).then(refresh);
+                    }}
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            ))}
+            {!rows.length && <div className="muted">No puzzles loaded yet.</div>}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
