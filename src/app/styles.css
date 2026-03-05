@@ -126,6 +126,18 @@ input.url {
   padding-top: 12px;
 }
 
+.selectionModeDock {
+  position: fixed;
+  right: 12px;
+  bottom: 12px;
+  z-index: 40;
+  width: min(360px, calc(100vw - 24px));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
 @media (max-width: 899px) {
   .topbar {
     flex-direction: column;
@@ -153,5 +165,11 @@ input.url {
 
   .toolSwitcher {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .selectionModeDock {
+    right: 8px;
+    bottom: 8px;
+    width: calc(100vw - 16px);
   }
 }

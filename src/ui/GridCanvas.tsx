@@ -4,6 +4,7 @@ import type { CellRC, PuzzleDefinition, PuzzleProgress } from "../core/model";
 type LineKindResolved = "center" | "edge";
 type EdgeTrack = "top" | "bottom" | "left" | "right";
 type LineSegmentDraft = { a: CellRC; b: CellRC; edgeTrack?: EdgeTrack };
+type LayerItem = NonNullable<PuzzleDefinition["cosmetics"]["underlays"]>[number];
 
 type DragState = {
   path: CellRC[];
@@ -12,6 +13,8 @@ type DragState = {
   moved: boolean;
   lineKind?: LineKindResolved;
   visited: Set<string>;
+  selectionSet?: Set<string>;
+  selectionMode?: "replace" | "add" | "remove";
 };
 
 function rcKey(rc: CellRC) {
@@ -25,7 +28,7 @@ function segKey(a: CellRC, b: CellRC) {
 }
 
 function segKeyWithTrack(seg: { a: CellRC; b: CellRC; edgeTrack?: EdgeTrack }) {
-  return `${segKey(seg.a, seg.b)}:${seg.edgeTrack ?? "-"}`;
+  return segKey(seg.a, seg.b);
 }
 
 export function GridCanvas(props: {
@@ -61,9 +64,9 @@ export function GridCanvas(props: {
       maxY = Math.max(maxY, y as number);
     };
 
-    const includeLayer = (item: any) => {
-      const w = Number.isFinite(item?.width) ? item.width : 1;
-      const h = Number.isFinite(item?.height) ? item.height : 1;
+    const includeLayer = (item: LayerItem) => {
+      const w = Number.isFinite(item?.width) ? Number(item.width) : 1;
+      const h = Number.isFinite(item?.height) ? Number(item.height) : 1;
       includePoint(item?.center?.x - w / 2, item?.center?.y - h / 2);
       includePoint(item?.center?.x + w / 2, item?.center?.y + h / 2);
     };
@@ -111,6 +114,11 @@ export function GridCanvas(props: {
     return null;
   }
 
+  function keyToRc(key: string): CellRC {
+    const [r, c] = key.split(",").map((v) => Number(v));
+    return { r, c };
+  }
+
   function darkenColor(hex: string, amount = 0.2): string {
     const s = hex.trim();
     if (!s.startsWith("#")) return hex;
@@ -153,7 +161,7 @@ export function GridCanvas(props: {
 
   useEffect(() => {
     if (!def.cosmetics.backgroundImageUrl) {
-      setBgImage(null);
+      queueMicrotask(() => setBgImage(null));
       return;
     }
     const img = new Image();
@@ -198,11 +206,43 @@ export function GridCanvas(props: {
     }
 
     const drawSelectionOutlines = () => {
-      ctx.strokeStyle = "rgba(46,120,255,.9)";
-      ctx.lineWidth = 2;
+      if (!progress.selection.length) return;
+      const selected = new Set(progress.selection.map(rcKey));
+      const inset = 1;
+      ctx.save();
+      ctx.strokeStyle = "rgba(46,120,255,.95)";
+      ctx.lineWidth = 2.4;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
       for (const rc of progress.selection) {
-        ctx.strokeRect(cellX(rc.c) + 1, cellY(rc.r) + 1, cellPx - 2, cellPx - 2);
+        const x = cellX(rc.c);
+        const y = cellY(rc.r);
+        if (!selected.has(`${rc.r - 1},${rc.c}`)) {
+          ctx.beginPath();
+          ctx.moveTo(x + inset, y + inset);
+          ctx.lineTo(x + cellPx - inset, y + inset);
+          ctx.stroke();
+        }
+        if (!selected.has(`${rc.r},${rc.c + 1}`)) {
+          ctx.beginPath();
+          ctx.moveTo(x + cellPx - inset, y + inset);
+          ctx.lineTo(x + cellPx - inset, y + cellPx - inset);
+          ctx.stroke();
+        }
+        if (!selected.has(`${rc.r + 1},${rc.c}`)) {
+          ctx.beginPath();
+          ctx.moveTo(x + inset, y + cellPx - inset);
+          ctx.lineTo(x + cellPx - inset, y + cellPx - inset);
+          ctx.stroke();
+        }
+        if (!selected.has(`${rc.r},${rc.c - 1}`)) {
+          ctx.beginPath();
+          ctx.moveTo(x + inset, y + inset);
+          ctx.lineTo(x + inset, y + cellPx - inset);
+          ctx.stroke();
+        }
       }
+      ctx.restore();
     };
 
     const subgrid = (() => {
@@ -443,31 +483,17 @@ export function GridCanvas(props: {
       ctx.lineWidth = 3.8;
       ctx.lineCap = "round";
       for (const seg of segments) {
-        const dr = seg.b.r - seg.a.r;
-        const dc = seg.b.c - seg.a.c;
-        if (Math.abs(dr) + Math.abs(dc) !== 1) continue;
-
-        if (dr === 0) {
-          const row = seg.a.r;
-          const minC = Math.min(seg.a.c, seg.b.c);
-          const y = seg.edgeTrack === "bottom" ? cellY(row + 1) : cellY(row);
-          const x0 = cellX(minC);
-          const x1 = cellX(minC + 2);
-          ctx.beginPath();
-          ctx.moveTo(x0, y);
-          ctx.lineTo(x1, y);
-          ctx.stroke();
-        } else {
-          const col = seg.a.c;
-          const minR = Math.min(seg.a.r, seg.b.r);
-          const x = seg.edgeTrack === "right" ? cellX(col + 1) : cellX(col);
-          const y0 = cellY(minR);
-          const y1 = cellY(minR + 2);
-          ctx.beginPath();
-          ctx.moveTo(x, y0);
-          ctx.lineTo(x, y1);
-          ctx.stroke();
-        }
+        const dr = Math.abs(seg.b.r - seg.a.r);
+        const dc = Math.abs(seg.b.c - seg.a.c);
+        if (dr + dc !== 1) continue;
+        const x0 = cellX(seg.a.c);
+        const y0 = cellY(seg.a.r);
+        const x1 = cellX(seg.b.c);
+        const y1 = cellY(seg.b.r);
+        ctx.beginPath();
+        ctx.moveTo(x0, y0);
+        ctx.lineTo(x1, y1);
+        ctx.stroke();
       }
       ctx.restore();
     };
@@ -522,15 +548,8 @@ export function GridCanvas(props: {
         const dr = mark.b.r - mark.a.r;
         const dc = mark.b.c - mark.a.c;
         if (Math.abs(dr) + Math.abs(dc) !== 1) continue;
-        let x = 0;
-        let y = 0;
-        if (dr === 0) {
-          x = cellX(Math.min(mark.a.c, mark.b.c) + 1);
-          y = cellY(mark.a.r) + cellPx / 2;
-        } else {
-          x = cellX(mark.a.c) + cellPx / 2;
-          y = cellY(Math.min(mark.a.r, mark.b.r) + 1);
-        }
+        const x = (cellX(mark.a.c) + cellX(mark.b.c)) / 2;
+        const y = (cellY(mark.a.r) + cellY(mark.b.r)) / 2;
         ctx.strokeStyle = mark.color;
         ctx.lineWidth = 2.6;
         const r = Math.max(4, cellPx * 0.11);
@@ -565,7 +584,7 @@ export function GridCanvas(props: {
       };
 
       for (const effect of def.cosmetics.fogTriggerEffects ?? []) {
-        const mode = (effect as any).triggerMode;
+        const mode = effect.triggerMode;
         const satisfied = mode === "or"
           ? effect.triggerCells.some(isCorrect)
           : effect.triggerCells.every(isCorrect);
@@ -721,6 +740,12 @@ export function GridCanvas(props: {
     originY,
     pad,
     progress,
+    cellX,
+    cellY,
+    inBounds,
+    normalizeDotRc,
+    worldX,
+    worldY,
     widthPx,
   ]);
 
@@ -737,17 +762,39 @@ export function GridCanvas(props: {
     return { r, c, fx, fy };
   }
 
-  function pickEdgeNeighbor(rc: CellRC, fx: number, fy: number): CellRC | null {
-    const dTop = fy;
-    const dBottom = 1 - fy;
-    const dLeft = fx;
-    const dRight = 1 - fx;
-    const min = Math.min(dTop, dBottom, dLeft, dRight);
-    if (min > 0.26) return null;
-    if (min === dTop && inBounds(rc.r - 1, rc.c)) return { r: rc.r - 1, c: rc.c };
-    if (min === dBottom && inBounds(rc.r + 1, rc.c)) return { r: rc.r + 1, c: rc.c };
-    if (min === dLeft && inBounds(rc.r, rc.c - 1)) return { r: rc.r, c: rc.c - 1 };
-    if (min === dRight && inBounds(rc.r, rc.c + 1)) return { r: rc.r, c: rc.c + 1 };
+  function eventGridPoint(clientX: number, clientY: number) {
+    const rect = canvasRef.current?.getBoundingClientRect();
+    if (!rect) return null;
+    const gx = (clientX - rect.left - originX) / cellPx;
+    const gy = (clientY - rect.top - originY) / cellPx;
+    return { gx, gy };
+  }
+
+  function nearestCornerNode(clientX: number, clientY: number, radius = 0.34): CellRC | null {
+    const gp = eventGridPoint(clientX, clientY);
+    if (!gp) return null;
+    const c = Math.round(gp.gx);
+    const r = Math.round(gp.gy);
+    if (r < 0 || c < 0 || r > n || c > n) return null;
+    const d = Math.hypot(gp.gx - c, gp.gy - r);
+    if (d > radius) return null;
+    return { r, c };
+  }
+
+  function pickNodeNeighborFromPointer(node: CellRC, clientX: number, clientY: number): CellRC | null {
+    const gp = eventGridPoint(clientX, clientY);
+    if (!gp) return null;
+    const dx = gp.gx - node.c;
+    const dy = gp.gy - node.r;
+    if (Math.abs(dx) < 0.06 && Math.abs(dy) < 0.06) return null;
+
+    if (Math.abs(dx) >= Math.abs(dy)) {
+      const next = { r: node.r, c: node.c + (dx < 0 ? -1 : 1) };
+      if (next.c >= 0 && next.c <= n) return next;
+    }
+
+    const next = { r: node.r + (dy < 0 ? -1 : 1), c: node.c };
+    if (next.r >= 0 && next.r <= n) return next;
     return null;
   }
 
@@ -755,8 +802,6 @@ export function GridCanvas(props: {
     if (progress.linePaletteKind === "center") return "center";
     if (progress.linePaletteKind === "edge") return "edge";
 
-    // In "both" mode, choose intent by nearest node type:
-    // cell center (center mode) vs cell corner (edge mode).
     const dCenter = Math.hypot(point.fx - 0.5, point.fy - 0.5);
     const dCorner = Math.min(
       Math.hypot(point.fx, point.fy),
@@ -764,88 +809,9 @@ export function GridCanvas(props: {
       Math.hypot(point.fx, 1 - point.fy),
       Math.hypot(1 - point.fx, 1 - point.fy),
     );
+    if (dCorner <= 0.31) return "edge";
+    if (dCenter <= 0.31) return "center";
     return dCorner < dCenter ? "edge" : "center";
-  }
-
-  function edgeTrackForStep(a: CellRC, b: CellRC, fx: number, fy: number): EdgeTrack {
-    if (a.r === b.r) return fy < 0.5 ? "top" : "bottom";
-    return fx < 0.5 ? "left" : "right";
-  }
-
-  function nextEdgeNeighborFromCorner(last: CellRC, prev: CellRC | null, clientX: number, clientY: number): CellRC | null {
-    const rect = canvasRef.current?.getBoundingClientRect();
-    if (!rect) return null;
-
-    const bx = clientX - rect.left - originX;
-    const by = clientY - rect.top - originY;
-    const lx = bx / cellPx - last.c;
-    const ly = by / cellPx - last.r;
-
-    const corners = [
-      { name: "tl", x: 0, y: 0, dirs: ["up", "left"] as const },
-      { name: "tr", x: 1, y: 0, dirs: ["up", "right"] as const },
-      { name: "bl", x: 0, y: 1, dirs: ["down", "left"] as const },
-      { name: "br", x: 1, y: 1, dirs: ["down", "right"] as const },
-    ];
-
-    let nearest = corners[0];
-    let best = Number.POSITIVE_INFINITY;
-    for (const c of corners) {
-      const d2 = (lx - c.x) ** 2 + (ly - c.y) ** 2;
-      if (d2 < best) {
-        best = d2;
-        nearest = c;
-      }
-    }
-
-    // Corner-centered hitbox.
-    const cornerRadius = 0.42;
-    if (best > cornerRadius ** 2) return null;
-
-    const dx = lx - nearest.x;
-    const dy = ly - nearest.y;
-    const absDx = Math.abs(dx);
-    const absDy = Math.abs(dy);
-
-    const prevDir: "up" | "down" | "left" | "right" | null = prev
-      ? (prev.r !== last.r ? (prev.r < last.r ? "down" : "up") : prev.c < last.c ? "right" : "left")
-      : null;
-
-    let dir: "up" | "down" | "left" | "right";
-    const cornerAllowsPrev = Boolean(
-      prevDir && (
-        (nearest.name === "tl" && (prevDir === "up" || prevDir === "left")) ||
-        (nearest.name === "tr" && (prevDir === "up" || prevDir === "right")) ||
-        (nearest.name === "bl" && (prevDir === "down" || prevDir === "left")) ||
-        (nearest.name === "br" && (prevDir === "down" || prevDir === "right"))
-      )
-    );
-
-    if (cornerAllowsPrev && prevDir) {
-      const keepPrev =
-        (prevDir === "left" || prevDir === "right")
-          ? absDx + 0.08 >= absDy
-          : absDy + 0.08 >= absDx;
-      if (keepPrev) {
-        dir = prevDir as any;
-      } else {
-        if (nearest.name === "tl") dir = prevDir === "up" ? "left" : "up";
-        else if (nearest.name === "tr") dir = prevDir === "up" ? "right" : "up";
-        else if (nearest.name === "bl") dir = prevDir === "down" ? "left" : "down";
-        else dir = prevDir === "down" ? "right" : "down";
-      }
-    } else {
-      if (absDx >= absDy) {
-        dir = nearest.name === "tl" || nearest.name === "bl" ? "left" : "right";
-      } else {
-        dir = nearest.name === "tl" || nearest.name === "tr" ? "up" : "down";
-      }
-    }
-
-    if (dir === "up") return inBounds(last.r - 1, last.c) ? { r: last.r - 1, c: last.c } : null;
-    if (dir === "down") return inBounds(last.r + 1, last.c) ? { r: last.r + 1, c: last.c } : null;
-    if (dir === "left") return inBounds(last.r, last.c - 1) ? { r: last.r, c: last.c - 1 } : null;
-    return inBounds(last.r, last.c + 1) ? { r: last.r, c: last.c + 1 } : null;
   }
 
   function onDown(e: React.PointerEvent) {
@@ -856,13 +822,50 @@ export function GridCanvas(props: {
     const rc = { r: pt.r, c: pt.c };
     if (progress.activeTool === "line") {
       const kind = resolveInitialLineKind(pt);
-      dragRef.current = { path: [rc], segments: [], last: rc, moved: false, lineKind: kind, visited: new Set([rcKey(rc)]) };
+      const start = kind === "edge" ? nearestCornerNode(e.clientX, e.clientY, 0.42) : rc;
+      if (!start) return;
+      dragRef.current = { path: [start], segments: [], last: start, moved: false, lineKind: kind, visited: new Set([rcKey(start)]) };
       setLinePreview({ segments: [], kind });
       return;
     }
 
-    dragRef.current = { path: [rc], segments: [], last: rc, moved: false, visited: new Set([rcKey(rc)]) };
-    props.onSelection([rc]);
+    const currentSelection = new Set(progress.selection.map(rcKey));
+    const key = rcKey(rc);
+    const touchedSelected = currentSelection.has(key);
+
+    if (!progress.multiSelect) {
+      const nextSelection = new Set<string>();
+      if (!(touchedSelected && progress.selection.length === 1)) {
+        nextSelection.add(key);
+      }
+      dragRef.current = {
+        path: [rc],
+        segments: [],
+        last: rc,
+        moved: false,
+        visited: new Set([key]),
+        selectionSet: nextSelection,
+        selectionMode: "replace",
+      };
+      props.onSelection(Array.from(nextSelection).map(keyToRc));
+      return;
+    }
+
+    const nextSelection = new Set(currentSelection);
+    const mode: DragState["selectionMode"] = touchedSelected ? "remove" : "add";
+    if (mode === "remove") nextSelection.delete(key);
+    else nextSelection.add(key);
+
+    dragRef.current = {
+      path: [rc],
+      segments: [],
+      last: rc,
+      moved: false,
+      visited: new Set([key]),
+      selectionSet: nextSelection,
+      selectionMode: mode,
+    };
+    props.onSelection(Array.from(nextSelection).map(keyToRc));
   }
 
   function onMove(e: React.PointerEvent) {
@@ -874,7 +877,7 @@ export function GridCanvas(props: {
       const pt = eventPoint(e.clientX, e.clientY);
       const prevCell = drag.path[drag.path.length - 2] ?? null;
       const next = kind === "edge"
-        ? nextEdgeNeighborFromCorner(drag.last, prevCell, e.clientX, e.clientY)
+        ? nearestCornerNode(e.clientX, e.clientY, 0.42)
         : (pt ? { r: pt.r, c: pt.c } : null);
       if (!next) return;
       if (next.r === drag.last.r && next.c === drag.last.c) return;
@@ -889,16 +892,6 @@ export function GridCanvas(props: {
         drag.segments.pop();
       } else {
         const seg: LineSegmentDraft = { a: drag.last, b: next };
-        if (kind === "edge") {
-          const edgePt = pt ?? eventPoint(e.clientX, e.clientY);
-          const prevSeg = drag.segments[drag.segments.length - 1];
-          const sameOrientation =
-            prevSeg &&
-            (prevSeg.a.r === prevSeg.b.r) === (seg.a.r === seg.b.r);
-          seg.edgeTrack = sameOrientation && prevSeg?.edgeTrack
-            ? prevSeg.edgeTrack
-            : edgeTrackForStep(drag.last, next, edgePt?.fx ?? 0.5, edgePt?.fy ?? 0.5);
-        }
         drag.path.push(next);
         drag.segments.push(seg);
       }
@@ -916,11 +909,15 @@ export function GridCanvas(props: {
     drag.last = next;
     drag.moved = true;
     const key = rcKey(next);
-    if (!drag.visited.has(key)) {
-      drag.visited.add(key);
-      drag.path.push(next);
-      props.onSelection([...drag.path]);
-    }
+    if (drag.visited.has(key)) return;
+    drag.visited.add(key);
+    drag.path.push(next);
+
+    const nextSelection = drag.selectionSet ? new Set(drag.selectionSet) : new Set<string>();
+    if (drag.selectionMode === "remove") nextSelection.delete(key);
+    else nextSelection.add(key);
+    drag.selectionSet = nextSelection;
+    props.onSelection(Array.from(nextSelection).map(keyToRc));
   }
 
   function onUp(e: React.PointerEvent) {
@@ -930,13 +927,18 @@ export function GridCanvas(props: {
     if (progress.activeTool === "line") {
       const kind = drag.lineKind ?? "center";
       if (!drag.moved) {
-        const pt = eventPoint(e.clientX, e.clientY);
-        if (pt) {
-          const here = { r: pt.r, c: pt.c };
-          if (kind === "edge") {
-            const neighbor = pickEdgeNeighbor(here, pt.fx, pt.fy);
-            if (neighbor) props.onLineTapEdge(here, neighbor);
-          } else {
+        if (kind === "edge") {
+          const node = nearestCornerNode(e.clientX, e.clientY, 0.45);
+          if (node) {
+            const neighbor = pickNodeNeighborFromPointer(node, e.clientX, e.clientY);
+            if (neighbor && Math.abs(neighbor.r - node.r) + Math.abs(neighbor.c - node.c) === 1) {
+              props.onLineTapEdge(node, neighbor);
+            }
+          }
+        } else {
+          const pt = eventPoint(e.clientX, e.clientY);
+          if (pt) {
+            const here = { r: pt.r, c: pt.c };
             props.onLineTapCell(here);
           }
         }

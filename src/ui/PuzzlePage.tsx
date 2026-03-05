@@ -33,7 +33,13 @@ function segKey(a: CellRC, b: CellRC) {
 }
 
 function segKeyWithTrack(seg: { a: CellRC; b: CellRC; edgeTrack?: "top" | "bottom" | "left" | "right" }) {
-  return `${segKey(seg.a, seg.b)}:${seg.edgeTrack ?? "-"}`;
+  return segKey(seg.a, seg.b);
+}
+
+function isSelectionPatch(p: Patch | unknown): p is Patch {
+  if (!p || typeof p !== "object") return false;
+  const path = (p as Patch).path;
+  return Array.isArray(path) && path.length === 1 && path[0] === "selection";
 }
 
 function isSolved(progress: PuzzleProgress, solution?: string): boolean {
@@ -71,7 +77,7 @@ export function PuzzlePage() {
   const holdDelayRef = useRef<number | null>(null);
   const holdIntervalRef = useRef<number | null>(null);
   const activeHoldRef = useRef<"undo" | "redo" | null>(null);
-  const activeHoldKeyRef = useRef<"z" | "y" | null>(null);
+  const activeHoldKeyRef = useRef<"n" | "m" | null>(null);
   const undoRef = useRef<() => void>(() => {});
   const redoRef = useRef<() => void>(() => {});
 
@@ -80,6 +86,7 @@ export function PuzzlePage() {
   function normalizeProgress(progress: PuzzleProgress): PuzzleProgress {
     return {
       ...progress,
+      multiSelect: progress.multiSelect ?? false,
       lineCenterMarks: progress.lineCenterMarks ?? [],
       lineEdgeMarks: progress.lineEdgeMarks ?? [],
       activeTool:
@@ -139,15 +146,6 @@ export function PuzzlePage() {
     };
   }, [data]);
 
-  useEffect(() => {
-    if (!data) return;
-    if (data.progress.status === "complete") return;
-    const solved = isSolved(data.progress, data.def.cosmetics.solution);
-    if (!solved) return;
-    pushPatch(patchAt(data.progress, ["status"], "complete"));
-    setCompletionOpen(true);
-  }, [data]);
-
   const meta = data?.def.meta;
   const timeStr = useMemo(() => fmtHMS(data?.progress.totalMillis ?? 0), [data?.progress.totalMillis]);
 
@@ -155,10 +153,25 @@ export function PuzzlePage() {
     if (!data || !patches.length) return;
     let nextProgress: PuzzleProgress = data.progress;
     for (const p of patches) nextProgress = applyPatch(nextProgress, p);
+
+    const nextUndo = [...(data.undo as Patch[])];
+    const selectionOnly = patches.every((p) => isSelectionPatch(p));
+    if (selectionOnly) {
+      const latest = patches[patches.length - 1] as Patch;
+      const last = nextUndo[nextUndo.length - 1];
+      if (last && isSelectionPatch(last)) {
+        nextUndo[nextUndo.length - 1] = { path: ["selection"], prev: last.prev, next: latest.next };
+      } else {
+        nextUndo.push(...patches);
+      }
+    } else {
+      nextUndo.push(...patches);
+    }
+
     persist({
       ...data,
       progress: nextProgress,
-      undo: [...data.undo, ...patches],
+      undo: nextUndo,
       redo: [],
       updatedAt: Date.now(),
     });
@@ -195,8 +208,10 @@ export function PuzzlePage() {
     });
   }
 
-  undoRef.current = undo;
-  redoRef.current = redo;
+  useEffect(() => {
+    undoRef.current = undo;
+    redoRef.current = redo;
+  }, [data]);
 
   function stopHoldRepeat() {
     if (holdDelayRef.current != null) {
@@ -216,7 +231,7 @@ export function PuzzlePage() {
     else redoRef.current();
   }
 
-  function startHoldRepeat(kind: "undo" | "redo", key?: "z" | "y") {
+  function startHoldRepeat(kind: "undo" | "redo", key?: "n" | "m") {
     if (activeHoldRef.current === kind && activeHoldKeyRef.current === (key ?? null)) return;
     stopHoldRepeat();
     activeHoldRef.current = kind;
@@ -228,38 +243,14 @@ export function PuzzlePage() {
     }, 260);
   }
 
-  useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.altKey || e.ctrlKey || e.metaKey) return;
-      const k = e.key.toLowerCase();
-      if (k !== "z" && k !== "y") return;
-      e.preventDefault();
-      startHoldRepeat(k === "z" ? "undo" : "redo", k as "z" | "y");
-    };
-
-    const onKeyUp = (e: KeyboardEvent) => {
-      const k = e.key.toLowerCase();
-      if ((k === "z" || k === "y") && activeHoldKeyRef.current === k) {
-        stopHoldRepeat();
-      }
-    };
-
-    const onBlur = () => stopHoldRepeat();
-
-    window.addEventListener("keydown", onKeyDown);
-    window.addEventListener("keyup", onKeyUp);
-    window.addEventListener("blur", onBlur);
-    return () => {
-      window.removeEventListener("keydown", onKeyDown);
-      window.removeEventListener("keyup", onKeyUp);
-      window.removeEventListener("blur", onBlur);
-      stopHoldRepeat();
-    };
-  }, []);
-
   function setSelection(sel: CellRC[]) {
     if (!data || data.progress.activeTool === "line") return;
     pushPatch(patchAt(data.progress, ["selection"], sel));
+  }
+
+  function setSelectionMode(multiSelect: boolean) {
+    if (!data || data.progress.multiSelect === multiSelect) return;
+    pushPatch(patchAt(data.progress, ["multiSelect"], multiSelect));
   }
 
   function startOrResume() {
@@ -302,17 +293,18 @@ export function PuzzlePage() {
     applyPatches(patches);
   }
 
-  function applyDigit(sym: string) {
+  function applyDigit(sym: string, forcedMode?: PuzzleProgress["entryMode"]) {
     if (!data) return;
     const sel = data.progress.selection;
     if (!sel.length) return;
-    const keyName = data.progress.entryMode === "center" ? "center" : data.progress.entryMode === "corner" ? "corner" : "candidates";
+    const mode = forcedMode ?? data.progress.entryMode;
+    const keyName = mode === "center" ? "center" : mode === "corner" ? "corner" : "candidates";
 
     const editable = sel.filter((rc) => !data.progress.cells[rc.r][rc.c].given);
     if (!editable.length) return;
 
     const patches: Patch[] = [];
-    if (data.progress.entryMode === "value") {
+    if (mode === "value") {
       const allHave = sym !== "0" && editable.every((rc) => data.progress.cells[rc.r][rc.c].value === sym);
       const nextValue = sym === "0" || allHave ? undefined : sym;
       for (const rc of editable) {
@@ -486,6 +478,182 @@ export function PuzzlePage() {
     pushPatch(patchAt(data.progress, ["lines"], [...data.progress.lines, stroke]));
   }
 
+  useEffect(() => {
+    if (!data) return;
+    if (data.progress.status === "complete") return;
+    const solved = isSolved(data.progress, data.def.cosmetics.solution);
+    if (!solved) return;
+    queueMicrotask(() => {
+      pushPatch(patchAt(data.progress, ["status"], "complete"));
+      setCompletionOpen(true);
+    });
+  }, [data, pushPatch]);
+
+  useEffect(() => {
+    const toolCycle: PuzzleProgress["activeTool"][] = ["value", "corner", "center", "highlight", "line"];
+    const keyToTool: Record<string, PuzzleProgress["activeTool"]> = {
+      z: "value",
+      x: "corner",
+      c: "center",
+      v: "highlight",
+    };
+
+    const normalizeDigit = (k: string): string | null => {
+      if (/^[1-9]$/.test(k)) return k;
+      if (k === "0") return "0";
+      if (k.startsWith("numpad") && /^numpad[0-9]$/.test(k)) return k.slice(-1);
+      return null;
+    };
+
+    const selectionSet = () => new Set((data?.progress.selection ?? []).map(rcKey));
+    const inTextInput = (el: EventTarget | null) => {
+      const node = el as HTMLElement | null;
+      if (!node) return false;
+      const tag = node.tagName?.toLowerCase();
+      return tag === "input" || tag === "textarea" || tag === "select" || node.isContentEditable;
+    };
+
+    const moveSelection = (dr: number, dc: number, extend: boolean) => {
+      if (!data) return;
+      const n = data.progress.cells.length;
+      const anchor = data.progress.selection[data.progress.selection.length - 1] ?? { r: 0, c: 0 };
+      const next = {
+        r: Math.max(0, Math.min(n - 1, anchor.r + dr)),
+        c: Math.max(0, Math.min(n - 1, anchor.c + dc)),
+      };
+      if (extend) {
+        const set = selectionSet();
+        set.add(rcKey(next));
+        setSelection(Array.from(set).map((k) => {
+          const [r, c] = k.split(",").map(Number);
+          return { r, c };
+        }));
+        return;
+      }
+      setSelection([next]);
+    };
+
+    const cycleTool = (direction: 1 | -1) => {
+      if (!data) return;
+      const idx = toolCycle.indexOf(data.progress.activeTool);
+      const next = toolCycle[(idx + direction + toolCycle.length) % toolCycle.length];
+      setActiveTool(next);
+    };
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (inTextInput(e.target)) return;
+      const k = e.key.toLowerCase();
+
+      if (!e.altKey && !e.ctrlKey && !e.metaKey && (k === "n" || k === "m")) {
+        e.preventDefault();
+        startHoldRepeat(k === "n" ? "undo" : "redo", k as "n" | "m");
+        return;
+      }
+
+      if (e.ctrlKey && !e.altKey && !e.metaKey && (k === "z" || k === "y")) {
+        e.preventDefault();
+        if (k === "z") undoRef.current();
+        else redoRef.current();
+        return;
+      }
+
+      if (e.ctrlKey && !e.altKey && !e.metaKey && k === "a") {
+        if (!data) return;
+        e.preventDefault();
+        if (e.shiftKey) {
+          setSelection([]);
+          return;
+        }
+        const n = data.progress.cells.length;
+        const all = Array.from({ length: n * n }, (_, i) => ({ r: Math.floor(i / n), c: i % n }));
+        setSelection(all);
+        return;
+      }
+
+      if (e.ctrlKey && !e.altKey && !e.metaKey && !e.shiftKey && k === "i") {
+        if (!data) return;
+        e.preventDefault();
+        const n = data.progress.cells.length;
+        const sel = selectionSet();
+        const next: CellRC[] = [];
+        for (let r = 0; r < n; r++) {
+          for (let c = 0; c < n; c++) {
+            if (!sel.has(`${r},${c}`)) next.push({ r, c });
+          }
+        }
+        setSelection(next);
+        return;
+      }
+
+      if (!e.altKey && !e.ctrlKey && !e.metaKey && keyToTool[k]) {
+        e.preventDefault();
+        setActiveTool(keyToTool[k]);
+        return;
+      }
+
+      if (!e.altKey && !e.metaKey && (k === " " || k === "pagedown")) {
+        e.preventDefault();
+        cycleTool(1);
+        return;
+      }
+
+      if (!e.altKey && !e.metaKey && ((e.ctrlKey && k === " ") || k === "pageup")) {
+        e.preventDefault();
+        cycleTool(-1);
+        return;
+      }
+
+      if (!e.altKey && !e.metaKey && ["arrowup", "arrowdown", "arrowleft", "arrowright"].includes(k)) {
+        e.preventDefault();
+        const extend = e.ctrlKey || e.shiftKey;
+        if (k === "arrowup") moveSelection(-1, 0, extend);
+        if (k === "arrowdown") moveSelection(1, 0, extend);
+        if (k === "arrowleft") moveSelection(0, -1, extend);
+        if (k === "arrowright") moveSelection(0, 1, extend);
+        return;
+      }
+
+      const digit = normalizeDigit(k);
+      if (digit && !e.altKey && !e.metaKey) {
+        e.preventDefault();
+        if (!data) return;
+        if (e.ctrlKey && e.shiftKey) {
+          setActiveTool("highlight");
+          return;
+        }
+        if (e.ctrlKey) {
+          applyDigit(digit, "center");
+          return;
+        }
+        if (e.shiftKey) {
+          applyDigit(digit, "corner");
+          return;
+        }
+        applyDigit(digit);
+      }
+    };
+
+    const onKeyUp = (e: KeyboardEvent) => {
+      const k = e.key.toLowerCase();
+      if ((k === "n" || k === "m") && activeHoldKeyRef.current === k) {
+        stopHoldRepeat();
+      }
+    };
+
+    const onBlur = () => stopHoldRepeat();
+
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("keyup", onKeyUp);
+    window.addEventListener("blur", onBlur);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("keyup", onKeyUp);
+      window.removeEventListener("blur", onBlur);
+    };
+  }, [applyDigit, data, setActiveTool, setSelection, startHoldRepeat]);
+
+  useEffect(() => () => stopHoldRepeat(), []);
+
   if (!data) {
     return (
       <div className="shell">
@@ -515,7 +683,7 @@ export function PuzzlePage() {
             onPointerUp={stopHoldRepeat}
             onPointerLeave={stopHoldRepeat}
             onPointerCancel={stopHoldRepeat}
-            title="Undo"
+            title="Undo (N)"
           >
             <IconUndo />
           </button>
@@ -525,7 +693,7 @@ export function PuzzlePage() {
             onPointerUp={stopHoldRepeat}
             onPointerLeave={stopHoldRepeat}
             onPointerCancel={stopHoldRepeat}
-            title="Redo"
+            title="Redo (M)"
           >
             <IconRedo />
           </button>
@@ -533,6 +701,26 @@ export function PuzzlePage() {
       </div>
 
       <div className="page puzzlePage">
+        <div className="card selectionModeDock">
+          <div className="muted">Selection Mode</div>
+          <div className="row" style={{ gap: 6 }}>
+            <button
+              className={"btn" + (!data.progress.multiSelect ? " primary" : "")}
+              onClick={() => setSelectionMode(false)}
+              title="Single-touch selection"
+            >
+              Single
+            </button>
+            <button
+              className={"btn" + (data.progress.multiSelect ? " primary" : "")}
+              onClick={() => setSelectionMode(true)}
+              title="Multi-touch selection"
+            >
+              Multi
+            </button>
+          </div>
+        </div>
+
         <div className="gridLayout">
           <GridCanvas
             def={data.def}
