@@ -19,6 +19,18 @@ export type LineStroke = {
   segments: Array<{ a: CellRC; b: CellRC }>;
 };
 
+export type LineCenterMark = {
+  rc: CellRC;
+  kind: "circle" | "x";
+  color: string;
+};
+
+export type LineEdgeMark = {
+  a: CellRC;
+  b: CellRC;
+  color: string;
+};
+
 export type PuzzleMeta = {
   title?: string;
   author?: string;
@@ -109,6 +121,8 @@ export type PuzzleProgress = {
 
   cells: CellState[][];
   lines: LineStroke[];
+  lineCenterMarks: LineCenterMark[];
+  lineEdgeMarks: LineEdgeMark[];
 
   entryMode: "value" | "center" | "corner" | "candidates";
   alphabetMode: boolean;
@@ -121,6 +135,7 @@ export type PuzzleProgress = {
 
   // Exactly one visible tool on the puzzle page.
   activeTool: "value" | "center" | "corner" | "highlight" | "line";
+  storedSelectionWhenLineTool?: CellRC[];
 
   paused: boolean;
 };

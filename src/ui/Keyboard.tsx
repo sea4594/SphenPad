@@ -91,6 +91,8 @@ export function Keyboard(props: {
         {baseColors0.map((c) => (
           <ColorKey key={c} color={c} onClick={() => props.onColor?.(c)} />
         ))}
+        <Key onClick={() => props.onBackspace?.()}>⌫</Key>
+        <div />
         <select
           style={{
             gridColumn: "1 / span 3",

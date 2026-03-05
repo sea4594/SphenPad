@@ -25,6 +25,8 @@ export function makeInitialProgress(def: PuzzleDefinition): PuzzleProgress {
     multiSelect: false,
     cells,
     lines: [],
+    lineCenterMarks: [],
+    lineEdgeMarks: [],
     entryMode: "value",
     alphabetMode: false,
     highlightPalettePage: 0,

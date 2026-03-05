@@ -111,6 +111,13 @@ input.url {
   gap: 8px;
 }
 
+.toolIconBtn {
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  padding: 8px;
+}
+
 .boardCard {
   border-radius: 18px;
 }

@@ -13,18 +13,18 @@ export function PauseOverlay(props: {
       style={{
         position: "fixed",
         inset: 0,
-        background: "rgba(0,0,0,.72)",
+        background: "rgba(6,10,16,.96)",
         display: "grid",
         placeItems: "center",
         padding: 18,
         zIndex: 50,
       }}
     >
-      <div className="card" style={{ width: "min(860px, 100%)" }}>
+      <div className="card" style={{ width: "min(860px, 100%)", maxHeight: "calc(100vh - 36px)", display: "flex", flexDirection: "column" }}>
         <div style={{ fontWeight: 800, fontSize: 22 }}>{meta?.title || "(untitled)"}</div>
         <div className="muted" style={{ marginTop: 6 }}>{meta?.author || ""}</div>
 
-        <div className="card" style={{ marginTop: 12 }}>
+        <div className="card" style={{ marginTop: 12, overflow: "auto", minHeight: 0 }}>
           <div style={{ fontWeight: 700, marginBottom: 6 }}>Instructions</div>
           <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.45 }}>
             {meta?.rules || "No instructions found in metadata."}
