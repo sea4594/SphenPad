@@ -177,9 +177,17 @@ export function GridCanvas(props: {
     const el = wrapRef.current;
     if (!el) return;
     const update = () => {
-      const pane = (el.closest(".boardColumn") as HTMLElement | null) ?? (el.parentElement as HTMLElement | null) ?? el;
+      const boardColumn = (el.closest(".boardColumn") as HTMLElement | null) ?? null;
+      const gridLayout = (el.closest(".gridLayout") as HTMLElement | null) ?? null;
+      const pane = boardColumn ?? (el.parentElement as HTMLElement | null) ?? el;
+
       const width = pane.clientWidth || window.innerWidth;
-      const height = pane.clientHeight || window.innerHeight;
+
+      const topbar = document.querySelector(".topbar") as HTMLElement | null;
+      const viewportHeight = window.innerHeight - (topbar?.offsetHeight ?? 0) - 20;
+      const measuredHeight = Math.max(boardColumn?.clientHeight ?? 0, gridLayout?.clientHeight ?? 0, pane.clientHeight || 0);
+      const height = measuredHeight > 220 ? measuredHeight : viewportHeight;
+
       const sideMargin = 8;
       const topBottomPad = 8;
       const spanX = n + outsideLeft + outsideRight;
@@ -187,7 +195,10 @@ export function GridCanvas(props: {
       const padFactor = 0.68;
       const byWidth = (Math.max(240, width - sideMargin * 2)) / (spanX + padFactor);
       const byHeight = (Math.max(220, height - topBottomPad * 2)) / (spanY + padFactor);
-      const next = Math.floor(Math.min(56, Math.max(30, Math.min(byWidth, byHeight))));
+
+      const desktop = window.matchMedia("(min-width: 1080px)").matches;
+      const maxCell = desktop ? 96 : 72;
+      const next = Math.floor(Math.min(maxCell, Math.max(28, Math.min(byWidth, byHeight))));
       setCellPx(next);
     };
     update();

@@ -272,6 +272,7 @@ input.url {
   gap: 8px;
   align-content: start;
   min-height: 0;
+  height: 100%;
 }
 
 .boardCard {
@@ -461,7 +462,7 @@ input.url {
 @media (min-width: 1080px) {
   .gridLayout {
     grid-template-columns: minmax(540px, 1fr) minmax(320px, 390px);
-    align-items: start;
+    align-items: stretch;
     overflow: hidden;
   }
 
