@@ -676,60 +676,57 @@ export function PuzzlePage() {
 
         <div className="row">
           <div style={{ fontVariantNumeric: "tabular-nums" }}>{timeStr}</div>
-          <button className="btn" onClick={onPausePlayClick}>{data.progress.paused ? <IconPlay /> : <IconPause />}</button>
-          <button
-            className="btn"
-            onPointerDown={() => startHoldRepeat("undo")}
-            onPointerUp={stopHoldRepeat}
-            onPointerLeave={stopHoldRepeat}
-            onPointerCancel={stopHoldRepeat}
-            title="Undo (N)"
-          >
-            <IconUndo />
-          </button>
-          <button
-            className="btn"
-            onPointerDown={() => startHoldRepeat("redo")}
-            onPointerUp={stopHoldRepeat}
-            onPointerLeave={stopHoldRepeat}
-            onPointerCancel={stopHoldRepeat}
-            title="Redo (M)"
-          >
-            <IconRedo />
-          </button>
         </div>
       </div>
 
       <div className="page puzzlePage">
-        <div className="card selectionModeDock">
-          <div className="muted">Selection Mode</div>
-          <div className="row" style={{ gap: 6 }}>
-            <button
-              className={"btn" + (!data.progress.multiSelect ? " primary" : "")}
-              onClick={() => setSelectionMode(false)}
-              title="Single-touch selection"
-            >
-              Single
-            </button>
-            <button
-              className={"btn" + (data.progress.multiSelect ? " primary" : "")}
-              onClick={() => setSelectionMode(true)}
-              title="Multi-touch selection"
-            >
-              Multi
-            </button>
-          </div>
-        </div>
-
         <div className="gridLayout">
-          <GridCanvas
-            def={data.def}
-            progress={data.progress}
-            onSelection={setSelection}
-            onLineStroke={onLineStroke}
-            onLineTapCell={onLineTapCell}
-            onLineTapEdge={onLineTapEdge}
-          />
+          <div className="boardColumn">
+            <div className="card boardCard">
+              <GridCanvas
+                def={data.def}
+                progress={data.progress}
+                onSelection={setSelection}
+                onLineStroke={onLineStroke}
+                onLineTapCell={onLineTapCell}
+                onLineTapEdge={onLineTapEdge}
+              />
+            </div>
+
+            <div className="card playControls">
+              <div className="controlRow">
+                <button
+                  className="btn"
+                  onPointerDown={() => startHoldRepeat("undo")}
+                  onPointerUp={stopHoldRepeat}
+                  onPointerLeave={stopHoldRepeat}
+                  onPointerCancel={stopHoldRepeat}
+                  title="Undo (N)"
+                >
+                  <IconUndo />
+                </button>
+                <button
+                  className="btn"
+                  onPointerDown={() => startHoldRepeat("redo")}
+                  onPointerUp={stopHoldRepeat}
+                  onPointerLeave={stopHoldRepeat}
+                  onPointerCancel={stopHoldRepeat}
+                  title="Redo (M)"
+                >
+                  <IconRedo />
+                </button>
+                <button className={"btn" + (!data.progress.multiSelect ? " primary" : "")} onClick={() => setSelectionMode(false)} title="Single-touch selection">
+                  Single
+                </button>
+                <button className={"btn" + (data.progress.multiSelect ? " primary" : "")} onClick={() => setSelectionMode(true)} title="Multi-touch selection">
+                  Multi
+                </button>
+                <button className="btn" onClick={onPausePlayClick} title="Pause or resume">
+                  {data.progress.paused ? <IconPlay /> : <IconPause />}
+                </button>
+              </div>
+            </div>
+          </div>
 
           <div className="kbdPanel">
             <div className="card toolSwitcher">

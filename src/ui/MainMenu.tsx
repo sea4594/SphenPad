@@ -54,69 +54,66 @@ export function MainMenu() {
       </div>
 
       <div className="page">
-        <div className="card">
-          <div className="row">
-            <input
-              className="url"
-              placeholder="Paste a sudokupad.app URL or puzzle id…"
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-            />
-            <button className="btn primary" onClick={onLoad} disabled={!url || !!busy}>
-              Load
-            </button>
-          </div>
-          {busy && <div className="muted" style={{ marginTop: 10 }}>{busy}</div>}
-        </div>
-
-        <div className="card">
-          <div className="row" style={{ justifyContent: "space-between" }}>
-            <div style={{ fontWeight: 650 }}>Your puzzles</div>
-            <div className="muted">{rows.length} total</div>
+        <div className="mainMenuWrap">
+          <div className="card">
+            <div className="menuSectionTitle">Load Puzzle</div>
+            <div className="muted" style={{ marginTop: 2 }}>Paste a `sudokupad.app` link or a puzzle id</div>
+            <div className="row" style={{ marginTop: 10 }}>
+              <input
+                className="url"
+                placeholder="https://sudokupad.app/..."
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+              />
+              <button className="btn primary" onClick={onLoad} disabled={!url || !!busy}>
+                Load
+              </button>
+            </div>
+            {busy && <div className="muted" style={{ marginTop: 10 }}>{busy}</div>}
           </div>
 
-          <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
-            {rows.map((r) => (
-              <div
-                key={r.key}
-                className="card"
-                style={{ cursor: "pointer" }}
-                onClick={() => nav(`/p/${encodeURIComponent(r.key)}`)}
-              >
-                <div className="row" style={{ justifyContent: "space-between" }}>
+          <div className="card">
+            <div className="row" style={{ justifyContent: "space-between" }}>
+              <div className="menuSectionTitle">Your puzzles</div>
+              <div className="muted">{rows.length} total</div>
+            </div>
+
+            <div className="menuPuzzleList">
+              {rows.map((r) => (
+                <div
+                  key={r.key}
+                  className="card menuPuzzleRow"
+                  onClick={() => nav(`/p/${encodeURIComponent(r.key)}`)}
+                >
                   <div>
-                    <div style={{ fontWeight: 650 }}>
+                    <div style={{ fontWeight: 700 }}>
                       {r.def?.meta?.title || "(untitled)"}{" "}
                       <span className="muted" style={{ fontWeight: 500 }}>
-                        {r.def?.meta?.author ? `— ${r.def.meta.author}` : ""}
+                        {r.def?.meta?.author ? `- ${r.def.meta.author}` : ""}
                       </span>
                     </div>
-                    <div className="muted" style={{ fontSize: 13 }}>
-                      {r.key}
-                    </div>
+                    <div className="muted" style={{ fontSize: 13 }}>{r.key}</div>
                   </div>
-                  <div style={{ textAlign: "right" }}>
+
+                  <div className="row" style={{ justifyContent: "flex-end" }}>
                     <div>{fmtHMS(r.progress?.totalMillis ?? 0)}</div>
                     <div className="muted" style={{ fontSize: 13 }}>
                       {r.progress?.status ?? "not_started"}
                     </div>
+                    <button
+                      className="btn danger"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deletePuzzle(r.key).then(refresh);
+                      }}
+                    >
+                      Delete
+                    </button>
                   </div>
                 </div>
-
-                <div className="row" style={{ marginTop: 10 }}>
-                  <button
-                    className="btn danger"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      deletePuzzle(r.key).then(refresh);
-                    }}
-                  >
-                    Delete
-                  </button>
-                </div>
-              </div>
-            ))}
-            {!rows.length && <div className="muted">No puzzles loaded yet.</div>}
+              ))}
+              {!rows.length && <div className="muted">No puzzles loaded yet.</div>}
+            </div>
           </div>
         </div>
       </div>
