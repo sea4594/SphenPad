@@ -763,42 +763,6 @@ export function GridCanvas(props: {
     return fx < 0.5 ? "left" : "right";
   }
 
-  function nextEdgeNeighbor(last: CellRC, prev: CellRC | null, clientX: number, clientY: number): CellRC | null {
-    const rect = canvasRef.current?.getBoundingClientRect();
-    if (!rect) return null;
-
-    const bx = clientX - rect.left - originX;
-    const by = clientY - rect.top - originY;
-    const localX = bx / cellPx - last.c;
-    const localY = by / cellPx - last.r;
-    const offX = localX - 0.5;
-    const offY = localY - 0.5;
-    const absX = Math.abs(offX);
-    const absY = Math.abs(offY);
-
-    // Ignore tiny movement around center to reduce jitter.
-    if (Math.max(absX, absY) < 0.24) return null;
-
-    let axis: "h" | "v" = absX >= absY ? "h" : "v";
-    if (prev) {
-      const prefAxis: "h" | "v" = prev.c !== last.c ? "h" : "v";
-      const prefMag = prefAxis === "h" ? absX : absY;
-      const otherMag = prefAxis === "h" ? absY : absX;
-      const strongSwitch = otherMag > prefMag + 0.22;
-      axis = strongSwitch ? (prefAxis === "h" ? "v" : "h") : prefAxis;
-    }
-
-    if (axis === "h") {
-      if (absX < 0.3) return null;
-      const nextC = offX > 0 ? last.c + 1 : last.c - 1;
-      return inBounds(last.r, nextC) ? { r: last.r, c: nextC } : null;
-    }
-
-    if (absY < 0.3) return null;
-    const nextR = offY > 0 ? last.r + 1 : last.r - 1;
-    return inBounds(nextR, last.c) ? { r: nextR, c: last.c } : null;
-  }
-
   function onDown(e: React.PointerEvent) {
     const pt = eventPoint(e.clientX, e.clientY);
     if (!pt) return;
@@ -822,11 +786,9 @@ export function GridCanvas(props: {
 
     if (progress.activeTool === "line") {
       const kind = drag.lineKind ?? "center";
-      const prevCell = drag.path[drag.path.length - 2] ?? null;
       const pt = eventPoint(e.clientX, e.clientY);
-      const next = kind === "edge"
-        ? nextEdgeNeighbor(drag.last, prevCell, e.clientX, e.clientY)
-        : (pt ? { r: pt.r, c: pt.c } : null);
+      if (!pt) return;
+      const next = { r: pt.r, c: pt.c };
       if (!next) return;
       if (next.r === drag.last.r && next.c === drag.last.c) return;
 
@@ -835,14 +797,21 @@ export function GridCanvas(props: {
       if (Math.abs(dr) > 1 || Math.abs(dc) > 1) return;
       if (kind === "edge" && Math.abs(dr) + Math.abs(dc) !== 1) return;
 
+      const prevCell = drag.path[drag.path.length - 2] ?? null;
+
       if (prevCell && prevCell.r === next.r && prevCell.c === next.c) {
         drag.path.pop();
         drag.segments.pop();
       } else {
         const seg: LineSegmentDraft = { a: drag.last, b: next };
         if (kind === "edge") {
-          const edgePt = pt ?? eventPoint(e.clientX, e.clientY);
-          if (edgePt) seg.edgeTrack = edgeTrackForStep(drag.last, next, edgePt.fx, edgePt.fy);
+          const prevSeg = drag.segments[drag.segments.length - 1];
+          const sameOrientation =
+            prevSeg &&
+            (prevSeg.a.r === prevSeg.b.r) === (seg.a.r === seg.b.r);
+          seg.edgeTrack = sameOrientation && prevSeg?.edgeTrack
+            ? prevSeg.edgeTrack
+            : edgeTrackForStep(drag.last, next, pt.fx, pt.fy);
         }
         drag.path.push(next);
         drag.segments.push(seg);
