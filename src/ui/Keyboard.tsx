@@ -58,7 +58,7 @@ export function Keyboard(props: {
           ))}
           <Key onClick={() => props.onDigit?.("0")}>0</Key>
           <Key onClick={() => props.onToggleAlphabet?.()}>{progress.alphabetMode ? "123" : "A-I"}</Key>
-          <Key onClick={() => props.onBackspace?.()}>⌫</Key>
+          <Key onClick={() => props.onBackspace?.()} title="Backspace">⌫</Key>
         </Grid3x4>
       </div>
     );
@@ -79,7 +79,7 @@ export function Keyboard(props: {
           ))}
           <ColorKey color="#ffffff" onClick={() => props.onWhite?.()} />
           <Key onClick={() => props.onFlipPalette?.()}>⇄</Key>
-          <Key onClick={() => props.onBackspace?.()}>⌫</Key>
+          <Key onClick={() => props.onBackspace?.()} title="Backspace">⌫</Key>
         </Grid3x4>
       </div>
     );
@@ -94,7 +94,7 @@ export function Keyboard(props: {
         {baseColors0.map((c) => (
           <ColorKey key={c} color={c} onClick={() => props.onColor?.(c)} />
         ))}
-        <Key onClick={() => props.onBackspace?.()}>⌫</Key>
+        <Key onClick={() => props.onBackspace?.()} title="Backspace">⌫</Key>
         <div />
         <select
           style={{
@@ -136,9 +136,9 @@ function Grid3x4(props: { children: React.ReactNode }) {
   );
 }
 
-function Key(props: { children: React.ReactNode; onClick?: () => void; style?: React.CSSProperties }) {
+function Key(props: { children: React.ReactNode; onClick?: () => void; style?: React.CSSProperties; title?: string }) {
   return (
-    <button className="btn" style={{ height: "clamp(44px, 10vw, 52px)", ...props.style }} onClick={props.onClick}>
+    <button className="btn" style={{ height: "clamp(44px, 10vw, 52px)", ...props.style }} onClick={props.onClick} title={props.title}>
       {props.children}
     </button>
   );

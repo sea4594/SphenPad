@@ -10,6 +10,8 @@ export type CellState = {
   given?: string;
   value?: string;
   notes: NoteSet;
+  highlights: string[];
+  // Legacy save compatibility.
   color?: string;
 };
 

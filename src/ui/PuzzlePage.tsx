@@ -39,12 +39,6 @@ function segKeyWithTrack(seg: { a: CellRC; b: CellRC; edgeTrack?: "top" | "botto
   return segKey(seg.a, seg.b);
 }
 
-function isSelectionPatch(p: Patch | unknown): p is Patch {
-  if (!p || typeof p !== "object") return false;
-  const path = (p as Patch).path;
-  return Array.isArray(path) && path.length === 1 && path[0] === "selection";
-}
-
 function isPatchLike(p: unknown): p is Patch {
   if (!p || typeof p !== "object") return false;
   return Array.isArray((p as Patch).path);
@@ -99,8 +93,24 @@ export function PuzzlePage() {
   const userId = firebaseEnabled ? auth?.currentUser?.uid : null;
 
   function normalizeProgress(progress: PuzzleProgress): PuzzleProgress {
+    const cells = progress.cells.map((row) =>
+      row.map((cell) => {
+        const existing = Array.isArray((cell as { highlights?: string[] }).highlights)
+          ? (cell as { highlights?: string[] }).highlights ?? []
+          : [];
+        const legacy = typeof cell.color === "string" && cell.color ? [cell.color] : [];
+        const merged = Array.from(new Set([...existing, ...legacy])).slice(0, 18);
+        return {
+          ...cell,
+          highlights: merged,
+          color: undefined,
+        };
+      })
+    );
+
     return {
       ...progress,
+      cells,
       multiSelect: progress.multiSelect ?? false,
       lineCenterMarks: progress.lineCenterMarks ?? [],
       lineEdgeMarks: progress.lineEdgeMarks ?? [],
@@ -164,36 +174,31 @@ export function PuzzlePage() {
   const meta = data?.def.meta;
   const timeStr = useMemo(() => fmtHMS(data?.progress.totalMillis ?? 0), [data?.progress.totalMillis]);
 
-  function applyPatches(patches: Patch[]) {
+  function applyPatches(patches: Patch[], opts?: { recordHistory?: boolean }) {
     if (!data || !patches.length) return;
+    const recordHistory = opts?.recordHistory ?? true;
     let nextProgress: PuzzleProgress = data.progress;
     for (const p of patches) nextProgress = applyPatch(nextProgress, p);
 
     const nextUndo = data.undo.map(toPatchEntry).filter((entry) => entry.length > 0);
-    const selectionOnly = patches.every((p) => isSelectionPatch(p));
-    if (selectionOnly) {
-      const latest = patches[patches.length - 1] as Patch;
-      const last = nextUndo[nextUndo.length - 1];
-      if (last && last.length === 1 && isSelectionPatch(last[0])) {
-        nextUndo[nextUndo.length - 1] = [{ path: ["selection"], prev: last[0].prev, next: latest.next }];
-      } else {
-        nextUndo.push([...patches]);
-      }
-    } else {
+    let nextRedo = data.redo;
+
+    if (recordHistory) {
       nextUndo.push([...patches]);
+      nextRedo = [];
     }
 
     persist({
       ...data,
       progress: nextProgress,
       undo: nextUndo,
-      redo: [],
+      redo: nextRedo,
       updatedAt: Date.now(),
     });
   }
 
-  function pushPatch(p: Patch) {
-    applyPatches([p]);
+  function pushPatch(p: Patch, opts?: { recordHistory?: boolean }) {
+    applyPatches([p], opts);
   }
 
   function undo() {
@@ -263,12 +268,12 @@ export function PuzzlePage() {
 
   function setSelection(sel: CellRC[]) {
     if (!data || data.progress.activeTool === "line") return;
-    pushPatch(patchAt(data.progress, ["selection"], sel));
+    pushPatch(patchAt(data.progress, ["selection"], sel), { recordHistory: false });
   }
 
   function setSelectionMode(multiSelect: boolean) {
     if (!data || data.progress.multiSelect === multiSelect) return;
-    pushPatch(patchAt(data.progress, ["multiSelect"], multiSelect));
+    pushPatch(patchAt(data.progress, ["multiSelect"], multiSelect), { recordHistory: false });
   }
 
   function toggleSelectionMode() {
@@ -282,18 +287,18 @@ export function PuzzlePage() {
     if (!data.progress.startedAt) patches.push(patchAt(data.progress, ["startedAt"], Date.now()));
     if (data.progress.status === "not_started") patches.push(patchAt(data.progress, ["status"], "in_progress"));
     patches.push(patchAt(data.progress, ["paused"], false));
-    applyPatches(patches);
+    applyPatches(patches, { recordHistory: false });
     setPauseMenuOpen(false);
   }
 
   function onPausePlayClick() {
     if (!data) return;
     if (data.progress.paused) {
-      pushPatch(patchAt(data.progress, ["paused"], false));
+      pushPatch(patchAt(data.progress, ["paused"], false), { recordHistory: false });
       setPauseMenuOpen(false);
       return;
     }
-    pushPatch(patchAt(data.progress, ["paused"], true));
+    pushPatch(patchAt(data.progress, ["paused"], true), { recordHistory: false });
     setPauseMenuOpen(true);
   }
 
@@ -313,7 +318,7 @@ export function PuzzlePage() {
       patches.push(patchAt(data.progress, ["storedSelectionWhenLineTool"], undefined));
     }
 
-    applyPatches(patches);
+    applyPatches(patches, { recordHistory: false });
   }
 
   function applyDigit(sym: string, forcedMode?: PuzzleProgress["entryMode"]) {
@@ -353,11 +358,19 @@ export function PuzzlePage() {
     if (!data) return;
     const editable = data.progress.selection.filter((rc) => !data.progress.cells[rc.r][rc.c].given);
     if (!editable.length) return;
-    const allHave = editable.every((rc) => data.progress.cells[rc.r][rc.c].color === color);
-    const next = allHave ? undefined : color;
+    const allHave = editable.every((rc) => (data.progress.cells[rc.r][rc.c].highlights ?? []).includes(color));
     const patches = editable
-      .filter((rc) => data.progress.cells[rc.r][rc.c].color !== next)
-      .map((rc) => patchAt(data.progress, ["cells", rc.r, rc.c, "color"], next));
+      .map((rc) => {
+        const cur = data.progress.cells[rc.r][rc.c].highlights ?? [];
+        const nextSet = new Set(cur);
+        if (allHave) nextSet.delete(color);
+        else if (nextSet.size < 18 || nextSet.has(color)) nextSet.add(color);
+        const next = Array.from(nextSet).slice(0, 18);
+        const unchanged = next.length === cur.length && next.every((v, i) => v === cur[i]);
+        if (unchanged) return null;
+        return patchAt(data.progress, ["cells", rc.r, rc.c, "highlights"], next);
+      })
+      .filter(Boolean) as Patch[];
     applyPatches(patches);
   }
 
@@ -399,7 +412,8 @@ export function PuzzlePage() {
 
     if (tool === "highlight") {
       for (const rc of editable) {
-        if (progress.cells[rc.r][rc.c].color != null) patches.push(patchAt(progress, ["cells", rc.r, rc.c, "color"], undefined));
+        const cur = progress.cells[rc.r][rc.c].highlights ?? [];
+        if (cur.length) patches.push(patchAt(progress, ["cells", rc.r, rc.c, "highlights"], []));
       }
       return patches;
     }
@@ -507,7 +521,7 @@ export function PuzzlePage() {
     const solved = isSolved(data.progress, data.def.cosmetics.solution);
     if (!solved) return;
     queueMicrotask(() => {
-      pushPatch(patchAt(data.progress, ["status"], "complete"));
+      pushPatch(patchAt(data.progress, ["status"], "complete"), { recordHistory: false });
       setCompletionOpen(true);
     });
   }, [data, pushPatch]);
@@ -757,10 +771,10 @@ export function PuzzlePage() {
             </div>
 
             <div className="card toolSwitcher">
-              <button title="Big numbers" className={"btn toolIconBtn" + (data.progress.activeTool === "value" ? " primary" : "")} onClick={() => setActiveTool("value")}><IconToolBig /></button>
-              <button title="Center notes" className={"btn toolIconBtn" + (data.progress.activeTool === "center" ? " primary" : "")} onClick={() => setActiveTool("center")}><IconToolCenter /></button>
-              <button title="Edge notes" className={"btn toolIconBtn" + (data.progress.activeTool === "corner" ? " primary" : "")} onClick={() => setActiveTool("corner")}><IconToolCorner /></button>
-              <button title="Highlight" className={"btn toolIconBtn" + (data.progress.activeTool === "highlight" ? " primary" : "")} onClick={() => setActiveTool("highlight")}><IconToolHighlight /></button>
+              <button title="Big numbers (Z)" className={"btn toolIconBtn" + (data.progress.activeTool === "value" ? " primary" : "")} onClick={() => setActiveTool("value")}><IconToolBig /></button>
+              <button title="Edge notes (X)" className={"btn toolIconBtn" + (data.progress.activeTool === "corner" ? " primary" : "")} onClick={() => setActiveTool("corner")}><IconToolCorner /></button>
+              <button title="Center notes (C)" className={"btn toolIconBtn" + (data.progress.activeTool === "center" ? " primary" : "")} onClick={() => setActiveTool("center")}><IconToolCenter /></button>
+              <button title="Highlight (V)" className={"btn toolIconBtn" + (data.progress.activeTool === "highlight" ? " primary" : "")} onClick={() => setActiveTool("highlight")}><IconToolHighlight /></button>
               <button title="Line" className={"btn toolIconBtn" + (data.progress.activeTool === "line" ? " primary" : "")} onClick={() => setActiveTool("line")}><IconToolLine /></button>
             </div>
 
@@ -772,7 +786,7 @@ export function PuzzlePage() {
                 progress={data.progress}
                 onDigit={applyDigit}
                 onBackspace={handleBackspace}
-                onToggleAlphabet={() => pushPatch(patchAt(data.progress, ["alphabetMode"], !data.progress.alphabetMode))}
+                onToggleAlphabet={() => pushPatch(patchAt(data.progress, ["alphabetMode"], !data.progress.alphabetMode), { recordHistory: false })}
               />
             ) : null}
 
@@ -785,7 +799,7 @@ export function PuzzlePage() {
                 onBackspace={handleBackspace}
                 onFlipPalette={() => {
                   const next = ((data.progress.highlightPalettePage + 1) % 3) as 0 | 1 | 2;
-                  pushPatch(patchAt(data.progress, ["highlightPalettePage"], next));
+                  pushPatch(patchAt(data.progress, ["highlightPalettePage"], next), { recordHistory: false });
                 }}
               />
             ) : null}
@@ -795,8 +809,8 @@ export function PuzzlePage() {
                 kind="line"
                 progress={data.progress}
                 onBackspace={handleBackspace}
-                onColor={(c) => pushPatch(patchAt(data.progress, ["linePaletteColor"], c))}
-                onLineKind={(k) => pushPatch(patchAt(data.progress, ["linePaletteKind"], k))}
+                onColor={(c) => pushPatch(patchAt(data.progress, ["linePaletteColor"], c), { recordHistory: false })}
+                onLineKind={(k) => pushPatch(patchAt(data.progress, ["linePaletteKind"], k), { recordHistory: false })}
               />
             ) : null}
           </div>

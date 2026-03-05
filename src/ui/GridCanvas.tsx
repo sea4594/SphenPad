@@ -191,21 +191,51 @@ export function GridCanvas(props: {
       ctx.globalAlpha = 1;
     }
 
-    ctx.fillStyle = "rgba(255,255,255,.02)";
+    ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, widthPx, heightPx);
 
     // Keep the full Sudoku grid area pure white regardless of global theme.
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(cellX(0), cellY(0), cellPx * n, cellPx * n);
 
+    const drawCellHighlights = (r: number, c: number, colors: string[], alpha = 0.26) => {
+      if (!colors.length) return;
+      const x = cellX(c);
+      const y = cellY(r);
+      if (colors.length === 1) {
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle = colors[0] as string;
+        ctx.fillRect(x, y, cellPx, cellPx);
+        ctx.restore();
+        return;
+      }
+
+      const cx = x + cellPx / 2;
+      const cy = y + cellPx / 2;
+      const radius = cellPx * 0.78;
+      const maxSlices = Math.min(18, colors.length);
+      const step = (Math.PI * 2) / maxSlices;
+      const offset = -Math.PI / 2;
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      for (let i = 0; i < maxSlices; i++) {
+        const start = offset + i * step;
+        const end = start + step;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.arc(cx, cy, radius, start, end);
+        ctx.closePath();
+        ctx.fillStyle = colors[i] as string;
+        ctx.fill();
+      }
+      ctx.restore();
+    };
+
     for (let r = 0; r < n; r++) {
       for (let c = 0; c < n; c++) {
-        const col = progress.cells[r][c].color;
-        if (!col) continue;
-        ctx.fillStyle = col;
-        ctx.globalAlpha = 0.25;
-        ctx.fillRect(cellX(c), cellY(r), cellPx, cellPx);
-        ctx.globalAlpha = 1;
+        const colors = progress.cells[r][c].highlights ?? [];
+        drawCellHighlights(r, c, colors, 0.26);
       }
     }
 
@@ -663,12 +693,10 @@ export function GridCanvas(props: {
       // Keep user highlights visible under fog, slightly darkened.
       for (let r = 0; r < n; r++) {
         for (let c = 0; c < n; c++) {
-          const col = progress.cells[r][c].color;
-          if (!col) continue;
-          ctx.fillStyle = lit[r][c] ? col : darkenColor(col, 0.3);
-          ctx.globalAlpha = lit[r][c] ? 0.25 : 0.3;
-          ctx.fillRect(cellX(c), cellY(r), cellPx, cellPx);
-          ctx.globalAlpha = 1;
+          const colors = progress.cells[r][c].highlights ?? [];
+          if (!colors.length) continue;
+          const display = lit[r][c] ? colors : colors.map((col) => darkenColor(col, 0.3));
+          drawCellHighlights(r, c, display, lit[r][c] ? 0.24 : 0.31);
         }
       }
 
@@ -807,6 +835,33 @@ export function GridCanvas(props: {
     return out;
   }
 
+  function centerHopsFromPointer(last: CellRC, clientX: number, clientY: number): CellRC[] {
+    const gp = eventGridPoint(clientX, clientY);
+    if (!gp) return [];
+
+    const target = { x: gp.gx - 0.5, y: gp.gy - 0.5 };
+    const hops: CellRC[] = [];
+    let cur = { ...last };
+
+    for (let i = 0; i < 10; i++) {
+      const dx = target.x - cur.c;
+      const dy = target.y - cur.r;
+      if (Math.max(Math.abs(dx), Math.abs(dy)) < 0.43) break;
+
+      const stepC = Math.abs(dx) > 0.22 ? Math.sign(dx) : 0;
+      const stepR = Math.abs(dy) > 0.22 ? Math.sign(dy) : 0;
+      if (!stepR && !stepC) break;
+
+      const next = { r: cur.r + stepR, c: cur.c + stepC };
+      if (!inBounds(next.r, next.c)) break;
+      if (next.r === cur.r && next.c === cur.c) break;
+      hops.push(next);
+      cur = next;
+    }
+
+    return hops;
+  }
+
   function nearestCornerNode(clientX: number, clientY: number, radius = 0.34): CellRC | null {
     const gp = eventGridPoint(clientX, clientY);
     if (!gp) return null;
@@ -910,15 +965,13 @@ export function GridCanvas(props: {
     if (progress.activeTool === "line") {
       const kind = drag.lineKind ?? "center";
       const prevCell = drag.path[drag.path.length - 2] ?? null;
-      const next = kind === "edge"
-        ? nearestCornerNode(e.clientX, e.clientY, 0.42)
-        : nearestCellCenter(e.clientX, e.clientY);
-      if (!next) return;
-      if (next.r === drag.last.r && next.c === drag.last.c) return;
-
-      const rowLimit = kind === "edge" ? n + 1 : n;
-      const colLimit = kind === "edge" ? n + 1 : n;
-      const hops = traceCellSteps(drag.last, next, { rows: rowLimit, cols: colLimit });
+      const hops = kind === "edge"
+        ? (() => {
+            const next = nearestCornerNode(e.clientX, e.clientY, 0.42);
+            if (!next || (next.r === drag.last.r && next.c === drag.last.c)) return [] as CellRC[];
+            return traceCellSteps(drag.last, next, { rows: n + 1, cols: n + 1 });
+          })()
+        : centerHopsFromPointer(drag.last, e.clientX, e.clientY);
       if (!hops.length) return;
 
       for (const hop of hops) {
@@ -1014,7 +1067,7 @@ export function GridCanvas(props: {
         onPointerCancel={onCancel}
         onPointerLeave={onCancel}
       />
-      <div className="muted" style={{ marginTop: 10, fontSize: 13 }}>
+      <div className="muted" style={{ marginTop: 10, fontSize: 13, color: "#5f6470" }}>
         Drag across cells to select. In line mode, drag to draw, backtrack to erase path, tap for marks.
       </div>
     </div>

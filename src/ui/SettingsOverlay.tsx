@@ -4,7 +4,7 @@ const themeChoices: Array<{ key: ThemeColor; label: string; preview: string[] }>
   { key: "bw", label: "Black & White", preview: ["#ffffff", "#b3b3b3", "#1f1f1f"] },
   { key: "ocean", label: "Ocean", preview: ["#8bc7ff", "#4c87d9", "#17345f"] },
   { key: "forest", label: "Forest", preview: ["#9ce8c1", "#4ea37a", "#1d4733"] },
-  { key: "sunset", label: "Sunset", preview: ["#ffd39c", "#f48351", "#6c2d29"] },
+  { key: "sepia", label: "Sepia Paper", preview: ["#f4ead5", "#c9aa7e", "#684f32"] },
   { key: "berry", label: "Berry", preview: ["#ffbfd8", "#cb5f93", "#4a213f"] },
 ];
 

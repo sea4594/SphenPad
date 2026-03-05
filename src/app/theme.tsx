@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 
 export type ThemeMode = "light" | "dark";
-export type ThemeColor = "bw" | "ocean" | "forest" | "sunset" | "berry";
+export type ThemeColor = "bw" | "ocean" | "forest" | "sepia" | "berry";
 
 type ThemeContextValue = {
   mode: ThemeMode;
@@ -22,10 +22,11 @@ export function ThemeProvider(props: { children: ReactNode }) {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (!raw) return;
-      const parsed = JSON.parse(raw) as { mode?: ThemeMode; color?: ThemeColor };
+      const parsed = JSON.parse(raw) as { mode?: ThemeMode; color?: ThemeColor | "sunset" };
       if (parsed.mode === "light" || parsed.mode === "dark") setMode(parsed.mode);
-      if (["bw", "ocean", "forest", "sunset", "berry"].includes(parsed.color ?? "")) {
-        setColor(parsed.color as ThemeColor);
+      const mappedColor = parsed.color === "sunset" ? "sepia" : parsed.color;
+      if (["bw", "ocean", "forest", "sepia", "berry"].includes(mappedColor ?? "")) {
+        setColor(mappedColor as ThemeColor);
       }
     } catch {
       // Ignore malformed stored themes.

@@ -3,6 +3,7 @@ import type { PuzzleDefinition, PuzzleProgress, CellState } from "./model";
 function emptyCell(): CellState {
   return {
     notes: { corner: new Set(), center: new Set(), candidates: new Set() },
+    highlights: [],
     color: undefined,
     value: undefined,
     given: undefined,
