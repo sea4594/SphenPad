@@ -462,27 +462,53 @@ export function GridCanvas(props: {
       ctx.restore();
     };
 
-    for (const stroke of progress.lines) {
-      if (stroke.kind === "edge") drawEdgeStroke(stroke.segments, stroke.color);
-      else drawCenterStroke(stroke.segments, stroke.color);
-    }
+    const drawUserLines = () => {
+      for (const stroke of progress.lines) {
+        if (stroke.kind === "edge") drawEdgeStroke(stroke.segments, stroke.color);
+        else drawCenterStroke(stroke.segments, stroke.color);
+      }
 
-    if (linePreview) {
-      if (linePreview.kind === "edge") drawEdgeStroke(linePreview.segments, progress.linePaletteColor, 0.8);
-      else drawCenterStroke(linePreview.segments, progress.linePaletteColor, 0.8);
-    }
+      if (linePreview) {
+        if (linePreview.kind === "edge") drawEdgeStroke(linePreview.segments, progress.linePaletteColor, 0.8);
+        else drawCenterStroke(linePreview.segments, progress.linePaletteColor, 0.8);
+      }
 
-    for (const mark of progress.lineCenterMarks) {
-      const x = cellX(mark.rc.c) + cellPx / 2;
-      const y = cellY(mark.rc.r) + cellPx / 2;
-      ctx.strokeStyle = mark.color;
-      ctx.lineWidth = 3;
-      if (mark.kind === "circle") {
-        ctx.beginPath();
-        ctx.arc(x, y, Math.max(7, cellPx * 0.18), 0, Math.PI * 2);
-        ctx.stroke();
-      } else {
-        const r = Math.max(7, cellPx * 0.18);
+      for (const mark of progress.lineCenterMarks) {
+        const x = cellX(mark.rc.c) + cellPx / 2;
+        const y = cellY(mark.rc.r) + cellPx / 2;
+        ctx.strokeStyle = mark.color;
+        ctx.lineWidth = 3;
+        if (mark.kind === "circle") {
+          ctx.beginPath();
+          ctx.arc(x, y, Math.max(7, cellPx * 0.18), 0, Math.PI * 2);
+          ctx.stroke();
+        } else {
+          const r = Math.max(7, cellPx * 0.18);
+          ctx.beginPath();
+          ctx.moveTo(x - r, y - r);
+          ctx.lineTo(x + r, y + r);
+          ctx.moveTo(x + r, y - r);
+          ctx.lineTo(x - r, y + r);
+          ctx.stroke();
+        }
+      }
+
+      for (const mark of progress.lineEdgeMarks) {
+        const dr = mark.b.r - mark.a.r;
+        const dc = mark.b.c - mark.a.c;
+        if (Math.abs(dr) + Math.abs(dc) !== 1) continue;
+        let x = 0;
+        let y = 0;
+        if (dr === 0) {
+          x = cellX(Math.min(mark.a.c, mark.b.c) + 1);
+          y = cellY(mark.a.r) + cellPx / 2;
+        } else {
+          x = cellX(mark.a.c) + cellPx / 2;
+          y = cellY(Math.min(mark.a.r, mark.b.r) + 1);
+        }
+        ctx.strokeStyle = mark.color;
+        ctx.lineWidth = 2.6;
+        const r = Math.max(4, cellPx * 0.11);
         ctx.beginPath();
         ctx.moveTo(x - r, y - r);
         ctx.lineTo(x + r, y + r);
@@ -490,31 +516,7 @@ export function GridCanvas(props: {
         ctx.lineTo(x - r, y + r);
         ctx.stroke();
       }
-    }
-
-    for (const mark of progress.lineEdgeMarks) {
-      const dr = mark.b.r - mark.a.r;
-      const dc = mark.b.c - mark.a.c;
-      if (Math.abs(dr) + Math.abs(dc) !== 1) continue;
-      let x = 0;
-      let y = 0;
-      if (dr === 0) {
-        x = cellX(Math.min(mark.a.c, mark.b.c) + 1);
-        y = cellY(mark.a.r) + cellPx / 2;
-      } else {
-        x = cellX(mark.a.c) + cellPx / 2;
-        y = cellY(Math.min(mark.a.r, mark.b.r) + 1);
-      }
-      ctx.strokeStyle = mark.color;
-      ctx.lineWidth = 2.6;
-      const r = Math.max(4, cellPx * 0.11);
-      ctx.beginPath();
-      ctx.moveTo(x - r, y - r);
-      ctx.lineTo(x + r, y + r);
-      ctx.moveTo(x + r, y - r);
-      ctx.lineTo(x - r, y + r);
-      ctx.stroke();
-    }
+    };
 
     const lit = Array.from({ length: n }, () => Array.from({ length: n }, () => false));
     const fogDefined = (def.cosmetics.fogLights?.length ?? 0) > 0 || (def.cosmetics.fogTriggerEffects?.length ?? 0) > 0;
@@ -622,58 +624,6 @@ export function GridCanvas(props: {
         }
       }
 
-      // Keep user lines visible through fog.
-      for (const stroke of progress.lines) {
-        if (stroke.kind === "edge") drawEdgeStroke(stroke.segments, stroke.color);
-        else drawCenterStroke(stroke.segments, stroke.color);
-      }
-      if (linePreview) {
-        if (linePreview.kind === "edge") drawEdgeStroke(linePreview.segments, progress.linePaletteColor, 0.8);
-        else drawCenterStroke(linePreview.segments, progress.linePaletteColor, 0.8);
-      }
-      for (const mark of progress.lineCenterMarks) {
-        const x = cellX(mark.rc.c) + cellPx / 2;
-        const y = cellY(mark.rc.r) + cellPx / 2;
-        ctx.strokeStyle = mark.color;
-        ctx.lineWidth = 3;
-        if (mark.kind === "circle") {
-          ctx.beginPath();
-          ctx.arc(x, y, Math.max(7, cellPx * 0.18), 0, Math.PI * 2);
-          ctx.stroke();
-        } else {
-          const r = Math.max(7, cellPx * 0.18);
-          ctx.beginPath();
-          ctx.moveTo(x - r, y - r);
-          ctx.lineTo(x + r, y + r);
-          ctx.moveTo(x + r, y - r);
-          ctx.lineTo(x - r, y + r);
-          ctx.stroke();
-        }
-      }
-      for (const mark of progress.lineEdgeMarks) {
-        const dr = mark.b.r - mark.a.r;
-        const dc = mark.b.c - mark.a.c;
-        if (Math.abs(dr) + Math.abs(dc) !== 1) continue;
-        let x = 0;
-        let y = 0;
-        if (dr === 0) {
-          x = cellX(Math.min(mark.a.c, mark.b.c) + 1);
-          y = cellY(mark.a.r) + cellPx / 2;
-        } else {
-          x = cellX(mark.a.c) + cellPx / 2;
-          y = cellY(Math.min(mark.a.r, mark.b.r) + 1);
-        }
-        ctx.strokeStyle = mark.color;
-        ctx.lineWidth = 2.6;
-        const rr = Math.max(4, cellPx * 0.11);
-        ctx.beginPath();
-        ctx.moveTo(x - rr, y - rr);
-        ctx.lineTo(x + rr, y + rr);
-        ctx.moveTo(x + rr, y - rr);
-        ctx.lineTo(x - rr, y + rr);
-        ctx.stroke();
-      }
-
       // Keep grid visible on top of fog.
       for (let i = 0; i <= n; i++) {
         ctx.lineWidth = i % subgrid.r === 0 ? 2.5 : 1;
@@ -728,6 +678,9 @@ export function GridCanvas(props: {
       }
     }
 
+    // Always keep user lines on top of artwork/fog.
+    drawUserLines();
+
     drawSelectionOutlines();
   }, [
     bgImage,
@@ -780,40 +733,6 @@ export function GridCanvas(props: {
     return nearEdge ? "edge" : "center";
   }
 
-  function nearestAllowedNeighbor(last: CellRC, clientX: number, clientY: number, orthOnly: boolean): CellRC | null {
-    const rect = canvasRef.current?.getBoundingClientRect();
-    if (!rect) return null;
-    const px = clientX - rect.left - originX;
-    const py = clientY - rect.top - originY;
-
-    const centerX = last.c * cellPx + cellPx / 2;
-    const centerY = last.r * cellPx + cellPx / 2;
-    const dx = (px - centerX) / cellPx;
-    const dy = (py - centerY) / cellPx;
-    const adx = Math.abs(dx);
-    const ady = Math.abs(dy);
-    const dist = Math.hypot(dx, dy);
-
-    if (dist < 0.38 || dist > 1.25) return null;
-
-    if (orthOnly) {
-      if (adx >= ady) {
-        if (adx < 0.45 || ady > 0.42) return null;
-        return dx > 0 ? (inBounds(last.r, last.c + 1) ? { r: last.r, c: last.c + 1 } : null)
-          : (inBounds(last.r, last.c - 1) ? { r: last.r, c: last.c - 1 } : null);
-      }
-      if (ady < 0.45 || adx > 0.42) return null;
-      return dy > 0 ? (inBounds(last.r + 1, last.c) ? { r: last.r + 1, c: last.c } : null)
-        : (inBounds(last.r - 1, last.c) ? { r: last.r - 1, c: last.c } : null);
-    }
-
-    const stepR = dy > 0.33 ? 1 : dy < -0.33 ? -1 : 0;
-    const stepC = dx > 0.33 ? 1 : dx < -0.33 ? -1 : 0;
-    if (stepR === 0 && stepC === 0) return null;
-    const rc = { r: last.r + stepR, c: last.c + stepC };
-    return inBounds(rc.r, rc.c) ? rc : null;
-  }
-
   function edgeTrackForStep(a: CellRC, b: CellRC, fx: number, fy: number): EdgeTrack {
     if (a.r === b.r) return fy < 0.5 ? "top" : "bottom";
     return fx < 0.5 ? "left" : "right";
@@ -842,19 +761,31 @@ export function GridCanvas(props: {
 
     if (progress.activeTool === "line") {
       const kind = drag.lineKind ?? "center";
-      const orthOnly = kind === "edge";
-      const next = nearestAllowedNeighbor(drag.last, e.clientX, e.clientY, orthOnly);
-      if (!next) return;
+      const pt = eventPoint(e.clientX, e.clientY);
+      if (!pt) return;
+      const next = { r: pt.r, c: pt.c };
       if (next.r === drag.last.r && next.c === drag.last.c) return;
+
+      const dr = next.r - drag.last.r;
+      const dc = next.c - drag.last.c;
+      if (Math.abs(dr) > 1 || Math.abs(dc) > 1) return;
+      if (kind === "edge" && Math.abs(dr) + Math.abs(dc) !== 1) return;
+
+      // Only transition once the pointer is reasonably inside the target cell.
+      const minInterior = 0.22;
+      const maxInterior = 0.78;
+      if (dr < 0 && pt.fy > maxInterior) return;
+      if (dr > 0 && pt.fy < minInterior) return;
+      if (dc < 0 && pt.fx > maxInterior) return;
+      if (dc > 0 && pt.fx < minInterior) return;
 
       const prevCell = drag.path[drag.path.length - 2];
       if (prevCell && prevCell.r === next.r && prevCell.c === next.c) {
         drag.path.pop();
         drag.segments.pop();
       } else {
-        const pt = eventPoint(e.clientX, e.clientY);
         const seg: LineSegmentDraft = { a: drag.last, b: next };
-        if (kind === "edge" && pt) seg.edgeTrack = edgeTrackForStep(drag.last, next, pt.fx, pt.fy);
+        if (kind === "edge") seg.edgeTrack = edgeTrackForStep(drag.last, next, pt.fx, pt.fy);
         drag.path.push(next);
         drag.segments.push(seg);
       }
