@@ -38,6 +38,7 @@ export function GridCanvas(props: {
   onLineStroke: (segments: LineSegmentDraft[], kind: LineKindResolved) => void;
   onLineTapCell: (rc: CellRC) => void;
   onLineTapEdge: (a: CellRC, b: CellRC) => void;
+  onDoubleCell: (rc: CellRC) => void;
 }) {
   const { def, progress } = props;
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -280,7 +281,7 @@ export function GridCanvas(props: {
       const inset = 1;
       ctx.save();
       ctx.strokeStyle = "rgba(46,120,255,.95)";
-      ctx.lineWidth = 2.4;
+      ctx.lineWidth = 3.3;
       ctx.lineCap = "round";
       ctx.lineJoin = "round";
       for (const rc of progress.selection) {
@@ -402,10 +403,34 @@ export function GridCanvas(props: {
           }
           ctx.fillStyle = item.textColor ?? "#111111";
           const px = (item.textSize ?? 16) * (cellPx / 56);
-          ctx.font = `700 ${Math.max(10, px)}px ui-sans-serif`;
+          ctx.font = `600 ${Math.max(10, px)}px ui-sans-serif`;
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";
-          ctx.fillText(String(item.text), worldX(item.center.x), worldY(item.center.y));
+          const text = String(item.text);
+          const tx = worldX(item.center.x);
+          const ty = worldY(item.center.y);
+          const onOrOutsideGridBorder =
+            item.center.x <= 0.02 ||
+            item.center.x >= n - 0.02 ||
+            item.center.y <= 0.02 ||
+            item.center.y >= n - 0.02 ||
+            item.center.x < 0 ||
+            item.center.x > n ||
+            item.center.y < 0 ||
+            item.center.y > n;
+
+          if (onOrOutsideGridBorder) {
+            const metrics = ctx.measureText(text);
+            const wPad = 6;
+            const hPad = 2;
+            const bw = Math.ceil(metrics.width + wPad * 2);
+            const bh = Math.ceil(Math.max(px, 12) + hPad * 2);
+            ctx.fillStyle = "#ffffff";
+            ctx.fillRect(tx - bw / 2, ty - bh / 2, bw, bh);
+            ctx.fillStyle = item.textColor ?? "#111111";
+          }
+
+          ctx.fillText(text, tx, ty);
           ctx.restore();
         }
       }
@@ -1097,6 +1122,12 @@ export function GridCanvas(props: {
     setLinePreview(null);
   }
 
+  function onDoubleClick(e: React.MouseEvent<HTMLCanvasElement>) {
+    const pt = eventPoint(e.clientX, e.clientY);
+    if (!pt) return;
+    props.onDoubleCell({ r: pt.r, c: pt.c });
+  }
+
   return (
     <div ref={wrapRef} className="boardSurface" style={{ display: "grid", placeItems: "center" }}>
       <canvas
@@ -1107,6 +1138,7 @@ export function GridCanvas(props: {
         onPointerUp={onUp}
         onPointerCancel={onCancel}
         onPointerLeave={onCancel}
+        onDoubleClick={onDoubleClick}
       />
     </div>
   );

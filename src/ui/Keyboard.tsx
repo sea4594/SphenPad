@@ -2,8 +2,9 @@ import React from "react";
 import type { PuzzleProgress, LineStroke } from "../core/model";
 
 const baseColors0 = ["#d9d9d9", "#9b9b9b", "#4f4f4f", "#57d38c", "#ff8fc3", "#ffae57", "#ff5f57", "#ffe066", "#63a6ff"];
-const baseColors1 = ["#a8a8a8", "#ffd0d0", "#ffe9a7", "#fffbd6", "#d6ffd6", "#8bf2a9", "#d9f1ff", "#bdb7ff", "#ffb3ff"];
-const baseColors2 = ["#ffffff", "#ff6b6b", "#ffb703", "#fef9c3", "#57d38c", "#00c2a8", "#74c0fc", "#7c3aed", "#f72585"];
+const baseColors1 = ["#000000", "#ffa0a0", "#ffdf61", "#feffaf", "#b0ffb0", "#61d060", "#d0d0ff", "#8180f0", "#ff08ff"];
+const baseColors2 = ["#a8a8a8", "#ffd0d0", "#ffe9a7", "#fffbd6", "#d6ffd6", "#8bf2a9", "#d9f1ff", "#bdb7ff", "#ffb3ff"];
+const lineColors = ["#000000", "#ff4d4f", "#ff9f1a", "#ffd60a", "#34c759", "#00b894", "#32ade6", "#4f46e5", "#ff2d96"];
 
 function digits(alphabetMode: boolean, size: number) {
   const n = Math.max(1, Math.min(16, size));
@@ -91,7 +92,7 @@ export function Keyboard(props: {
       <div style={{ fontWeight: 700, marginBottom: 10 }}>Line tool</div>
 
       <Grid3x4>
-        {baseColors0.map((c) => (
+        {lineColors.map((c) => (
           <ColorKey key={c} color={c} onClick={() => props.onColor?.(c)} />
         ))}
         <Key onClick={() => props.onBackspace?.()} title="Backspace">⌫</Key>

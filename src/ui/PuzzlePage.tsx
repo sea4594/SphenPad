@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { getPuzzle, upsertPuzzle } from "../core/storage";
 import type { CellRC, PersistedPuzzle, PuzzleProgress, LineStroke } from "../core/model";
 import { fmtHMS } from "../core/time";
+import { makeInitialProgress } from "../core/scl";
 import type { Patch } from "../core/undo";
 import { applyPatch, invertPatch, patchAt } from "../core/undo";
 import { PauseOverlay } from "./PauseOverlay";
@@ -82,6 +83,7 @@ export function PuzzlePage() {
   const [pauseMenuOpen, setPauseMenuOpen] = useState(false);
   const [completionOpen, setCompletionOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [restartPromptOpen, setRestartPromptOpen] = useState(false);
   const tickRef = useRef<number | null>(null);
   const holdDelayRef = useRef<number | null>(null);
   const holdIntervalRef = useRef<number | null>(null);
@@ -179,6 +181,17 @@ export function PuzzlePage() {
     const recordHistory = opts?.recordHistory ?? true;
     let nextProgress: PuzzleProgress = data.progress;
     for (const p of patches) nextProgress = applyPatch(nextProgress, p);
+
+    // Editing after completion reopens the completion flow on re-solve, keeping timer paused until restart.
+    const solvedNow = isSolved(nextProgress, data.def.cosmetics.solution);
+    if (recordHistory && data.progress.status === "complete" && !solvedNow) {
+      nextProgress = {
+        ...nextProgress,
+        status: "in_progress",
+        paused: true,
+      };
+      setCompletionOpen(false);
+    }
 
     const nextUndo = data.undo.map(toPatchEntry).filter((entry) => entry.length > 0);
     let nextRedo = data.redo;
@@ -279,6 +292,85 @@ export function PuzzlePage() {
   function toggleSelectionMode() {
     if (!data) return;
     setSelectionMode(!data.progress.multiSelect);
+  }
+
+  function restartPuzzle(resetTimer: boolean) {
+    if (!data) return;
+    const fresh = normalizeProgress(makeInitialProgress(data.def));
+    const keptMillis = resetTimer ? 0 : data.progress.totalMillis;
+    const nextProgress: PuzzleProgress = {
+      ...fresh,
+      totalMillis: keptMillis,
+      startedAt: Date.now(),
+      status: "in_progress",
+      paused: false,
+      multiSelect: data.progress.multiSelect,
+      alphabetMode: data.progress.alphabetMode,
+      activeTool: data.progress.activeTool,
+      entryMode: data.progress.entryMode,
+      highlightPalettePage: data.progress.highlightPalettePage,
+      linePaletteColor: data.progress.linePaletteColor,
+      linePaletteKind: data.progress.linePaletteKind,
+    };
+    persist({
+      ...data,
+      progress: nextProgress,
+      undo: [],
+      redo: [],
+      updatedAt: Date.now(),
+    });
+    setRestartPromptOpen(false);
+    setCompletionOpen(false);
+    setPauseMenuOpen(false);
+  }
+
+  function onDoubleSelectCell(rc: CellRC) {
+    if (!data || data.progress.activeTool === "line") return;
+    const cell = data.progress.cells[rc.r][rc.c];
+    if (!cell) return;
+
+    const matches: CellRC[] = [];
+    const tool = data.progress.activeTool;
+    const targetValue = cell.value ?? null;
+    const targetCenter = new Set(cell.notes.center);
+    const targetCorner = new Set(cell.notes.corner);
+    const targetHighlights = new Set(cell.highlights ?? []);
+
+    const sameSet = (a: Set<string>, b: Set<string>) => {
+      if (a.size !== b.size) return false;
+      for (const v of a) if (!b.has(v)) return false;
+      return true;
+    };
+
+    const hasAll = (superset: string[], subset: Set<string>) => {
+      for (const v of subset) if (!superset.includes(v)) return false;
+      return true;
+    };
+
+    for (let r = 0; r < data.progress.cells.length; r++) {
+      for (let c = 0; c < data.progress.cells.length; c++) {
+        const cur = data.progress.cells[r][c];
+        let match = false;
+        if (tool === "value") match = Boolean(targetValue) && cur.value === targetValue;
+        if (tool === "center") match = targetCenter.size > 0 && sameSet(new Set(cur.notes.center), targetCenter);
+        if (tool === "corner") match = targetCorner.size > 0 && sameSet(new Set(cur.notes.corner), targetCorner);
+        if (tool === "highlight") match = targetHighlights.size > 0 && hasAll(cur.highlights ?? [], targetHighlights);
+        if (match) matches.push({ r, c });
+      }
+    }
+
+    if (!matches.length) return;
+    if (!data.progress.multiSelect) {
+      setSelection(matches);
+      return;
+    }
+
+    const merged = new Set(data.progress.selection.map(rcKey));
+    for (const m of matches) merged.add(rcKey(m));
+    setSelection(Array.from(merged).map((k) => {
+      const [r, c] = k.split(",").map(Number);
+      return { r, c };
+    }));
   }
 
   function startOrResume() {
@@ -517,14 +609,16 @@ export function PuzzlePage() {
 
   useEffect(() => {
     if (!data) return;
-    if (data.progress.status === "complete") return;
     const solved = isSolved(data.progress, data.def.cosmetics.solution);
-    if (!solved) return;
+    if (!solved || data.progress.status === "complete") return;
     queueMicrotask(() => {
-      pushPatch(patchAt(data.progress, ["status"], "complete"), { recordHistory: false });
+      applyPatches([
+        patchAt(data.progress, ["status"], "complete"),
+        patchAt(data.progress, ["paused"], true),
+      ], { recordHistory: false });
       setCompletionOpen(true);
     });
-  }, [data, pushPatch]);
+  }, [applyPatches, data]);
 
   useEffect(() => {
     const toolCycle: PuzzleProgress["activeTool"][] = ["value", "corner", "center", "highlight", "line"];
@@ -718,19 +812,10 @@ export function PuzzlePage() {
           <button className="btn" onClick={onPausePlayClick} title="Pause or resume">
             {data.progress.paused ? <IconPlay /> : <IconPause />}
           </button>
-          <button className="btn" onClick={() => setSettingsOpen(true)} title="Settings">
-            <IconSettings />
-          </button>
         </div>
       </div>
 
       <div className="page puzzlePage">
-        <div className="card puzzleMetaCard">
-          <div className="puzzleTitle">{meta?.title || "(untitled)"}</div>
-          <div className="puzzleAuthor">{meta?.author || "Unknown author"}</div>
-          <div className="puzzleRules">{meta?.rules || "No puzzle description provided."}</div>
-        </div>
-
         <div className="gridLayout">
           <div className="boardColumn">
             <div className="card boardCard">
@@ -741,11 +826,27 @@ export function PuzzlePage() {
                 onLineStroke={onLineStroke}
                 onLineTapCell={onLineTapCell}
                 onLineTapEdge={onLineTapEdge}
+                onDoubleCell={onDoubleSelectCell}
               />
             </div>
           </div>
 
           <div className="kbdPanel">
+            <div className="card puzzleMetaCard">
+              <div className="puzzleTitle">{meta?.title || "(untitled)"}</div>
+              <div className="puzzleAuthor">{meta?.author || "Unknown author"}</div>
+              <div className="puzzleRules">{meta?.rules || "No puzzle description provided."}</div>
+            </div>
+
+            <div className="card topActions">
+              <button className="btn" onClick={() => setSettingsOpen(true)} title="Settings">
+                <IconSettings /> Settings
+              </button>
+              <button className="btn" onClick={() => setRestartPromptOpen(true)} title="Restart puzzle">
+                Restart
+              </button>
+            </div>
+
             <div className="card sideActions">
               <button
                 className="btn"
@@ -838,6 +939,23 @@ export function PuzzlePage() {
       )}
 
       {settingsOpen ? <SettingsOverlay onClose={() => setSettingsOpen(false)} /> : null}
+
+      {restartPromptOpen ? (
+        <div className="overlayBackdrop" onClick={() => setRestartPromptOpen(false)}>
+          <div className="card settingsCard" onClick={(e) => e.stopPropagation()}>
+            <div className="settingsHeader">
+              <div style={{ fontWeight: 700, fontSize: 21 }}>Restart Puzzle</div>
+              <button className="btn" onClick={() => setRestartPromptOpen(false)}>Close</button>
+            </div>
+            <div className="settingsSection">
+              <div className="muted">Choose how to restart:</div>
+              <button className="btn primary" onClick={() => restartPuzzle(true)}>Restart and reset timer</button>
+              <button className="btn" onClick={() => restartPuzzle(false)}>Restart and keep time</button>
+              <button className="btn" onClick={() => setRestartPromptOpen(false)}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

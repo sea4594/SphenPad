@@ -285,30 +285,35 @@ input.url {
 }
 
 .puzzleMetaCard {
-  width: min(1100px, 100%);
-  margin: 0 auto;
+  width: 100%;
   display: grid;
-  gap: 8px;
+  gap: 6px;
 }
 
 .puzzleTitle {
-  font-size: clamp(30px, 4.2vw, 44px);
-  line-height: 1.05;
-  font-weight: 800;
+  font-size: clamp(22px, 2.7vw, 30px);
+  line-height: 1.12;
+  font-weight: 600;
 }
 
 .puzzleAuthor {
-  font-size: 16px;
+  font-size: 14px;
   color: var(--muted);
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .puzzleRules {
   white-space: pre-wrap;
-  line-height: 1.45;
-  max-height: min(34vh, 280px);
+  line-height: 1.35;
+  font-size: 13px;
+  max-height: min(32vh, 240px);
   overflow: auto;
   padding-right: 4px;
+}
+
+.topActions {
+  display: grid;
+  gap: 8px;
 }
 
 .sideActions {
@@ -468,5 +473,9 @@ input.url {
 
   .themeGrid {
     grid-template-columns: 1fr;
+  }
+
+  .puzzleMetaCard {
+    display: none;
   }
 }
