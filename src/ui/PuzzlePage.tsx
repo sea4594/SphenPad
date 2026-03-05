@@ -68,6 +68,12 @@ export function PuzzlePage() {
   const [pauseMenuOpen, setPauseMenuOpen] = useState(false);
   const [completionOpen, setCompletionOpen] = useState(false);
   const tickRef = useRef<number | null>(null);
+  const holdDelayRef = useRef<number | null>(null);
+  const holdIntervalRef = useRef<number | null>(null);
+  const activeHoldRef = useRef<"undo" | "redo" | null>(null);
+  const activeHoldKeyRef = useRef<"z" | "y" | null>(null);
+  const undoRef = useRef<() => void>(() => {});
+  const redoRef = useRef<() => void>(() => {});
 
   const userId = firebaseEnabled ? auth?.currentUser?.uid : null;
 
@@ -188,6 +194,68 @@ export function PuzzlePage() {
       updatedAt: Date.now(),
     });
   }
+
+  undoRef.current = undo;
+  redoRef.current = redo;
+
+  function stopHoldRepeat() {
+    if (holdDelayRef.current != null) {
+      window.clearTimeout(holdDelayRef.current);
+      holdDelayRef.current = null;
+    }
+    if (holdIntervalRef.current != null) {
+      window.clearInterval(holdIntervalRef.current);
+      holdIntervalRef.current = null;
+    }
+    activeHoldRef.current = null;
+    activeHoldKeyRef.current = null;
+  }
+
+  function runHoldAction(kind: "undo" | "redo") {
+    if (kind === "undo") undoRef.current();
+    else redoRef.current();
+  }
+
+  function startHoldRepeat(kind: "undo" | "redo", key?: "z" | "y") {
+    if (activeHoldRef.current === kind && activeHoldKeyRef.current === (key ?? null)) return;
+    stopHoldRepeat();
+    activeHoldRef.current = kind;
+    activeHoldKeyRef.current = key ?? null;
+
+    runHoldAction(kind);
+    holdDelayRef.current = window.setTimeout(() => {
+      holdIntervalRef.current = window.setInterval(() => runHoldAction(kind), 70);
+    }, 260);
+  }
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.altKey || e.ctrlKey || e.metaKey) return;
+      const k = e.key.toLowerCase();
+      if (k !== "z" && k !== "y") return;
+      e.preventDefault();
+      startHoldRepeat(k === "z" ? "undo" : "redo", k as "z" | "y");
+    };
+
+    const onKeyUp = (e: KeyboardEvent) => {
+      const k = e.key.toLowerCase();
+      if ((k === "z" || k === "y") && activeHoldKeyRef.current === k) {
+        stopHoldRepeat();
+      }
+    };
+
+    const onBlur = () => stopHoldRepeat();
+
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("keyup", onKeyUp);
+    window.addEventListener("blur", onBlur);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("keyup", onKeyUp);
+      window.removeEventListener("blur", onBlur);
+      stopHoldRepeat();
+    };
+  }, []);
 
   function setSelection(sel: CellRC[]) {
     if (!data || data.progress.activeTool === "line") return;
@@ -441,8 +509,26 @@ export function PuzzlePage() {
         <div className="row">
           <div style={{ fontVariantNumeric: "tabular-nums" }}>{timeStr}</div>
           <button className="btn" onClick={onPausePlayClick}>{data.progress.paused ? <IconPlay /> : <IconPause />}</button>
-          <button className="btn" onClick={undo} title="Undo"><IconUndo /></button>
-          <button className="btn" onClick={redo} title="Redo"><IconRedo /></button>
+          <button
+            className="btn"
+            onPointerDown={() => startHoldRepeat("undo")}
+            onPointerUp={stopHoldRepeat}
+            onPointerLeave={stopHoldRepeat}
+            onPointerCancel={stopHoldRepeat}
+            title="Undo"
+          >
+            <IconUndo />
+          </button>
+          <button
+            className="btn"
+            onPointerDown={() => startHoldRepeat("redo")}
+            onPointerUp={stopHoldRepeat}
+            onPointerLeave={stopHoldRepeat}
+            onPointerCancel={stopHoldRepeat}
+            title="Redo"
+          >
+            <IconRedo />
+          </button>
         </div>
       </div>
 
