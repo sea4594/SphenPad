@@ -66,10 +66,17 @@ export function GridCanvas(props: {
     };
 
     const includeLayer = (item: LayerItem) => {
-      const w = Number.isFinite(item?.width) ? Number(item.width) : 1;
-      const h = Number.isFinite(item?.height) ? Number(item.height) : 1;
-      includePoint(item?.center?.x - w / 2, item?.center?.y - h / 2);
-      includePoint(item?.center?.x + w / 2, item?.center?.y + h / 2);
+      const cx = item?.center?.x;
+      const cy = item?.center?.y;
+      includePoint(cx, cy);
+
+      const hasExplicitBox = Number.isFinite(item?.width) || Number.isFinite(item?.height);
+      const hasShape = Boolean(item?.color || item?.borderColor || item?.rounded);
+      const w = Number.isFinite(item?.width) ? Number(item.width) : hasShape || hasExplicitBox ? 1 : 0;
+      const h = Number.isFinite(item?.height) ? Number(item.height) : hasShape || hasExplicitBox ? 1 : 0;
+      if (w <= 0 && h <= 0) return;
+      includePoint(cx - w / 2, cy - h / 2);
+      includePoint(cx + w / 2, cy + h / 2);
     };
 
     for (const item of def.cosmetics.overlays ?? []) includeLayer(item);
@@ -173,12 +180,13 @@ export function GridCanvas(props: {
       const pane = (el.closest(".boardColumn") as HTMLElement | null) ?? (el.parentElement as HTMLElement | null) ?? el;
       const width = pane.clientWidth || window.innerWidth;
       const height = pane.clientHeight || window.innerHeight;
-      const sideMargin = 10;
-      const topBottomPad = 12;
+      const sideMargin = 8;
+      const topBottomPad = 8;
       const spanX = n + outsideLeft + outsideRight;
       const spanY = n + outsideTop + outsideBottom;
-      const byWidth = (Math.max(280, width - sideMargin * 2)) / spanX;
-      const byHeight = (Math.max(260, height - topBottomPad * 2)) / spanY;
+      const padFactor = 0.68;
+      const byWidth = (Math.max(240, width - sideMargin * 2)) / (spanX + padFactor);
+      const byHeight = (Math.max(220, height - topBottomPad * 2)) / (spanY + padFactor);
       const next = Math.floor(Math.min(56, Math.max(30, Math.min(byWidth, byHeight))));
       setCellPx(next);
     };

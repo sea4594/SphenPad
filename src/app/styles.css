@@ -281,18 +281,17 @@ input.url {
   padding: 6px;
   background: #ffffff;
   border-color: rgba(28, 40, 58, 0.25);
-  width: 100%;
+  width: fit-content;
   max-width: 100%;
-  height: 100%;
-  min-height: 0;
+  height: fit-content;
   justify-self: center;
 }
 
 .boardSurface {
   display: grid;
   place-items: center;
-  width: 100%;
-  height: 100%;
+  width: fit-content;
+  height: fit-content;
   background: #ffffff;
 }
 
@@ -490,7 +489,7 @@ input.url {
   }
 
   .boardCard {
-    height: 100%;
+    height: fit-content;
   }
 
   .kbdPanel {
