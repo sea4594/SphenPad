@@ -101,6 +101,25 @@ export function GridCanvas(props: {
     return null;
   }
 
+  function darkenColor(hex: string, amount = 0.2): string {
+    const s = hex.trim();
+    if (!s.startsWith("#")) return hex;
+    const h = s.slice(1);
+    if (![3, 4, 6, 8].includes(h.length)) return hex;
+    const full = h.length <= 4
+      ? h.split("").map((ch) => ch + ch).join("")
+      : h;
+    const rgb = full.slice(0, 6);
+    const a = full.length === 8 ? full.slice(6) : "";
+    const n = Number.parseInt(rgb, 16);
+    if (!Number.isFinite(n)) return hex;
+    const r = Math.max(0, Math.min(255, Math.round(((n >> 16) & 0xff) * (1 - amount))));
+    const g = Math.max(0, Math.min(255, Math.round(((n >> 8) & 0xff) * (1 - amount))));
+    const b = Math.max(0, Math.min(255, Math.round((n & 0xff) * (1 - amount))));
+    const body = ((r << 16) | (g << 8) | b).toString(16).padStart(6, "0");
+    return `#${body}${a}`;
+  }
+
   useEffect(() => {
     const el = wrapRef.current;
     if (!el) return;
@@ -168,11 +187,13 @@ export function GridCanvas(props: {
       }
     }
 
-    ctx.strokeStyle = "rgba(46,120,255,.85)";
-    ctx.lineWidth = 2;
-    for (const rc of progress.selection) {
-      ctx.strokeRect(cellX(rc.c) + 1, cellY(rc.r) + 1, cellPx - 2, cellPx - 2);
-    }
+    const drawSelectionOutlines = () => {
+      ctx.strokeStyle = "rgba(46,120,255,.9)";
+      ctx.lineWidth = 2;
+      for (const rc of progress.selection) {
+        ctx.strokeRect(cellX(rc.c) + 1, cellY(rc.r) + 1, cellPx - 2, cellPx - 2);
+      }
+    };
 
     const subgrid = (() => {
       if (n === 6) return { r: 2, c: 3 };
@@ -237,7 +258,7 @@ export function GridCanvas(props: {
             ctx.translate(-cx, -cy);
           }
           ctx.strokeStyle = item.borderColor;
-          ctx.lineWidth = item.borderThickness ?? Math.max(1.4, cellPx * 0.04);
+          ctx.lineWidth = (item.borderThickness ?? 1.4) * (cellPx / 56);
           if (item.rounded) {
             ctx.beginPath();
             ctx.roundRect(x, y, rw, rh, Math.min(14, cellPx * 0.25));
@@ -274,9 +295,14 @@ export function GridCanvas(props: {
       ctx.setLineDash([5, 3]);
       for (const cage of def.cosmetics.cages) {
         const set = new Set(cage.cells.map((rc) => `${rc.r},${rc.c}`));
-        ctx.fillStyle = "rgba(80,120,160,.05)";
+        const cageFill = cage.color ? darkenColor(cage.color, -0.05) : undefined;
         for (const rc of cage.cells) {
-          ctx.fillRect(cellX(rc.c) + 2, cellY(rc.r) + 2, cellPx - 4, cellPx - 4);
+          if (cageFill) {
+            ctx.fillStyle = cageFill;
+            ctx.globalAlpha = 0.12;
+            ctx.fillRect(cellX(rc.c) + 2, cellY(rc.r) + 2, cellPx - 4, cellPx - 4);
+            ctx.globalAlpha = 1;
+          }
           const x = cellX(rc.c);
           const y = cellY(rc.r);
           const inset = 3;
@@ -583,7 +609,126 @@ export function GridCanvas(props: {
           ctx.fillRect(cellX(c), cellY(r), cellPx, cellPx);
         }
       }
+
+      // Keep user highlights visible under fog, slightly darkened.
+      for (let r = 0; r < n; r++) {
+        for (let c = 0; c < n; c++) {
+          const col = progress.cells[r][c].color;
+          if (!col) continue;
+          ctx.fillStyle = lit[r][c] ? col : darkenColor(col, 0.3);
+          ctx.globalAlpha = lit[r][c] ? 0.25 : 0.3;
+          ctx.fillRect(cellX(c), cellY(r), cellPx, cellPx);
+          ctx.globalAlpha = 1;
+        }
+      }
+
+      // Keep user lines visible through fog.
+      for (const stroke of progress.lines) {
+        if (stroke.kind === "edge") drawEdgeStroke(stroke.segments, stroke.color);
+        else drawCenterStroke(stroke.segments, stroke.color);
+      }
+      if (linePreview) {
+        if (linePreview.kind === "edge") drawEdgeStroke(linePreview.segments, progress.linePaletteColor, 0.8);
+        else drawCenterStroke(linePreview.segments, progress.linePaletteColor, 0.8);
+      }
+      for (const mark of progress.lineCenterMarks) {
+        const x = cellX(mark.rc.c) + cellPx / 2;
+        const y = cellY(mark.rc.r) + cellPx / 2;
+        ctx.strokeStyle = mark.color;
+        ctx.lineWidth = 3;
+        if (mark.kind === "circle") {
+          ctx.beginPath();
+          ctx.arc(x, y, Math.max(7, cellPx * 0.18), 0, Math.PI * 2);
+          ctx.stroke();
+        } else {
+          const r = Math.max(7, cellPx * 0.18);
+          ctx.beginPath();
+          ctx.moveTo(x - r, y - r);
+          ctx.lineTo(x + r, y + r);
+          ctx.moveTo(x + r, y - r);
+          ctx.lineTo(x - r, y + r);
+          ctx.stroke();
+        }
+      }
+      for (const mark of progress.lineEdgeMarks) {
+        const dr = mark.b.r - mark.a.r;
+        const dc = mark.b.c - mark.a.c;
+        if (Math.abs(dr) + Math.abs(dc) !== 1) continue;
+        let x = 0;
+        let y = 0;
+        if (dr === 0) {
+          x = cellX(Math.min(mark.a.c, mark.b.c) + 1);
+          y = cellY(mark.a.r) + cellPx / 2;
+        } else {
+          x = cellX(mark.a.c) + cellPx / 2;
+          y = cellY(Math.min(mark.a.r, mark.b.r) + 1);
+        }
+        ctx.strokeStyle = mark.color;
+        ctx.lineWidth = 2.6;
+        const rr = Math.max(4, cellPx * 0.11);
+        ctx.beginPath();
+        ctx.moveTo(x - rr, y - rr);
+        ctx.lineTo(x + rr, y + rr);
+        ctx.moveTo(x + rr, y - rr);
+        ctx.lineTo(x - rr, y + rr);
+        ctx.stroke();
+      }
+
+      // Keep grid visible on top of fog.
+      for (let i = 0; i <= n; i++) {
+        ctx.lineWidth = i % subgrid.r === 0 ? 2.5 : 1;
+        ctx.strokeStyle = "rgba(28,46,74,.7)";
+        ctx.beginPath();
+        ctx.moveTo(cellX(0), cellY(i));
+        ctx.lineTo(cellX(n), cellY(i));
+        ctx.stroke();
+
+        ctx.lineWidth = i % subgrid.c === 0 ? 2.5 : 1;
+        ctx.beginPath();
+        ctx.moveTo(cellX(i), cellY(0));
+        ctx.lineTo(cellX(i), cellY(n));
+        ctx.stroke();
+      }
+
+      // Keep user-entered values visible under fog; hide unrevealed givens.
+      for (let r = 0; r < n; r++) {
+        for (let c = 0; c < n; c++) {
+          const cell = progress.cells[r][c];
+          const x0 = cellX(c);
+          const y0 = cellY(r);
+
+          if (cell.value) {
+            if (cell.given && !lit[r][c]) continue;
+            ctx.fillStyle = cell.given ? "rgba(20,47,88,.95)" : "rgba(46,120,255,.95)";
+            ctx.font = cell.given ? "700 26px ui-sans-serif" : "650 26px ui-sans-serif";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText(cell.value, x0 + cellPx / 2, y0 + cellPx / 2 + 1);
+            continue;
+          }
+
+          if (cell.given) continue;
+          ctx.fillStyle = "rgba(20,47,88,.78)";
+          ctx.font = "12px ui-sans-serif";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+
+          const corner = [...cell.notes.corner].sort();
+          if (corner.length) {
+            ctx.textAlign = "left";
+            ctx.fillText(corner.join(""), x0 + 4, y0 + 12);
+          }
+
+          const center = [...cell.notes.center].sort();
+          if (center.length) {
+            ctx.textAlign = "center";
+            ctx.fillText(center.join(""), x0 + cellPx / 2, y0 + cellPx / 2);
+          }
+        }
+      }
     }
+
+    drawSelectionOutlines();
   }, [
     bgImage,
     boardH,
@@ -641,22 +786,32 @@ export function GridCanvas(props: {
     const px = clientX - rect.left - originX;
     const py = clientY - rect.top - originY;
 
-    let best: { rc: CellRC; d2: number } | null = null;
-    for (let dr = -1; dr <= 1; dr++) {
-      for (let dc = -1; dc <= 1; dc++) {
-        if (dr === 0 && dc === 0) continue;
-        if (orthOnly && Math.abs(dr) + Math.abs(dc) !== 1) continue;
-        const rc = { r: last.r + dr, c: last.c + dc };
-        if (!inBounds(rc.r, rc.c)) continue;
-        const cx = rc.c * cellPx + cellPx / 2;
-        const cy = rc.r * cellPx + cellPx / 2;
-        const d2 = (px - cx) ** 2 + (py - cy) ** 2;
-        if (!best || d2 < best.d2) best = { rc, d2 };
+    const centerX = last.c * cellPx + cellPx / 2;
+    const centerY = last.r * cellPx + cellPx / 2;
+    const dx = (px - centerX) / cellPx;
+    const dy = (py - centerY) / cellPx;
+    const adx = Math.abs(dx);
+    const ady = Math.abs(dy);
+    const dist = Math.hypot(dx, dy);
+
+    if (dist < 0.38 || dist > 1.25) return null;
+
+    if (orthOnly) {
+      if (adx >= ady) {
+        if (adx < 0.45 || ady > 0.42) return null;
+        return dx > 0 ? (inBounds(last.r, last.c + 1) ? { r: last.r, c: last.c + 1 } : null)
+          : (inBounds(last.r, last.c - 1) ? { r: last.r, c: last.c - 1 } : null);
       }
+      if (ady < 0.45 || adx > 0.42) return null;
+      return dy > 0 ? (inBounds(last.r + 1, last.c) ? { r: last.r + 1, c: last.c } : null)
+        : (inBounds(last.r - 1, last.c) ? { r: last.r - 1, c: last.c } : null);
     }
-    if (!best) return null;
-    if (best.d2 > (cellPx * 0.75) ** 2) return null;
-    return best.rc;
+
+    const stepR = dy > 0.33 ? 1 : dy < -0.33 ? -1 : 0;
+    const stepC = dx > 0.33 ? 1 : dx < -0.33 ? -1 : 0;
+    if (stepR === 0 && stepC === 0) return null;
+    const rc = { r: last.r + stepR, c: last.c + stepC };
+    return inBounds(rc.r, rc.c) ? rc : null;
   }
 
   function edgeTrackForStep(a: CellRC, b: CellRC, fx: number, fy: number): EdgeTrack {
@@ -713,6 +868,7 @@ export function GridCanvas(props: {
     if (!pt) return;
     const next = { r: pt.r, c: pt.c };
     if (next.r === drag.last.r && next.c === drag.last.c) return;
+    if (Math.abs(next.r - drag.last.r) > 1 || Math.abs(next.c - drag.last.c) > 1) return;
     drag.last = next;
     drag.moved = true;
     const key = rcKey(next);
