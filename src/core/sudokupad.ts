@@ -7,10 +7,45 @@ import type { PuzzleDefinition, CellRC, PuzzleCosmetics } from "./model";
  * SudokuPad has a public API endpoint used by their own tooling:
  * https://sudokupad.app/api/puzzle/<puzzleId> :contentReference[oaicite:1]{index=1}
  */
-const API_BASE = "/sp-api/api/puzzle";
+const DEV_API_BASE = "/sp-api/api/puzzle";
+const PROD_API_BASE = "https://api.allorigins.win/raw?url=https://sudokupad.app/api/puzzle";
 
 function timeout(ms: number) {
   return new Promise<never>((_, rej) => setTimeout(() => rej(new Error("Timeout")), ms));
+}
+
+function buildPuzzleApiUrls(sourceId: string): string[] {
+  const encoded = sourceId.split("/").map(encodeURIComponent).join("/");
+
+  // In local dev we have a Vite proxy that avoids CORS.
+  const urls: string[] = [`${DEV_API_BASE}/${encoded}`];
+
+  // In static hosting (GitHub Pages), sudokupad.app does not allow this origin,
+  // so use a CORS-enabled passthrough endpoint.
+  urls.push(`${PROD_API_BASE}/${encoded}`);
+  return urls;
+}
+
+async function fetchPuzzlePayloadById(sourceId: string): Promise<string> {
+  const urls = buildPuzzleApiUrls(sourceId);
+  let lastErr: unknown = null;
+
+  for (const url of urls) {
+    try {
+      const res = await Promise.race([fetch(url), timeout(12000)]) as Response;
+      if (!res.ok) {
+        lastErr = new Error(`HTTP ${res.status} while fetching puzzle payload`);
+        continue;
+      }
+      const text = await res.text();
+      if (text && text.trim()) return text;
+      lastErr = new Error("Empty puzzle payload");
+    } catch (err) {
+      lastErr = err;
+    }
+  }
+
+  throw lastErr instanceof Error ? lastErr : new Error("Failed to fetch puzzle payload");
 }
 
 function parseSourceId(input: string): string {
@@ -158,9 +193,7 @@ export async function loadFromSudokuPad(inputUrlOrId: string): Promise<{ key: st
     payloadText = sourceId;
   } else {
     // Treat as short id and fetch from SudokuPad API.
-    const url = `${API_BASE}/${sourceId.split("/").map(encodeURIComponent).join("/")}`;
-    const res = await Promise.race([fetch(url), timeout(12000)]) as Response;
-    payloadText = await res.text();
+    payloadText = await fetchPuzzlePayloadById(sourceId);
   }
 
   // Some API responses are already JSON; some are compressed strings.
