@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import type { PuzzleDefinition, PuzzleProgress, CellRC } from "../core/model";
 
 function rcKey(rc: CellRC) { return `${rc.r},${rc.c}`; }
@@ -7,18 +7,89 @@ export function GridCanvas(props: {
   def: PuzzleDefinition;
   progress: PuzzleProgress;
   onSelection: (sel: CellRC[]) => void;
-  onLineSegment: (a: CellRC, b: CellRC) => void;
+  onLineStroke: (path: CellRC[]) => void;
 }) {
   const { def, progress } = props;
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const wrapRef = useRef<HTMLDivElement | null>(null);
 
   const n = def.size;
-  const cellPx = 56;
-  const pad = 18;
+  const [cellPx, setCellPx] = useState(56);
+  const pad = Math.max(14, Math.round(cellPx * 0.32));
   const sizePx = pad * 2 + cellPx * n;
 
-  const selectionSet = useMemo(() => new Set(progress.selection.map(rcKey)), [progress.selection]);
   const [bgImage, setBgImage] = useState<HTMLImageElement | null>(null);
+
+  const normalizeBoardPoint = (x: number, y: number) => {
+    // Some exports use 1-based board coordinates, others 0-based.
+    const in1BasedRange = x >= 1 && x <= n + 1 && y >= 1 && y <= n + 1;
+    return in1BasedRange ? { x: x - 1, y: y - 1 } : { x, y };
+  };
+
+  function inBounds(r: number, c: number) {
+    return r >= 0 && c >= 0 && r < n && c < n;
+  }
+
+  const inferFogOffset = (): number => {
+    const lights = def.cosmetics.fogLights;
+    if (!lights?.length) return 0;
+    let maxR = -Infinity;
+    let maxC = -Infinity;
+    let minR = Infinity;
+    let minC = Infinity;
+    for (const rc of lights) {
+      if (rc.r > maxR) maxR = rc.r;
+      if (rc.c > maxC) maxC = rc.c;
+      if (rc.r < minR) minR = rc.r;
+      if (rc.c < minC) minC = rc.c;
+    }
+    // If coordinates exceed board bounds, many puzzle exports use padded coordinates.
+    if (maxR >= n || maxC >= n) {
+      if (minR >= 2 || minC >= 2) return 2;
+      return 1;
+    }
+    return 0;
+  };
+
+  const fogOffset = inferFogOffset();
+
+  const normalizeCellForBoard = (rc: CellRC): CellRC | null => {
+    if (fogOffset) {
+      const m = { r: rc.r - fogOffset, c: rc.c - fogOffset };
+      if (inBounds(m.r, m.c)) return m;
+    }
+    if (inBounds(rc.r, rc.c)) return rc;
+    const m1 = { r: rc.r - 1, c: rc.c - 1 };
+    if (inBounds(m1.r, m1.c)) return m1;
+    const m2 = { r: rc.r - 2, c: rc.c - 2 };
+    if (inBounds(m2.r, m2.c)) return m2;
+    return null;
+  };
+
+  // Responsive board sizing (desktop + mobile).
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el) return;
+
+    const update = () => {
+      const width = el.clientWidth || window.innerWidth;
+      const available = Math.max(280, width - 28);
+      const next = Math.floor(Math.min(56, Math.max(34, available / n)));
+      setCellPx(next);
+    };
+
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    window.addEventListener("orientationchange", update);
+    window.addEventListener("resize", update);
+
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("orientationchange", update);
+      window.removeEventListener("resize", update);
+    };
+  }, [n]);
 
   // Load background image
   useEffect(() => {
@@ -56,6 +127,62 @@ export function GridCanvas(props: {
     ctx.fillStyle = "rgba(255,255,255,.02)";
     ctx.fillRect(0, 0, sizePx, sizePx);
 
+    const drawLayerRects = (items: NonNullable<typeof def.cosmetics.underlays>) => {
+      for (const it of items) {
+        const p = normalizeBoardPoint(it.center.x, it.center.y);
+        const w = (it.width ?? 1) * cellPx;
+        const h = (it.height ?? 1) * cellPx;
+        const cx = pad + p.x * cellPx;
+        const cy = pad + p.y * cellPx;
+        const x = cx - w / 2;
+        const y = cy - h / 2;
+
+        ctx.save();
+        if (typeof it.angle === "number" && it.angle !== 0) {
+          ctx.translate(cx, cy);
+          ctx.rotate((it.angle * Math.PI) / 180);
+          ctx.translate(-cx, -cy);
+        }
+
+        if (it.color) {
+          ctx.fillStyle = it.color;
+          if (it.rounded) {
+            const r = Math.min(w, h) * 0.15;
+            ctx.beginPath();
+            ctx.roundRect(x, y, w, h, r);
+            ctx.fill();
+          } else {
+            ctx.fillRect(x, y, w, h);
+          }
+        }
+
+        if (it.borderColor || it.borderThickness) {
+          ctx.strokeStyle = it.borderColor ?? "rgba(255,255,255,.8)";
+          ctx.lineWidth = it.borderThickness ?? 1;
+          if (it.rounded) {
+            const r = Math.min(w, h) * 0.15;
+            ctx.beginPath();
+            ctx.roundRect(x, y, w, h, r);
+            ctx.stroke();
+          } else {
+            ctx.strokeRect(x, y, w, h);
+          }
+        }
+
+        if (it.text != null && it.text !== "") {
+          ctx.fillStyle = it.textColor ?? "rgba(255,255,255,.95)";
+          ctx.font = `${Math.max(10, it.textSize ?? 12)}px ui-sans-serif`;
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(String(it.text), cx, cy);
+        }
+
+        ctx.restore();
+      }
+    };
+
+    if (def.cosmetics.underlays) drawLayerRects(def.cosmetics.underlays);
+
     // highlights
     for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) {
       const col = progress.cells[r][c].color;
@@ -90,20 +217,81 @@ export function GridCanvas(props: {
 
     // cages (outline)
     if (def.cosmetics.cages) {
-      ctx.strokeStyle = "rgba(255,255,255,.85)";
-      ctx.lineWidth = 2;
+      ctx.strokeStyle = "rgba(255,255,255,.95)";
+      ctx.lineWidth = 1.25;
+      ctx.setLineDash([5, 3]);
       for (const cage of def.cosmetics.cages) {
-        // MVP: draw a faint fill for cage cells; proper cage border tracing is a later step.
-        ctx.fillStyle = "rgba(255,255,255,.04)";
+        const set = new Set(cage.cells.map((rc) => `${rc.r},${rc.c}`));
+
+        // very subtle cage fill
+        ctx.fillStyle = "rgba(255,255,255,.025)";
         for (const rc of cage.cells) {
           ctx.fillRect(pad + rc.c * cellPx + 2, pad + rc.r * cellPx + 2, cellPx - 4, cellPx - 4);
+
+          // trace only perimeter edges so cages are actually readable
+          const x = pad + rc.c * cellPx;
+          const y = pad + rc.r * cellPx;
+          const inset = 3;
+          const neighbors = {
+            up: `${rc.r - 1},${rc.c}`,
+            right: `${rc.r},${rc.c + 1}`,
+            down: `${rc.r + 1},${rc.c}`,
+            left: `${rc.r},${rc.c - 1}`,
+          };
+
+          if (!set.has(neighbors.up)) {
+            ctx.beginPath();
+            ctx.moveTo(x + inset, y + inset);
+            ctx.lineTo(x + cellPx - inset, y + inset);
+            ctx.stroke();
+          }
+          if (!set.has(neighbors.right)) {
+            ctx.beginPath();
+            ctx.moveTo(x + cellPx - inset, y + inset);
+            ctx.lineTo(x + cellPx - inset, y + cellPx - inset);
+            ctx.stroke();
+          }
+          if (!set.has(neighbors.down)) {
+            ctx.beginPath();
+            ctx.moveTo(x + inset, y + cellPx - inset);
+            ctx.lineTo(x + cellPx - inset, y + cellPx - inset);
+            ctx.stroke();
+          }
+          if (!set.has(neighbors.left)) {
+            ctx.beginPath();
+            ctx.moveTo(x + inset, y + inset);
+            ctx.lineTo(x + inset, y + cellPx - inset);
+            ctx.stroke();
+          }
         }
+
         if (cage.sum) {
           const first = cage.cells[0];
           ctx.fillStyle = "rgba(255,255,255,.85)";
           ctx.font = "12px ui-sans-serif";
           ctx.fillText(cage.sum, pad + first.c * cellPx + 6, pad + first.r * cellPx + 14);
         }
+      }
+      ctx.setLineDash([]);
+    }
+
+    // Native SudokuPad lines from `lines[].wayPoints`
+    if (def.cosmetics.lines) {
+      for (const ln of def.cosmetics.lines) {
+        if (ln.wayPoints.length < 2) continue;
+        ctx.strokeStyle = ln.color ?? "#2ecbff";
+        // SudokuPad thickness values are tuned around ~50px cell size.
+        ctx.lineWidth = (ln.thickness ?? 6) * (cellPx / 50);
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+        ctx.beginPath();
+        ln.wayPoints.forEach((p, i) => {
+          const x = pad + p.x * cellPx;
+          const y = pad + p.y * cellPx;
+          if (i === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        });
+        ctx.stroke();
       }
     }
 
@@ -267,19 +455,107 @@ export function GridCanvas(props: {
       drawGridClues(def.cosmetics.xsum, clueOffset, "right");
     }
 
+    if (def.cosmetics.overlays) drawLayerRects(def.cosmetics.overlays);
+
+    // Fog overlay (best-effort): reveal seed lights and correct entries' neighborhoods.
+    if (def.cosmetics.fogLights && def.cosmetics.fogLights.length) {
+      const visible = new Set(
+        def.cosmetics.fogLights
+          .map(normalizeCellForBoard)
+          .filter((x): x is CellRC => x !== null)
+          .map((rc) => rcKey(rc))
+      );
+
+      const solution = def.cosmetics.solution;
+      if (solution && solution.length >= n * n) {
+        for (let r = 0; r < n; r++) {
+          for (let c = 0; c < n; c++) {
+            const idx = r * n + c;
+            const cell = progress.cells[r][c];
+            if (!cell.value) continue;
+            if (cell.value !== solution[idx]) continue;
+
+            // reveal around correctly filled cells to mimic fog expansion
+            for (let dr = -1; dr <= 1; dr++) {
+              for (let dc = -1; dc <= 1; dc++) {
+                const rr = r + dr;
+                const cc = c + dc;
+                if (!inBounds(rr, cc)) continue;
+                visible.add(`${rr},${cc}`);
+              }
+            }
+          }
+        }
+      }
+
+      if (def.cosmetics.fogTriggerEffects && def.cosmetics.fogTriggerEffects.length) {
+        for (const te of def.cosmetics.fogTriggerEffects) {
+          const triggered = te.triggerCells.some((rc) => {
+            const m = normalizeCellForBoard(rc);
+            if (!m) return false;
+            const v = progress.cells[m.r][m.c].value;
+            return Boolean(v);
+          });
+          if (!triggered) continue;
+          for (const rc of te.revealCells) {
+            const m = normalizeCellForBoard(rc);
+            if (!m) continue;
+            visible.add(`${m.r},${m.c}`);
+          }
+        }
+      }
+
+      ctx.fillStyle = "rgba(0,0,0,0.82)";
+      for (let r = 0; r < n; r++) {
+        for (let c = 0; c < n; c++) {
+          if (visible.has(`${r},${c}`)) continue;
+          ctx.fillRect(pad + c * cellPx, pad + r * cellPx, cellPx, cellPx);
+        }
+      }
+    }
+
     // user lines
     for (const stroke of progress.lines) {
-      ctx.strokeStyle = stroke.color;
-      ctx.lineWidth = 4;
       for (const seg of stroke.segments) {
         const ax = pad + seg.a.c * cellPx + cellPx / 2;
         const ay = pad + seg.a.r * cellPx + cellPx / 2;
         const bx = pad + seg.b.c * cellPx + cellPx / 2;
         const by = pad + seg.b.r * cellPx + cellPx / 2;
-        ctx.beginPath();
-        ctx.moveTo(ax, ay);
-        ctx.lineTo(bx, by);
-        ctx.stroke();
+        const dx = bx - ax;
+        const dy = by - ay;
+        const len = Math.hypot(dx, dy) || 1;
+        const nx = dx / len;
+        const ny = dy / len;
+        const edgeInset = cellPx * 0.3;
+
+        const drawCore = () => {
+          ctx.strokeStyle = stroke.color;
+          ctx.lineWidth = 4;
+          ctx.lineCap = "round";
+          ctx.beginPath();
+          ctx.moveTo(ax, ay);
+          ctx.lineTo(bx, by);
+          ctx.stroke();
+        };
+
+        const drawEdge = () => {
+          ctx.strokeStyle = stroke.color;
+          ctx.lineWidth = 4;
+          ctx.lineCap = "round";
+          ctx.beginPath();
+          ctx.moveTo(ax + nx * edgeInset, ay + ny * edgeInset);
+          ctx.lineTo(bx - nx * edgeInset, by - ny * edgeInset);
+          ctx.stroke();
+        };
+
+        if (stroke.kind === "center") drawCore();
+        else if (stroke.kind === "edge") drawEdge();
+        else {
+          ctx.globalAlpha = 0.55;
+          drawEdge();
+          ctx.globalAlpha = 1;
+          drawCore();
+        }
       }
     }
 
@@ -341,7 +617,7 @@ export function GridCanvas(props: {
 
       // selection overlay already handled
     }
-  }, [def, progress, selectionSet, sizePx, n, bgImage]);
+  }, [def, progress, sizePx, n, bgImage]);
 
   // pointer interactions
   function hitRC(clientX: number, clientY: number): CellRC | null {
@@ -354,26 +630,28 @@ export function GridCanvas(props: {
     return { r, c };
   }
 
-  const drag = useRef<{ start: CellRC; last: CellRC } | null>(null);
+  const drag = useRef<{ start: CellRC; last: CellRC; path: CellRC[]; seen: Set<string> } | null>(null);
+
+  function isNeighbor(a: CellRC, b: CellRC) {
+    const dr = Math.abs(a.r - b.r);
+    const dc = Math.abs(a.c - b.c);
+    return dr <= 1 && dc <= 1 && (dr + dc > 0);
+  }
 
   function onDown(e: React.PointerEvent) {
     const rc = hitRC(e.clientX, e.clientY);
     if (!rc) return;
 
-    (e.currentTarget as any).setPointerCapture(e.pointerId);
+    e.currentTarget.setPointerCapture(e.pointerId);
 
-    drag.current = { start: rc, last: rc };
+    drag.current = { start: rc, last: rc, path: [rc], seen: new Set([rcKey(rc)]) };
 
-    if (progress.multiSelect) {
-      // toggle cell in selection
-      const key = rcKey(rc);
-      const next = selectionSet.has(key)
-        ? progress.selection.filter((x) => rcKey(x) !== key)
-        : [...progress.selection, rc];
-      props.onSelection(next.length ? next : [rc]);
-    } else {
+    if (progress.activeTool === "line") {
       props.onSelection([rc]);
+      return;
     }
+
+    props.onSelection([rc]);
   }
 
   function onMove(e: React.PointerEvent) {
@@ -381,37 +659,58 @@ export function GridCanvas(props: {
     const rc = hitRC(e.clientX, e.clientY);
     if (!rc) return;
 
-    // drag-to-select rectangle (single-select mode only)
-    if (!progress.multiSelect) {
-      const a = drag.current.start;
-      const r0 = Math.min(a.r, rc.r), r1 = Math.max(a.r, rc.r);
-      const c0 = Math.min(a.c, rc.c), c1 = Math.max(a.c, rc.c);
-      const sel: CellRC[] = [];
-      for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) sel.push({ r, c });
-      props.onSelection(sel);
+    const state = drag.current;
+    if (state.last.r === rc.r && state.last.c === rc.c) return;
+
+    if (progress.activeTool === "line") {
+      if (!isNeighbor(state.last, rc)) {
+        return;
+      }
+      state.path.push(rc);
+      state.last = rc;
+      props.onSelection([rc]);
+      return;
     }
 
-    drag.current.last = rc;
+    state.last = rc;
+    const key = rcKey(rc);
+    if (!state.seen.has(key)) {
+      state.seen.add(key);
+      state.path.push(rc);
+    }
+
+    props.onSelection([...state.path]);
+
   }
 
   function onUp() {
     if (!drag.current) return;
 
-    // If line tool is active (heuristic): when line kind is set and user double-clicks later you can refine.
-    // MVP: if SHIFT-like behavior desired, add a UI toggle; for now, draw a segment between last two visited cells when dragging ends.
-    const { start, last } = drag.current;
-    if (start.r !== last.r || start.c !== last.c) {
-      props.onLineSegment(start, last);
+    const state = drag.current;
+    if (progress.activeTool === "line" && state.path.length >= 2) {
+      props.onLineStroke(state.path);
     }
 
     drag.current = null;
   }
 
+  function onCancel() {
+    drag.current = null;
+  }
+
   return (
-    <div className="card" style={{ display: "grid", placeItems: "center" }}>
-      <canvas ref={canvasRef} onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} />
+    <div ref={wrapRef} className="card boardCard" style={{ display: "grid", placeItems: "center", width: "100%" }}>
+      <canvas
+        ref={canvasRef}
+        style={{ maxWidth: "100%", touchAction: "none", userSelect: "none" }}
+        onPointerDown={onDown}
+        onPointerMove={onMove}
+        onPointerUp={onUp}
+        onPointerCancel={onCancel}
+        onPointerLeave={onCancel}
+      />
       <div className="muted" style={{ marginTop: 10, fontSize: 13 }}>
-        Tap/drag to select. Drag across cells to add a single line segment (MVP).
+        Drag to select visited cells. In line mode, drag cell-to-cell to draw continuous paths.
       </div>
     </div>
   );

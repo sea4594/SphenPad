@@ -12,6 +12,8 @@ function digits(alphabetMode: boolean) {
 export function Keyboard(props: {
   kind: "numbers" | "highlight" | "line";
   progress: PuzzleProgress;
+  title?: string;
+  hideEntryModeButtons?: boolean;
 
   onDigit?: (d: string) => void;
   onBackspace?: () => void;
@@ -31,18 +33,20 @@ export function Keyboard(props: {
     return (
       <div className="card">
         <div className="row" style={{ justifyContent: "space-between" }}>
-          <div style={{ fontWeight: 700 }}>Entry</div>
-          <div className="row">
-            {(["value","center","corner","candidates"] as const).map((m) => (
-              <button
-                key={m}
-                className={"btn" + (progress.entryMode === m ? " primary" : "")}
-                onClick={() => props.onMode?.(m)}
-              >
-                {m}
-              </button>
-            ))}
-          </div>
+          <div style={{ fontWeight: 700 }}>{props.title ?? "Entry"}</div>
+          {!props.hideEntryModeButtons ? (
+            <div className="row">
+              {(["value","center","corner","candidates"] as const).map((m) => (
+                <button
+                  key={m}
+                  className={"btn" + (progress.entryMode === m ? " primary" : "")}
+                  onClick={() => props.onMode?.(m)}
+                >
+                  {m}
+                </button>
+              ))}
+            </div>
+          ) : null}
         </div>
 
         <Grid3x4>
@@ -90,7 +94,7 @@ export function Keyboard(props: {
         <select
           style={{
             gridColumn: "1 / span 3",
-            height: 52,
+            height: "clamp(44px, 10vw, 52px)",
             padding: "8px 12px",
             borderRadius: 12,
             border: "1px solid rgba(255,255,255,.12)",
@@ -100,11 +104,11 @@ export function Keyboard(props: {
             cursor: "pointer",
           }}
           value={progress.linePaletteKind}
-          onChange={(e) => props.onLineKind?.(e.target.value as any)}
+          onChange={(e) => props.onLineKind?.(e.target.value as LineStroke["kind"])}
         >
-          <option value="both">center and edge</option>
-          <option value="center">center only</option>
-          <option value="edge">edge only</option>
+          <option value="both">centers and edges (default)</option>
+          <option value="center">centers only</option>
+          <option value="edge">edges only</option>
         </select>
       </Grid3x4>
     </div>
@@ -118,7 +122,7 @@ function Grid3x4(props: { children: React.ReactNode }) {
         marginTop: 10,
         display: "grid",
         gridTemplateColumns: "repeat(3, 1fr)",
-        gridTemplateRows: "repeat(4, 52px)",
+        gridTemplateRows: "repeat(4, minmax(44px, 52px))",
         gap: 8,
       }}
     >
@@ -129,7 +133,7 @@ function Grid3x4(props: { children: React.ReactNode }) {
 
 function Key(props: { children: React.ReactNode; onClick?: () => void; style?: React.CSSProperties }) {
   return (
-    <button className="btn" style={{ height: 52, ...props.style }} onClick={props.onClick}>
+    <button className="btn" style={{ height: "clamp(44px, 10vw, 52px)", ...props.style }} onClick={props.onClick}>
       {props.children}
     </button>
   );
@@ -142,7 +146,7 @@ function ColorKey(props: { color: string; onClick?: () => void; label?: string }
       onClick={props.onClick}
       title={props.label ?? props.color}
       style={{
-        height: 52,
+        height: "clamp(44px, 10vw, 52px)",
         background: props.color,
         borderColor: "rgba(255,255,255,.18)",
       }}

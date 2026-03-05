@@ -40,6 +40,64 @@ function tryParseJson(text: string): unknown | null {
   try { return JSON.parse(text); } catch { return null; }
 }
 
+function tryParseLooseObjectLiteral(text: string): unknown | null {
+  // Some older SudokuPad payloads decode to JS object-literals with sparse arrays,
+  // short keys (ce/re/...) and unquoted hex color tokens.
+  try {
+    let src = text;
+    src = src.replace(/#([0-9A-Fa-f]{1,8})/g, '"#$1"');
+    src = src.replace(
+      /(stroke|color|lineColor|fill|fillColor|textColor|fontColor|c1|c2|c|backgroundColor|borderColor)\s*:\s*([A-Za-z0-9#]{3,12})(?=[,}\]])/g,
+      (_m, key, val) => {
+        const low = String(val).toLowerCase();
+        if (low === "true" || low === "false" || low === "null" || low === "undefined") {
+          return `${key}:${val}`;
+        }
+        const v = String(val).startsWith("#") ? val : `#${val}`;
+        return `${key}:"${v}"`;
+      }
+    );
+    // eslint-disable-next-line no-new-func
+    return Function("f", "t", "n", "u", `return (${src})`)(false, true, null, undefined);
+  } catch {
+    return null;
+  }
+}
+
+function normalizeCompactScl(input: any): any {
+  if (!input || typeof input !== "object") return input;
+  const scl = { ...input } as any;
+
+  // Compact aliases used in older SudokuPad exports.
+  if (!scl.cells && Array.isArray(scl.ce)) scl.cells = scl.ce;
+  if (!scl.regions && Array.isArray(scl.re)) scl.regions = scl.re;
+  if (!scl.lines && Array.isArray(scl.l)) scl.lines = scl.l;
+  if (!scl.overlays && Array.isArray(scl.o)) scl.overlays = scl.o;
+  if (!scl.underlays && Array.isArray(scl.u)) scl.underlays = scl.u;
+  if (!scl.arrow && Array.isArray(scl.a)) scl.arrow = scl.a;
+  if (!scl.dots && Array.isArray(scl.d)) scl.dots = scl.d;
+  if (!scl.cages && Array.isArray(scl.ca)) scl.cages = scl.ca;
+  if (!scl.metadata && scl.md && typeof scl.md === "object") scl.metadata = scl.md;
+
+  if (!scl.metadata) scl.metadata = {};
+
+  // Some compact payloads keep title/author/rules as an array of "key: value" strings in `ca`.
+  if (Array.isArray(input?.ca)) {
+    for (const item of input.ca) {
+      const v = typeof item?.v === "string" ? item.v : "";
+      const m = v.match(/^\s*(title|author|rules?)\s*:\s*(.+)$/i);
+      if (!m) continue;
+      const key = m[1].toLowerCase();
+      const value = m[2].trim();
+      if ((key === "rule" || key === "rules") && !scl.metadata.rules) scl.metadata.rules = value;
+      if (key === "title" && !scl.metadata.title) scl.metadata.title = value;
+      if (key === "author" && !scl.metadata.author) scl.metadata.author = value;
+    }
+  }
+
+  return scl;
+}
+
 // Minimal SCL shape (loose on purpose; cosmetics vary wildly).
 const SclSchema = z.object({
   cellSize: z.number().optional(),
@@ -54,7 +112,38 @@ const SclSchema = z.object({
 
 function asRC(rc: any): CellRC | null {
   if (Array.isArray(rc) && rc.length >= 2) return { r: Number(rc[0]), c: Number(rc[1]) };
+  if (rc && typeof rc === "object") {
+    if (typeof rc.r === "number" && typeof rc.c === "number") return { r: rc.r, c: rc.c };
+    if (typeof rc.row === "number" && typeof rc.col === "number") return { r: rc.row, c: rc.col };
+  }
   return null;
+}
+
+function asValue(v: any): string | undefined {
+  if (v == null) return undefined;
+  if (typeof v === "string" || typeof v === "number") return String(v);
+  return undefined;
+}
+
+function asPoint(pt: any): { x: number; y: number } | null {
+  if (Array.isArray(pt) && pt.length >= 2) return { x: Number(pt[0]), y: Number(pt[1]) };
+  if (pt && typeof pt === "object") {
+    if (typeof pt.x === "number" && typeof pt.y === "number") return { x: pt.x, y: pt.y };
+  }
+  return null;
+}
+
+function parseRcString(value: any): CellRC[] {
+  if (typeof value !== "string") return [];
+  const out: CellRC[] = [];
+  const re = /r(\d+)c(\d+)/gi;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(value)) !== null) {
+    const r = Number(m[1]) - 1;
+    const c = Number(m[2]) - 1;
+    if (Number.isFinite(r) && Number.isFinite(c)) out.push({ r, c });
+  }
+  return out;
 }
 
 export async function loadFromSudokuPad(inputUrlOrId: string): Promise<{ key: string; def: PuzzleDefinition; raw: any }> {
@@ -105,21 +194,29 @@ export async function loadFromSudokuPad(inputUrlOrId: string): Promise<{ key: st
 function coerceToScl(raw: any): any {
   // Case 1: already an object
   if (raw && typeof raw === "object") {
-    const parsed = SclSchema.safeParse(raw);
+    const normalized = normalizeCompactScl(raw);
+    const parsed = SclSchema.safeParse(normalized);
     if (parsed.success) return parsed.data;
-    return raw;
+    return normalized;
   }
 
   // Case 2: prefixed compressed payload: "scl<base64>"
   if (typeof raw === "string") {
     const s = raw.trim();
 
-    const m = s.match(/^(scl|ctc)([\s\S]+)$/);
+    const m = s.match(/^(scl|ctc|fpuz|fpuzzles)([\s\S]+)$/);
     if (m) {
-      const b64 = m[2];
+      let b64 = m[2];
+      try {
+        b64 = decodeURIComponent(b64);
+      } catch {
+        // no-op
+      }
       const decompressed = decompressFromBase64(b64);
       const j = tryParseJson(decompressed);
       if (j) return j;
+      const jLoose = tryParseLooseObjectLiteral(decompressed);
+      if (jLoose) return normalizeCompactScl(jLoose);
       const j2 = tryParseJson(decompressedFromMaybeZipped(decompressed));
       if (j2) return j2;
     }
@@ -127,6 +224,9 @@ function coerceToScl(raw: any): any {
     // If it's plain JSON text
     const j = tryParseJson(s);
     if (j) return j;
+
+    const jLoose = tryParseLooseObjectLiteral(s);
+    if (jLoose) return normalizeCompactScl(jLoose);
 
     // Otherwise: best-effort — maybe already decompressed but still JSON-ish
     const j3 = tryParseJson(decompressedFromMaybeZipped(s));
@@ -152,7 +252,8 @@ function extractGivens(scl: any): Array<{ rc: CellRC; v: string }> {
     if (!Array.isArray(row)) continue;
     for (let c = 0; c < row.length; c++) {
       const cell = row[c];
-      if (cell?.value != null) out.push({ rc: { r, c }, v: String(cell.value) });
+      const value = asValue(cell?.value ?? cell?.v ?? cell?.given ?? cell?.g);
+      if (value != null) out.push({ rc: { r, c }, v: value });
     }
   }
   return out;
@@ -161,25 +262,44 @@ function extractGivens(scl: any): Array<{ rc: CellRC; v: string }> {
 function extractCosmetics(scl: any): PuzzleCosmetics {
   const cosmetics: PuzzleCosmetics = {};
 
-  // background image (underlay)
-  if (scl?.underlay?.image) cosmetics.backgroundImageUrl = String(scl.underlay.image);
+  // background image / underlay aliases
+  cosmetics.backgroundImageUrl =
+    (typeof scl?.underlay?.image === "string" ? scl.underlay.image : undefined) ??
+    (typeof scl?.backgroundImage === "string" ? scl.backgroundImage : undefined) ??
+    (typeof scl?.background?.image === "string" ? scl.background.image : undefined);
 
   // cages
-  if (Array.isArray(scl?.cages)) {
-    cosmetics.cages = scl.cages
+  const cagesSrc = Array.isArray(scl?.cages)
+    ? scl.cages
+    : Array.isArray(scl?.killerCages)
+      ? scl.killerCages
+      : Array.isArray(scl?.killer)
+        ? scl.killer
+        : [];
+  if (cagesSrc.length) {
+    cosmetics.cages = cagesSrc
       .map((cg: any) => {
         const cells = (cg?.cells ?? []).map(asRC).filter(Boolean) as CellRC[];
         if (!cells.length) return null;
-        return { cells, sum: cg?.value != null ? String(cg.value) : undefined, color: cg?.outlineC ?? undefined };
+        return {
+          cells,
+          sum: asValue(cg?.value ?? cg?.sum),
+          color: cg?.outlineC ?? cg?.color ?? undefined,
+        };
       })
       .filter(Boolean) as any;
   }
 
   // arrows
-  if (Array.isArray(scl?.arrow)) {
-    cosmetics.arrows = scl.arrow
+  const arrowsSrc = Array.isArray(scl?.arrow) ? scl.arrow : Array.isArray(scl?.arrows) ? scl.arrows : [];
+  if (arrowsSrc.length) {
+    cosmetics.arrows = arrowsSrc
       .map((a: any) => {
-        const path = (a?.cells ?? []).map(asRC).filter(Boolean) as CellRC[];
+        const cellPath = (a?.cells ?? []).map(asRC).filter(Boolean) as CellRC[];
+        const wpPath = (a?.wayPoints ?? []).map(asPoint).filter(Boolean) as Array<{ x: number; y: number }>;
+        const path = cellPath.length
+          ? cellPath
+          : wpPath.map((p) => ({ r: p.y, c: p.x }));
         if (path.length < 2) return null;
         return { bulb: path[0], path };
       })
@@ -187,15 +307,74 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
   }
 
   // dots
-  if (Array.isArray(scl?.dots)) {
-    cosmetics.dots = scl.dots
+  const dotsSrc = Array.isArray(scl?.dots)
+    ? scl.dots
+    : Array.isArray(scl?.kropki)
+      ? scl.kropki
+      : Array.isArray(scl?.dot)
+        ? scl.dot
+        : [];
+  if (dotsSrc.length) {
+    cosmetics.dots = dotsSrc
       .map((d: any) => {
-        const cells = (d?.cells ?? []).map(asRC).filter(Boolean) as CellRC[];
+        const cells = (d?.cells ?? [d?.a, d?.b]).map(asRC).filter(Boolean) as CellRC[];
         if (cells.length !== 2) return null;
-        const kind = d?.type === "white" ? "white" : "black";
+        const kind = d?.type === "white" || d?.color === "white" ? "white" : "black";
         return { a: cells[0], b: cells[1], kind };
       })
       .filter(Boolean) as any;
+  }
+
+  // Native SudokuPad lines are often in `lines` with floating-point wayPoints.
+  const linesSrc = Array.isArray(scl?.lines)
+    ? scl.lines
+    : Array.isArray(scl?.line)
+      ? scl.line
+      : Array.isArray(scl?.l)
+        ? scl.l
+        : [];
+  if (linesSrc.length) {
+    cosmetics.lines = linesSrc
+      .map((ln: any) => {
+        const wayPoints = (ln?.wayPoints ?? ln?.points ?? ln?.wp ?? [])
+          .map(asPoint)
+          .filter(Boolean) as Array<{ x: number; y: number }>;
+        if (wayPoints.length < 2) return null;
+        return {
+          wayPoints,
+          color: ln?.color ?? ln?.c,
+          thickness: typeof (ln?.thickness ?? ln?.th) === "number" ? (ln?.thickness ?? ln?.th) : undefined,
+        };
+      })
+      .filter(Boolean) as any;
+  }
+
+  const parseLayerItem = (item: any) => {
+    const ct = asPoint(item?.center ?? item?.ct);
+    if (!ct) return null;
+    return {
+      center: ct,
+      width: typeof (item?.width ?? item?.w) === "number" ? (item?.width ?? item?.w) : undefined,
+      height: typeof (item?.height ?? item?.h) === "number" ? (item?.height ?? item?.h) : undefined,
+      rounded: Boolean(item?.rounded ?? item?.r),
+      color: item?.backgroundColor ?? item?.c2 ?? item?.fill,
+      borderColor: item?.borderColor ?? item?.c ?? undefined,
+      borderThickness: typeof (item?.thickness ?? item?.th) === "number" ? (item?.thickness ?? item?.th) : undefined,
+      text: item?.text ?? item?.te,
+      textColor: item?.color ?? item?.c1,
+      textSize: typeof (item?.textSize ?? item?.fs) === "number" ? (item?.textSize ?? item?.fs) : undefined,
+      angle: typeof item?.angle === "number" ? item.angle : undefined,
+    };
+  };
+
+  const overlaysSrc = Array.isArray(scl?.overlays) ? scl.overlays : [];
+  if (overlaysSrc.length) {
+    cosmetics.overlays = overlaysSrc.map(parseLayerItem).filter(Boolean) as any;
+  }
+
+  const underlaysSrc = Array.isArray(scl?.underlays) ? scl.underlays : [];
+  if (underlaysSrc.length) {
+    cosmetics.underlays = underlaysSrc.map(parseLayerItem).filter(Boolean) as any;
   }
 
   // line constraints
@@ -267,6 +446,46 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
   if (scl?.antiKnight) cosmetics.antiKnight = true;
   if (scl?.antiKing) cosmetics.antiKing = true;
   if (scl?.antiRook) cosmetics.antiRook = true;
+
+  // Fog of war: common SCL keys include foglight/fogLight/fogLights.
+  const rawFogLights = scl?.foglight ?? scl?.fogLight ?? scl?.fogLights ?? scl?.fog?.lights ?? scl?.fog?.light;
+  if (Array.isArray(rawFogLights)) {
+    cosmetics.fogLights = rawFogLights.map(asRC).filter(Boolean) as CellRC[];
+  } else if (Array.isArray(scl?.cells)) {
+    const fromCells: CellRC[] = [];
+    for (let r = 0; r < scl.cells.length; r++) {
+      const row = scl.cells[r];
+      if (!Array.isArray(row)) continue;
+      for (let c = 0; c < row.length; c++) {
+        const cell = row[c];
+        if (cell?.fogLight || cell?.foglight || cell?.light) fromCells.push({ r, c });
+      }
+    }
+    if (fromCells.length) cosmetics.fogLights = fromCells;
+  }
+
+  // Trigger-driven fog reveals (common in modern fog puzzles).
+  if (Array.isArray(scl?.triggereffect)) {
+    cosmetics.fogTriggerEffects = scl.triggereffect
+      .map((te: any) => {
+        if (te?.effect?.type !== "foglight") return null;
+        const triggerCells = [
+          ...parseRcString(te?.trigger?.cell),
+          ...parseRcString(te?.trigger?.ce),
+        ];
+        const revealCells = [
+          ...parseRcString(te?.effect?.cells),
+          ...parseRcString(te?.effect?.ce),
+        ];
+        if (!triggerCells.length || !revealCells.length) return null;
+        return { triggerCells, revealCells };
+      })
+      .filter(Boolean) as any;
+  }
+
+  // Keep solution if present so fog can reveal based on correct entries.
+  const solution = scl?.metadata?.solution;
+  if (typeof solution === "string") cosmetics.solution = solution;
 
   return cosmetics;
 }

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { getPuzzle, upsertPuzzle } from "../core/storage";
-import type { PersistedPuzzle, CellRC, LineStroke } from "../core/model";
+import type { PersistedPuzzle, CellRC, LineStroke, PuzzleProgress } from "../core/model";
 import { fmtHMS } from "../core/time";
 import type { Patch } from "../core/undo";
 import { applyPatch, invertPatch, patchAt } from "../core/undo";
@@ -21,6 +21,14 @@ export function PuzzlePage() {
 
   const userId = firebaseEnabled ? auth?.currentUser?.uid : null;
 
+  function normalizeProgress(progress: PuzzleProgress): PuzzleProgress {
+    if (progress.activeTool) return progress;
+    return {
+      ...progress,
+      activeTool: progress.entryMode === "center" ? "center" : progress.entryMode === "corner" ? "corner" : "value",
+    };
+  }
+
   useEffect(() => {
     (async () => {
       const local = await getPuzzle(key);
@@ -28,8 +36,9 @@ export function PuzzlePage() {
       if (userId) {
         const cloud = await pullPuzzle(userId, key);
         if (cloud) {
-          setData(cloud);
-          await upsertPuzzle(key, cloud);
+          const normalized = { ...cloud, progress: normalizeProgress(cloud.progress) };
+          setData(normalized);
+          await upsertPuzzle(key, normalized);
           return;
         }
       }
@@ -38,7 +47,8 @@ export function PuzzlePage() {
         nav("/");
         return;
       }
-      setData(local);
+      const normalized = { ...local, progress: normalizeProgress(local.progress) };
+      setData(normalized);
     })();
   }, [key, nav, userId]);
 
@@ -134,7 +144,7 @@ export function PuzzlePage() {
     patches.push(patchAt(data.progress, ["paused"], false));
 
     // apply as a bundle
-    let next = data.progress as any;
+    let next: PuzzleProgress = data.progress;
     for (const p of patches) next = applyPatch(next, p);
 
     persist({
@@ -185,14 +195,44 @@ export function PuzzlePage() {
     }
   }
 
-  function addLineSegment(a: CellRC, b: CellRC) {
+  function addLineStroke(path: CellRC[]) {
     if (!data) return;
+    if (path.length < 2) return;
+    const segments: Array<{ a: CellRC; b: CellRC }> = [];
+    for (let i = 1; i < path.length; i++) {
+      const a = path[i - 1];
+      const b = path[i];
+      const dr = Math.abs(a.r - b.r);
+      const dc = Math.abs(a.c - b.c);
+      if (dr > 1 || dc > 1 || (dr + dc === 0)) continue;
+      segments.push({ a, b });
+    }
+    if (!segments.length) return;
+
     const stroke: LineStroke = {
       kind: data.progress.linePaletteKind,
       color: data.progress.linePaletteColor,
-      segments: [{ a, b }],
+      segments,
     };
     pushPatch(patchAt(data.progress, ["lines"], [...data.progress.lines, stroke]));
+  }
+
+  function setActiveTool(tool: PuzzleProgress["activeTool"]) {
+    if (!data) return;
+    const patches: Patch[] = [patchAt(data.progress, ["activeTool"], tool)];
+    if (tool === "value") patches.push(patchAt(data.progress, ["entryMode"], "value"));
+    if (tool === "center") patches.push(patchAt(data.progress, ["entryMode"], "center"));
+    if (tool === "corner") patches.push(patchAt(data.progress, ["entryMode"], "corner"));
+
+    let nextProgress: PuzzleProgress = data.progress;
+    for (const p of patches) nextProgress = applyPatch(nextProgress, p);
+    persist({
+      ...data,
+      progress: nextProgress,
+      undo: [...data.undo, ...patches],
+      redo: [],
+      updatedAt: Date.now(),
+    });
   }
 
   if (!data) {
@@ -229,57 +269,82 @@ export function PuzzlePage() {
         </div>
       </div>
 
-      <div className="page">
+      <div className="page puzzlePage">
         <div className="gridLayout">
           <GridCanvas
             def={data.def}
             progress={data.progress}
             onSelection={setSelection}
-            onLineSegment={addLineSegment}
+            onLineStroke={addLineStroke}
           />
 
           <div className="kbdPanel">
-            <Keyboard
-              kind="numbers"
-              progress={data.progress}
-              onDigit={applyDigit}
-              onBackspace={() => applyDigit("0")}
-              onToggleAlphabet={() => pushPatch(patchAt(data.progress, ["alphabetMode"], !data.progress.alphabetMode))}
-              onMode={(m) => pushPatch(patchAt(data.progress, ["entryMode"], m))}
-            />
-
-            <Keyboard
-              kind="highlight"
-              progress={data.progress}
-              onColor={applyHighlight}
-              onWhite={() => applyHighlight("#ffffff")}
-              onBackspace={clearHighlight}
-              onFlipPalette={() => {
-                const next = ((data.progress.highlightPalettePage + 1) % 3) as 0 | 1 | 2;
-                pushPatch(patchAt(data.progress, ["highlightPalettePage"], next));
-              }}
-            />
-
-            <Keyboard
-              kind="line"
-              progress={data.progress}
-              onColor={(c) => pushPatch(patchAt(data.progress, ["linePaletteColor"], c))}
-              onLineKind={(k) => pushPatch(patchAt(data.progress, ["linePaletteKind"], k))}
-            />
-
-            <div className="card">
-              <div className="row">
-                <button
-                  className="btn"
-                  onClick={() => pushPatch(patchAt(data.progress, ["multiSelect"], !data.progress.multiSelect))}
-                >
-                  Selection: {data.progress.multiSelect ? "multi" : "single"}
-                </button>
-                <div className="muted" style={{ fontSize: 13 }}>
-                  Drag to select. Ctrl-like additive behavior is mapped to “multi”.
-                </div>
-              </div>
+            <div className="card toolSwitcher">
+              <button className={"btn" + (data.progress.activeTool === "value" ? " primary" : "")} onClick={() => setActiveTool("value")}>Big</button>
+              <button className={"btn" + (data.progress.activeTool === "center" ? " primary" : "")} onClick={() => setActiveTool("center")}>Center</button>
+              <button className={"btn" + (data.progress.activeTool === "corner" ? " primary" : "")} onClick={() => setActiveTool("corner")}>Edge</button>
+              <button className={"btn" + (data.progress.activeTool === "highlight" ? " primary" : "")} onClick={() => setActiveTool("highlight")}>Highlight</button>
+              <button className={"btn" + (data.progress.activeTool === "line" ? " primary" : "")} onClick={() => setActiveTool("line")}>Line</button>
             </div>
+
+            {data.progress.activeTool === "value" ? (
+              <Keyboard
+                kind="numbers"
+                title="Big Numbers"
+                hideEntryModeButtons
+                progress={data.progress}
+                onDigit={applyDigit}
+                onBackspace={() => applyDigit("0")}
+                onToggleAlphabet={() => pushPatch(patchAt(data.progress, ["alphabetMode"], !data.progress.alphabetMode))}
+              />
+            ) : null}
+
+            {data.progress.activeTool === "center" ? (
+              <Keyboard
+                kind="numbers"
+                title="Small Centered"
+                hideEntryModeButtons
+                progress={data.progress}
+                onDigit={applyDigit}
+                onBackspace={() => applyDigit("0")}
+                onToggleAlphabet={() => pushPatch(patchAt(data.progress, ["alphabetMode"], !data.progress.alphabetMode))}
+              />
+            ) : null}
+
+            {data.progress.activeTool === "corner" ? (
+              <Keyboard
+                kind="numbers"
+                title="Small Edge Notes"
+                hideEntryModeButtons
+                progress={data.progress}
+                onDigit={applyDigit}
+                onBackspace={() => applyDigit("0")}
+                onToggleAlphabet={() => pushPatch(patchAt(data.progress, ["alphabetMode"], !data.progress.alphabetMode))}
+              />
+            ) : null}
+
+            {data.progress.activeTool === "highlight" ? (
+              <Keyboard
+                kind="highlight"
+                progress={data.progress}
+                onColor={applyHighlight}
+                onWhite={() => applyHighlight("#ffffff")}
+                onBackspace={clearHighlight}
+                onFlipPalette={() => {
+                  const next = ((data.progress.highlightPalettePage + 1) % 3) as 0 | 1 | 2;
+                  pushPatch(patchAt(data.progress, ["highlightPalettePage"], next));
+                }}
+              />
+            ) : null}
+
+            {data.progress.activeTool === "line" ? (
+              <Keyboard
+                kind="line"
+                progress={data.progress}
+                onColor={(c) => pushPatch(patchAt(data.progress, ["linePaletteColor"], c))}
+                onLineKind={(k) => pushPatch(patchAt(data.progress, ["linePaletteKind"], k))}
+              />
+            ) : null}
           </div>
         </div>
       </div>

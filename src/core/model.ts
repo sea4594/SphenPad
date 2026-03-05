@@ -30,6 +30,33 @@ export type PuzzleCosmetics = {
   cages?: Array<{ cells: CellRC[]; sum?: string; color?: string }>;
   arrows?: Array<{ bulb: CellRC; path: CellRC[] }>;
   dots?: Array<{ a: CellRC; b: CellRC; kind: "black" | "white" }>;
+  lines?: Array<{ wayPoints: Array<{ x: number; y: number }>; color?: string; thickness?: number }>;
+  underlays?: Array<{
+    center: { x: number; y: number };
+    width?: number;
+    height?: number;
+    rounded?: boolean;
+    color?: string;
+    borderColor?: string;
+    borderThickness?: number;
+    text?: string;
+    textColor?: string;
+    textSize?: number;
+    angle?: number;
+  }>;
+  overlays?: Array<{
+    center: { x: number; y: number };
+    width?: number;
+    height?: number;
+    rounded?: boolean;
+    color?: string;
+    borderColor?: string;
+    borderThickness?: number;
+    text?: string;
+    textColor?: string;
+    textSize?: number;
+    angle?: number;
+  }>;
   
   // Line constraints
   thermolines?: Array<{ path: CellRC[]; color?: string }>;
@@ -54,6 +81,11 @@ export type PuzzleCosmetics = {
   antiKnight?: boolean;
   antiKing?: boolean;
   antiRook?: boolean;
+
+  // Fog of war
+  fogLights?: CellRC[];
+  fogTriggerEffects?: Array<{ triggerCells: CellRC[]; revealCells: CellRC[] }>;
+  solution?: string;
 };
 
 export type PuzzleDefinition = {
@@ -86,6 +118,9 @@ export type PuzzleProgress = {
 
   linePaletteColor: string;
   linePaletteKind: LineStroke["kind"];
+
+  // Exactly one visible tool on the puzzle page.
+  activeTool: "value" | "center" | "corner" | "highlight" | "line";
 
   paused: boolean;
 };
