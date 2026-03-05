@@ -194,6 +194,16 @@ function asPoint(pt: any): { x: number; y: number } | null {
   return null;
 }
 
+function normalizeColorToken(v: any): string | undefined {
+  if (typeof v !== "string") return undefined;
+  let s = v.trim();
+  // Loose-literal normalization can sometimes leave embedded quotes in color fields.
+  s = s.replace(/^"+|"+$/g, "");
+  if (s.startsWith("\\\"") && s.endsWith("\\\"")) s = s.slice(2, -2);
+  s = s.replace(/^"+|"+$/g, "");
+  return s || undefined;
+}
+
 function parseRcString(value: any): CellRC[] {
   if (typeof value !== "string") return [];
   const out: CellRC[] = [];
@@ -484,7 +494,7 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
         if (wayPoints.length < 2) return null;
         return {
           wayPoints,
-          color: ln?.color ?? ln?.c,
+          color: normalizeColorToken(ln?.color ?? ln?.c),
           thickness: typeof (ln?.thickness ?? ln?.th) === "number" ? (ln?.thickness ?? ln?.th) : undefined,
         };
       })
@@ -499,11 +509,11 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
       width: typeof (item?.width ?? item?.w) === "number" ? (item?.width ?? item?.w) : undefined,
       height: typeof (item?.height ?? item?.h) === "number" ? (item?.height ?? item?.h) : undefined,
       rounded: Boolean(item?.rounded ?? item?.r),
-      color: item?.backgroundColor ?? item?.c2 ?? item?.fill,
-      borderColor: item?.borderColor ?? item?.c ?? undefined,
+      color: normalizeColorToken(item?.backgroundColor ?? item?.c2 ?? item?.fill),
+      borderColor: normalizeColorToken(item?.borderColor ?? item?.stroke ?? item?.c ?? item?.c1),
       borderThickness: typeof (item?.thickness ?? item?.th) === "number" ? (item?.thickness ?? item?.th) : undefined,
       text: item?.text ?? item?.te,
-      textColor: item?.color ?? item?.c1,
+      textColor: normalizeColorToken(item?.color ?? item?.textColor),
       textSize:
         typeof (item?.textSize ?? item?.fontSize ?? item?.fs) === "number"
           ? (item?.textSize ?? item?.fontSize ?? item?.fs)

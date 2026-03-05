@@ -199,7 +199,7 @@ export function GridCanvas(props: {
       ctx.stroke();
     }
 
-    const drawLayer = (items: NonNullable<PuzzleDefinition["cosmetics"]["underlays"]>, alpha = 0.22) => {
+    const drawLayer = (items: NonNullable<PuzzleDefinition["cosmetics"]["underlays"]>) => {
       for (const item of items) {
         const w = Number.isFinite(item.width) ? item.width! : 1;
         const h = Number.isFinite(item.height) ? item.height! : 1;
@@ -207,10 +207,17 @@ export function GridCanvas(props: {
         const y = worldY(item.center.y - h / 2);
         const rw = w * cellPx;
         const rh = h * cellPx;
+        const cx = worldX(item.center.x);
+        const cy = worldY(item.center.y);
+        const angleRad = (Number(item.angle) || 0) * (Math.PI / 180);
 
         if (item.color) {
           ctx.save();
-          ctx.globalAlpha = alpha;
+          if (angleRad) {
+            ctx.translate(cx, cy);
+            ctx.rotate(angleRad);
+            ctx.translate(-cx, -cy);
+          }
           ctx.fillStyle = item.color;
           if (item.rounded) {
             ctx.beginPath();
@@ -224,6 +231,11 @@ export function GridCanvas(props: {
 
         if (item.borderColor) {
           ctx.save();
+          if (angleRad) {
+            ctx.translate(cx, cy);
+            ctx.rotate(angleRad);
+            ctx.translate(-cx, -cy);
+          }
           ctx.strokeStyle = item.borderColor;
           ctx.lineWidth = item.borderThickness ?? Math.max(1.4, cellPx * 0.04);
           if (item.rounded) {
@@ -238,6 +250,11 @@ export function GridCanvas(props: {
 
         if (item.text != null && String(item.text).length) {
           ctx.save();
+          if (angleRad) {
+            ctx.translate(cx, cy);
+            ctx.rotate(angleRad);
+            ctx.translate(-cx, -cy);
+          }
           ctx.fillStyle = item.textColor ?? "rgba(20,47,88,.92)";
           const px = (item.textSize ?? 16) * (cellPx / 56);
           ctx.font = `700 ${Math.max(10, px)}px ui-sans-serif`;
@@ -249,7 +266,7 @@ export function GridCanvas(props: {
       }
     };
 
-    if (def.cosmetics.underlays?.length) drawLayer(def.cosmetics.underlays, 0.22);
+    if (def.cosmetics.underlays?.length) drawLayer(def.cosmetics.underlays);
 
     if (def.cosmetics.cages) {
       ctx.strokeStyle = "rgba(18,42,77,.82)";
@@ -476,16 +493,9 @@ export function GridCanvas(props: {
     const lit = Array.from({ length: n }, () => Array.from({ length: n }, () => false));
     const fogDefined = (def.cosmetics.fogLights?.length ?? 0) > 0 || (def.cosmetics.fogTriggerEffects?.length ?? 0) > 0;
     if (fogDefined) {
-      const lightRadius = 1;
       const addLight = (rc: CellRC) => {
         if (!inBounds(rc.r, rc.c)) return;
-        for (let dr = -lightRadius; dr <= lightRadius; dr++) {
-          for (let dc = -lightRadius; dc <= lightRadius; dc++) {
-            const rr = rc.r + dr;
-            const cc = rc.c + dc;
-            if (inBounds(rr, cc)) lit[rr][cc] = true;
-          }
-        }
+        lit[rc.r][rc.c] = true;
       };
 
       for (const rc of def.cosmetics.fogLights ?? []) addLight(rc);
@@ -563,10 +573,10 @@ export function GridCanvas(props: {
       }
     }
 
-    if (def.cosmetics.overlays?.length) drawLayer(def.cosmetics.overlays, 0.16);
+    if (def.cosmetics.overlays?.length) drawLayer(def.cosmetics.overlays);
 
     if (fogDefined) {
-      ctx.fillStyle = "rgba(84, 88, 98, .7)";
+      ctx.fillStyle = "#c8cdd3";
       for (let r = 0; r < n; r++) {
         for (let c = 0; c < n; c++) {
           if (lit[r][c]) continue;
