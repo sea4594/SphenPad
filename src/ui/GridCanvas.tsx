@@ -763,6 +763,42 @@ export function GridCanvas(props: {
     return fx < 0.5 ? "left" : "right";
   }
 
+  function nextEdgeNeighbor(last: CellRC, clientX: number, clientY: number): CellRC | null {
+    const rect = canvasRef.current?.getBoundingClientRect();
+    if (!rect) return null;
+
+    const bx = clientX - rect.left - originX;
+    const by = clientY - rect.top - originY;
+    const lx = bx / cellPx - last.c;
+    const ly = by / cellPx - last.r;
+
+    // Trigger edge transitions using wide corridors near borders, including
+    // slight overshoot outside the current cell bounds.
+    const corridor = 0.34;
+    const dTop = ly;
+    const dBottom = 1 - ly;
+    const dLeft = lx;
+    const dRight = 1 - lx;
+
+    const candidates: Array<{ dir: "top" | "bottom" | "left" | "right"; score: number }> = [];
+    if (dTop <= corridor) candidates.push({ dir: "top", score: dTop });
+    if (dBottom <= corridor) candidates.push({ dir: "bottom", score: dBottom });
+    if (dLeft <= corridor) candidates.push({ dir: "left", score: dLeft });
+    if (dRight <= corridor) candidates.push({ dir: "right", score: dRight });
+
+    if (!candidates.length) return null;
+    candidates.sort((a, b) => a.score - b.score);
+
+    for (const c of candidates) {
+      if (c.dir === "top" && inBounds(last.r - 1, last.c)) return { r: last.r - 1, c: last.c };
+      if (c.dir === "bottom" && inBounds(last.r + 1, last.c)) return { r: last.r + 1, c: last.c };
+      if (c.dir === "left" && inBounds(last.r, last.c - 1)) return { r: last.r, c: last.c - 1 };
+      if (c.dir === "right" && inBounds(last.r, last.c + 1)) return { r: last.r, c: last.c + 1 };
+    }
+
+    return null;
+  }
+
   function onDown(e: React.PointerEvent) {
     const pt = eventPoint(e.clientX, e.clientY);
     if (!pt) return;
@@ -787,8 +823,10 @@ export function GridCanvas(props: {
     if (progress.activeTool === "line") {
       const kind = drag.lineKind ?? "center";
       const pt = eventPoint(e.clientX, e.clientY);
-      if (!pt) return;
-      const next = { r: pt.r, c: pt.c };
+      const next = kind === "edge"
+        ? nextEdgeNeighbor(drag.last, e.clientX, e.clientY)
+        : (pt ? { r: pt.r, c: pt.c } : null);
+      if (!next) return;
       if (next.r === drag.last.r && next.c === drag.last.c) return;
 
       const dr = next.r - drag.last.r;
@@ -796,21 +834,16 @@ export function GridCanvas(props: {
       if (Math.abs(dr) > 1 || Math.abs(dc) > 1) return;
       if (kind === "edge" && Math.abs(dr) + Math.abs(dc) !== 1) return;
 
-      // Only transition once the pointer is reasonably inside the target cell.
-      const minInterior = 0.22;
-      const maxInterior = 0.78;
-      if (dr < 0 && pt.fy > maxInterior) return;
-      if (dr > 0 && pt.fy < minInterior) return;
-      if (dc < 0 && pt.fx > maxInterior) return;
-      if (dc > 0 && pt.fx < minInterior) return;
-
       const prevCell = drag.path[drag.path.length - 2];
       if (prevCell && prevCell.r === next.r && prevCell.c === next.c) {
         drag.path.pop();
         drag.segments.pop();
       } else {
         const seg: LineSegmentDraft = { a: drag.last, b: next };
-        if (kind === "edge") seg.edgeTrack = edgeTrackForStep(drag.last, next, pt.fx, pt.fy);
+        if (kind === "edge") {
+          const edgePt = pt ?? eventPoint(e.clientX, e.clientY);
+          if (edgePt) seg.edgeTrack = edgeTrackForStep(drag.last, next, edgePt.fx, edgePt.fy);
+        }
         drag.path.push(next);
         drag.segments.push(seg);
       }
