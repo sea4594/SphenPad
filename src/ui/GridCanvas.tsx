@@ -754,13 +754,98 @@ export function GridCanvas(props: {
   function resolveInitialLineKind(point: { fx: number; fy: number }): LineKindResolved {
     if (progress.linePaletteKind === "center") return "center";
     if (progress.linePaletteKind === "edge") return "edge";
-    const nearEdge = Math.min(point.fx, point.fy, 1 - point.fx, 1 - point.fy) <= 0.2;
-    return nearEdge ? "edge" : "center";
+
+    // In "both" mode, choose intent by nearest node type:
+    // cell center (center mode) vs cell corner (edge mode).
+    const dCenter = Math.hypot(point.fx - 0.5, point.fy - 0.5);
+    const dCorner = Math.min(
+      Math.hypot(point.fx, point.fy),
+      Math.hypot(1 - point.fx, point.fy),
+      Math.hypot(point.fx, 1 - point.fy),
+      Math.hypot(1 - point.fx, 1 - point.fy),
+    );
+    return dCorner < dCenter ? "edge" : "center";
   }
 
   function edgeTrackForStep(a: CellRC, b: CellRC, fx: number, fy: number): EdgeTrack {
     if (a.r === b.r) return fy < 0.5 ? "top" : "bottom";
     return fx < 0.5 ? "left" : "right";
+  }
+
+  function nextEdgeNeighborFromCorner(last: CellRC, prev: CellRC | null, clientX: number, clientY: number): CellRC | null {
+    const rect = canvasRef.current?.getBoundingClientRect();
+    if (!rect) return null;
+
+    const bx = clientX - rect.left - originX;
+    const by = clientY - rect.top - originY;
+    const lx = bx / cellPx - last.c;
+    const ly = by / cellPx - last.r;
+
+    const corners = [
+      { name: "tl", x: 0, y: 0, dirs: ["up", "left"] as const },
+      { name: "tr", x: 1, y: 0, dirs: ["up", "right"] as const },
+      { name: "bl", x: 0, y: 1, dirs: ["down", "left"] as const },
+      { name: "br", x: 1, y: 1, dirs: ["down", "right"] as const },
+    ];
+
+    let nearest = corners[0];
+    let best = Number.POSITIVE_INFINITY;
+    for (const c of corners) {
+      const d2 = (lx - c.x) ** 2 + (ly - c.y) ** 2;
+      if (d2 < best) {
+        best = d2;
+        nearest = c;
+      }
+    }
+
+    // Corner-centered hitbox.
+    const cornerRadius = 0.42;
+    if (best > cornerRadius ** 2) return null;
+
+    const dx = lx - nearest.x;
+    const dy = ly - nearest.y;
+    const absDx = Math.abs(dx);
+    const absDy = Math.abs(dy);
+
+    const prevDir: "up" | "down" | "left" | "right" | null = prev
+      ? (prev.r !== last.r ? (prev.r < last.r ? "down" : "up") : prev.c < last.c ? "right" : "left")
+      : null;
+
+    let dir: "up" | "down" | "left" | "right";
+    const cornerAllowsPrev = Boolean(
+      prevDir && (
+        (nearest.name === "tl" && (prevDir === "up" || prevDir === "left")) ||
+        (nearest.name === "tr" && (prevDir === "up" || prevDir === "right")) ||
+        (nearest.name === "bl" && (prevDir === "down" || prevDir === "left")) ||
+        (nearest.name === "br" && (prevDir === "down" || prevDir === "right"))
+      )
+    );
+
+    if (cornerAllowsPrev && prevDir) {
+      const keepPrev =
+        (prevDir === "left" || prevDir === "right")
+          ? absDx + 0.08 >= absDy
+          : absDy + 0.08 >= absDx;
+      if (keepPrev) {
+        dir = prevDir as any;
+      } else {
+        if (nearest.name === "tl") dir = prevDir === "up" ? "left" : "up";
+        else if (nearest.name === "tr") dir = prevDir === "up" ? "right" : "up";
+        else if (nearest.name === "bl") dir = prevDir === "down" ? "left" : "down";
+        else dir = prevDir === "down" ? "right" : "down";
+      }
+    } else {
+      if (absDx >= absDy) {
+        dir = nearest.name === "tl" || nearest.name === "bl" ? "left" : "right";
+      } else {
+        dir = nearest.name === "tl" || nearest.name === "tr" ? "up" : "down";
+      }
+    }
+
+    if (dir === "up") return inBounds(last.r - 1, last.c) ? { r: last.r - 1, c: last.c } : null;
+    if (dir === "down") return inBounds(last.r + 1, last.c) ? { r: last.r + 1, c: last.c } : null;
+    if (dir === "left") return inBounds(last.r, last.c - 1) ? { r: last.r, c: last.c - 1 } : null;
+    return inBounds(last.r, last.c + 1) ? { r: last.r, c: last.c + 1 } : null;
   }
 
   function onDown(e: React.PointerEvent) {
@@ -787,8 +872,10 @@ export function GridCanvas(props: {
     if (progress.activeTool === "line") {
       const kind = drag.lineKind ?? "center";
       const pt = eventPoint(e.clientX, e.clientY);
-      if (!pt) return;
-      const next = { r: pt.r, c: pt.c };
+      const prevCell = drag.path[drag.path.length - 2] ?? null;
+      const next = kind === "edge"
+        ? nextEdgeNeighborFromCorner(drag.last, prevCell, e.clientX, e.clientY)
+        : (pt ? { r: pt.r, c: pt.c } : null);
       if (!next) return;
       if (next.r === drag.last.r && next.c === drag.last.c) return;
 
@@ -797,21 +884,20 @@ export function GridCanvas(props: {
       if (Math.abs(dr) > 1 || Math.abs(dc) > 1) return;
       if (kind === "edge" && Math.abs(dr) + Math.abs(dc) !== 1) return;
 
-      const prevCell = drag.path[drag.path.length - 2] ?? null;
-
       if (prevCell && prevCell.r === next.r && prevCell.c === next.c) {
         drag.path.pop();
         drag.segments.pop();
       } else {
         const seg: LineSegmentDraft = { a: drag.last, b: next };
         if (kind === "edge") {
+          const edgePt = pt ?? eventPoint(e.clientX, e.clientY);
           const prevSeg = drag.segments[drag.segments.length - 1];
           const sameOrientation =
             prevSeg &&
             (prevSeg.a.r === prevSeg.b.r) === (seg.a.r === seg.b.r);
           seg.edgeTrack = sameOrientation && prevSeg?.edgeTrack
             ? prevSeg.edgeTrack
-            : edgeTrackForStep(drag.last, next, pt.fx, pt.fy);
+            : edgeTrackForStep(drag.last, next, edgePt?.fx ?? 0.5, edgePt?.fy ?? 0.5);
         }
         drag.path.push(next);
         drag.segments.push(seg);
