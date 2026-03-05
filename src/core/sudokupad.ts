@@ -164,7 +164,9 @@ const SclSchema = z.object({
 }).passthrough();
 
 function asRC(rc: any): CellRC | null {
-  if (Array.isArray(rc) && rc.length >= 2) return { r: Number(rc[0]), c: Number(rc[1]) };
+  // Many SudokuPad cosmetic coordinates are encoded as [x, y].
+  // For cell indices we normalize to { r: y, c: x }.
+  if (Array.isArray(rc) && rc.length >= 2) return { r: Number(rc[1]), c: Number(rc[0]) };
   if (rc && typeof rc === "object") {
     if (typeof rc.r === "number" && typeof rc.c === "number") return { r: rc.r, c: rc.c };
     if (typeof rc.row === "number" && typeof rc.col === "number") return { r: rc.row, c: rc.col };
@@ -224,6 +226,14 @@ export async function loadFromSudokuPad(inputUrlOrId: string): Promise<{ key: st
     title: sclObj?.metadata?.title ?? sclObj?.metadata?.name ?? "",
     author: sclObj?.metadata?.author ?? "",
     rules: sclObj?.metadata?.rules ?? sclObj?.metadata?.rule ?? "",
+    postSolveMessage:
+      sclObj?.metadata?.postSolveMessage ??
+      sclObj?.metadata?.postsolve ??
+      sclObj?.metadata?.successMessage ??
+      sclObj?.metadata?.congrats ??
+      sclObj?.metadata?.msgcorrect ??
+      sclObj?.metadata?.messageAfterSolve ??
+      "",
   };
 
   const givens = extractGivens(sclObj);

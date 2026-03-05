@@ -1,13 +1,13 @@
 :root {
-  --bg: #0a1320;
-  --panel: #121f32;
-  --panel-soft: rgba(14, 32, 53, 0.86);
-  --text: #ecf2ff;
-  --muted: #a2b5cf;
-  --accent: #3ec5a3;
-  --danger: #ff6b6b;
+  --bg: #edf3fb;
+  --panel: #ffffff;
+  --panel-soft: rgba(255, 255, 255, 0.95);
+  --text: #132744;
+  --muted: #4f6786;
+  --accent: #1f8fce;
+  --danger: #c7374e;
   --ok: #57d38c;
-  color-scheme: dark;
+  color-scheme: light;
   font-family: Manrope, "Segoe UI", "Trebuchet MS", sans-serif;
 }
 
@@ -15,8 +15,8 @@ html, body {
   margin: 0;
   height: 100%;
   background:
-    radial-gradient(1200px 700px at -10% -10%, #143353 0%, transparent 60%),
-    radial-gradient(900px 600px at 110% -20%, #0e4a4a 0%, transparent 65%),
+    radial-gradient(1100px 650px at -10% -10%, #c8dbf2 0%, transparent 62%),
+    radial-gradient(900px 600px at 110% -20%, #d4ece6 0%, transparent 66%),
     var(--bg);
   color: var(--text);
 }
@@ -37,7 +37,7 @@ button, input { font: inherit; color: inherit; }
   padding: 12px 14px;
   background: var(--panel-soft);
   backdrop-filter: blur(6px);
-  border-bottom: 1px solid rgba(255,255,255,.08);
+  border-bottom: 1px solid rgba(17, 44, 78, .14);
   position: sticky;
   top: 0;
   z-index: 20;
@@ -47,11 +47,11 @@ button, input { font: inherit; color: inherit; }
 .muted { color: var(--muted); }
 
 .card {
-  background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
-  border: 1px solid rgba(255,255,255,.12);
+  background: linear-gradient(180deg, rgba(255,255,255,1), rgba(248, 252, 255, 1));
+  border: 1px solid rgba(17, 44, 78, .14);
   border-radius: 14px;
   padding: 14px;
-  box-shadow: 0 10px 20px rgba(0,0,0,.18);
+  box-shadow: 0 10px 22px rgba(18, 50, 86, .12);
 }
 
 .page {
@@ -67,22 +67,22 @@ input.url {
   width: min(820px, 100%);
   padding: 10px 12px;
   border-radius: 12px;
-  border: 1px solid rgba(255,255,255,.12);
-  background: rgba(0,0,0,.25);
+  border: 1px solid rgba(21, 55, 93, .2);
+  background: rgba(255,255,255,.92);
 }
 
 .btn {
   padding: 10px 12px;
   border-radius: 12px;
-  border: 1px solid rgba(255,255,255,.12);
-  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(21, 55, 93, .2);
+  background: rgba(255,255,255,.92);
   cursor: pointer;
   min-height: 44px;
   touch-action: manipulation;
 }
-.btn:hover { border-color: rgba(255,255,255,.22); }
-.btn.primary { background: rgba(62,197,163,.22); border-color: rgba(62,197,163,.48); }
-.btn.danger { background: rgba(255,107,107,.16); border-color: rgba(255,107,107,.38); }
+.btn:hover { border-color: rgba(21, 55, 93, .35); }
+.btn.primary { background: rgba(31,143,206,.14); border-color: rgba(31,143,206,.45); }
+.btn.danger { background: rgba(199,55,78,.12); border-color: rgba(199,55,78,.4); }
 
 .gridLayout {
   display: grid;

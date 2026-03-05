@@ -6,6 +6,7 @@ import { fmtHMS } from "../core/time";
 import type { Patch } from "../core/undo";
 import { applyPatch, invertPatch, patchAt } from "../core/undo";
 import { PauseOverlay } from "./PauseOverlay";
+import { CompletionOverlay } from "./CompletionOverlay";
 import { Keyboard } from "./Keyboard";
 import { GridCanvas } from "./GridCanvas";
 import {
@@ -31,6 +32,29 @@ function segKey(a: CellRC, b: CellRC) {
   return ak < bk ? `${ak}|${bk}` : `${bk}|${ak}`;
 }
 
+function segKeyWithTrack(seg: { a: CellRC; b: CellRC; edgeTrack?: "top" | "bottom" | "left" | "right" }) {
+  return `${segKey(seg.a, seg.b)}:${seg.edgeTrack ?? "-"}`;
+}
+
+function isSolved(progress: PuzzleProgress, solution?: string): boolean {
+  const n = progress.cells.length;
+  if (solution && solution.length >= n * n) {
+    for (let r = 0; r < n; r++) {
+      for (let c = 0; c < n; c++) {
+        const idx = r * n + c;
+        if ((progress.cells[r][c].value ?? "") !== solution[idx]) return false;
+      }
+    }
+    return true;
+  }
+  for (let r = 0; r < n; r++) {
+    for (let c = 0; c < n; c++) {
+      if (!progress.cells[r][c].value) return false;
+    }
+  }
+  return true;
+}
+
 function sharesSelectedCell(a: CellRC, b: CellRC, selected: Set<string>) {
   return selected.has(rcKey(a)) || selected.has(rcKey(b));
 }
@@ -42,6 +66,7 @@ export function PuzzlePage() {
 
   const [data, setData] = useState<PersistedPuzzle | null>(null);
   const [pauseMenuOpen, setPauseMenuOpen] = useState(false);
+  const [completionOpen, setCompletionOpen] = useState(false);
   const tickRef = useRef<number | null>(null);
 
   const userId = firebaseEnabled ? auth?.currentUser?.uid : null;
@@ -106,6 +131,15 @@ export function PuzzlePage() {
       if (tickRef.current) window.clearInterval(tickRef.current);
       tickRef.current = null;
     };
+  }, [data]);
+
+  useEffect(() => {
+    if (!data) return;
+    if (data.progress.status === "complete") return;
+    const solved = isSolved(data.progress, data.def.cosmetics.solution);
+    if (!solved) return;
+    pushPatch(patchAt(data.progress, ["status"], "complete"));
+    setCompletionOpen(true);
   }, [data]);
 
   const meta = data?.def.meta;
@@ -349,28 +383,27 @@ export function PuzzlePage() {
     pushPatch(patchAt(data.progress, ["lineEdgeMarks"], next));
   }
 
-  function onLineStroke(path: CellRC[], resolvedKind: "center" | "edge") {
-    if (!data || path.length < 2) return;
-    const segments: Array<{ a: CellRC; b: CellRC }> = [];
-    for (let i = 1; i < path.length; i++) {
-      const a = path[i - 1];
-      const b = path[i];
-      const dr = Math.abs(a.r - b.r);
-      const dc = Math.abs(a.c - b.c);
-      if (resolvedKind === "edge" && dr + dc !== 1) continue;
-      if (dr > 1 || dc > 1 || (dr + dc === 0)) continue;
-      segments.push({ a, b });
-    }
+  function onLineStroke(
+    segmentsInput: Array<{ a: CellRC; b: CellRC; edgeTrack?: "top" | "bottom" | "left" | "right" }>,
+    resolvedKind: "center" | "edge"
+  ) {
+    if (!data || segmentsInput.length < 1) return;
+    const segments = segmentsInput.filter((seg) => {
+      const dr = Math.abs(seg.a.r - seg.b.r);
+      const dc = Math.abs(seg.a.c - seg.b.c);
+      if (resolvedKind === "edge" && dr + dc !== 1) return false;
+      return dr <= 1 && dc <= 1 && dr + dc > 0;
+    });
     if (!segments.length) return;
 
-    const drawKeys = new Set(segments.map((seg) => segKey(seg.a, seg.b)));
-    const overlaps = data.progress.lines.some((s) => s.segments.some((seg) => drawKeys.has(segKey(seg.a, seg.b))));
+    const drawKeys = new Set(segments.map(segKeyWithTrack));
+    const overlaps = data.progress.lines.some((s) => s.segments.some((seg) => drawKeys.has(segKeyWithTrack(seg))));
 
     if (overlaps) {
       const lines = data.progress.lines
         .map((stroke) => ({
           ...stroke,
-          segments: stroke.segments.filter((seg) => !drawKeys.has(segKey(seg.a, seg.b))),
+          segments: stroke.segments.filter((seg) => !drawKeys.has(segKeyWithTrack(seg))),
         }))
         .filter((stroke) => stroke.segments.length > 0);
       pushPatch(patchAt(data.progress, ["lines"], lines));
@@ -479,6 +512,14 @@ export function PuzzlePage() {
           onStart={startOrResume}
           onResume={startOrResume}
           onStayPaused={() => setPauseMenuOpen(false)}
+        />
+      )}
+
+      {completionOpen && (
+        <CompletionOverlay
+          meta={meta}
+          elapsed={timeStr}
+          onClose={() => setCompletionOpen(false)}
         />
       )}
     </div>

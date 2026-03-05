@@ -1,25 +1,28 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import type { CellRC, PuzzleDefinition, PuzzleProgress } from "../core/model";
 
-function rcKey(rc: CellRC) {
-  return `${rc.r},${rc.c}`;
-}
-
 type LineKindResolved = "center" | "edge";
+type EdgeTrack = "top" | "bottom" | "left" | "right";
+type LineSegmentDraft = { a: CellRC; b: CellRC; edgeTrack?: EdgeTrack };
 
 type DragState = {
   path: CellRC[];
+  segments: LineSegmentDraft[];
   last: CellRC;
   moved: boolean;
   lineKind?: LineKindResolved;
   visited: Set<string>;
 };
 
+function rcKey(rc: CellRC) {
+  return `${rc.r},${rc.c}`;
+}
+
 export function GridCanvas(props: {
   def: PuzzleDefinition;
   progress: PuzzleProgress;
   onSelection: (sel: CellRC[]) => void;
-  onLineStroke: (path: CellRC[], kind: LineKindResolved) => void;
+  onLineStroke: (segments: LineSegmentDraft[], kind: LineKindResolved) => void;
   onLineTapCell: (rc: CellRC) => void;
   onLineTapEdge: (a: CellRC, b: CellRC) => void;
 }) {
@@ -31,7 +34,7 @@ export function GridCanvas(props: {
   const n = def.size;
   const [cellPx, setCellPx] = useState(56);
   const [bgImage, setBgImage] = useState<HTMLImageElement | null>(null);
-  const [linePreview, setLinePreview] = useState<{ path: CellRC[]; kind: LineKindResolved } | null>(null);
+  const [linePreview, setLinePreview] = useState<{ segments: LineSegmentDraft[]; kind: LineKindResolved } | null>(null);
 
   const pad = Math.max(14, Math.round(cellPx * 0.32));
   const sizePx = pad * 2 + cellPx * n;
@@ -120,7 +123,7 @@ export function GridCanvas(props: {
       }
     }
 
-    ctx.strokeStyle = "rgba(122,162,255,.9)";
+    ctx.strokeStyle = "rgba(46,120,255,.85)";
     ctx.lineWidth = 2;
     for (const rc of progress.selection) {
       ctx.strokeRect(pad + rc.c * cellPx + 1, pad + rc.r * cellPx + 1, cellPx - 2, cellPx - 2);
@@ -129,7 +132,7 @@ export function GridCanvas(props: {
     for (let i = 0; i <= n; i++) {
       const w = i % 3 === 0 ? 2.5 : 1;
       ctx.lineWidth = w;
-      ctx.strokeStyle = "rgba(255,255,255,.65)";
+      ctx.strokeStyle = "rgba(28,46,74,.62)";
       ctx.beginPath();
       ctx.moveTo(pad, pad + i * cellPx);
       ctx.lineTo(pad + n * cellPx, pad + i * cellPx);
@@ -141,12 +144,12 @@ export function GridCanvas(props: {
     }
 
     if (def.cosmetics.cages) {
-      ctx.strokeStyle = "rgba(255,255,255,.95)";
+      ctx.strokeStyle = "rgba(18,42,77,.82)";
       ctx.lineWidth = 1.25;
       ctx.setLineDash([5, 3]);
       for (const cage of def.cosmetics.cages) {
         const set = new Set(cage.cells.map((rc) => `${rc.r},${rc.c}`));
-        ctx.fillStyle = "rgba(255,255,255,.025)";
+        ctx.fillStyle = "rgba(80,120,160,.05)";
         for (const rc of cage.cells) {
           ctx.fillRect(pad + rc.c * cellPx + 2, pad + rc.r * cellPx + 2, cellPx - 4, cellPx - 4);
           const x = pad + rc.c * cellPx;
@@ -185,7 +188,7 @@ export function GridCanvas(props: {
         }
         if (cage.sum) {
           const first = cage.cells[0];
-          ctx.fillStyle = "rgba(255,255,255,.85)";
+          ctx.fillStyle = "rgba(12, 30, 55, .8)";
           ctx.font = "12px ui-sans-serif";
           ctx.fillText(cage.sum, pad + first.c * cellPx + 6, pad + first.r * cellPx + 14);
         }
@@ -212,7 +215,7 @@ export function GridCanvas(props: {
     }
 
     if (def.cosmetics.arrows) {
-      ctx.strokeStyle = "rgba(255,255,255,.9)";
+      ctx.strokeStyle = "rgba(20,47,88,.9)";
       ctx.lineWidth = 3;
       for (const a of def.cosmetics.arrows) {
         ctx.beginPath();
@@ -224,7 +227,7 @@ export function GridCanvas(props: {
         });
         ctx.stroke();
         const b = a.bulb;
-        ctx.fillStyle = "rgba(255,255,255,.95)";
+        ctx.fillStyle = "rgba(20,47,88,.95)";
         ctx.beginPath();
         ctx.arc(pad + b.c * cellPx + cellPx / 2, pad + b.r * cellPx + cellPx / 2, 8, 0, Math.PI * 2);
         ctx.fill();
@@ -244,15 +247,15 @@ export function GridCanvas(props: {
         const y = (ay + by) / 2;
         ctx.beginPath();
         ctx.arc(x, y, 7, 0, Math.PI * 2);
-        ctx.fillStyle = d.kind === "white" ? "rgba(255,255,255,.95)" : "rgba(0,0,0,.95)";
+        ctx.fillStyle = d.kind === "white" ? "#ffffff" : "#1b1b1b";
         ctx.fill();
-        ctx.strokeStyle = "rgba(255,255,255,.85)";
+        ctx.strokeStyle = "rgba(20,47,88,.6)";
         ctx.lineWidth = 2;
         ctx.stroke();
       }
     }
 
-    const drawCenterStroke = (segments: Array<{ a: CellRC; b: CellRC }>, color: string, alpha = 1) => {
+    const drawCenterStroke = (segments: LineSegmentDraft[], color: string, alpha = 1) => {
       ctx.save();
       ctx.globalAlpha = alpha;
       ctx.strokeStyle = color;
@@ -272,7 +275,7 @@ export function GridCanvas(props: {
       ctx.restore();
     };
 
-    const drawEdgeStroke = (segments: Array<{ a: CellRC; b: CellRC }>, color: string, alpha = 1) => {
+    const drawEdgeStroke = (segments: LineSegmentDraft[], color: string, alpha = 1) => {
       ctx.save();
       ctx.globalAlpha = alpha;
       ctx.strokeStyle = color;
@@ -282,19 +285,26 @@ export function GridCanvas(props: {
         const dr = seg.b.r - seg.a.r;
         const dc = seg.b.c - seg.a.c;
         if (Math.abs(dr) + Math.abs(dc) !== 1) continue;
+
         if (dr === 0) {
-          const y0 = pad + seg.a.r * cellPx;
-          const x = pad + (Math.min(seg.a.c, seg.b.c) + 1) * cellPx;
-          ctx.beginPath();
-          ctx.moveTo(x, y0);
-          ctx.lineTo(x, y0 + cellPx);
-          ctx.stroke();
-        } else {
-          const x0 = pad + seg.a.c * cellPx;
-          const y = pad + (Math.min(seg.a.r, seg.b.r) + 1) * cellPx;
+          const row = seg.a.r;
+          const minC = Math.min(seg.a.c, seg.b.c);
+          const y = seg.edgeTrack === "bottom" ? pad + (row + 1) * cellPx : pad + row * cellPx;
+          const x0 = pad + minC * cellPx;
+          const x1 = pad + (minC + 2) * cellPx;
           ctx.beginPath();
           ctx.moveTo(x0, y);
-          ctx.lineTo(x0 + cellPx, y);
+          ctx.lineTo(x1, y);
+          ctx.stroke();
+        } else {
+          const col = seg.a.c;
+          const minR = Math.min(seg.a.r, seg.b.r);
+          const x = seg.edgeTrack === "right" ? pad + (col + 1) * cellPx : pad + col * cellPx;
+          const y0 = pad + minR * cellPx;
+          const y1 = pad + (minR + 2) * cellPx;
+          ctx.beginPath();
+          ctx.moveTo(x, y0);
+          ctx.lineTo(x, y1);
           ctx.stroke();
         }
       }
@@ -306,10 +316,9 @@ export function GridCanvas(props: {
       else drawCenterStroke(stroke.segments, stroke.color);
     }
 
-    if (linePreview && linePreview.path.length > 1) {
-      const segments = linePreview.path.slice(1).map((p, i) => ({ a: linePreview.path[i], b: p }));
-      if (linePreview.kind === "edge") drawEdgeStroke(segments, progress.linePaletteColor, 0.8);
-      else drawCenterStroke(segments, progress.linePaletteColor, 0.8);
+    if (linePreview) {
+      if (linePreview.kind === "edge") drawEdgeStroke(linePreview.segments, progress.linePaletteColor, 0.8);
+      else drawCenterStroke(linePreview.segments, progress.linePaletteColor, 0.8);
     }
 
     for (const mark of progress.lineCenterMarks) {
@@ -363,13 +372,13 @@ export function GridCanvas(props: {
         const y0 = pad + r * cellPx;
 
         if (cell.value) {
-          ctx.fillStyle = cell.given ? "rgba(255,255,255,.95)" : "rgba(122,162,255,.95)";
+          ctx.fillStyle = cell.given ? "rgba(20,47,88,.95)" : "rgba(46,120,255,.95)";
           ctx.font = cell.given ? "700 26px ui-sans-serif" : "650 26px ui-sans-serif";
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";
           ctx.fillText(cell.value, x0 + cellPx / 2, y0 + cellPx / 2 + 1);
         } else {
-          ctx.fillStyle = "rgba(255,255,255,.72)";
+          ctx.fillStyle = "rgba(20,47,88,.72)";
           ctx.font = "12px ui-sans-serif";
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";
@@ -402,7 +411,7 @@ export function GridCanvas(props: {
         }
 
         if (cell.given) {
-          ctx.fillStyle = "rgba(255,255,255,.04)";
+          ctx.fillStyle = "rgba(32, 68, 112, .06)";
           ctx.fillRect(x0 + 2, y0 + 2, cellPx - 4, cellPx - 4);
         }
       }
@@ -419,7 +428,7 @@ export function GridCanvas(props: {
     if (!inBounds(r, c)) return null;
     const fx = bx / cellPx - c;
     const fy = by / cellPx - r;
-    return { r, c, fx, fy, x: bx, y: by };
+    return { r, c, fx, fy };
   }
 
   function pickEdgeNeighbor(rc: CellRC, fx: number, fy: number): CellRC | null {
@@ -428,7 +437,7 @@ export function GridCanvas(props: {
     const dLeft = fx;
     const dRight = 1 - fx;
     const min = Math.min(dTop, dBottom, dLeft, dRight);
-    if (min > 0.24) return null;
+    if (min > 0.26) return null;
     if (min === dTop && inBounds(rc.r - 1, rc.c)) return { r: rc.r - 1, c: rc.c };
     if (min === dBottom && inBounds(rc.r + 1, rc.c)) return { r: rc.r + 1, c: rc.c };
     if (min === dLeft && inBounds(rc.r, rc.c - 1)) return { r: rc.r, c: rc.c - 1 };
@@ -463,8 +472,13 @@ export function GridCanvas(props: {
       }
     }
     if (!best) return null;
-    if (best.d2 > (cellPx * 0.72) ** 2) return null;
+    if (best.d2 > (cellPx * 0.75) ** 2) return null;
     return best.rc;
+  }
+
+  function edgeTrackForStep(a: CellRC, b: CellRC, fx: number, fy: number): EdgeTrack {
+    if (a.r === b.r) return fy < 0.5 ? "top" : "bottom";
+    return fx < 0.5 ? "left" : "right";
   }
 
   function onDown(e: React.PointerEvent) {
@@ -475,12 +489,12 @@ export function GridCanvas(props: {
     const rc = { r: pt.r, c: pt.c };
     if (progress.activeTool === "line") {
       const kind = resolveInitialLineKind(pt);
-      dragRef.current = { path: [rc], last: rc, moved: false, lineKind: kind, visited: new Set([rcKey(rc)]) };
-      setLinePreview({ path: [rc], kind });
+      dragRef.current = { path: [rc], segments: [], last: rc, moved: false, lineKind: kind, visited: new Set([rcKey(rc)]) };
+      setLinePreview({ segments: [], kind });
       return;
     }
 
-    dragRef.current = { path: [rc], last: rc, moved: false, visited: new Set([rcKey(rc)]) };
+    dragRef.current = { path: [rc], segments: [], last: rc, moved: false, visited: new Set([rcKey(rc)]) };
     props.onSelection([rc]);
   }
 
@@ -495,15 +509,20 @@ export function GridCanvas(props: {
       if (!next) return;
       if (next.r === drag.last.r && next.c === drag.last.c) return;
 
-      const prev = drag.path[drag.path.length - 2];
-      if (prev && prev.r === next.r && prev.c === next.c) {
+      const prevCell = drag.path[drag.path.length - 2];
+      if (prevCell && prevCell.r === next.r && prevCell.c === next.c) {
         drag.path.pop();
+        drag.segments.pop();
       } else {
+        const pt = eventPoint(e.clientX, e.clientY);
+        const seg: LineSegmentDraft = { a: drag.last, b: next };
+        if (kind === "edge" && pt) seg.edgeTrack = edgeTrackForStep(drag.last, next, pt.fx, pt.fy);
         drag.path.push(next);
+        drag.segments.push(seg);
       }
       drag.last = next;
       drag.moved = true;
-      setLinePreview({ path: [...drag.path], kind });
+      setLinePreview({ segments: [...drag.segments], kind });
       return;
     }
 
@@ -538,8 +557,8 @@ export function GridCanvas(props: {
             props.onLineTapCell(here);
           }
         }
-      } else if (drag.path.length >= 2) {
-        props.onLineStroke(drag.path, kind);
+      } else if (drag.segments.length > 0) {
+        props.onLineStroke(drag.segments, kind);
       }
       setLinePreview(null);
     }

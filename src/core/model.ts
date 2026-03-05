@@ -16,7 +16,7 @@ export type CellState = {
 export type LineStroke = {
   kind: "edge" | "center" | "both";
   color: string;
-  segments: Array<{ a: CellRC; b: CellRC }>;
+  segments: Array<{ a: CellRC; b: CellRC; edgeTrack?: "top" | "bottom" | "left" | "right" }>;
 };
 
 export type LineCenterMark = {
@@ -35,6 +35,7 @@ export type PuzzleMeta = {
   title?: string;
   author?: string;
   rules?: string;
+  postSolveMessage?: string;
 };
 
 export type PuzzleCosmetics = {
