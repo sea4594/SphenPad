@@ -8,7 +8,7 @@ const themeChoices: Array<{ key: ThemeColor; label: string; preview: string[] }>
   { key: "berry", label: "Berry", preview: ["#ffbfd8", "#cb5f93", "#4a213f"] },
 ];
 
-export function SettingsOverlay(props: { onClose: () => void }) {
+export function SettingsOverlay(props: { onClose: () => void; onRestartRequest?: () => void }) {
   const { mode, color, setMode, setColor } = useTheme();
 
   return (
@@ -49,6 +49,21 @@ export function SettingsOverlay(props: { onClose: () => void }) {
               </button>
             ))}
           </div>
+
+          {props.onRestartRequest ? (
+            <div className="settingsRow" style={{ marginTop: 4 }}>
+              <div className="muted">Puzzle</div>
+              <button
+                className="btn"
+                onClick={() => {
+                  props.onRestartRequest?.();
+                  props.onClose();
+                }}
+              >
+                Restart
+              </button>
+            </div>
+          ) : null}
         </div>
       </div>
     </div>

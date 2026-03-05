@@ -170,15 +170,15 @@ export function GridCanvas(props: {
     const el = wrapRef.current;
     if (!el) return;
     const update = () => {
-      const host = (el.parentElement as HTMLElement | null) ?? el;
-      const width = host.clientWidth || window.innerWidth;
-      const height = window.innerHeight;
-      const sideMargin = 12;
-      const topBottomPad = 26;
+      const pane = (el.closest(".boardColumn") as HTMLElement | null) ?? (el.parentElement as HTMLElement | null) ?? el;
+      const width = pane.clientWidth || window.innerWidth;
+      const height = pane.clientHeight || window.innerHeight;
+      const sideMargin = 10;
+      const topBottomPad = 12;
       const spanX = n + outsideLeft + outsideRight;
       const spanY = n + outsideTop + outsideBottom;
       const byWidth = (Math.max(280, width - sideMargin * 2)) / spanX;
-      const byHeight = (Math.max(280, height - 180 - topBottomPad)) / spanY;
+      const byHeight = (Math.max(260, height - topBottomPad * 2)) / spanY;
       const next = Math.floor(Math.min(56, Math.max(30, Math.min(byWidth, byHeight))));
       setCellPx(next);
     };
@@ -267,13 +267,6 @@ export function GridCanvas(props: {
       }
       ctx.restore();
     };
-
-    for (let r = 0; r < n; r++) {
-      for (let c = 0; c < n; c++) {
-        const colors = progress.cells[r][c].highlights ?? [];
-        drawCellHighlights(r, c, colors, 0.26);
-      }
-    }
 
     const drawSelectionOutlines = () => {
       if (!progress.selection.length) return;
@@ -552,6 +545,13 @@ export function GridCanvas(props: {
         ctx.strokeStyle = "#111111";
         ctx.lineWidth = 2;
         ctx.stroke();
+      }
+    }
+
+    for (let r = 0; r < n; r++) {
+      for (let c = 0; c < n; c++) {
+        const colors = progress.cells[r][c].highlights ?? [];
+        drawCellHighlights(r, c, colors, 0.26);
       }
     }
 

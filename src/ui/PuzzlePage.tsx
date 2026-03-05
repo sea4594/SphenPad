@@ -385,6 +385,7 @@ export function PuzzlePage() {
 
   function onPausePlayClick() {
     if (!data) return;
+    if (data.progress.status === "complete") return;
     if (data.progress.paused) {
       pushPatch(patchAt(data.progress, ["paused"], false), { recordHistory: false });
       setPauseMenuOpen(false);
@@ -809,8 +810,11 @@ export function PuzzlePage() {
 
         <div className="row">
           <div style={{ fontVariantNumeric: "tabular-nums" }}>{timeStr}</div>
-          <button className="btn" onClick={onPausePlayClick} title="Pause or resume">
-            {data.progress.paused ? <IconPlay /> : <IconPause />}
+          <button className="btn" onClick={onPausePlayClick} title="Pause or resume" disabled={data.progress.status === "complete"}>
+            {data.progress.status === "complete" ? <IconPause /> : data.progress.paused ? <IconPlay /> : <IconPause />}
+          </button>
+          <button className="btn" onClick={() => setSettingsOpen(true)} title="Settings">
+            <IconSettings />
           </button>
         </div>
       </div>
@@ -838,84 +842,77 @@ export function PuzzlePage() {
               <div className="puzzleRules">{meta?.rules || "No puzzle description provided."}</div>
             </div>
 
-            <div className="card topActions">
-              <button className="btn" onClick={() => setSettingsOpen(true)} title="Settings">
-                <IconSettings /> Settings
-              </button>
-              <button className="btn" onClick={() => setRestartPromptOpen(true)} title="Restart puzzle">
-                Restart
-              </button>
+            <div className="controlStack">
+              <div className="card sideActions">
+                <button
+                  className="btn"
+                  onPointerDown={() => startHoldRepeat("undo")}
+                  onPointerUp={stopHoldRepeat}
+                  onPointerLeave={stopHoldRepeat}
+                  onPointerCancel={stopHoldRepeat}
+                  title="Undo (N)"
+                >
+                  <IconUndo />
+                </button>
+                <button
+                  className="btn"
+                  onPointerDown={() => startHoldRepeat("redo")}
+                  onPointerUp={stopHoldRepeat}
+                  onPointerLeave={stopHoldRepeat}
+                  onPointerCancel={stopHoldRepeat}
+                  title="Redo (M)"
+                >
+                  <IconRedo />
+                </button>
+                <button className={"btn" + (data.progress.multiSelect ? " primary" : "")} onClick={toggleSelectionMode} title={data.progress.multiSelect ? "Multi-touch selection enabled" : "Single-touch selection enabled"}>
+                  <IconSelectMode multi={data.progress.multiSelect} />
+                </button>
+              </div>
+
+              <div className="card toolSwitcher">
+                <button title="Big numbers (Z)" className={"btn toolIconBtn" + (data.progress.activeTool === "value" ? " primary" : "")} onClick={() => setActiveTool("value")}><IconToolBig /></button>
+                <button title="Edge notes (X)" className={"btn toolIconBtn" + (data.progress.activeTool === "corner" ? " primary" : "")} onClick={() => setActiveTool("corner")}><IconToolCorner /></button>
+                <button title="Center notes (C)" className={"btn toolIconBtn" + (data.progress.activeTool === "center" ? " primary" : "")} onClick={() => setActiveTool("center")}><IconToolCenter /></button>
+                <button title="Highlight (V)" className={"btn toolIconBtn" + (data.progress.activeTool === "highlight" ? " primary" : "")} onClick={() => setActiveTool("highlight")}><IconToolHighlight /></button>
+                <button title="Line" className={"btn toolIconBtn" + (data.progress.activeTool === "line" ? " primary" : "")} onClick={() => setActiveTool("line")}><IconToolLine /></button>
+              </div>
+
+              {(data.progress.activeTool === "value" || data.progress.activeTool === "center" || data.progress.activeTool === "corner") ? (
+                <Keyboard
+                  kind="numbers"
+                  title={data.progress.activeTool === "value" ? "Big Numbers" : data.progress.activeTool === "center" ? "Small Centered" : "Small Edge Notes"}
+                  hideEntryModeButtons
+                  progress={data.progress}
+                  onDigit={applyDigit}
+                  onBackspace={handleBackspace}
+                  onToggleAlphabet={() => pushPatch(patchAt(data.progress, ["alphabetMode"], !data.progress.alphabetMode), { recordHistory: false })}
+                />
+              ) : null}
+
+              {data.progress.activeTool === "highlight" ? (
+                <Keyboard
+                  kind="highlight"
+                  progress={data.progress}
+                  onColor={applyHighlight}
+                  onWhite={() => applyHighlight("#ffffff")}
+                  onBackspace={handleBackspace}
+                  onFlipPalette={() => {
+                    const next = ((data.progress.highlightPalettePage + 1) % 3) as 0 | 1 | 2;
+                    pushPatch(patchAt(data.progress, ["highlightPalettePage"], next), { recordHistory: false });
+                  }}
+                />
+              ) : null}
+
+              {data.progress.activeTool === "line" ? (
+                <Keyboard
+                  kind="line"
+                  progress={data.progress}
+                  onBackspace={handleBackspace}
+                  onColor={(c) => pushPatch(patchAt(data.progress, ["linePaletteColor"], c), { recordHistory: false })}
+                  onLineKind={(k) => pushPatch(patchAt(data.progress, ["linePaletteKind"], k), { recordHistory: false })}
+                />
+              ) : null}
             </div>
-
-            <div className="card sideActions">
-              <button
-                className="btn"
-                onPointerDown={() => startHoldRepeat("undo")}
-                onPointerUp={stopHoldRepeat}
-                onPointerLeave={stopHoldRepeat}
-                onPointerCancel={stopHoldRepeat}
-                title="Undo (N)"
-              >
-                <IconUndo />
-              </button>
-              <button
-                className="btn"
-                onPointerDown={() => startHoldRepeat("redo")}
-                onPointerUp={stopHoldRepeat}
-                onPointerLeave={stopHoldRepeat}
-                onPointerCancel={stopHoldRepeat}
-                title="Redo (M)"
-              >
-                <IconRedo />
-              </button>
-              <button className={"btn" + (data.progress.multiSelect ? " primary" : "")} onClick={toggleSelectionMode} title={data.progress.multiSelect ? "Multi-touch selection enabled" : "Single-touch selection enabled"}>
-                <IconSelectMode multi={data.progress.multiSelect} />
-              </button>
-            </div>
-
-            <div className="card toolSwitcher">
-              <button title="Big numbers (Z)" className={"btn toolIconBtn" + (data.progress.activeTool === "value" ? " primary" : "")} onClick={() => setActiveTool("value")}><IconToolBig /></button>
-              <button title="Edge notes (X)" className={"btn toolIconBtn" + (data.progress.activeTool === "corner" ? " primary" : "")} onClick={() => setActiveTool("corner")}><IconToolCorner /></button>
-              <button title="Center notes (C)" className={"btn toolIconBtn" + (data.progress.activeTool === "center" ? " primary" : "")} onClick={() => setActiveTool("center")}><IconToolCenter /></button>
-              <button title="Highlight (V)" className={"btn toolIconBtn" + (data.progress.activeTool === "highlight" ? " primary" : "")} onClick={() => setActiveTool("highlight")}><IconToolHighlight /></button>
-              <button title="Line" className={"btn toolIconBtn" + (data.progress.activeTool === "line" ? " primary" : "")} onClick={() => setActiveTool("line")}><IconToolLine /></button>
-            </div>
-
-            {(data.progress.activeTool === "value" || data.progress.activeTool === "center" || data.progress.activeTool === "corner") ? (
-              <Keyboard
-                kind="numbers"
-                title={data.progress.activeTool === "value" ? "Big Numbers" : data.progress.activeTool === "center" ? "Small Centered" : "Small Edge Notes"}
-                hideEntryModeButtons
-                progress={data.progress}
-                onDigit={applyDigit}
-                onBackspace={handleBackspace}
-                onToggleAlphabet={() => pushPatch(patchAt(data.progress, ["alphabetMode"], !data.progress.alphabetMode), { recordHistory: false })}
-              />
-            ) : null}
-
-            {data.progress.activeTool === "highlight" ? (
-              <Keyboard
-                kind="highlight"
-                progress={data.progress}
-                onColor={applyHighlight}
-                onWhite={() => applyHighlight("#ffffff")}
-                onBackspace={handleBackspace}
-                onFlipPalette={() => {
-                  const next = ((data.progress.highlightPalettePage + 1) % 3) as 0 | 1 | 2;
-                  pushPatch(patchAt(data.progress, ["highlightPalettePage"], next), { recordHistory: false });
-                }}
-              />
-            ) : null}
-
-            {data.progress.activeTool === "line" ? (
-              <Keyboard
-                kind="line"
-                progress={data.progress}
-                onBackspace={handleBackspace}
-                onColor={(c) => pushPatch(patchAt(data.progress, ["linePaletteColor"], c), { recordHistory: false })}
-                onLineKind={(k) => pushPatch(patchAt(data.progress, ["linePaletteKind"], k), { recordHistory: false })}
-              />
-            ) : null}
           </div>
         </div>
       </div>
@@ -938,7 +935,7 @@ export function PuzzlePage() {
         />
       )}
 
-      {settingsOpen ? <SettingsOverlay onClose={() => setSettingsOpen(false)} /> : null}
+      {settingsOpen ? <SettingsOverlay onClose={() => setSettingsOpen(false)} onRestartRequest={() => setRestartPromptOpen(true)} /> : null}
 
       {restartPromptOpen ? (
         <div className="overlayBackdrop" onClick={() => setRestartPromptOpen(false)}>
