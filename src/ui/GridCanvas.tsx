@@ -18,6 +18,16 @@ function rcKey(rc: CellRC) {
   return `${rc.r},${rc.c}`;
 }
 
+function segKey(a: CellRC, b: CellRC) {
+  const ak = rcKey(a);
+  const bk = rcKey(b);
+  return ak < bk ? `${ak}|${bk}` : `${bk}|${ak}`;
+}
+
+function segKeyWithTrack(seg: { a: CellRC; b: CellRC; edgeTrack?: EdgeTrack }) {
+  return `${segKey(seg.a, seg.b)}:${seg.edgeTrack ?? "-"}`;
+}
+
 export function GridCanvas(props: {
   def: PuzzleDefinition;
   progress: PuzzleProgress;
@@ -463,12 +473,27 @@ export function GridCanvas(props: {
     };
 
     const drawUserLines = () => {
+      const previewKeys = linePreview?.segments?.length
+        ? new Set(linePreview.segments.map(segKeyWithTrack))
+        : null;
+      const erasePreview = Boolean(
+        previewKeys &&
+          progress.lines.some((stroke) =>
+            stroke.segments.some((seg) => previewKeys.has(segKeyWithTrack(seg)))
+          )
+      );
+
       for (const stroke of progress.lines) {
-        if (stroke.kind === "edge") drawEdgeStroke(stroke.segments, stroke.color);
-        else drawCenterStroke(stroke.segments, stroke.color);
+        const segments = erasePreview && previewKeys
+          ? stroke.segments.filter((seg) => !previewKeys.has(segKeyWithTrack(seg)))
+          : stroke.segments;
+        if (!segments.length) continue;
+        if (stroke.kind === "edge") drawEdgeStroke(segments, stroke.color);
+        else drawCenterStroke(segments, stroke.color);
       }
 
-      if (linePreview) {
+      // When overlap is detected, preview as progressive erase by hiding matching segments.
+      if (linePreview && !erasePreview) {
         if (linePreview.kind === "edge") drawEdgeStroke(linePreview.segments, progress.linePaletteColor, 0.8);
         else drawCenterStroke(linePreview.segments, progress.linePaletteColor, 0.8);
       }
