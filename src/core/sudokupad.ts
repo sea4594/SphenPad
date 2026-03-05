@@ -8,6 +8,7 @@ import type { PuzzleDefinition, CellRC, PuzzleCosmetics } from "./model";
  * https://sudokupad.app/api/puzzle/<puzzleId> :contentReference[oaicite:1]{index=1}
  */
 const DEV_API_BASE = "/sp-api/api/puzzle";
+const PROD_PROXY_A = "https://api.codetabs.com/v1/proxy/?quest=https://sudokupad.app/api/puzzle";
 const PROD_API_BASE = "https://api.allorigins.win/raw?url=https://sudokupad.app/api/puzzle";
 
 function timeout(ms: number) {
@@ -22,8 +23,25 @@ function buildPuzzleApiUrls(sourceId: string): string[] {
 
   // In static hosting (GitHub Pages), sudokupad.app does not allow this origin,
   // so use a CORS-enabled passthrough endpoint.
+  urls.push(`${PROD_PROXY_A}/${encoded}`);
   urls.push(`${PROD_API_BASE}/${encoded}`);
   return urls;
+}
+
+function looksLikePuzzlePayload(text: string): boolean {
+  const t = text.trim();
+  if (!t) return false;
+
+  // Reject obvious HTML fallback pages (common when proxy route misses in static hosting).
+  if (/^<!doctype html/i.test(t) || /^<html[\s>]/i.test(t)) return false;
+
+  // Common compressed prefixes.
+  if (/^(scl|ctc|fpuz|fpuzzles)/i.test(t)) return true;
+
+  // JSON payloads.
+  if (/^[\[{]/.test(t)) return true;
+
+  return false;
 }
 
 async function fetchPuzzlePayloadById(sourceId: string): Promise<string> {
@@ -38,8 +56,8 @@ async function fetchPuzzlePayloadById(sourceId: string): Promise<string> {
         continue;
       }
       const text = await res.text();
-      if (text && text.trim()) return text;
-      lastErr = new Error("Empty puzzle payload");
+      if (looksLikePuzzlePayload(text)) return text;
+      lastErr = new Error("Unexpected non-puzzle payload from endpoint");
     } catch (err) {
       lastErr = err;
     }
