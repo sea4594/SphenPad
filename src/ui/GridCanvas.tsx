@@ -975,6 +975,34 @@ export function GridCanvas(props: {
     return null;
   }
 
+  function pickEdgeByPointer(clientX: number, clientY: number, threshold = 0.28): { a: CellRC; b: CellRC } | null {
+    const gp = eventGridPoint(clientX, clientY);
+    if (!gp) return null;
+
+    let best: { a: CellRC; b: CellRC; dist: number } | null = null;
+    for (let r = 0; r < n; r++) {
+      for (let c = 0; c < n; c++) {
+        const candidates = [
+          { a: { r, c }, b: { r, c: c + 1 }, mx: c + 0.5, my: r },
+          { a: { r, c }, b: { r: r + 1, c }, mx: c, my: r + 0.5 },
+          { a: { r: r + 1, c }, b: { r: r + 1, c: c + 1 }, mx: c + 0.5, my: r + 1 },
+          { a: { r, c: c + 1 }, b: { r: r + 1, c: c + 1 }, mx: c + 1, my: r + 0.5 },
+        ];
+
+        for (const edge of candidates) {
+          if (edge.a.r < 0 || edge.a.c < 0 || edge.a.r > n || edge.a.c > n) continue;
+          if (edge.b.r < 0 || edge.b.c < 0 || edge.b.r > n || edge.b.c > n) continue;
+          const d = Math.hypot(gp.gx - edge.mx, gp.gy - edge.my);
+          if (d > threshold) continue;
+          if (!best || d < best.dist) best = { a: edge.a, b: edge.b, dist: d };
+        }
+      }
+    }
+
+    if (!best) return null;
+    return { a: best.a, b: best.b };
+  }
+
   function resolveInitialLineKind(point: { fx: number; fy: number }): LineKindResolved {
     if (progress.linePaletteKind === "center") return "center";
     if (progress.linePaletteKind === "edge") return "edge";
@@ -1113,11 +1141,16 @@ export function GridCanvas(props: {
       const kind = drag.lineKind ?? "center";
       if (!drag.moved) {
         if (kind === "edge") {
-          const node = nearestCornerNode(e.clientX, e.clientY, 0.45);
-          if (node) {
-            const neighbor = pickNodeNeighborFromPointer(node, e.clientX, e.clientY);
-            if (neighbor && Math.abs(neighbor.r - node.r) + Math.abs(neighbor.c - node.c) === 1) {
-              props.onLineTapEdge(node, neighbor);
+          const tappedEdge = pickEdgeByPointer(e.clientX, e.clientY, 0.3);
+          if (tappedEdge) {
+            props.onLineTapEdge(tappedEdge.a, tappedEdge.b);
+          } else {
+            const node = nearestCornerNode(e.clientX, e.clientY, 0.45);
+            if (node) {
+              const neighbor = pickNodeNeighborFromPointer(node, e.clientX, e.clientY);
+              if (neighbor && Math.abs(neighbor.r - node.r) + Math.abs(neighbor.c - node.c) === 1) {
+                props.onLineTapEdge(node, neighbor);
+              }
             }
           }
         } else {

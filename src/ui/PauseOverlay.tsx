@@ -6,6 +6,7 @@ export function PauseOverlay(props: {
   onStart: () => void;
   onResume: () => void;
   onStayPaused: () => void;
+  onRestart: () => void;
 }) {
   const { meta, started } = props;
   return (
@@ -32,6 +33,9 @@ export function PauseOverlay(props: {
             </button>
             <button className="btn" style={{ flex: 1 }} onClick={props.onStayPaused}>
               Stay paused
+            </button>
+            <button className="btn" style={{ flex: 1 }} onClick={props.onRestart}>
+              Restart
             </button>
           </div>
         )}

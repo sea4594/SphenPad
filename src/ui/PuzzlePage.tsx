@@ -84,6 +84,7 @@ export function PuzzlePage() {
   const [completionOpen, setCompletionOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [restartPromptOpen, setRestartPromptOpen] = useState(false);
+  const [restartFromPause, setRestartFromPause] = useState(false);
   const tickRef = useRef<number | null>(null);
   const holdDelayRef = useRef<number | null>(null);
   const holdIntervalRef = useRef<number | null>(null);
@@ -320,8 +321,21 @@ export function PuzzlePage() {
       updatedAt: Date.now(),
     });
     setRestartPromptOpen(false);
+    setRestartFromPause(false);
     setCompletionOpen(false);
     setPauseMenuOpen(false);
+  }
+
+  function openRestartPrompt(fromPause: boolean) {
+    setRestartFromPause(fromPause);
+    setRestartPromptOpen(true);
+    if (fromPause) setPauseMenuOpen(false);
+  }
+
+  function closeRestartPrompt() {
+    setRestartPromptOpen(false);
+    if (restartFromPause) setPauseMenuOpen(true);
+    setRestartFromPause(false);
   }
 
   function onDoubleSelectCell(rc: CellRC) {
@@ -924,6 +938,7 @@ export function PuzzlePage() {
           onStart={startOrResume}
           onResume={startOrResume}
           onStayPaused={() => setPauseMenuOpen(false)}
+          onRestart={() => openRestartPrompt(true)}
         />
       )}
 
@@ -935,20 +950,20 @@ export function PuzzlePage() {
         />
       )}
 
-      {settingsOpen ? <SettingsOverlay onClose={() => setSettingsOpen(false)} onRestartRequest={() => setRestartPromptOpen(true)} /> : null}
+      {settingsOpen ? <SettingsOverlay onClose={() => setSettingsOpen(false)} onRestartRequest={() => openRestartPrompt(false)} /> : null}
 
       {restartPromptOpen ? (
-        <div className="overlayBackdrop" onClick={() => setRestartPromptOpen(false)}>
+        <div className="overlayBackdrop" onClick={closeRestartPrompt}>
           <div className="card settingsCard" onClick={(e) => e.stopPropagation()}>
             <div className="settingsHeader">
               <div style={{ fontWeight: 700, fontSize: 21 }}>Restart Puzzle</div>
-              <button className="btn" onClick={() => setRestartPromptOpen(false)}>Close</button>
+              <button className="btn" onClick={closeRestartPrompt}>Close</button>
             </div>
             <div className="settingsSection">
               <div className="muted">Choose how to restart:</div>
               <button className="btn primary" onClick={() => restartPuzzle(true)}>Restart and reset timer</button>
               <button className="btn" onClick={() => restartPuzzle(false)}>Restart and keep time</button>
-              <button className="btn" onClick={() => setRestartPromptOpen(false)}>Cancel</button>
+              <button className="btn" onClick={closeRestartPrompt}>Cancel</button>
             </div>
           </div>
         </div>

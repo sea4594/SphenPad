@@ -318,7 +318,7 @@ input.url {
   white-space: pre-wrap;
   line-height: 1.35;
   font-size: 13px;
-  max-height: min(32vh, 240px);
+  max-height: min(36vh, 320px);
   overflow: auto;
   padding-right: 4px;
 }
@@ -336,7 +336,7 @@ input.url {
 
 .kbdPanel {
   display: grid;
-  grid-template-rows: auto 1fr;
+  grid-template-rows: minmax(140px, auto) 1fr;
   gap: 8px;
   align-content: start;
   min-height: 0;
@@ -347,6 +347,7 @@ input.url {
   gap: 8px;
   align-content: end;
   min-height: 0;
+  padding-bottom: 8px;
 }
 
 .toolSwitcher {
@@ -467,7 +468,7 @@ input.url {
   }
 
   .kbdPanel {
-    grid-template-rows: minmax(120px, 35%) 1fr;
+    grid-template-rows: minmax(170px, 40%) 1fr;
   }
 }
 
@@ -500,6 +501,7 @@ input.url {
 
   .controlStack {
     align-content: start;
+    padding-bottom: 4px;
   }
 
   .sideActions {

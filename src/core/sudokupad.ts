@@ -223,7 +223,7 @@ function parseCellRefs(value: any): CellRC[] {
   return [];
 }
 
-function inferPuzzleSize(sclObj: any, givens: Array<{ rc: CellRC }>, cosmetics: PuzzleCosmetics): number {
+function inferPuzzleSize(sclObj: any, givens: Array<{ rc: CellRC }>): number {
   const metadataSolution = sclObj?.metadata?.solution;
   const fromSolution =
     typeof metadataSolution === "string" && metadataSolution.length > 0
@@ -246,37 +246,20 @@ function inferPuzzleSize(sclObj: any, givens: Array<{ rc: CellRC }>, cosmetics: 
       )
     : 0;
 
-  let maxIndex = -1;
-  for (const g of givens) maxIndex = Math.max(maxIndex, g.rc.r, g.rc.c);
+  const fromGivenCoords = givens.length
+    ? Math.max(...givens.map((g) => Math.max(g.rc.r, g.rc.c))) + 1
+    : 0;
 
-  const pushRc = (rc?: CellRC | null) => {
-    if (!rc) return;
-    if (!Number.isFinite(rc.r) || !Number.isFinite(rc.c)) return;
-    maxIndex = Math.max(maxIndex, rc.r, rc.c);
-  };
+  const regionCells = Array.isArray(sclObj?.regions)
+    ? sclObj.regions.flatMap((r: any) => parseCellRefs(r))
+    : [];
+  const fromRegionCoords = regionCells.length
+    ? Math.max(...regionCells.map((rc: CellRC) => Math.max(rc.r, rc.c))) + 1
+    : 0;
 
-  for (const cg of cosmetics.cages ?? []) for (const rc of cg.cells) pushRc(rc);
-  for (const ar of cosmetics.arrows ?? []) for (const rc of ar.path) pushRc(rc);
-  for (const d of cosmetics.dots ?? []) {
-    pushRc(d.a);
-    pushRc(d.b);
-  }
-  for (const p of cosmetics.thermolines ?? []) for (const rc of p.path) pushRc(rc);
-  for (const p of cosmetics.whispers ?? []) for (const rc of p.path) pushRc(rc);
-  for (const p of cosmetics.palindromes ?? []) for (const rc of p.path) pushRc(rc);
-  for (const p of cosmetics.renbanlines ?? []) for (const rc of p.path) pushRc(rc);
-  for (const p of cosmetics.entropics ?? []) for (const rc of p.path) pushRc(rc);
-  for (const p of cosmetics.germanwhispers ?? []) for (const rc of p.path) pushRc(rc);
-  for (const p of cosmetics.modularlines ?? []) for (const rc of p.path) pushRc(rc);
-  for (const rc of cosmetics.fogLights ?? []) pushRc(rc);
-  for (const te of cosmetics.fogTriggerEffects ?? []) {
-    for (const rc of te.triggerCells) pushRc(rc);
-    for (const rc of te.revealCells) pushRc(rc);
-  }
-
-  const fromCoords = maxIndex >= 0 ? maxIndex + 1 : 0;
   const fromSolutionSquare = Number.isInteger(fromSolution) ? fromSolution : 0;
-  const inferred = Math.max(fromCells, fromCoords, fromSolutionSquare, explicitSize);
+  // Avoid decorative/outside-grid cosmetics from inflating core grid size.
+  const inferred = Math.max(fromCells, fromGivenCoords, fromRegionCoords, fromSolutionSquare, explicitSize);
   return inferred > 0 ? inferred : 9;
 }
 
@@ -328,7 +311,7 @@ export async function loadFromSudokuPad(inputUrlOrId: string): Promise<{ key: st
 
   const givens = extractGivens(sclObj);
   const cosmetics = extractCosmetics(sclObj);
-  const size = inferPuzzleSize(sclObj, givens, cosmetics);
+  const size = inferPuzzleSize(sclObj, givens);
 
   const key = normalizePuzzleKey(sourceId);
   const def: PuzzleDefinition = {
