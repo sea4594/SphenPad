@@ -97,7 +97,7 @@ export type PuzzleCosmetics = {
 
   // Fog of war
   fogLights?: CellRC[];
-  fogTriggerEffects?: Array<{ triggerCells: CellRC[]; revealCells: CellRC[] }>;
+  fogTriggerEffects?: Array<{ triggerCells: CellRC[]; revealCells: CellRC[]; triggerMode?: string }>;
   solution?: string;
 };
 

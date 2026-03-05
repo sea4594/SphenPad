@@ -37,7 +37,52 @@ export function GridCanvas(props: {
   const [linePreview, setLinePreview] = useState<{ segments: LineSegmentDraft[]; kind: LineKindResolved } | null>(null);
 
   const pad = Math.max(14, Math.round(cellPx * 0.32));
-  const sizePx = pad * 2 + cellPx * n;
+  const worldBounds = useMemo(() => {
+    let minX = 0;
+    let minY = 0;
+    let maxX = n;
+    let maxY = n;
+
+    const includePoint = (x?: number, y?: number) => {
+      if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+      minX = Math.min(minX, x as number);
+      minY = Math.min(minY, y as number);
+      maxX = Math.max(maxX, x as number);
+      maxY = Math.max(maxY, y as number);
+    };
+
+    const includeLayer = (item: any) => {
+      const w = Number.isFinite(item?.width) ? item.width : 1;
+      const h = Number.isFinite(item?.height) ? item.height : 1;
+      includePoint(item?.center?.x - w / 2, item?.center?.y - h / 2);
+      includePoint(item?.center?.x + w / 2, item?.center?.y + h / 2);
+    };
+
+    for (const item of def.cosmetics.overlays ?? []) includeLayer(item);
+    for (const item of def.cosmetics.underlays ?? []) includeLayer(item);
+    for (const ln of def.cosmetics.lines ?? []) {
+      for (const p of ln.wayPoints) includePoint(p.x, p.y);
+    }
+
+    return { minX, minY, maxX, maxY };
+  }, [def.cosmetics.lines, def.cosmetics.overlays, def.cosmetics.underlays, n]);
+
+  const outsideLeft = Math.max(0, -worldBounds.minX);
+  const outsideTop = Math.max(0, -worldBounds.minY);
+  const outsideRight = Math.max(0, worldBounds.maxX - n);
+  const outsideBottom = Math.max(0, worldBounds.maxY - n);
+
+  const originX = pad + outsideLeft * cellPx;
+  const originY = pad + outsideTop * cellPx;
+  const boardW = cellPx * (n + outsideLeft + outsideRight);
+  const boardH = cellPx * (n + outsideTop + outsideBottom);
+  const widthPx = Math.max(1, Math.ceil(pad * 2 + boardW));
+  const heightPx = Math.max(1, Math.ceil(pad * 2 + boardH));
+
+  const worldX = (x: number) => originX + x * cellPx;
+  const worldY = (y: number) => originY + y * cellPx;
+  const cellX = (c: number) => originX + c * cellPx;
+  const cellY = (r: number) => originY + r * cellPx;
 
   const dotOffset = useMemo(() => {
     const dots = def.cosmetics.dots ?? [];
@@ -95,22 +140,22 @@ export function GridCanvas(props: {
     const ctx = cv.getContext("2d");
     if (!ctx) return;
 
-    cv.width = sizePx * devicePixelRatio;
-    cv.height = sizePx * devicePixelRatio;
-    cv.style.width = `${sizePx}px`;
-    cv.style.height = `${sizePx}px`;
+    cv.width = widthPx * devicePixelRatio;
+    cv.height = heightPx * devicePixelRatio;
+    cv.style.width = `${widthPx}px`;
+    cv.style.height = `${heightPx}px`;
 
     ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
-    ctx.clearRect(0, 0, sizePx, sizePx);
+    ctx.clearRect(0, 0, widthPx, heightPx);
 
     if (bgImage) {
       ctx.globalAlpha = 0.3;
-      ctx.drawImage(bgImage, pad, pad, cellPx * n, cellPx * n);
+      ctx.drawImage(bgImage, cellX(0), cellY(0), cellPx * n, cellPx * n);
       ctx.globalAlpha = 1;
     }
 
     ctx.fillStyle = "rgba(255,255,255,.02)";
-    ctx.fillRect(0, 0, sizePx, sizePx);
+    ctx.fillRect(0, 0, widthPx, heightPx);
 
     for (let r = 0; r < n; r++) {
       for (let c = 0; c < n; c++) {
@@ -118,7 +163,7 @@ export function GridCanvas(props: {
         if (!col) continue;
         ctx.fillStyle = col;
         ctx.globalAlpha = 0.25;
-        ctx.fillRect(pad + c * cellPx, pad + r * cellPx, cellPx, cellPx);
+        ctx.fillRect(cellX(c), cellY(r), cellPx, cellPx);
         ctx.globalAlpha = 1;
       }
     }
@@ -126,22 +171,85 @@ export function GridCanvas(props: {
     ctx.strokeStyle = "rgba(46,120,255,.85)";
     ctx.lineWidth = 2;
     for (const rc of progress.selection) {
-      ctx.strokeRect(pad + rc.c * cellPx + 1, pad + rc.r * cellPx + 1, cellPx - 2, cellPx - 2);
+      ctx.strokeRect(cellX(rc.c) + 1, cellY(rc.r) + 1, cellPx - 2, cellPx - 2);
     }
 
+    const subgrid = (() => {
+      if (n === 6) return { r: 2, c: 3 };
+      if (n === 8) return { r: 2, c: 4 };
+      if (n === 10) return { r: 2, c: 5 };
+      if (n === 12) return { r: 3, c: 4 };
+      const s = Math.sqrt(n);
+      if (Number.isInteger(s)) return { r: s, c: s };
+      return { r: 1, c: 1 };
+    })();
+
     for (let i = 0; i <= n; i++) {
-      const w = i % 3 === 0 ? 2.5 : 1;
-      ctx.lineWidth = w;
+      ctx.lineWidth = i % subgrid.r === 0 ? 2.5 : 1;
       ctx.strokeStyle = "rgba(28,46,74,.62)";
       ctx.beginPath();
-      ctx.moveTo(pad, pad + i * cellPx);
-      ctx.lineTo(pad + n * cellPx, pad + i * cellPx);
+      ctx.moveTo(cellX(0), cellY(i));
+      ctx.lineTo(cellX(n), cellY(i));
       ctx.stroke();
+
+      ctx.lineWidth = i % subgrid.c === 0 ? 2.5 : 1;
       ctx.beginPath();
-      ctx.moveTo(pad + i * cellPx, pad);
-      ctx.lineTo(pad + i * cellPx, pad + n * cellPx);
+      ctx.moveTo(cellX(i), cellY(0));
+      ctx.lineTo(cellX(i), cellY(n));
       ctx.stroke();
     }
+
+    const drawLayer = (items: NonNullable<PuzzleDefinition["cosmetics"]["underlays"]>, alpha = 0.22) => {
+      for (const item of items) {
+        const w = Number.isFinite(item.width) ? item.width! : 1;
+        const h = Number.isFinite(item.height) ? item.height! : 1;
+        const x = worldX(item.center.x - w / 2);
+        const y = worldY(item.center.y - h / 2);
+        const rw = w * cellPx;
+        const rh = h * cellPx;
+
+        if (item.color) {
+          ctx.save();
+          ctx.globalAlpha = alpha;
+          ctx.fillStyle = item.color;
+          if (item.rounded) {
+            ctx.beginPath();
+            ctx.roundRect(x, y, rw, rh, Math.min(14, cellPx * 0.25));
+            ctx.fill();
+          } else {
+            ctx.fillRect(x, y, rw, rh);
+          }
+          ctx.restore();
+        }
+
+        if (item.borderColor) {
+          ctx.save();
+          ctx.strokeStyle = item.borderColor;
+          ctx.lineWidth = item.borderThickness ?? Math.max(1.4, cellPx * 0.04);
+          if (item.rounded) {
+            ctx.beginPath();
+            ctx.roundRect(x, y, rw, rh, Math.min(14, cellPx * 0.25));
+            ctx.stroke();
+          } else {
+            ctx.strokeRect(x, y, rw, rh);
+          }
+          ctx.restore();
+        }
+
+        if (item.text != null && String(item.text).length) {
+          ctx.save();
+          ctx.fillStyle = item.textColor ?? "rgba(20,47,88,.92)";
+          const px = (item.textSize ?? 16) * (cellPx / 56);
+          ctx.font = `700 ${Math.max(10, px)}px ui-sans-serif`;
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(String(item.text), worldX(item.center.x), worldY(item.center.y));
+          ctx.restore();
+        }
+      }
+    };
+
+    if (def.cosmetics.underlays?.length) drawLayer(def.cosmetics.underlays, 0.22);
 
     if (def.cosmetics.cages) {
       ctx.strokeStyle = "rgba(18,42,77,.82)";
@@ -151,9 +259,9 @@ export function GridCanvas(props: {
         const set = new Set(cage.cells.map((rc) => `${rc.r},${rc.c}`));
         ctx.fillStyle = "rgba(80,120,160,.05)";
         for (const rc of cage.cells) {
-          ctx.fillRect(pad + rc.c * cellPx + 2, pad + rc.r * cellPx + 2, cellPx - 4, cellPx - 4);
-          const x = pad + rc.c * cellPx;
-          const y = pad + rc.r * cellPx;
+          ctx.fillRect(cellX(rc.c) + 2, cellY(rc.r) + 2, cellPx - 4, cellPx - 4);
+          const x = cellX(rc.c);
+          const y = cellY(rc.r);
           const inset = 3;
           const neighbors = {
             up: `${rc.r - 1},${rc.c}`,
@@ -190,7 +298,7 @@ export function GridCanvas(props: {
           const first = cage.cells[0];
           ctx.fillStyle = "rgba(12, 30, 55, .8)";
           ctx.font = "12px ui-sans-serif";
-          ctx.fillText(cage.sum, pad + first.c * cellPx + 6, pad + first.r * cellPx + 14);
+          ctx.fillText(cage.sum, cellX(first.c) + 6, cellY(first.r) + 14);
         }
       }
       ctx.setLineDash([]);
@@ -205,8 +313,8 @@ export function GridCanvas(props: {
         ctx.lineJoin = "round";
         ctx.beginPath();
         ln.wayPoints.forEach((p, i) => {
-          const x = pad + p.x * cellPx;
-          const y = pad + p.y * cellPx;
+          const x = worldX(p.x);
+          const y = worldY(p.y);
           if (i === 0) ctx.moveTo(x, y);
           else ctx.lineTo(x, y);
         });
@@ -220,8 +328,8 @@ export function GridCanvas(props: {
       for (const a of def.cosmetics.arrows) {
         ctx.beginPath();
         a.path.forEach((rc, i) => {
-          const x = pad + rc.c * cellPx + cellPx / 2;
-          const y = pad + rc.r * cellPx + cellPx / 2;
+          const x = cellX(rc.c) + cellPx / 2;
+          const y = cellY(rc.r) + cellPx / 2;
           if (i === 0) ctx.moveTo(x, y);
           else ctx.lineTo(x, y);
         });
@@ -229,7 +337,7 @@ export function GridCanvas(props: {
         const b = a.bulb;
         ctx.fillStyle = "rgba(20,47,88,.95)";
         ctx.beginPath();
-        ctx.arc(pad + b.c * cellPx + cellPx / 2, pad + b.r * cellPx + cellPx / 2, 8, 0, Math.PI * 2);
+        ctx.arc(cellX(b.c) + cellPx / 2, cellY(b.r) + cellPx / 2, 8, 0, Math.PI * 2);
         ctx.fill();
       }
     }
@@ -239,10 +347,10 @@ export function GridCanvas(props: {
         const a = normalizeDotRc(d.a);
         const b = normalizeDotRc(d.b);
         if (!a || !b) continue;
-        const ax = pad + a.c * cellPx + cellPx / 2;
-        const ay = pad + a.r * cellPx + cellPx / 2;
-        const bx = pad + b.c * cellPx + cellPx / 2;
-        const by = pad + b.r * cellPx + cellPx / 2;
+        const ax = cellX(a.c) + cellPx / 2;
+        const ay = cellY(a.r) + cellPx / 2;
+        const bx = cellX(b.c) + cellPx / 2;
+        const by = cellY(b.r) + cellPx / 2;
         const x = (ax + bx) / 2;
         const y = (ay + by) / 2;
         ctx.beginPath();
@@ -263,10 +371,10 @@ export function GridCanvas(props: {
       ctx.lineCap = "round";
       ctx.lineJoin = "round";
       for (const seg of segments) {
-        const ax = pad + seg.a.c * cellPx + cellPx / 2;
-        const ay = pad + seg.a.r * cellPx + cellPx / 2;
-        const bx = pad + seg.b.c * cellPx + cellPx / 2;
-        const by = pad + seg.b.r * cellPx + cellPx / 2;
+        const ax = cellX(seg.a.c) + cellPx / 2;
+        const ay = cellY(seg.a.r) + cellPx / 2;
+        const bx = cellX(seg.b.c) + cellPx / 2;
+        const by = cellY(seg.b.r) + cellPx / 2;
         ctx.beginPath();
         ctx.moveTo(ax, ay);
         ctx.lineTo(bx, by);
@@ -289,9 +397,9 @@ export function GridCanvas(props: {
         if (dr === 0) {
           const row = seg.a.r;
           const minC = Math.min(seg.a.c, seg.b.c);
-          const y = seg.edgeTrack === "bottom" ? pad + (row + 1) * cellPx : pad + row * cellPx;
-          const x0 = pad + minC * cellPx;
-          const x1 = pad + (minC + 2) * cellPx;
+          const y = seg.edgeTrack === "bottom" ? cellY(row + 1) : cellY(row);
+          const x0 = cellX(minC);
+          const x1 = cellX(minC + 2);
           ctx.beginPath();
           ctx.moveTo(x0, y);
           ctx.lineTo(x1, y);
@@ -299,9 +407,9 @@ export function GridCanvas(props: {
         } else {
           const col = seg.a.c;
           const minR = Math.min(seg.a.r, seg.b.r);
-          const x = seg.edgeTrack === "right" ? pad + (col + 1) * cellPx : pad + col * cellPx;
-          const y0 = pad + minR * cellPx;
-          const y1 = pad + (minR + 2) * cellPx;
+          const x = seg.edgeTrack === "right" ? cellX(col + 1) : cellX(col);
+          const y0 = cellY(minR);
+          const y1 = cellY(minR + 2);
           ctx.beginPath();
           ctx.moveTo(x, y0);
           ctx.lineTo(x, y1);
@@ -322,8 +430,8 @@ export function GridCanvas(props: {
     }
 
     for (const mark of progress.lineCenterMarks) {
-      const x = pad + mark.rc.c * cellPx + cellPx / 2;
-      const y = pad + mark.rc.r * cellPx + cellPx / 2;
+      const x = cellX(mark.rc.c) + cellPx / 2;
+      const y = cellY(mark.rc.r) + cellPx / 2;
       ctx.strokeStyle = mark.color;
       ctx.lineWidth = 3;
       if (mark.kind === "circle") {
@@ -348,11 +456,11 @@ export function GridCanvas(props: {
       let x = 0;
       let y = 0;
       if (dr === 0) {
-        x = pad + (Math.min(mark.a.c, mark.b.c) + 1) * cellPx;
-        y = pad + mark.a.r * cellPx + cellPx / 2;
+        x = cellX(Math.min(mark.a.c, mark.b.c) + 1);
+        y = cellY(mark.a.r) + cellPx / 2;
       } else {
-        x = pad + mark.a.c * cellPx + cellPx / 2;
-        y = pad + (Math.min(mark.a.r, mark.b.r) + 1) * cellPx;
+        x = cellX(mark.a.c) + cellPx / 2;
+        y = cellY(Math.min(mark.a.r, mark.b.r) + 1);
       }
       ctx.strokeStyle = mark.color;
       ctx.lineWidth = 2.6;
@@ -365,11 +473,49 @@ export function GridCanvas(props: {
       ctx.stroke();
     }
 
+    const lit = Array.from({ length: n }, () => Array.from({ length: n }, () => false));
+    const fogDefined = (def.cosmetics.fogLights?.length ?? 0) > 0 || (def.cosmetics.fogTriggerEffects?.length ?? 0) > 0;
+    if (fogDefined) {
+      const lightRadius = 1;
+      const addLight = (rc: CellRC) => {
+        if (!inBounds(rc.r, rc.c)) return;
+        for (let dr = -lightRadius; dr <= lightRadius; dr++) {
+          for (let dc = -lightRadius; dc <= lightRadius; dc++) {
+            const rr = rc.r + dr;
+            const cc = rc.c + dc;
+            if (inBounds(rr, cc)) lit[rr][cc] = true;
+          }
+        }
+      };
+
+      for (const rc of def.cosmetics.fogLights ?? []) addLight(rc);
+
+      const solution = def.cosmetics.solution;
+      const isCorrect = (rc: CellRC) => {
+        if (!inBounds(rc.r, rc.c)) return false;
+        if (solution && solution.length >= n * n) {
+          const idx = rc.r * n + rc.c;
+          return (progress.cells[rc.r][rc.c].value ?? "") === solution[idx];
+        }
+        const given = progress.cells[rc.r][rc.c].given;
+        return Boolean(given && progress.cells[rc.r][rc.c].value === given);
+      };
+
+      for (const effect of def.cosmetics.fogTriggerEffects ?? []) {
+        const mode = (effect as any).triggerMode;
+        const satisfied = mode === "or"
+          ? effect.triggerCells.some(isCorrect)
+          : effect.triggerCells.every(isCorrect);
+        if (!satisfied) continue;
+        for (const rc of effect.revealCells) addLight(rc);
+      }
+    }
+
     for (let r = 0; r < n; r++) {
       for (let c = 0; c < n; c++) {
         const cell = progress.cells[r][c];
-        const x0 = pad + c * cellPx;
-        const y0 = pad + r * cellPx;
+        const x0 = cellX(c);
+        const y0 = cellY(r);
 
         if (cell.value) {
           ctx.fillStyle = cell.given ? "rgba(20,47,88,.95)" : "rgba(46,120,255,.95)";
@@ -416,13 +562,40 @@ export function GridCanvas(props: {
         }
       }
     }
-  }, [bgImage, cellPx, def, dotOffset, linePreview, n, pad, progress, sizePx]);
+
+    if (def.cosmetics.overlays?.length) drawLayer(def.cosmetics.overlays, 0.16);
+
+    if (fogDefined) {
+      ctx.fillStyle = "rgba(84, 88, 98, .7)";
+      for (let r = 0; r < n; r++) {
+        for (let c = 0; c < n; c++) {
+          if (lit[r][c]) continue;
+          ctx.fillRect(cellX(c), cellY(r), cellPx, cellPx);
+        }
+      }
+    }
+  }, [
+    bgImage,
+    boardH,
+    boardW,
+    cellPx,
+    def,
+    dotOffset,
+    heightPx,
+    linePreview,
+    n,
+    originX,
+    originY,
+    pad,
+    progress,
+    widthPx,
+  ]);
 
   function eventPoint(clientX: number, clientY: number) {
     const rect = canvasRef.current?.getBoundingClientRect();
     if (!rect) return null;
-    const bx = clientX - rect.left - pad;
-    const by = clientY - rect.top - pad;
+    const bx = clientX - rect.left - originX;
+    const by = clientY - rect.top - originY;
     const c = Math.floor(bx / cellPx);
     const r = Math.floor(by / cellPx);
     if (!inBounds(r, c)) return null;
@@ -455,8 +628,8 @@ export function GridCanvas(props: {
   function nearestAllowedNeighbor(last: CellRC, clientX: number, clientY: number, orthOnly: boolean): CellRC | null {
     const rect = canvasRef.current?.getBoundingClientRect();
     if (!rect) return null;
-    const px = clientX - rect.left - pad;
-    const py = clientY - rect.top - pad;
+    const px = clientX - rect.left - originX;
+    const py = clientY - rect.top - originY;
 
     let best: { rc: CellRC; d2: number } | null = null;
     for (let dr = -1; dr <= 1; dr++) {

@@ -164,9 +164,12 @@ const SclSchema = z.object({
 }).passthrough();
 
 function asRC(rc: any): CellRC | null {
-  // Many SudokuPad cosmetic coordinates are encoded as [x, y].
-  // For cell indices we normalize to { r: y, c: x }.
-  if (Array.isArray(rc) && rc.length >= 2) return { r: Number(rc[1]), c: Number(rc[0]) };
+  if (Array.isArray(rc) && rc.length >= 2) {
+    // Cell coordinate tuples in SCL compact arrays are row/col.
+    const r = Number(rc[0]);
+    const c = Number(rc[1]);
+    if (Number.isFinite(r) && Number.isFinite(c)) return { r, c };
+  }
   if (rc && typeof rc === "object") {
     if (typeof rc.r === "number" && typeof rc.c === "number") return { r: rc.r, c: rc.c };
     if (typeof rc.row === "number" && typeof rc.col === "number") return { r: rc.row, c: rc.col };
@@ -181,7 +184,10 @@ function asValue(v: any): string | undefined {
 }
 
 function asPoint(pt: any): { x: number; y: number } | null {
-  if (Array.isArray(pt) && pt.length >= 2) return { x: Number(pt[0]), y: Number(pt[1]) };
+  if (Array.isArray(pt) && pt.length >= 2) {
+    // SudokuPad tuple coordinates are commonly row/col; map to canvas x/y.
+    return { x: Number(pt[1]), y: Number(pt[0]) };
+  }
   if (pt && typeof pt === "object") {
     if (typeof pt.x === "number" && typeof pt.y === "number") return { x: pt.x, y: pt.y };
   }
@@ -199,6 +205,69 @@ function parseRcString(value: any): CellRC[] {
     if (Number.isFinite(r) && Number.isFinite(c)) out.push({ r, c });
   }
   return out;
+}
+
+function parseCellRefs(value: any): CellRC[] {
+  if (Array.isArray(value)) return value.map(asRC).filter(Boolean) as CellRC[];
+  if (typeof value === "string") return parseRcString(value);
+  return [];
+}
+
+function inferPuzzleSize(sclObj: any, givens: Array<{ rc: CellRC }>, cosmetics: PuzzleCosmetics): number {
+  const metadataSolution = sclObj?.metadata?.solution;
+  const fromSolution =
+    typeof metadataSolution === "string" && metadataSolution.length > 0
+      ? Math.sqrt(metadataSolution.length)
+      : 0;
+
+  const explicitSize =
+    Number(sclObj?.size) ||
+    Number(sclObj?.gridSize) ||
+    Number(sclObj?.n) ||
+    Number(sclObj?.metadata?.size) ||
+    Number(sclObj?.metadata?.gridSize) ||
+    Number(sclObj?.metadata?.n) ||
+    0;
+
+  const fromCells = Array.isArray(sclObj?.cells)
+    ? Math.max(
+        sclObj.cells.length,
+        ...sclObj.cells.map((row: unknown) => (Array.isArray(row) ? row.length : 0))
+      )
+    : 0;
+
+  let maxIndex = -1;
+  for (const g of givens) maxIndex = Math.max(maxIndex, g.rc.r, g.rc.c);
+
+  const pushRc = (rc?: CellRC | null) => {
+    if (!rc) return;
+    if (!Number.isFinite(rc.r) || !Number.isFinite(rc.c)) return;
+    maxIndex = Math.max(maxIndex, rc.r, rc.c);
+  };
+
+  for (const cg of cosmetics.cages ?? []) for (const rc of cg.cells) pushRc(rc);
+  for (const ar of cosmetics.arrows ?? []) for (const rc of ar.path) pushRc(rc);
+  for (const d of cosmetics.dots ?? []) {
+    pushRc(d.a);
+    pushRc(d.b);
+  }
+  for (const p of cosmetics.thermolines ?? []) for (const rc of p.path) pushRc(rc);
+  for (const p of cosmetics.whispers ?? []) for (const rc of p.path) pushRc(rc);
+  for (const p of cosmetics.palindromes ?? []) for (const rc of p.path) pushRc(rc);
+  for (const p of cosmetics.renbanlines ?? []) for (const rc of p.path) pushRc(rc);
+  for (const p of cosmetics.entropics ?? []) for (const rc of p.path) pushRc(rc);
+  for (const p of cosmetics.germanwhispers ?? []) for (const rc of p.path) pushRc(rc);
+  for (const p of cosmetics.modularlines ?? []) for (const rc of p.path) pushRc(rc);
+  for (const rc of cosmetics.fogLights ?? []) pushRc(rc);
+  for (const te of cosmetics.fogTriggerEffects ?? []) {
+    for (const rc of te.triggerCells) pushRc(rc);
+    for (const rc of te.revealCells) pushRc(rc);
+  }
+
+  const fromCoords = maxIndex >= 0 ? maxIndex + 1 : 0;
+  const fromSolutionSquare = Number.isInteger(fromSolution) ? fromSolution : 0;
+  const inferred = Math.max(fromCells, fromCoords, fromSolutionSquare, explicitSize);
+  return inferred > 0 ? inferred : 9;
 }
 
 export async function loadFromSudokuPad(inputUrlOrId: string): Promise<{ key: string; def: PuzzleDefinition; raw: any }> {
@@ -223,9 +292,20 @@ export async function loadFromSudokuPad(inputUrlOrId: string): Promise<{ key: st
   const sclObj = coerceToScl(raw);
 
   const meta = {
-    title: sclObj?.metadata?.title ?? sclObj?.metadata?.name ?? "",
-    author: sclObj?.metadata?.author ?? "",
-    rules: sclObj?.metadata?.rules ?? sclObj?.metadata?.rule ?? "",
+    title:
+      sclObj?.metadata?.title ??
+      sclObj?.metadata?.name ??
+      sclObj?.metadata?.t ??
+      sclObj?.metadata?.puzzleTitle ??
+      sclObj?.title ??
+      sclObj?.name ??
+      "",
+    author: sclObj?.metadata?.author ?? sclObj?.metadata?.by ?? sclObj?.metadata?.creator ?? "",
+    rules:
+      sclObj?.metadata?.rules ??
+      sclObj?.metadata?.rule ??
+      sclObj?.metadata?.description ??
+      "",
     postSolveMessage:
       sclObj?.metadata?.postSolveMessage ??
       sclObj?.metadata?.postsolve ??
@@ -238,12 +318,13 @@ export async function loadFromSudokuPad(inputUrlOrId: string): Promise<{ key: st
 
   const givens = extractGivens(sclObj);
   const cosmetics = extractCosmetics(sclObj);
+  const size = inferPuzzleSize(sclObj, givens, cosmetics);
 
   const key = normalizePuzzleKey(sourceId);
   const def: PuzzleDefinition = {
     id: key,
     sourceId,
-    size: 9,
+    size,
     meta,
     givens,
     cosmetics,
@@ -340,7 +421,7 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
   if (cagesSrc.length) {
     cosmetics.cages = cagesSrc
       .map((cg: any) => {
-        const cells = (cg?.cells ?? []).map(asRC).filter(Boolean) as CellRC[];
+        const cells = parseCellRefs(cg?.cells ?? cg?.ce);
         if (!cells.length) return null;
         return {
           cells,
@@ -356,7 +437,7 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
   if (arrowsSrc.length) {
     cosmetics.arrows = arrowsSrc
       .map((a: any) => {
-        const cellPath = (a?.cells ?? []).map(asRC).filter(Boolean) as CellRC[];
+        const cellPath = parseCellRefs(a?.cells ?? a?.ce);
         const wpPath = (a?.wayPoints ?? []).map(asPoint).filter(Boolean) as Array<{ x: number; y: number }>;
         const path = cellPath.length
           ? cellPath
@@ -378,7 +459,7 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
   if (dotsSrc.length) {
     cosmetics.dots = dotsSrc
       .map((d: any) => {
-        const cells = (d?.cells ?? [d?.a, d?.b]).map(asRC).filter(Boolean) as CellRC[];
+        const cells = parseCellRefs(d?.cells ?? d?.ce ?? [d?.a, d?.b]);
         if (cells.length !== 2) return null;
         const kind = d?.type === "white" || d?.color === "white" ? "white" : "black";
         return { a: cells[0], b: cells[1], kind };
@@ -423,7 +504,10 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
       borderThickness: typeof (item?.thickness ?? item?.th) === "number" ? (item?.thickness ?? item?.th) : undefined,
       text: item?.text ?? item?.te,
       textColor: item?.color ?? item?.c1,
-      textSize: typeof (item?.textSize ?? item?.fs) === "number" ? (item?.textSize ?? item?.fs) : undefined,
+      textSize:
+        typeof (item?.textSize ?? item?.fontSize ?? item?.fs) === "number"
+          ? (item?.textSize ?? item?.fontSize ?? item?.fs)
+          : undefined,
       angle: typeof item?.angle === "number" ? item.angle : undefined,
     };
   };
@@ -442,7 +526,7 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
   const extractPathConstraint = (arr: any[], color?: string): Array<{ path: CellRC[]; color?: string }> => 
     arr
       ?.map((item: any) => {
-        const path = (item?.cells ?? []).map(asRC).filter(Boolean) as CellRC[];
+        const path = parseCellRefs(item?.cells ?? item?.ce);
         if (path.length < 2) return null;
         return { path, color: item?.color ?? color };
       })
@@ -468,7 +552,7 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
   if (Array.isArray(scl?.littlekillers)) {
     cosmetics.littlekillers = scl.littlekillers
       .map((lk: any) => {
-        const rc = asRC(lk?.cell ?? lk?.rc);
+        const rc = asRC(lk?.cell ?? lk?.rc ?? lk?.ce);
         if (!rc) return null;
         return {
           rc,
@@ -485,9 +569,20 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
     const regions = scl?.irregularRegions ?? scl?.jigsaw;
     cosmetics.irregularRegions = regions
       .map((region: any) => {
-        const cells = (region?.cells ?? []).map(asRC).filter(Boolean) as CellRC[];
+        const cells = parseCellRefs(region?.cells ?? region?.ce);
         if (!cells.length) return null;
         return { cells, color: region?.color };
+      })
+      .filter(Boolean) as any;
+  }
+
+  // Standard regions can also be represented in `regions` as arrays of cell refs.
+  if (!cosmetics.irregularRegions && Array.isArray(scl?.regions)) {
+    cosmetics.irregularRegions = scl.regions
+      .map((region: any) => {
+        const cells = parseCellRefs(region);
+        if (!cells.length) return null;
+        return { cells };
       })
       .filter(Boolean) as any;
   }
@@ -496,7 +591,7 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
   if (Array.isArray(scl?.disjointGroups)) {
     cosmetics.disjointGroups = scl.disjointGroups
       .map((group: any) => {
-        const cells = (group?.cells ?? []).map(asRC).filter(Boolean) as CellRC[];
+        const cells = parseCellRefs(group?.cells ?? group?.ce);
         if (!cells.length) return null;
         return { cells, color: group?.color };
       })
@@ -533,13 +628,16 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
         const triggerCells = [
           ...parseRcString(te?.trigger?.cell),
           ...parseRcString(te?.trigger?.ce),
+          ...parseCellRefs(te?.trigger?.cells),
         ];
         const revealCells = [
           ...parseRcString(te?.effect?.cells),
           ...parseRcString(te?.effect?.ce),
+          ...parseCellRefs(te?.effect?.cells),
         ];
         if (!triggerCells.length || !revealCells.length) return null;
-        return { triggerCells, revealCells };
+        const triggerMode = typeof te?.trigger?.operator === "string" ? te.trigger.operator : undefined;
+        return { triggerCells, revealCells, triggerMode };
       })
       .filter(Boolean) as any;
   }

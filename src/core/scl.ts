@@ -14,6 +14,7 @@ export function makeInitialProgress(def: PuzzleDefinition): PuzzleProgress {
   const cells: CellState[][] = Array.from({ length: n }, () => Array.from({ length: n }, () => emptyCell()));
 
   for (const g of def.givens) {
+    if (g.rc.r < 0 || g.rc.c < 0 || g.rc.r >= n || g.rc.c >= n) continue;
     cells[g.rc.r][g.rc.c].given = g.v;
     cells[g.rc.r][g.rc.c].value = g.v;
   }

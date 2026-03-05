@@ -5,8 +5,11 @@ const baseColors0 = ["#000000", "#ffa0a0", "#ffdf61", "#feffaf", "#b0ffb0", "#61
 const baseColors1 = ["#a8a8a8", "#ffd0d0", "#ffe9a7", "#fffbd6", "#d6ffd6", "#8bf2a9", "#d9f1ff", "#bdb7ff", "#ffb3ff"];
 const baseColors2 = ["#ffffff", "#ff6b6b", "#ffb703", "#fef9c3", "#57d38c", "#00c2a8", "#74c0fc", "#7c3aed", "#f72585"];
 
-function digits(alphabetMode: boolean) {
-  return alphabetMode ? ["A","B","C","D","E","F","G","H","I"] : ["1","2","3","4","5","6","7","8","9"];
+function digits(alphabetMode: boolean, size: number) {
+  const n = Math.max(1, Math.min(16, size));
+  return Array.from({ length: n }, (_, i) =>
+    alphabetMode ? String.fromCharCode(65 + i) : String(i + 1)
+  );
 }
 
 export function Keyboard(props: {
@@ -29,7 +32,7 @@ export function Keyboard(props: {
   const { kind, progress } = props;
 
   if (kind === "numbers") {
-    const keys = digits(progress.alphabetMode);
+    const keys = digits(progress.alphabetMode, progress.cells.length);
     return (
       <div className="card">
         <div className="row" style={{ justifyContent: "space-between" }}>
