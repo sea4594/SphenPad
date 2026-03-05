@@ -5,12 +5,15 @@ import { deletePuzzle, listPuzzles, upsertPuzzle } from "../core/storage";
 import { makeInitialProgress } from "../core/scl";
 import { fmtHMS } from "../core/time";
 import { firebaseEnabled, googleLogin, googleLogout } from "../firebase/client";
+import { IconSettings } from "./icons";
+import { SettingsOverlay } from "./SettingsOverlay";
 
 export function MainMenu() {
   const nav = useNavigate();
   const [url, setUrl] = useState("");
   const [rows, setRows] = useState<any[]>([]);
   const [busy, setBusy] = useState<string>("");
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   async function refresh() {
     setRows(await listPuzzles());
@@ -43,6 +46,9 @@ export function MainMenu() {
         <div className="brand">SphenPad</div>
         <div className="muted">Total time: {totals}</div>
         <div className="spacer" />
+        <button className="btn" onClick={() => setSettingsOpen(true)} title="Settings">
+          <IconSettings />
+        </button>
         {firebaseEnabled ? (
           <div className="row">
             <button className="btn" onClick={() => googleLogin().catch((e)=>alert(e.message))}>Google login</button>
@@ -117,6 +123,8 @@ export function MainMenu() {
           </div>
         </div>
       </div>
+
+      {settingsOpen ? <SettingsOverlay onClose={() => setSettingsOpen(false)} /> : null}
     </div>
   );
 }

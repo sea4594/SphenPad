@@ -2,6 +2,38 @@ export const IconUndo = () => <span style={{ fontSize: 18 }}>↶</span>;
 export const IconRedo = () => <span style={{ fontSize: 18 }}>↷</span>;
 export const IconPause = () => <span style={{ fontSize: 18 }}>⏸</span>;
 export const IconPlay = () => <span style={{ fontSize: 18 }}>▶</span>;
+export const IconSettings = () => <span style={{ fontSize: 18 }}>⚙</span>;
+
+export const IconSelectMode = (props: { multi: boolean }) => (
+	<span
+		style={{
+			position: "relative",
+			width: 18,
+			height: 18,
+			display: "inline-block",
+		}}
+	>
+		<span
+			style={{
+				position: "absolute",
+				inset: props.multi ? "4px 0 0 4px" : "2px",
+				border: "1.6px solid currentColor",
+				borderRadius: 2,
+			}}
+		/>
+		{props.multi ? (
+			<span
+				style={{
+					position: "absolute",
+					inset: "0 4px 4px 0",
+					border: "1.6px solid currentColor",
+					borderRadius: 2,
+					opacity: 0.86,
+				}}
+			/>
+		) : null}
+	</span>
+);
 
 export const IconToolBig = () => <span style={{ fontSize: 20, fontWeight: 800, lineHeight: 1 }}>9</span>;
 

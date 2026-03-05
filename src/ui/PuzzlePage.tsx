@@ -13,6 +13,8 @@ import {
   IconPause,
   IconPlay,
   IconRedo,
+  IconSelectMode,
+  IconSettings,
   IconToolBig,
   IconToolCenter,
   IconToolCorner,
@@ -21,6 +23,7 @@ import {
   IconUndo,
 } from "./icons";
 import { auth, firebaseEnabled, pullPuzzle, pushPuzzle } from "../firebase/client";
+import { SettingsOverlay } from "./SettingsOverlay";
 
 function rcKey(rc: CellRC) {
   return `${rc.r},${rc.c}`;
@@ -40,6 +43,17 @@ function isSelectionPatch(p: Patch | unknown): p is Patch {
   if (!p || typeof p !== "object") return false;
   const path = (p as Patch).path;
   return Array.isArray(path) && path.length === 1 && path[0] === "selection";
+}
+
+function isPatchLike(p: unknown): p is Patch {
+  if (!p || typeof p !== "object") return false;
+  return Array.isArray((p as Patch).path);
+}
+
+function toPatchEntry(entry: unknown): Patch[] {
+  if (Array.isArray(entry) && entry.every(isPatchLike)) return entry as Patch[];
+  if (isPatchLike(entry)) return [entry as Patch];
+  return [];
 }
 
 function isSolved(progress: PuzzleProgress, solution?: string): boolean {
@@ -73,6 +87,7 @@ export function PuzzlePage() {
   const [data, setData] = useState<PersistedPuzzle | null>(null);
   const [pauseMenuOpen, setPauseMenuOpen] = useState(false);
   const [completionOpen, setCompletionOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const tickRef = useRef<number | null>(null);
   const holdDelayRef = useRef<number | null>(null);
   const holdIntervalRef = useRef<number | null>(null);
@@ -154,18 +169,18 @@ export function PuzzlePage() {
     let nextProgress: PuzzleProgress = data.progress;
     for (const p of patches) nextProgress = applyPatch(nextProgress, p);
 
-    const nextUndo = [...(data.undo as Patch[])];
+    const nextUndo = data.undo.map(toPatchEntry).filter((entry) => entry.length > 0);
     const selectionOnly = patches.every((p) => isSelectionPatch(p));
     if (selectionOnly) {
       const latest = patches[patches.length - 1] as Patch;
       const last = nextUndo[nextUndo.length - 1];
-      if (last && isSelectionPatch(last)) {
-        nextUndo[nextUndo.length - 1] = { path: ["selection"], prev: last.prev, next: latest.next };
+      if (last && last.length === 1 && isSelectionPatch(last[0])) {
+        nextUndo[nextUndo.length - 1] = [{ path: ["selection"], prev: last[0].prev, next: latest.next }];
       } else {
-        nextUndo.push(...patches);
+        nextUndo.push([...patches]);
       }
     } else {
-      nextUndo.push(...patches);
+      nextUndo.push([...patches]);
     }
 
     persist({
@@ -183,26 +198,29 @@ export function PuzzlePage() {
 
   function undo() {
     if (!data || data.undo.length === 0) return;
-    const p = data.undo[data.undo.length - 1] as Patch;
-    const inv = invertPatch(p);
-    const nextProgress = applyPatch(data.progress, inv);
+    const entry = toPatchEntry(data.undo[data.undo.length - 1]);
+    if (!entry.length) return;
+    let nextProgress = data.progress;
+    for (let i = entry.length - 1; i >= 0; i--) nextProgress = applyPatch(nextProgress, invertPatch(entry[i] as Patch));
     persist({
       ...data,
       progress: nextProgress,
       undo: data.undo.slice(0, -1),
-      redo: [...data.redo, p],
+      redo: [...data.redo, entry],
       updatedAt: Date.now(),
     });
   }
 
   function redo() {
     if (!data || data.redo.length === 0) return;
-    const p = data.redo[data.redo.length - 1] as Patch;
-    const nextProgress = applyPatch(data.progress, p);
+    const entry = toPatchEntry(data.redo[data.redo.length - 1]);
+    if (!entry.length) return;
+    let nextProgress = data.progress;
+    for (const p of entry) nextProgress = applyPatch(nextProgress, p);
     persist({
       ...data,
       progress: nextProgress,
-      undo: [...data.undo, p],
+      undo: [...data.undo, entry],
       redo: data.redo.slice(0, -1),
       updatedAt: Date.now(),
     });
@@ -251,6 +269,11 @@ export function PuzzlePage() {
   function setSelectionMode(multiSelect: boolean) {
     if (!data || data.progress.multiSelect === multiSelect) return;
     pushPatch(patchAt(data.progress, ["multiSelect"], multiSelect));
+  }
+
+  function toggleSelectionMode() {
+    if (!data) return;
+    setSelectionMode(!data.progress.multiSelect);
   }
 
   function startOrResume() {
@@ -613,6 +636,12 @@ export function PuzzlePage() {
         return;
       }
 
+      if (!e.altKey && !e.ctrlKey && !e.metaKey && (k === "backspace" || k === "delete")) {
+        e.preventDefault();
+        handleBackspace();
+        return;
+      }
+
       const digit = normalizeDigit(k);
       if (digit && !e.altKey && !e.metaKey) {
         e.preventDefault();
@@ -676,6 +705,12 @@ export function PuzzlePage() {
 
         <div className="row">
           <div style={{ fontVariantNumeric: "tabular-nums" }}>{timeStr}</div>
+          <button className="btn" onClick={onPausePlayClick} title="Pause or resume">
+            {data.progress.paused ? <IconPlay /> : <IconPause />}
+          </button>
+          <button className="btn" onClick={() => setSettingsOpen(true)} title="Settings">
+            <IconSettings />
+          </button>
         </div>
       </div>
 
@@ -692,43 +727,35 @@ export function PuzzlePage() {
                 onLineTapEdge={onLineTapEdge}
               />
             </div>
-
-            <div className="card playControls">
-              <div className="controlRow">
-                <button
-                  className="btn"
-                  onPointerDown={() => startHoldRepeat("undo")}
-                  onPointerUp={stopHoldRepeat}
-                  onPointerLeave={stopHoldRepeat}
-                  onPointerCancel={stopHoldRepeat}
-                  title="Undo (N)"
-                >
-                  <IconUndo />
-                </button>
-                <button
-                  className="btn"
-                  onPointerDown={() => startHoldRepeat("redo")}
-                  onPointerUp={stopHoldRepeat}
-                  onPointerLeave={stopHoldRepeat}
-                  onPointerCancel={stopHoldRepeat}
-                  title="Redo (M)"
-                >
-                  <IconRedo />
-                </button>
-                <button className={"btn" + (!data.progress.multiSelect ? " primary" : "")} onClick={() => setSelectionMode(false)} title="Single-touch selection">
-                  Single
-                </button>
-                <button className={"btn" + (data.progress.multiSelect ? " primary" : "")} onClick={() => setSelectionMode(true)} title="Multi-touch selection">
-                  Multi
-                </button>
-                <button className="btn" onClick={onPausePlayClick} title="Pause or resume">
-                  {data.progress.paused ? <IconPlay /> : <IconPause />}
-                </button>
-              </div>
-            </div>
           </div>
 
           <div className="kbdPanel">
+            <div className="card sideActions">
+              <button
+                className="btn"
+                onPointerDown={() => startHoldRepeat("undo")}
+                onPointerUp={stopHoldRepeat}
+                onPointerLeave={stopHoldRepeat}
+                onPointerCancel={stopHoldRepeat}
+                title="Undo (N)"
+              >
+                <IconUndo />
+              </button>
+              <button
+                className="btn"
+                onPointerDown={() => startHoldRepeat("redo")}
+                onPointerUp={stopHoldRepeat}
+                onPointerLeave={stopHoldRepeat}
+                onPointerCancel={stopHoldRepeat}
+                title="Redo (M)"
+              >
+                <IconRedo />
+              </button>
+              <button className={"btn" + (data.progress.multiSelect ? " primary" : "")} onClick={toggleSelectionMode} title={data.progress.multiSelect ? "Multi-touch selection enabled" : "Single-touch selection enabled"}>
+                <IconSelectMode multi={data.progress.multiSelect} />
+              </button>
+            </div>
+
             <div className="card toolSwitcher">
               <button title="Big numbers" className={"btn toolIconBtn" + (data.progress.activeTool === "value" ? " primary" : "")} onClick={() => setActiveTool("value")}><IconToolBig /></button>
               <button title="Center notes" className={"btn toolIconBtn" + (data.progress.activeTool === "center" ? " primary" : "")} onClick={() => setActiveTool("center")}><IconToolCenter /></button>
@@ -793,6 +820,8 @@ export function PuzzlePage() {
           onClose={() => setCompletionOpen(false)}
         />
       )}
+
+      {settingsOpen ? <SettingsOverlay onClose={() => setSettingsOpen(false)} /> : null}
     </div>
   );
 }

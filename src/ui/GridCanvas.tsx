@@ -194,6 +194,10 @@ export function GridCanvas(props: {
     ctx.fillStyle = "rgba(255,255,255,.02)";
     ctx.fillRect(0, 0, widthPx, heightPx);
 
+    // Keep the full Sudoku grid area pure white regardless of global theme.
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(cellX(0), cellY(0), cellPx * n, cellPx * n);
+
     for (let r = 0; r < n; r++) {
       for (let c = 0; c < n; c++) {
         const col = progress.cells[r][c].color;
@@ -770,6 +774,39 @@ export function GridCanvas(props: {
     return { gx, gy };
   }
 
+  function nearestCellCenter(clientX: number, clientY: number): CellRC | null {
+    const gp = eventGridPoint(clientX, clientY);
+    if (!gp) return null;
+    const c = Math.round(gp.gx - 0.5);
+    const r = Math.round(gp.gy - 0.5);
+    if (!inBounds(r, c)) return null;
+    return { r, c };
+  }
+
+  function traceCellSteps(from: CellRC, to: CellRC, boundsInclusive: { rows: number; cols: number }) {
+    const dr = to.r - from.r;
+    const dc = to.c - from.c;
+    const steps = Math.max(Math.abs(dr), Math.abs(dc));
+    if (steps <= 0) return [] as CellRC[];
+
+    const out: CellRC[] = [];
+    let prev = from;
+    for (let i = 1; i <= steps; i++) {
+      const r = Math.round(from.r + (dr * i) / steps);
+      const c = Math.round(from.c + (dc * i) / steps);
+      const bounded =
+        r >= 0 &&
+        c >= 0 &&
+        r < boundsInclusive.rows &&
+        c < boundsInclusive.cols;
+      if (!bounded) continue;
+      if (r === prev.r && c === prev.c) continue;
+      prev = { r, c };
+      out.push(prev);
+    }
+    return out;
+  }
+
   function nearestCornerNode(clientX: number, clientY: number, radius = 0.34): CellRC | null {
     const gp = eventGridPoint(clientX, clientY);
     if (!gp) return null;
@@ -822,7 +859,7 @@ export function GridCanvas(props: {
     const rc = { r: pt.r, c: pt.c };
     if (progress.activeTool === "line") {
       const kind = resolveInitialLineKind(pt);
-      const start = kind === "edge" ? nearestCornerNode(e.clientX, e.clientY, 0.42) : rc;
+      const start = kind === "edge" ? nearestCornerNode(e.clientX, e.clientY, 0.42) : nearestCellCenter(e.clientX, e.clientY) ?? rc;
       if (!start) return;
       dragRef.current = { path: [start], segments: [], last: start, moved: false, lineKind: kind, visited: new Set([rcKey(start)]) };
       setLinePreview({ segments: [], kind });
@@ -835,9 +872,7 @@ export function GridCanvas(props: {
 
     if (!progress.multiSelect) {
       const nextSelection = new Set<string>();
-      if (!(touchedSelected && progress.selection.length === 1)) {
-        nextSelection.add(key);
-      }
+      nextSelection.add(key);
       dragRef.current = {
         path: [rc],
         segments: [],
@@ -874,29 +909,38 @@ export function GridCanvas(props: {
 
     if (progress.activeTool === "line") {
       const kind = drag.lineKind ?? "center";
-      const pt = eventPoint(e.clientX, e.clientY);
       const prevCell = drag.path[drag.path.length - 2] ?? null;
       const next = kind === "edge"
         ? nearestCornerNode(e.clientX, e.clientY, 0.42)
-        : (pt ? { r: pt.r, c: pt.c } : null);
+        : nearestCellCenter(e.clientX, e.clientY);
       if (!next) return;
       if (next.r === drag.last.r && next.c === drag.last.c) return;
 
-      const dr = next.r - drag.last.r;
-      const dc = next.c - drag.last.c;
-      if (Math.abs(dr) > 1 || Math.abs(dc) > 1) return;
-      if (kind === "edge" && Math.abs(dr) + Math.abs(dc) !== 1) return;
+      const rowLimit = kind === "edge" ? n + 1 : n;
+      const colLimit = kind === "edge" ? n + 1 : n;
+      const hops = traceCellSteps(drag.last, next, { rows: rowLimit, cols: colLimit });
+      if (!hops.length) return;
 
-      if (prevCell && prevCell.r === next.r && prevCell.c === next.c) {
-        drag.path.pop();
-        drag.segments.pop();
-      } else {
-        const seg: LineSegmentDraft = { a: drag.last, b: next };
-        drag.path.push(next);
-        drag.segments.push(seg);
+      for (const hop of hops) {
+        const dr = hop.r - drag.last.r;
+        const dc = hop.c - drag.last.c;
+        if (Math.abs(dr) > 1 || Math.abs(dc) > 1) continue;
+        if (kind === "edge" && Math.abs(dr) + Math.abs(dc) !== 1) continue;
+
+        const previous = drag.path[drag.path.length - 2] ?? prevCell;
+        if (previous && previous.r === hop.r && previous.c === hop.c) {
+          drag.path.pop();
+          drag.segments.pop();
+          drag.last = hop;
+          continue;
+        }
+
+        drag.path.push(hop);
+        drag.segments.push({ a: drag.last, b: hop });
+        drag.last = hop;
+        drag.moved = true;
       }
-      drag.last = next;
-      drag.moved = true;
+
       setLinePreview({ segments: [...drag.segments], kind });
       return;
     }
@@ -905,17 +949,20 @@ export function GridCanvas(props: {
     if (!pt) return;
     const next = { r: pt.r, c: pt.c };
     if (next.r === drag.last.r && next.c === drag.last.c) return;
-    if (Math.abs(next.r - drag.last.r) > 1 || Math.abs(next.c - drag.last.c) > 1) return;
-    drag.last = next;
-    drag.moved = true;
-    const key = rcKey(next);
-    if (drag.visited.has(key)) return;
-    drag.visited.add(key);
-    drag.path.push(next);
+    const hops = traceCellSteps(drag.last, next, { rows: n, cols: n });
+    if (!hops.length) return;
 
     const nextSelection = drag.selectionSet ? new Set(drag.selectionSet) : new Set<string>();
-    if (drag.selectionMode === "remove") nextSelection.delete(key);
-    else nextSelection.add(key);
+    for (const hop of hops) {
+      drag.last = hop;
+      drag.moved = true;
+      const hopKey = rcKey(hop);
+      if (drag.visited.has(hopKey)) continue;
+      drag.visited.add(hopKey);
+      drag.path.push(hop);
+      if (drag.selectionMode === "remove") nextSelection.delete(hopKey);
+      else nextSelection.add(hopKey);
+    }
     drag.selectionSet = nextSelection;
     props.onSelection(Array.from(nextSelection).map(keyToRc));
   }
@@ -957,7 +1004,7 @@ export function GridCanvas(props: {
   }
 
   return (
-    <div ref={wrapRef} className="card boardCard" style={{ display: "grid", placeItems: "center", width: "100%" }}>
+    <div ref={wrapRef} className="boardSurface" style={{ display: "grid", placeItems: "center", width: "100%" }}>
       <canvas
         ref={canvasRef}
         style={{ maxWidth: "100%", touchAction: "none", userSelect: "none" }}
