@@ -711,10 +711,6 @@ export function PuzzlePage() {
       <div className="topbar">
         <div className="row">
           <button className="btn" onClick={() => nav("/")}>← Menu</button>
-          <div>
-            <div style={{ fontWeight: 700 }}>{meta?.title || "(untitled)"}</div>
-            <div className="muted" style={{ fontSize: 13 }}>{meta?.author || ""}</div>
-          </div>
         </div>
 
         <div className="row">
@@ -729,6 +725,12 @@ export function PuzzlePage() {
       </div>
 
       <div className="page puzzlePage">
+        <div className="card puzzleMetaCard">
+          <div className="puzzleTitle">{meta?.title || "(untitled)"}</div>
+          <div className="puzzleAuthor">{meta?.author || "Unknown author"}</div>
+          <div className="puzzleRules">{meta?.rules || "No puzzle description provided."}</div>
+        </div>
+
         <div className="gridLayout">
           <div className="boardColumn">
             <div className="card boardCard">

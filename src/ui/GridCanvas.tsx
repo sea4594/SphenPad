@@ -138,18 +138,53 @@ export function GridCanvas(props: {
     return `#${body}${a}`;
   }
 
+  function normalizeFeatureLineColor(color?: string): string {
+    if (!color) return "#000000";
+    const v = color.trim().toLowerCase();
+    const hex = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(v);
+    if (hex) {
+      const raw = hex[1] as string;
+      const full = raw.length === 3 ? raw.split("").map((c) => c + c).join("") : raw;
+      const r = parseInt(full.slice(0, 2), 16);
+      const g = parseInt(full.slice(2, 4), 16);
+      const b = parseInt(full.slice(4, 6), 16);
+      const luma = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+      return luma < 0.5 ? "#000000" : color;
+    }
+
+    const rgb = /^rgba?\(([^)]+)\)$/.exec(v);
+    if (rgb) {
+      const parts = rgb[1].split(",").map((p) => Number(p.trim()));
+      if (parts.length >= 3) {
+        const [r, g, b] = parts;
+        const luma = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+        return luma < 0.5 ? "#000000" : color;
+      }
+    }
+
+    return color;
+  }
+
   useEffect(() => {
     const el = wrapRef.current;
     if (!el) return;
     const update = () => {
-      const width = el.clientWidth || window.innerWidth;
-      const available = Math.max(280, width - 28);
-      const next = Math.floor(Math.min(56, Math.max(34, available / n)));
+      const host = (el.parentElement as HTMLElement | null) ?? el;
+      const width = host.clientWidth || window.innerWidth;
+      const height = window.innerHeight;
+      const sideMargin = 12;
+      const topBottomPad = 26;
+      const spanX = n + outsideLeft + outsideRight;
+      const spanY = n + outsideTop + outsideBottom;
+      const byWidth = (Math.max(280, width - sideMargin * 2)) / spanX;
+      const byHeight = (Math.max(280, height - 180 - topBottomPad)) / spanY;
+      const next = Math.floor(Math.min(56, Math.max(30, Math.min(byWidth, byHeight))));
       setCellPx(next);
     };
     update();
     const ro = new ResizeObserver(update);
     ro.observe(el);
+    if (el.parentElement) ro.observe(el.parentElement);
     window.addEventListener("orientationchange", update);
     window.addEventListener("resize", update);
     return () => {
@@ -157,7 +192,7 @@ export function GridCanvas(props: {
       window.removeEventListener("orientationchange", update);
       window.removeEventListener("resize", update);
     };
-  }, [n]);
+  }, [n, outsideBottom, outsideLeft, outsideRight, outsideTop]);
 
   useEffect(() => {
     if (!def.cosmetics.backgroundImageUrl) {
@@ -290,21 +325,26 @@ export function GridCanvas(props: {
     })();
 
     for (let i = 0; i <= n; i++) {
-      ctx.lineWidth = i % subgrid.r === 0 ? 2.5 : 1;
-      ctx.strokeStyle = "rgba(28,46,74,.62)";
+      ctx.lineWidth = i % subgrid.r === 0 ? 2.2 : 1;
+      ctx.strokeStyle = "#000000";
       ctx.beginPath();
       ctx.moveTo(cellX(0), cellY(i));
       ctx.lineTo(cellX(n), cellY(i));
       ctx.stroke();
 
-      ctx.lineWidth = i % subgrid.c === 0 ? 2.5 : 1;
+      ctx.lineWidth = i % subgrid.c === 0 ? 2.2 : 1;
       ctx.beginPath();
       ctx.moveTo(cellX(i), cellY(0));
       ctx.lineTo(cellX(i), cellY(n));
       ctx.stroke();
     }
 
-    const drawLayer = (items: NonNullable<PuzzleDefinition["cosmetics"]["underlays"]>) => {
+    const drawLayer = (
+      items: NonNullable<PuzzleDefinition["cosmetics"]["underlays"]>,
+      opts?: { drawShapes?: boolean; drawText?: boolean }
+    ) => {
+      const drawShapes = opts?.drawShapes ?? true;
+      const drawText = opts?.drawText ?? true;
       for (const item of items) {
         const w = Number.isFinite(item.width) ? item.width! : 1;
         const h = Number.isFinite(item.height) ? item.height! : 1;
@@ -316,7 +356,7 @@ export function GridCanvas(props: {
         const cy = worldY(item.center.y);
         const angleRad = (Number(item.angle) || 0) * (Math.PI / 180);
 
-        if (item.color) {
+        if (drawShapes && item.color) {
           ctx.save();
           if (angleRad) {
             ctx.translate(cx, cy);
@@ -334,7 +374,7 @@ export function GridCanvas(props: {
           ctx.restore();
         }
 
-        if (item.borderColor) {
+        if (drawShapes && item.borderColor) {
           ctx.save();
           if (angleRad) {
             ctx.translate(cx, cy);
@@ -353,14 +393,14 @@ export function GridCanvas(props: {
           ctx.restore();
         }
 
-        if (item.text != null && String(item.text).length) {
+        if (drawText && item.text != null && String(item.text).length) {
           ctx.save();
           if (angleRad) {
             ctx.translate(cx, cy);
             ctx.rotate(angleRad);
             ctx.translate(-cx, -cy);
           }
-          ctx.fillStyle = item.textColor ?? "rgba(20,47,88,.92)";
+          ctx.fillStyle = item.textColor ?? "#111111";
           const px = (item.textSize ?? 16) * (cellPx / 56);
           ctx.font = `700 ${Math.max(10, px)}px ui-sans-serif`;
           ctx.textAlign = "center";
@@ -371,10 +411,10 @@ export function GridCanvas(props: {
       }
     };
 
-    if (def.cosmetics.underlays?.length) drawLayer(def.cosmetics.underlays);
+    if (def.cosmetics.underlays?.length) drawLayer(def.cosmetics.underlays, { drawShapes: true, drawText: false });
 
     if (def.cosmetics.cages) {
-      ctx.strokeStyle = "rgba(18,42,77,.82)";
+      ctx.strokeStyle = "#000000";
       ctx.lineWidth = 1.25;
       ctx.setLineDash([5, 3]);
       for (const cage of def.cosmetics.cages) {
@@ -423,7 +463,7 @@ export function GridCanvas(props: {
         }
         if (cage.sum) {
           const first = cage.cells[0];
-          ctx.fillStyle = "rgba(12, 30, 55, .8)";
+          ctx.fillStyle = "#111111";
           ctx.font = "12px ui-sans-serif";
           ctx.fillText(cage.sum, cellX(first.c) + 6, cellY(first.r) + 14);
         }
@@ -434,7 +474,7 @@ export function GridCanvas(props: {
     if (def.cosmetics.lines) {
       for (const ln of def.cosmetics.lines) {
         if (ln.wayPoints.length < 2) continue;
-        ctx.strokeStyle = ln.color ?? "#2ecbff";
+        ctx.strokeStyle = normalizeFeatureLineColor(ln.color);
         ctx.lineWidth = (ln.thickness ?? 6) * (cellPx / 50);
         ctx.lineCap = "round";
         ctx.lineJoin = "round";
@@ -450,7 +490,7 @@ export function GridCanvas(props: {
     }
 
     if (def.cosmetics.arrows) {
-      ctx.strokeStyle = "rgba(20,47,88,.9)";
+      ctx.strokeStyle = "#111111";
       ctx.lineWidth = 3;
       for (const a of def.cosmetics.arrows) {
         ctx.beginPath();
@@ -462,7 +502,7 @@ export function GridCanvas(props: {
         });
         ctx.stroke();
         const b = a.bulb;
-        ctx.fillStyle = "rgba(20,47,88,.95)";
+        ctx.fillStyle = "#111111";
         ctx.beginPath();
         ctx.arc(cellX(b.c) + cellPx / 2, cellY(b.r) + cellPx / 2, 8, 0, Math.PI * 2);
         ctx.fill();
@@ -484,7 +524,7 @@ export function GridCanvas(props: {
         ctx.arc(x, y, 7, 0, Math.PI * 2);
         ctx.fillStyle = d.kind === "white" ? "#ffffff" : "#1b1b1b";
         ctx.fill();
-        ctx.strokeStyle = "rgba(20,47,88,.6)";
+        ctx.strokeStyle = "#111111";
         ctx.lineWidth = 2;
         ctx.stroke();
       }
@@ -634,13 +674,13 @@ export function GridCanvas(props: {
         const y0 = cellY(r);
 
         if (cell.value) {
-          ctx.fillStyle = cell.given ? "rgba(20,47,88,.95)" : "rgba(46,120,255,.95)";
+          ctx.fillStyle = cell.given ? "#111111" : "#123f9a";
           ctx.font = cell.given ? "700 26px ui-sans-serif" : "650 26px ui-sans-serif";
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";
           ctx.fillText(cell.value, x0 + cellPx / 2, y0 + cellPx / 2 + 1);
         } else {
-          ctx.fillStyle = "rgba(20,47,88,.72)";
+          ctx.fillStyle = "#1e2633";
           ctx.font = "12px ui-sans-serif";
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";
@@ -679,6 +719,7 @@ export function GridCanvas(props: {
       }
     }
 
+    if (def.cosmetics.underlays?.length) drawLayer(def.cosmetics.underlays, { drawShapes: false, drawText: true });
     if (def.cosmetics.overlays?.length) drawLayer(def.cosmetics.overlays);
 
     if (fogDefined) {
@@ -703,7 +744,7 @@ export function GridCanvas(props: {
       // Keep grid visible on top of fog.
       for (let i = 0; i <= n; i++) {
         ctx.lineWidth = i % subgrid.r === 0 ? 2.5 : 1;
-        ctx.strokeStyle = "rgba(28,46,74,.7)";
+        ctx.strokeStyle = "#000000";
         ctx.beginPath();
         ctx.moveTo(cellX(0), cellY(i));
         ctx.lineTo(cellX(n), cellY(i));
@@ -725,7 +766,7 @@ export function GridCanvas(props: {
 
           if (cell.value) {
             if (cell.given && !lit[r][c]) continue;
-            ctx.fillStyle = cell.given ? "rgba(20,47,88,.95)" : "rgba(46,120,255,.95)";
+            ctx.fillStyle = cell.given ? "#111111" : "#123f9a";
             ctx.font = cell.given ? "700 26px ui-sans-serif" : "650 26px ui-sans-serif";
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
@@ -734,7 +775,7 @@ export function GridCanvas(props: {
           }
 
           if (cell.given) continue;
-          ctx.fillStyle = "rgba(20,47,88,.78)";
+          ctx.fillStyle = "#1e2633";
           ctx.font = "12px ui-sans-serif";
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";
@@ -1057,7 +1098,7 @@ export function GridCanvas(props: {
   }
 
   return (
-    <div ref={wrapRef} className="boardSurface" style={{ display: "grid", placeItems: "center", width: "100%" }}>
+    <div ref={wrapRef} className="boardSurface" style={{ display: "grid", placeItems: "center" }}>
       <canvas
         ref={canvasRef}
         style={{ maxWidth: "100%", touchAction: "none", userSelect: "none" }}
@@ -1067,9 +1108,6 @@ export function GridCanvas(props: {
         onPointerCancel={onCancel}
         onPointerLeave={onCancel}
       />
-      <div className="muted" style={{ marginTop: 10, fontSize: 13, color: "#5f6470" }}>
-        Drag across cells to select. In line mode, drag to draw, backtrack to erase path, tap for marks.
-      </div>
     </div>
   );
 }
