@@ -683,6 +683,30 @@ input.url {
   border: 1px solid rgba(0, 0, 0, 0.26);
 }
 
+@media (min-width: 1001px) {
+  .mobileControlPanel {
+    --panel-gap: 10px;
+    --panel-pad: 10px;
+    grid-template-rows: repeat(5, minmax(72px, 1fr));
+    min-height: calc((72px * 5) + (var(--panel-gap) * 4) + (var(--panel-pad) * 2));
+  }
+
+  .panelBtn {
+    min-height: 72px;
+    padding: 8px;
+  }
+
+  .panelMainGrid .keyGrid {
+    gap: 10px !important;
+  }
+
+  .panelMainGrid .keyButton,
+  .panelMainGrid .lineKindSelect {
+    min-height: 72px;
+    font-size: clamp(18px, 2vw, 28px);
+  }
+}
+
 @media (min-width: 1080px) {
   .gridLayout {
     grid-template-columns: minmax(540px, 1fr) minmax(320px, 390px);

@@ -94,6 +94,14 @@ function sharesSelectedCell(a: CellRC, b: CellRC, selected: Set<string>) {
   return selected.has(rcKey(a)) || selected.has(rcKey(b));
 }
 
+const highlightPalettePages = [
+  ["#d9d9d9", "#9b9b9b", "#4f4f4f", "#57d38c", "#ff8fc3", "#ffae57", "#ff5f57", "#ffe066", "#63a6ff"],
+  ["#000000", "#ffa0a0", "#ffdf61", "#feffaf", "#b0ffb0", "#61d060", "#d0d0ff", "#8180f0", "#ff08ff"],
+  ["#a8a8a8", "#ffd0d0", "#ffe9a7", "#fffbd6", "#d6ffd6", "#8bf2a9", "#d9f1ff", "#bdb7ff", "#ffb3ff"],
+] as const;
+
+const linePalette = ["#000000", "#ff4d4f", "#ff9f1a", "#ffd60a", "#34c759", "#00b894", "#32ade6", "#4f46e5", "#ff2d96"] as const;
+
 export function PuzzlePage() {
   const { puzzleId } = useParams();
   const key = decodeURIComponent(puzzleId ?? "");
@@ -696,6 +704,7 @@ export function PuzzlePage() {
       x: "corner",
       c: "center",
       v: "highlight",
+      b: "line",
     };
 
     const normalizeDigit = (k: string): string | null => {
@@ -791,6 +800,14 @@ export function PuzzlePage() {
         return;
       }
 
+      if (!e.altKey && !e.ctrlKey && !e.metaKey && k === "escape") {
+        e.preventDefault();
+        if (!data) return;
+        if (!data.progress.paused) pushPatch(patchAt(data.progress, ["paused"], true), { recordHistory: false });
+        setPauseMenuOpen(true);
+        return;
+      }
+
       if (!e.altKey && !e.metaKey && (k === " " || k === "pagedown")) {
         e.preventDefault();
         cycleTool(1);
@@ -823,6 +840,29 @@ export function PuzzlePage() {
       if (digit && !e.altKey && !e.metaKey) {
         e.preventDefault();
         if (!data) return;
+
+        const paletteIndex = digit === "0" ? -1 : Number(digit) - 1;
+        if (!e.ctrlKey && !e.shiftKey && data.progress.activeTool === "highlight") {
+          if (digit === "0") {
+            applyHighlight("#ffffff");
+            return;
+          }
+          const palette = highlightPalettePages[data.progress.highlightPalettePage] ?? highlightPalettePages[0];
+          const color = palette[paletteIndex];
+          if (color) applyHighlight(color);
+          return;
+        }
+
+        if (!e.ctrlKey && !e.shiftKey && data.progress.activeTool === "line") {
+          if (digit === "0") {
+            pushPatch(patchAt(data.progress, ["linePaletteColor"], "#ffffff"), { recordHistory: false });
+            return;
+          }
+          const color = linePalette[paletteIndex];
+          if (color) pushPatch(patchAt(data.progress, ["linePaletteColor"], color), { recordHistory: false });
+          return;
+        }
+
         if (e.ctrlKey && e.shiftKey) {
           setActiveTool("highlight");
           return;
@@ -956,7 +996,7 @@ export function PuzzlePage() {
               <button title="Edge notes (X)" className={"btn panelBtn panelTool2" + (data.progress.activeTool === "corner" ? " primary" : "")} onClick={() => setActiveTool("corner")}><IconToolCorner /></button>
               <button title="Center notes (C)" className={"btn panelBtn panelTool3" + (data.progress.activeTool === "center" ? " primary" : "")} onClick={() => setActiveTool("center")}><IconToolCenter /></button>
               <button title="Highlight (V)" className={"btn panelBtn panelTool4" + (data.progress.activeTool === "highlight" ? " primary" : "")} onClick={() => setActiveTool("highlight")}><IconToolHighlight /></button>
-              <button title="Line" className={"btn panelBtn panelTool5" + (data.progress.activeTool === "line" ? " primary" : "")} onClick={() => setActiveTool("line")}><IconToolLine /></button>
+              <button title="Line (B)" className={"btn panelBtn panelTool5" + (data.progress.activeTool === "line" ? " primary" : "")} onClick={() => setActiveTool("line")}><IconToolLine /></button>
 
               <div className="panelMainGrid">
                 {(data.progress.activeTool === "value" || data.progress.activeTool === "center" || data.progress.activeTool === "corner") ? (

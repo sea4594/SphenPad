@@ -19,6 +19,9 @@ type DragState = {
   startedSelected?: boolean;
   startedCellKey?: string;
   startedSelectionSize?: number;
+  startClientX?: number;
+  startClientY?: number;
+  selectionDragActive?: boolean;
 };
 
 function rcKey(rc: CellRC) {
@@ -304,13 +307,14 @@ export function GridCanvas(props: {
       const step = (Math.PI * 2) / maxSlices;
       const offset = -Math.PI / 2;
       ctx.save();
+      // Clip in unrotated cell space, then rotate color wedges before drawing.
+      ctx.beginPath();
+      ctx.rect(x, y, cellPx, cellPx);
+      ctx.clip();
       ctx.translate(cx, cy);
       ctx.rotate(highlightRotationRad);
       ctx.translate(-cx, -cy);
       ctx.globalAlpha = alpha;
-      ctx.beginPath();
-      ctx.rect(x, y, cellPx, cellPx);
-      ctx.clip();
       for (let i = 0; i < maxSlices; i++) {
         const start = offset + i * step;
         const end = start + step;
@@ -1093,6 +1097,9 @@ export function GridCanvas(props: {
         startedSelected: touchedSelected,
         startedCellKey: key,
         startedSelectionSize: currentSelection.size,
+        startClientX: e.clientX,
+        startClientY: e.clientY,
+        selectionDragActive: false,
       };
       props.onSelection(Array.from(nextSelection).map(keyToRc));
       return;
@@ -1111,6 +1118,9 @@ export function GridCanvas(props: {
       visited: new Set([key]),
       selectionSet: nextSelection,
       selectionMode: mode,
+      startClientX: e.clientX,
+      startClientY: e.clientY,
+      selectionDragActive: false,
     };
     props.onSelection(Array.from(nextSelection).map(keyToRc));
   }
@@ -1166,6 +1176,15 @@ export function GridCanvas(props: {
 
     const pt = eventPoint(e.clientX, e.clientY);
     if (!pt) return;
+
+    if (!drag.selectionDragActive) {
+      const dx = e.clientX - (drag.startClientX ?? e.clientX);
+      const dy = e.clientY - (drag.startClientY ?? e.clientY);
+      const activationPx = Math.max(6, Math.round(cellPx * 0.14));
+      if (Math.hypot(dx, dy) < activationPx) return;
+      drag.selectionDragActive = true;
+    }
+
     const hops = centerHopsFromPointer(drag.last, e.clientX, e.clientY);
     if (!hops.length) return;
 

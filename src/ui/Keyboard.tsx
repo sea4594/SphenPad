@@ -137,8 +137,8 @@ function Grid3x4(props: { children: React.ReactNode; compact?: boolean }) {
         marginTop: props.compact ? 0 : 10,
         display: "grid",
         gridTemplateColumns: "repeat(3, 1fr)",
-        gridTemplateRows: "repeat(4, minmax(44px, 52px))",
-        gap: 8,
+        gridTemplateRows: props.compact ? "repeat(4, minmax(0, 1fr))" : "repeat(4, minmax(44px, 52px))",
+        gap: props.compact ? 4 : 8,
       }}
     >
       {props.children}
@@ -148,7 +148,7 @@ function Grid3x4(props: { children: React.ReactNode; compact?: boolean }) {
 
 function Key(props: { children: React.ReactNode; onClick?: () => void; style?: React.CSSProperties; title?: string }) {
   return (
-    <button className="btn keyButton" style={{ height: "clamp(44px, 10vw, 52px)", ...props.style }} onClick={props.onClick} title={props.title}>
+    <button className="btn keyButton" style={{ height: "100%", ...props.style }} onClick={props.onClick} title={props.title}>
       {props.children}
     </button>
   );
@@ -161,7 +161,7 @@ function ColorKey(props: { color: string; onClick?: () => void; label?: string }
       onClick={props.onClick}
       title={props.label ?? props.color}
       style={{
-        height: "clamp(44px, 10vw, 52px)",
+        height: "100%",
         background: props.color,
         borderColor: "rgba(255,255,255,.18)",
       }}
