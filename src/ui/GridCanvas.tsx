@@ -289,7 +289,7 @@ export function GridCanvas(props: {
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(cellX(0), cellY(0), cellPx * n, cellPx * n);
 
-    const drawCellHighlights = (r: number, c: number, colors: string[], alpha = 0.26) => {
+    const drawCellHighlights = (r: number, c: number, colors: string[], alpha = 1) => {
       if (!colors.length) return;
       const x = cellX(c);
       const y = cellY(r);
@@ -310,6 +310,9 @@ export function GridCanvas(props: {
       const offset = -Math.PI / 2;
       ctx.save();
       ctx.globalAlpha = alpha;
+      ctx.beginPath();
+      ctx.rect(x, y, cellPx, cellPx);
+      ctx.clip();
       for (let i = 0; i < maxSlices; i++) {
         const start = offset + i * step;
         const end = start + step;
@@ -606,7 +609,7 @@ export function GridCanvas(props: {
     for (let r = 0; r < n; r++) {
       for (let c = 0; c < n; c++) {
         const colors = progress.cells[r][c].highlights ?? [];
-        drawCellHighlights(r, c, colors, 0.26);
+        drawCellHighlights(r, c, colors, 1);
       }
     }
 
@@ -817,7 +820,7 @@ export function GridCanvas(props: {
           const colors = progress.cells[r][c].highlights ?? [];
           if (!colors.length) continue;
           const display = lit[r][c] ? colors : colors.map((col) => darkenColor(col, 0.3));
-          drawCellHighlights(r, c, display, lit[r][c] ? 0.24 : 0.31);
+          drawCellHighlights(r, c, display, 1);
         }
       }
 
