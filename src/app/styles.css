@@ -204,7 +204,7 @@ button, input, select { font: inherit; color: inherit; }
 .card {
   background: linear-gradient(180deg, var(--panel-soft), var(--panel));
   border: 1px solid color-mix(in oklab, var(--text) 14%, transparent);
-  border-radius: 14px;
+  border-radius: 0;
   padding: 12px;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
@@ -238,14 +238,14 @@ input.url {
   min-width: 220px;
   width: 100%;
   padding: 12px;
-  border-radius: 10px;
+  border-radius: 0;
   border: 1px solid color-mix(in oklab, var(--text) 20%, transparent);
   background: color-mix(in oklab, var(--bg) 70%, #000 30%);
 }
 
 .btn {
   padding: 10px 12px;
-  border-radius: 10px;
+  border-radius: 0;
   border: 1px solid color-mix(in oklab, var(--text) 24%, transparent);
   background: var(--panel-soft);
   cursor: pointer;
@@ -372,7 +372,7 @@ input.url {
 }
 
 .boardCard {
-  border-radius: 16px;
+  border-radius: 0;
   display: grid;
   place-items: center;
   padding: 6px;
@@ -588,7 +588,7 @@ input.url {
 .switch {
   width: 58px;
   height: 32px;
-  border-radius: 99px;
+  border-radius: 0;
   padding: 3px;
   border: 1px solid color-mix(in oklab, var(--text) 18%, transparent);
   background: var(--switch-track);
@@ -604,7 +604,7 @@ input.url {
 .switchThumb {
   width: 24px;
   height: 24px;
-  border-radius: 999px;
+  border-radius: 0;
   background: #fff;
   transform: translateX(0);
   transition: transform 120ms ease;
@@ -625,7 +625,7 @@ input.url {
   justify-content: space-between;
   align-items: center;
   gap: 8px;
-  border-radius: 10px;
+  border-radius: 0;
   border: 1px solid color-mix(in oklab, var(--text) 16%, transparent);
   padding: 10px;
   background: color-mix(in oklab, var(--bg) 72%, #000 28%);
@@ -645,7 +645,7 @@ input.url {
 .themePreview span {
   width: 14px;
   height: 14px;
-  border-radius: 99px;
+  border-radius: 0;
   border: 1px solid rgba(0, 0, 0, 0.26);
 }
 

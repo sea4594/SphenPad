@@ -18,7 +18,7 @@ export const IconSelectMode = (props: { multi: boolean }) => (
 				position: "absolute",
 				inset: props.multi ? "4px 0 0 4px" : "2px",
 				border: "1.6px solid currentColor",
-				borderRadius: 2,
+				borderRadius: 0,
 			}}
 		/>
 		{props.multi ? (
@@ -27,7 +27,7 @@ export const IconSelectMode = (props: { multi: boolean }) => (
 					position: "absolute",
 					inset: "0 4px 4px 0",
 					border: "1.6px solid currentColor",
-					borderRadius: 2,
+					borderRadius: 0,
 					opacity: 0.86,
 				}}
 			/>
@@ -54,7 +54,7 @@ export const IconToolHighlight = () => (
 		style={{
 			width: 16,
 			height: 16,
-			borderRadius: 4,
+			borderRadius: 0,
 			display: "inline-block",
 			border: "1px solid rgba(255,255,255,.65)",
 			background: "linear-gradient(135deg, #ff6b6b, #ffd166, #57d38c, #4cc9f0, #b197fc)",
