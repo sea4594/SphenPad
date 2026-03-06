@@ -299,22 +299,6 @@ export function GridCanvas(props: {
       const cx = x + cellPx / 2;
       const cy = y + cellPx / 2;
 
-      if (colors.length === 1) {
-        ctx.save();
-        ctx.beginPath();
-        ctx.rect(x, y, cellPx, cellPx);
-        ctx.clip();
-        ctx.translate(cx, cy);
-        ctx.rotate(highlightRotationRad);
-        ctx.translate(-cx, -cy);
-        ctx.globalAlpha = alpha;
-        ctx.fillStyle = colors[0] as string;
-        const singleSize = cellPx * 0.88;
-        ctx.fillRect(cx - singleSize / 2, cy - singleSize / 2, singleSize, singleSize);
-        ctx.restore();
-        return;
-      }
-
       const radius = cellPx * 0.78;
       const maxSlices = Math.min(18, colors.length);
       const step = (Math.PI * 2) / maxSlices;

@@ -748,7 +748,7 @@ input.url {
   .gridLayout {
     --panel-gap: 6px;
     --panel-pad: 6px;
-    --panel-cell-ratio: 0.82;
+    --panel-cell-ratio: 0.74;
     --panel-cell: calc((100vw - (var(--panel-pad) * 2) - (var(--panel-gap) * 3)) / 4);
     --panel-row: calc(var(--panel-cell) * var(--panel-cell-ratio));
     --mobile-controls-h: calc((var(--panel-row) * 5) + (var(--panel-gap) * 4) + (var(--panel-pad) * 2));
