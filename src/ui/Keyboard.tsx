@@ -18,6 +18,7 @@ export function Keyboard(props: {
   progress: PuzzleProgress;
   title?: string;
   hideEntryModeButtons?: boolean;
+  compact?: boolean;
 
   onDigit?: (d: string) => void;
   onBackspace?: () => void;
@@ -31,9 +32,23 @@ export function Keyboard(props: {
   onLineKind?: (k: LineStroke["kind"]) => void;
 }) {
   const { kind, progress } = props;
+  const compact = Boolean(props.compact);
 
   if (kind === "numbers") {
-    const keys = digits(progress.alphabetMode, progress.cells.length);
+    const keys = digits(progress.alphabetMode, progress.cells.length).slice(0, 9);
+    const grid = (
+      <Grid3x4 compact={compact}>
+        {keys.map((k) => (
+          <Key key={k} onClick={() => props.onDigit?.(k)}>{k}</Key>
+        ))}
+        <Key onClick={() => props.onDigit?.("0")}>0</Key>
+        <Key onClick={() => props.onToggleAlphabet?.()}>{progress.alphabetMode ? "123" : "A-I"}</Key>
+        <Key onClick={() => props.onBackspace?.()} title="Backspace">⌫</Key>
+      </Grid3x4>
+    );
+
+    if (compact) return grid;
+
     return (
       <div className="card">
         <div className="row" style={{ justifyContent: "space-between" }}>
@@ -53,20 +68,26 @@ export function Keyboard(props: {
           ) : null}
         </div>
 
-        <Grid3x4>
-          {keys.map((k) => (
-            <Key key={k} onClick={() => props.onDigit?.(k)}>{k}</Key>
-          ))}
-          <Key onClick={() => props.onDigit?.("0")}>0</Key>
-          <Key onClick={() => props.onToggleAlphabet?.()}>{progress.alphabetMode ? "123" : "A-I"}</Key>
-          <Key onClick={() => props.onBackspace?.()} title="Backspace">⌫</Key>
-        </Grid3x4>
+        {grid}
       </div>
     );
   }
 
   if (kind === "highlight") {
     const palette = progress.highlightPalettePage === 0 ? baseColors0 : progress.highlightPalettePage === 1 ? baseColors1 : baseColors2;
+    const grid = (
+      <Grid3x4 compact={compact}>
+        {palette.map((c) => (
+          <ColorKey key={c} color={c} onClick={() => props.onColor?.(c)} />
+        ))}
+        <ColorKey color="#ffffff" onClick={() => props.onWhite?.()} />
+        <Key onClick={() => props.onFlipPalette?.()}>⇄</Key>
+        <Key onClick={() => props.onBackspace?.()} title="Backspace">⌫</Key>
+      </Grid3x4>
+    );
+
+    if (compact) return grid;
+
     return (
       <div className="card">
         <div className="row" style={{ justifyContent: "space-between" }}>
@@ -74,60 +95,46 @@ export function Keyboard(props: {
           <div className="muted">page {progress.highlightPalettePage + 1}/3</div>
         </div>
 
-        <Grid3x4>
-          {palette.map((c) => (
-            <ColorKey key={c} color={c} onClick={() => props.onColor?.(c)} />
-          ))}
-          <ColorKey color="#ffffff" onClick={() => props.onWhite?.()} />
-          <Key onClick={() => props.onFlipPalette?.()}>⇄</Key>
-          <Key onClick={() => props.onBackspace?.()} title="Backspace">⌫</Key>
-        </Grid3x4>
+        {grid}
       </div>
     );
   }
+
+  const lineKindLabel = progress.linePaletteKind === "both"
+    ? "B"
+    : progress.linePaletteKind === "center"
+      ? "C"
+      : "E";
+  const lineGrid = (
+    <Grid3x4 compact={compact}>
+      {lineColors.map((c) => (
+        <ColorKey key={c} color={c} onClick={() => props.onColor?.(c)} />
+      ))}
+      <ColorKey color="#ffffff" onClick={() => props.onColor?.("#ffffff")} />
+      <Key onClick={() => props.onLineKind?.(progress.linePaletteKind === "both" ? "center" : progress.linePaletteKind === "center" ? "edge" : "both")} title="Cycle line mode">
+        {lineKindLabel}
+      </Key>
+      <Key onClick={() => props.onBackspace?.()} title="Backspace">⌫</Key>
+    </Grid3x4>
+  );
+
+  if (compact) return lineGrid;
 
   // line tool
   return (
     <div className="card">
       <div style={{ fontWeight: 700, marginBottom: 10 }}>Line tool</div>
-
-      <Grid3x4>
-        {lineColors.map((c) => (
-          <ColorKey key={c} color={c} onClick={() => props.onColor?.(c)} />
-        ))}
-        <Key onClick={() => props.onBackspace?.()} title="Backspace">⌫</Key>
-        <div />
-        <select
-          className="lineKindSelect"
-          style={{
-            gridColumn: "1 / span 3",
-            height: "clamp(44px, 10vw, 52px)",
-            padding: "8px 12px",
-            borderRadius: 12,
-            border: "1px solid rgba(255,255,255,.12)",
-            background: "rgba(255,255,255,.05)",
-            color: "inherit",
-            font: "inherit",
-            cursor: "pointer",
-          }}
-          value={progress.linePaletteKind}
-          onChange={(e) => props.onLineKind?.(e.target.value as LineStroke["kind"])}
-        >
-          <option value="both">centers and edges (default)</option>
-          <option value="center">centers only</option>
-          <option value="edge">edges only</option>
-        </select>
-      </Grid3x4>
+      {lineGrid}
     </div>
   );
 }
 
-function Grid3x4(props: { children: React.ReactNode }) {
+function Grid3x4(props: { children: React.ReactNode; compact?: boolean }) {
   return (
     <div
-      className="keyGrid"
+      className={"keyGrid" + (props.compact ? " compact" : "")}
       style={{
-        marginTop: 10,
+        marginTop: props.compact ? 0 : 10,
         display: "grid",
         gridTemplateColumns: "repeat(3, 1fr)",
         gridTemplateRows: "repeat(4, minmax(44px, 52px))",
