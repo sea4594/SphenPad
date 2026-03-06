@@ -15,6 +15,9 @@ export function CompletionOverlay(props: CompletionOverlayProps) {
         <div className="muted" style={{ marginTop: 6 }}>
           Completed in <strong>{props.elapsed}</strong>
         </div>
+        {typeof props.meta?.solveCount === "number" ? (
+          <div className="muted" style={{ marginTop: 4 }}>SudokuPad solves: {props.meta.solveCount.toLocaleString()}</div>
+        ) : null}
 
         <div className="card" style={{ marginTop: 14 }}>
           <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.45 }}>{message}</div>

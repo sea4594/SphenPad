@@ -38,6 +38,7 @@ export type PuzzleMeta = {
   author?: string;
   rules?: string;
   postSolveMessage?: string;
+  solveCount?: number;
 };
 
 export type PuzzleCosmetics = {

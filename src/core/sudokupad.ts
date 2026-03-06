@@ -264,6 +264,19 @@ function inferPuzzleSize(sclObj: any, givens: Array<{ rc: CellRC }>): number {
   return inferred > 0 ? inferred : 9;
 }
 
+function parseSolveCount(...values: unknown[]): number | undefined {
+  for (const v of values) {
+    if (typeof v === "number" && Number.isFinite(v) && v >= 0) return Math.floor(v);
+    if (typeof v === "string") {
+      const digits = v.replace(/[^0-9]/g, "");
+      if (!digits) continue;
+      const n = Number.parseInt(digits, 10);
+      if (Number.isFinite(n) && n >= 0) return n;
+    }
+  }
+  return undefined;
+}
+
 export async function loadFromSudokuPad(inputUrlOrId: string): Promise<{ key: string; def: PuzzleDefinition; raw: any }> {
   const sourceIdRaw = parseSourceId(inputUrlOrId);
   const sourceId = fixURIComponentish(sourceIdRaw);
@@ -308,6 +321,19 @@ export async function loadFromSudokuPad(inputUrlOrId: string): Promise<{ key: st
       sclObj?.metadata?.msgcorrect ??
       sclObj?.metadata?.messageAfterSolve ??
       "",
+    solveCount: parseSolveCount(
+      sclObj?.metadata?.solveCount,
+      sclObj?.metadata?.solves,
+      sclObj?.metadata?.solveCounter,
+      sclObj?.metadata?.nbSolves,
+      sclObj?.metadata?.numSolves,
+      sclObj?.metadata?.solvecount,
+      sclObj?.metadata?.nsolves,
+      sclObj?.metadata?.stats?.solves,
+      sclObj?.metadata?.stats?.solveCount,
+      sclObj?.stats?.solves,
+      sclObj?.stats?.solveCount,
+    ),
   };
 
   const givens = extractGivens(sclObj);

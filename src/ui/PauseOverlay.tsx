@@ -26,6 +26,9 @@ export function PauseOverlay(props: {
           ) : null}
         </div>
         <div className="muted" style={{ marginTop: 6 }}>{meta?.author || ""}</div>
+        {typeof meta?.solveCount === "number" ? (
+          <div className="muted" style={{ marginTop: 2 }}>SudokuPad solves: {meta.solveCount.toLocaleString()}</div>
+        ) : null}
 
         <div className="card" style={{ marginTop: 12, overflow: "auto", minHeight: 0 }}>
           <div style={{ fontWeight: 700, marginBottom: 6 }}>Instructions</div>
