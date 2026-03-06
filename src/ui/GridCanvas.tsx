@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CellRC, PuzzleDefinition, PuzzleProgress } from "../core/model";
 
 type LineKindResolved = "center" | "edge";
@@ -101,10 +101,10 @@ export function GridCanvas(props: {
   const widthPx = Math.max(1, Math.ceil(pad * 2 + boardW));
   const heightPx = Math.max(1, Math.ceil(pad * 2 + boardH));
 
-  const worldX = (x: number) => originX + x * cellPx;
-  const worldY = (y: number) => originY + y * cellPx;
-  const cellX = (c: number) => originX + c * cellPx;
-  const cellY = (r: number) => originY + r * cellPx;
+  const worldX = useCallback((x: number) => originX + x * cellPx, [originX, cellPx]);
+  const worldY = useCallback((y: number) => originY + y * cellPx, [originY, cellPx]);
+  const cellX = useCallback((c: number) => originX + c * cellPx, [originX, cellPx]);
+  const cellY = useCallback((r: number) => originY + r * cellPx, [originY, cellPx]);
 
   const dotOffset = useMemo(() => {
     const dots = def.cosmetics.dots ?? [];
@@ -130,16 +130,16 @@ export function GridCanvas(props: {
     return keys;
   }, [progress.lines]);
 
-  function inBounds(r: number, c: number) {
+  const inBounds = useCallback((r: number, c: number) => {
     return r >= 0 && c >= 0 && r < n && c < n;
-  }
+  }, [n]);
 
-  function normalizeDotRc(rc: CellRC): CellRC | null {
+  const normalizeDotRc = useCallback((rc: CellRC): CellRC | null => {
     const shifted = dotOffset ? { r: rc.r - dotOffset, c: rc.c - dotOffset } : rc;
     if (inBounds(shifted.r, shifted.c)) return shifted;
     if (inBounds(rc.r, rc.c)) return rc;
     return null;
-  }
+  }, [dotOffset, inBounds]);
 
   function keyToRc(key: string): CellRC {
     const [r, c] = key.split(",").map((v) => Number(v));

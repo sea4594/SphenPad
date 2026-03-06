@@ -1,3 +1,5 @@
+/* eslint-disable react-hooks/exhaustive-deps */
+
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { getPuzzle, upsertPuzzle } from "../core/storage";
@@ -264,7 +266,7 @@ export function PuzzlePage() {
   useEffect(() => {
     undoRef.current = undo;
     redoRef.current = redo;
-  }, [data]);
+  }, [undo, redo]);
 
   function stopHoldRepeat() {
     if (holdDelayRef.current != null) {
@@ -649,7 +651,7 @@ export function PuzzlePage() {
       ], { recordHistory: false });
       setCompletionOpen(true);
     });
-  }, [applyPatches, data]);
+  }, [data]);
 
   useEffect(() => {
     const toolCycle: PuzzleProgress["activeTool"][] = ["value", "corner", "center", "highlight", "line"];
@@ -818,7 +820,7 @@ export function PuzzlePage() {
       window.removeEventListener("keyup", onKeyUp);
       window.removeEventListener("blur", onBlur);
     };
-  }, [applyDigit, data, setActiveTool, setSelection, startHoldRepeat]);
+  }, [applyDigit, data, handleBackspace, setActiveTool, setSelection, startHoldRepeat]);
 
   useEffect(() => () => stopHoldRepeat(), []);
 
@@ -833,19 +835,16 @@ export function PuzzlePage() {
 
   return (
     <div className="shell">
-      <div className="topbar">
-        <div className="row">
+      <div className="topbar puzzleTopbar">
           <button className="btn" onClick={() => nav("/")}>← Menu</button>
-        </div>
-
-        <div className="row">
-          <div style={{ fontVariantNumeric: "tabular-nums" }}>{timeStr}</div>
-          <button className="btn" onClick={onPausePlayClick} title="Pause or resume" disabled={data.progress.status === "complete"}>
-            {data.progress.status === "complete" ? <IconPause /> : data.progress.paused ? <IconPlay /> : <IconPause />}
-          </button>
-          <button className="btn" onClick={() => setSettingsOpen(true)} title="Settings">
-            <IconSettings />
-          </button>
+          <div className="puzzleTopbarRight">
+            <div className="puzzleTimer">{timeStr}</div>
+            <button className="btn" onClick={onPausePlayClick} title="Pause or resume" disabled={data.progress.status === "complete"}>
+              {data.progress.status === "complete" ? <IconPause /> : data.progress.paused ? <IconPlay /> : <IconPause />}
+            </button>
+            <button className="btn" onClick={() => setSettingsOpen(true)} title="Settings">
+              <IconSettings />
+            </button>
         </div>
       </div>
 

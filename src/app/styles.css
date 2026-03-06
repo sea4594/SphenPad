@@ -161,6 +161,24 @@ button, input, select { font: inherit; color: inherit; }
   z-index: 20;
 }
 
+.puzzleTopbar {
+  flex-wrap: nowrap;
+  gap: 8px;
+}
+
+.puzzleTopbarRight {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: nowrap;
+}
+
+.puzzleTimer {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
 .brand {
   font-weight: 800;
   letter-spacing: 0.4px;
@@ -325,8 +343,6 @@ input.url {
   align-content: start;
   min-height: 0;
   height: auto;
-  position: relative;
-  z-index: 1;
 }
 
 .boardCard {
@@ -395,8 +411,6 @@ input.url {
   gap: 8px;
   align-content: start;
   min-height: 0;
-  position: relative;
-  z-index: 2;
 }
 
 .controlStack {
@@ -549,6 +563,20 @@ input.url {
   .topbar .row {
     width: 100%;
     justify-content: flex-start;
+  }
+
+  .puzzleTopbar {
+    padding: 8px 10px;
+    gap: 6px;
+  }
+
+  .puzzleTopbar .btn {
+    min-height: 36px;
+    padding: 6px 8px;
+  }
+
+  .puzzleTopbarRight {
+    gap: 6px;
   }
 
   .topbar .muted {
