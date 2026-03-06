@@ -27,14 +27,14 @@ export function PauseOverlay(props: {
             Start
           </button>
         ) : (
-          <div className="row" style={{ marginTop: 12 }}>
-            <button className="btn primary" style={{ flex: 1 }} onClick={props.onResume}>
+          <div className="row" style={{ marginTop: 12, flexWrap: "wrap" }}>
+            <button className="btn primary" style={{ flex: 1, minWidth: 0 }} onClick={props.onResume}>
               Resume
             </button>
-            <button className="btn" style={{ flex: 1 }} onClick={props.onStayPaused}>
+            <button className="btn" style={{ flex: 1, minWidth: 0 }} onClick={props.onStayPaused}>
               Stay paused
             </button>
-            <button className="btn" style={{ flex: 1 }} onClick={props.onRestart}>
+            <button className="btn" style={{ flex: 1, minWidth: 0 }} onClick={props.onRestart}>
               Restart
             </button>
           </div>

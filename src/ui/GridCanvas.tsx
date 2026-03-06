@@ -16,6 +16,9 @@ type DragState = {
   visited: Set<string>;
   selectionSet?: Set<string>;
   selectionMode?: "replace" | "add" | "remove";
+  startedSelected?: boolean;
+  startedCellKey?: string;
+  startedSelectionSize?: number;
 };
 
 function rcKey(rc: CellRC) {
@@ -36,7 +39,7 @@ export function GridCanvas(props: {
   def: PuzzleDefinition;
   progress: PuzzleProgress;
   onSelection: (sel: CellRC[]) => void;
-  onLineStroke: (segments: LineSegmentDraft[], kind: LineKindResolved) => void;
+  onLineStroke: (segments: LineSegmentDraft[], kind: LineKindResolved, action: "draw" | "erase") => void;
   onLineTapCell: (rc: CellRC) => void;
   onLineTapEdge: (a: CellRC, b: CellRC) => void;
   onDoubleCell: (rc: CellRC) => void;
@@ -1082,6 +1085,9 @@ export function GridCanvas(props: {
         visited: new Set([key]),
         selectionSet: nextSelection,
         selectionMode: "replace",
+        startedSelected: touchedSelected,
+        startedCellKey: key,
+        startedSelectionSize: currentSelection.size,
       };
       props.onSelection(Array.from(nextSelection).map(keyToRc));
       return;
@@ -1127,22 +1133,24 @@ export function GridCanvas(props: {
         if (kind === "edge" && Math.abs(dr) + Math.abs(dc) !== 1) continue;
 
         const previous = drag.path[drag.path.length - 2] ?? prevCell;
+        const stepKey = segKey(drag.last, hop);
         if (previous && previous.r === hop.r && previous.c === hop.c) {
+          const lastSeg = drag.segments[drag.segments.length - 1];
+          if (lastSeg && segKey(lastSeg.a, lastSeg.b) === stepKey) drag.segments.pop();
           drag.path.pop();
-          drag.segments.pop();
           drag.last = hop;
+          drag.moved = true;
           continue;
         }
 
-        const key = segKey(drag.last, hop);
-        const occupied = kind === "edge" ? edgeLineKeys.has(key) : centerLineKeys.has(key);
+        const occupied = kind === "edge" ? edgeLineKeys.has(stepKey) : centerLineKeys.has(stepKey);
         if (!drag.lineAction) drag.lineAction = occupied ? "erase" : "draw";
-        if ((drag.lineAction === "erase" && !occupied) || (drag.lineAction === "draw" && occupied)) {
-          continue;
+
+        if ((drag.lineAction === "erase" && occupied) || (drag.lineAction === "draw" && !occupied)) {
+          drag.segments.push({ a: drag.last, b: hop });
         }
 
         drag.path.push(hop);
-        drag.segments.push({ a: drag.last, b: hop });
         drag.last = hop;
         drag.moved = true;
       }
@@ -1198,10 +1206,15 @@ export function GridCanvas(props: {
             props.onLineTapCell(here);
           }
         }
-      } else if (drag.segments.length > 0) {
-        props.onLineStroke(drag.segments, kind);
+      } else if (drag.segments.length > 0 && drag.lineAction) {
+        props.onLineStroke(drag.segments, kind, drag.lineAction);
       }
       setLinePreview(null);
+    } else if (!progress.multiSelect && !drag.moved && drag.startedSelected && drag.startedSelectionSize === 1) {
+      const pt = eventPoint(e.clientX, e.clientY);
+      if (pt && drag.startedCellKey === `${pt.r},${pt.c}`) {
+        props.onSelection([]);
+      }
     }
 
     dragRef.current = null;
@@ -1222,7 +1235,7 @@ export function GridCanvas(props: {
     <div ref={wrapRef} className="boardSurface" style={{ display: "grid", placeItems: "center", maxWidth: "100%", maxHeight: "100%" }}>
       <canvas
         ref={canvasRef}
-        style={{ maxWidth: "100%", touchAction: "none", userSelect: "none" }}
+        style={{ display: "block", margin: "0 auto", maxWidth: "100%", maxHeight: "100%", touchAction: "none", userSelect: "none" }}
         onPointerDown={onDown}
         onPointerMove={onMove}
         onPointerUp={onUp}

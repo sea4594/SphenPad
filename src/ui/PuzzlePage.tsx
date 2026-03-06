@@ -48,9 +48,27 @@ function isPatchLike(p: unknown): p is Patch {
 }
 
 function toPatchEntry(entry: unknown): Patch[] {
+  if (
+    entry &&
+    typeof entry === "object" &&
+    Array.isArray((entry as { patches?: unknown }).patches) &&
+    ((entry as { patches?: unknown }).patches as unknown[]).every(isPatchLike)
+  ) {
+    return (entry as { patches: Patch[] }).patches;
+  }
   if (Array.isArray(entry) && entry.every(isPatchLike)) return entry as Patch[];
   if (isPatchLike(entry)) return [entry as Patch];
   return [];
+}
+
+function toHistorySelection(entry: unknown): CellRC[] | null {
+  if (!entry || typeof entry !== "object") return null;
+  const sel = (entry as { selection?: unknown }).selection;
+  if (!Array.isArray(sel)) return null;
+  const normalized = sel
+    .filter((rc) => rc && typeof rc === "object" && Number.isFinite((rc as CellRC).r) && Number.isFinite((rc as CellRC).c))
+    .map((rc) => ({ r: Number((rc as CellRC).r), c: Number((rc as CellRC).c) }));
+  return normalized;
 }
 
 function isSolved(progress: PuzzleProgress, solution?: string): boolean {
@@ -212,11 +230,11 @@ export function PuzzlePage() {
       setCompletionOpen(false);
     }
 
-    const nextUndo = data.undo.map(toPatchEntry).filter((entry) => entry.length > 0);
+    const nextUndo = [...data.undo];
     let nextRedo = data.redo;
 
     if (recordHistory) {
-      nextUndo.push([...patches]);
+      nextUndo.push({ patches: [...patches], selection: data.progress.selection });
       nextRedo = [];
     }
 
@@ -239,6 +257,8 @@ export function PuzzlePage() {
     if (!entry.length) return;
     let nextProgress = data.progress;
     for (let i = entry.length - 1; i >= 0; i--) nextProgress = applyPatch(nextProgress, invertPatch(entry[i] as Patch));
+    const historySelection = toHistorySelection(data.undo[data.undo.length - 1]);
+    if (historySelection) nextProgress = { ...nextProgress, selection: historySelection };
     persist({
       ...data,
       progress: nextProgress,
@@ -254,6 +274,8 @@ export function PuzzlePage() {
     if (!entry.length) return;
     let nextProgress = data.progress;
     for (const p of entry) nextProgress = applyPatch(nextProgress, p);
+    const historySelection = toHistorySelection(data.redo[data.redo.length - 1]);
+    if (historySelection) nextProgress = { ...nextProgress, selection: historySelection };
     persist({
       ...data,
       progress: nextProgress,
@@ -607,7 +629,8 @@ export function PuzzlePage() {
 
   function onLineStroke(
     segmentsInput: Array<{ a: CellRC; b: CellRC; edgeTrack?: "top" | "bottom" | "left" | "right" }>,
-    resolvedKind: "center" | "edge"
+    resolvedKind: "center" | "edge",
+    action: "draw" | "erase"
   ) {
     if (!data || segmentsInput.length < 1) return;
     const segments = segmentsInput.filter((seg) => {
@@ -618,24 +641,37 @@ export function PuzzlePage() {
     });
     if (!segments.length) return;
 
-    const drawKeys = new Set(segments.map(segKeyWithTrack));
-    const overlaps = data.progress.lines.some((s) => s.segments.some((seg) => drawKeys.has(segKeyWithTrack(seg))));
+    const uniqueByKey = new Map<string, { a: CellRC; b: CellRC; edgeTrack?: "top" | "bottom" | "left" | "right" }>();
+    for (const seg of segments) uniqueByKey.set(segKeyWithTrack(seg), seg);
+    const uniqueSegments = Array.from(uniqueByKey.values());
+    const drawKeys = new Set(uniqueSegments.map(segKeyWithTrack));
 
-    if (overlaps) {
+    if (action === "erase") {
       const lines = data.progress.lines
         .map((stroke) => ({
           ...stroke,
           segments: stroke.segments.filter((seg) => !drawKeys.has(segKeyWithTrack(seg))),
         }))
         .filter((stroke) => stroke.segments.length > 0);
+      if (lines.length === data.progress.lines.length && lines.every((stroke, i) => stroke.segments.length === data.progress.lines[i]?.segments.length)) {
+        return;
+      }
       pushPatch(patchAt(data.progress, ["lines"], lines));
       return;
     }
 
+    const occupied = new Set<string>();
+    for (const stroke of data.progress.lines) {
+      for (const seg of stroke.segments) occupied.add(segKeyWithTrack(seg));
+    }
+
+    const drawable = uniqueSegments.filter((seg) => !occupied.has(segKeyWithTrack(seg)));
+    if (!drawable.length) return;
+
     const stroke: LineStroke = {
       kind: resolvedKind,
       color: data.progress.linePaletteColor,
-      segments,
+      segments: drawable,
     };
     pushPatch(patchAt(data.progress, ["lines"], [...data.progress.lines, stroke]));
   }

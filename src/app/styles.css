@@ -11,7 +11,14 @@
   --gradient-a: #2e3b57;
   --gradient-b: #33413a;
   --switch-track: rgba(255, 255, 255, 0.24);
+  --safe-inline: max(env(safe-area-inset-left), env(safe-area-inset-right));
   font-family: Barlow, "Trebuchet MS", "Segoe UI", sans-serif;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
 }
 
 html[data-mode="dark"] { color-scheme: dark; }
@@ -137,6 +144,10 @@ body,
   color: var(--text);
 }
 
+body {
+  overflow-x: hidden;
+}
+
 a { color: inherit; text-decoration: none; }
 button, input, select { font: inherit; color: inherit; }
 
@@ -145,6 +156,8 @@ button, input, select { font: inherit; color: inherit; }
   grid-template-rows: auto 1fr;
   height: 100dvh;
   min-height: 100svh;
+  width: 100%;
+  max-width: 100%;
   overflow: hidden;
 }
 
@@ -154,7 +167,7 @@ button, input, select { font: inherit; color: inherit; }
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 12px;
-  padding: max(8px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) 10px max(14px, env(safe-area-inset-left));
+  padding: max(8px, env(safe-area-inset-top)) max(14px, var(--safe-inline)) 10px max(14px, var(--safe-inline));
   background: color-mix(in oklab, var(--bg) 88%, transparent);
   backdrop-filter: blur(8px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
@@ -197,11 +210,14 @@ button, input, select { font: inherit; color: inherit; }
 }
 
 .page {
-  padding: 14px max(14px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
+  padding: 14px max(14px, var(--safe-inline)) max(14px, env(safe-area-inset-bottom)) max(14px, var(--safe-inline));
   display: grid;
   gap: 12px;
   min-height: 0;
+  width: 100%;
+  max-width: 100%;
   overflow: auto;
+  overflow-x: hidden;
 }
 
 .row {
@@ -209,6 +225,10 @@ button, input, select { font: inherit; color: inherit; }
   gap: 8px;
   flex-wrap: wrap;
   align-items: center;
+}
+
+.row > * {
+  min-width: 0;
 }
 
 .spacer { flex: 1; }
@@ -285,7 +305,8 @@ input.url {
 }
 
 .puzzlePage {
-  width: min(1260px, 100%);
+  width: 100%;
+  max-width: 1260px;
   margin: 0 auto;
   height: 100%;
   min-height: 0;
@@ -357,10 +378,10 @@ input.url {
   padding: 6px;
   background: #ffffff;
   border-color: rgba(28, 40, 58, 0.25);
-  width: fit-content;
+  width: 100%;
   max-width: 100%;
   max-height: 100%;
-  height: fit-content;
+  height: 100%;
   justify-self: center;
   margin-inline: auto;
   overflow: hidden;
@@ -369,8 +390,8 @@ input.url {
 .boardSurface {
   display: grid;
   place-items: center;
-  width: fit-content;
-  height: fit-content;
+  width: 100%;
+  height: 100%;
   max-width: 100%;
   max-height: 100%;
   background: #ffffff;
@@ -474,7 +495,10 @@ input.url {
   display: grid;
   place-items: center;
   padding: 16px;
-  overflow: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
+  width: 100vw;
+  max-width: 100vw;
   z-index: 60;
 }
 
@@ -585,7 +609,7 @@ input.url {
 
 @media (max-width: 760px) {
   .topbar {
-    padding: max(6px, env(safe-area-inset-top)) 10px 8px 10px;
+    padding: max(6px, env(safe-area-inset-top)) max(10px, var(--safe-inline)) 8px max(10px, var(--safe-inline));
     gap: 8px;
   }
 
@@ -599,7 +623,7 @@ input.url {
   }
 
   .puzzleTopbar {
-    padding: max(4px, env(safe-area-inset-top)) 10px 6px 10px;
+    padding: max(4px, env(safe-area-inset-top)) max(10px, var(--safe-inline)) 6px max(10px, var(--safe-inline));
     gap: 4px;
   }
 
@@ -621,7 +645,7 @@ input.url {
   }
 
   .page {
-    padding: 10px;
+    padding: 10px max(10px, var(--safe-inline)) max(8px, env(safe-area-inset-bottom)) max(10px, var(--safe-inline));
   }
 
   input.url {
@@ -635,7 +659,8 @@ input.url {
   }
 
   .gridLayout {
-    grid-template-rows: minmax(0, 1fr) auto;
+    --mobile-controls-h: clamp(196px, 35dvh, 260px);
+    grid-template-rows: minmax(0, 1fr) var(--mobile-controls-h);
     height: 100%;
     gap: 8px;
     overflow: hidden;
@@ -655,16 +680,18 @@ input.url {
 
   .kbdPanel {
     grid-template-rows: auto;
+    height: var(--mobile-controls-h);
     overflow: hidden;
     min-height: 0;
     gap: 6px;
   }
 
   .controlStack {
-    align-content: start;
+    align-content: stretch;
     padding-bottom: 0;
-    min-height: auto;
+    min-height: 0;
     gap: 6px;
+    grid-template-rows: auto auto minmax(0, 1fr);
   }
 
   .sideActions .btn,
@@ -675,13 +702,13 @@ input.url {
 
   .keyGrid {
     gap: 6px !important;
-    grid-template-rows: repeat(4, minmax(38px, 44px)) !important;
+    grid-template-rows: repeat(4, minmax(34px, 1fr)) !important;
   }
 
   .keyButton,
   .lineKindSelect {
     min-height: 36px;
-    height: clamp(38px, 8.2vw, 44px) !important;
+    height: clamp(34px, 7.4vh, 42px) !important;
     padding-top: 6px;
     padding-bottom: 6px;
   }
@@ -731,12 +758,13 @@ input.url {
   }
 
   .gridLayout {
-    grid-template-rows: minmax(0, 1fr) auto;
+    grid-template-rows: minmax(0, 1fr) clamp(176px, 40dvh, 228px);
     height: 100%;
   }
 
   .kbdPanel {
     grid-template-rows: auto;
+    height: 100%;
     overflow: hidden;
   }
 
@@ -761,7 +789,8 @@ input.url {
   }
 
   .gridLayout {
-    grid-template-columns: minmax(0, 1fr) minmax(250px, 38vw);
+    --mobile-controls-w: clamp(240px, 36vw, 300px);
+    grid-template-columns: minmax(0, 1fr) var(--mobile-controls-w);
     grid-template-rows: 1fr;
     height: 100%;
     align-items: start;
@@ -781,6 +810,9 @@ input.url {
     grid-template-rows: auto 1fr;
     min-height: 0;
     height: 100%;
+    width: var(--mobile-controls-w);
+    max-width: 100%;
+    justify-self: end;
     overflow: hidden;
     align-content: start;
   }
