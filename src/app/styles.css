@@ -744,6 +744,12 @@ input.url {
     padding: 5px 8px;
   }
 
+  .puzzleTopbar .btn svg,
+  .puzzleTopbar .btn > span {
+    transform: scale(1.14);
+    transform-origin: center;
+  }
+
   .puzzleTopbarRight {
     gap: 5px;
   }
@@ -823,6 +829,12 @@ input.url {
     height: 100%;
     grid-template-rows: repeat(5, minmax(0, 1fr));
     align-self: stretch;
+  }
+
+  .panelBtn svg,
+  .panelBtn > span {
+    transform: scale(1.2);
+    transform-origin: center;
   }
 
   .sideActions .btn,
@@ -970,6 +982,12 @@ input.url {
     height: 100%;
     grid-template-rows: repeat(5, var(--panel-row));
     align-self: stretch;
+  }
+
+  .landscapeSideRail .btn:not(:first-child) svg,
+  .landscapeSideRail .btn:not(:first-child) > span {
+    transform: scale(1.18);
+    transform-origin: center;
   }
 
   .keyGrid {
