@@ -385,6 +385,7 @@ input.url {
   align-content: start;
   gap: 8px;
   padding: 8px;
+  padding-left: max(8px, calc(env(safe-area-inset-left) + 8px));
 }
 
 .landscapeSideRail .btn {

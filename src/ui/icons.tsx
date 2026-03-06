@@ -1,8 +1,24 @@
 export const IconUndo = () => <span style={{ fontSize: 18 }}>↶</span>;
 export const IconRedo = () => <span style={{ fontSize: 18 }}>↷</span>;
-export const IconPause = () => <span style={{ fontSize: 18 }}>⏸</span>;
+export const IconPause = () => (
+	<svg width="18" height="18" viewBox="0 0 20 20" aria-hidden>
+		<rect x="5" y="4" width="3.8" height="12" rx="1.1" fill="currentColor" />
+		<rect x="11.2" y="4" width="3.8" height="12" rx="1.1" fill="currentColor" />
+	</svg>
+);
 export const IconPlay = () => <span style={{ fontSize: 18 }}>▶</span>;
-export const IconSettings = () => <span style={{ fontSize: 18 }}>⚙</span>;
+export const IconSettings = () => (
+	<svg width="18" height="18" viewBox="0 0 20 20" aria-hidden>
+		<path
+			d="M11.7 2.4a1 1 0 0 0-1-.8H9.3a1 1 0 0 0-1 .8l-.3 1.5a6.8 6.8 0 0 0-1.5.9L5 3.9a1 1 0 0 0-1.3.1l-1 1a1 1 0 0 0-.1 1.3l.9 1.5a6.8 6.8 0 0 0-.9 1.5l-1.5.3a1 1 0 0 0-.8 1v1.4a1 1 0 0 0 .8 1l1.5.3a6.8 6.8 0 0 0 .9 1.5l-.9 1.5a1 1 0 0 0 .1 1.3l1 1a1 1 0 0 0 1.3.1l1.5-.9a6.8 6.8 0 0 0 1.5.9l.3 1.5a1 1 0 0 0 1 .8h1.4a1 1 0 0 0 1-.8l.3-1.5a6.8 6.8 0 0 0 1.5-.9l1.5.9a1 1 0 0 0 1.3-.1l1-1a1 1 0 0 0 .1-1.3l-.9-1.5a6.8 6.8 0 0 0 .9-1.5l1.5-.3a1 1 0 0 0 .8-1v-1.4a1 1 0 0 0-.8-1l-1.5-.3a6.8 6.8 0 0 0-.9-1.5l.9-1.5a1 1 0 0 0-.1-1.3l-1-1a1 1 0 0 0-1.3-.1l-1.5.9a6.8 6.8 0 0 0-1.5-.9l-.3-1.5Z"
+			fill="none"
+			stroke="currentColor"
+			strokeWidth="1.4"
+			strokeLinejoin="round"
+		/>
+		<circle cx="10" cy="10" r="2.6" fill="none" stroke="currentColor" strokeWidth="1.4" />
+	</svg>
+);
 
 export const IconSelectMode = (props: { multi: boolean }) => (
 	<span
