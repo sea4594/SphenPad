@@ -115,6 +115,9 @@ export function GridCanvas(props: {
     return maxCoord >= n ? 1 : 0;
   }, [def.cosmetics.dots, n]);
 
+  const highlightRotationRad = (20 * Math.PI) / 180;
+  const highlightAlpha = 0.82;
+
   const centerLineKeys = useMemo(() => {
     const keys = new Set<string>();
     for (const stroke of progress.lines) {
@@ -289,26 +292,37 @@ export function GridCanvas(props: {
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(cellX(0), cellY(0), cellPx * n, cellPx * n);
 
-    const drawCellHighlights = (r: number, c: number, colors: string[], alpha = 1) => {
+    const drawCellHighlights = (r: number, c: number, colors: string[], alpha = highlightAlpha) => {
       if (!colors.length) return;
       const x = cellX(c);
       const y = cellY(r);
+      const cx = x + cellPx / 2;
+      const cy = y + cellPx / 2;
+
       if (colors.length === 1) {
         ctx.save();
+        ctx.beginPath();
+        ctx.rect(x, y, cellPx, cellPx);
+        ctx.clip();
+        ctx.translate(cx, cy);
+        ctx.rotate(highlightRotationRad);
+        ctx.translate(-cx, -cy);
         ctx.globalAlpha = alpha;
         ctx.fillStyle = colors[0] as string;
-        ctx.fillRect(x, y, cellPx, cellPx);
+        const singleSize = cellPx * 0.88;
+        ctx.fillRect(cx - singleSize / 2, cy - singleSize / 2, singleSize, singleSize);
         ctx.restore();
         return;
       }
 
-      const cx = x + cellPx / 2;
-      const cy = y + cellPx / 2;
       const radius = cellPx * 0.78;
       const maxSlices = Math.min(18, colors.length);
       const step = (Math.PI * 2) / maxSlices;
       const offset = -Math.PI / 2;
       ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(highlightRotationRad);
+      ctx.translate(-cx, -cy);
       ctx.globalAlpha = alpha;
       ctx.beginPath();
       ctx.rect(x, y, cellPx, cellPx);
@@ -376,20 +390,22 @@ export function GridCanvas(props: {
       return { r: 1, c: 1 };
     })();
 
-    for (let i = 0; i <= n; i++) {
-      ctx.lineWidth = i % subgrid.r === 0 ? 2.2 : 1;
-      ctx.strokeStyle = "#000000";
-      ctx.beginPath();
-      ctx.moveTo(cellX(0), cellY(i));
-      ctx.lineTo(cellX(n), cellY(i));
-      ctx.stroke();
+    const drawGridLines = () => {
+      for (let i = 0; i <= n; i++) {
+        ctx.lineWidth = i % subgrid.r === 0 ? 2.2 : 1;
+        ctx.strokeStyle = "#000000";
+        ctx.beginPath();
+        ctx.moveTo(cellX(0), cellY(i));
+        ctx.lineTo(cellX(n), cellY(i));
+        ctx.stroke();
 
-      ctx.lineWidth = i % subgrid.c === 0 ? 2.2 : 1;
-      ctx.beginPath();
-      ctx.moveTo(cellX(i), cellY(0));
-      ctx.lineTo(cellX(i), cellY(n));
-      ctx.stroke();
-    }
+        ctx.lineWidth = i % subgrid.c === 0 ? 2.2 : 1;
+        ctx.beginPath();
+        ctx.moveTo(cellX(i), cellY(0));
+        ctx.lineTo(cellX(i), cellY(n));
+        ctx.stroke();
+      }
+    };
 
     const drawLayer = (
       items: NonNullable<PuzzleDefinition["cosmetics"]["underlays"]>,
@@ -487,7 +503,16 @@ export function GridCanvas(props: {
       }
     };
 
-    if (def.cosmetics.underlays?.length) drawLayer(def.cosmetics.underlays, { drawShapes: true, drawText: false });
+    if (def.cosmetics.underlays?.length) drawLayer(def.cosmetics.underlays, { drawShapes: true, drawText: true });
+    if (def.cosmetics.overlays?.length) drawLayer(def.cosmetics.overlays);
+
+    // Highlights sit above puzzle artwork but below grid/features and values.
+    for (let r = 0; r < n; r++) {
+      for (let c = 0; c < n; c++) {
+        const colors = progress.cells[r][c].highlights ?? [];
+        drawCellHighlights(r, c, colors);
+      }
+    }
 
     if (def.cosmetics.cages) {
       ctx.strokeStyle = "#000000";
@@ -606,12 +631,8 @@ export function GridCanvas(props: {
       }
     }
 
-    for (let r = 0; r < n; r++) {
-      for (let c = 0; c < n; c++) {
-        const colors = progress.cells[r][c].highlights ?? [];
-        drawCellHighlights(r, c, colors, 1);
-      }
-    }
+    // Grid borders stay above highlights.
+    drawGridLines();
 
     const drawCenterStroke = (segments: LineSegmentDraft[], color: string, alpha = 1) => {
       ctx.save();
@@ -802,9 +823,6 @@ export function GridCanvas(props: {
       }
     }
 
-    if (def.cosmetics.underlays?.length) drawLayer(def.cosmetics.underlays, { drawShapes: false, drawText: true });
-    if (def.cosmetics.overlays?.length) drawLayer(def.cosmetics.overlays);
-
     if (fogDefined) {
       ctx.fillStyle = "#c8cdd3";
       for (let r = 0; r < n; r++) {
@@ -820,7 +838,7 @@ export function GridCanvas(props: {
           const colors = progress.cells[r][c].highlights ?? [];
           if (!colors.length) continue;
           const display = lit[r][c] ? colors : colors.map((col) => darkenColor(col, 0.3));
-          drawCellHighlights(r, c, display, 1);
+          drawCellHighlights(r, c, display, highlightAlpha);
         }
       }
 
