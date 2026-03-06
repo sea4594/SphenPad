@@ -7,6 +7,13 @@ export const IconPause = () => (
 	</svg>
 );
 export const IconPlay = () => <span style={{ fontSize: 18 }}>▶</span>;
+export const IconExit = () => (
+	<svg width="18" height="18" viewBox="0 0 20 20" aria-hidden>
+		<path d="M8 3.5h7a1.5 1.5 0 0 1 1.5 1.5v10A1.5 1.5 0 0 1 15 16.5H8" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+		<path d="M11.2 10H2.8" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+		<path d="M5.8 6.9 2.7 10l3.1 3.1" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+	</svg>
+);
 export const IconSettings = () => (
 	<svg width="18" height="18" viewBox="0 0 20 20" aria-hidden>
 		<path

@@ -381,7 +381,12 @@ input.url {
 }
 
 .landscapeSideRail {
+  --rail-body-w: clamp(56px, 10vw, 78px);
+  --rail-empty-w: calc(var(--rail-body-w) / 3);
+  width: calc(var(--rail-empty-w) + var(--rail-body-w));
   display: grid;
+  grid-template-columns: var(--rail-empty-w) var(--rail-body-w);
+  justify-items: stretch;
   align-content: start;
   gap: 8px;
   padding: 8px;
@@ -389,14 +394,11 @@ input.url {
 }
 
 .landscapeSideRail .btn {
+  grid-column: 2;
   min-height: 44px;
-  width: 44px;
+  width: 100%;
+  aspect-ratio: 1 / 1;
   padding: 6px;
-}
-
-.landscapeSideRail .btn:first-child {
-  width: auto;
-  min-width: 74px;
 }
 
 .boardCard {
@@ -984,8 +986,8 @@ input.url {
     align-self: stretch;
   }
 
-  .landscapeSideRail .btn:not(:first-child) svg,
-  .landscapeSideRail .btn:not(:first-child) > span {
+  .landscapeSideRail .btn svg,
+  .landscapeSideRail .btn > span {
     transform: scale(1.18);
     transform-origin: center;
   }

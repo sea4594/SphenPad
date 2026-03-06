@@ -13,6 +13,7 @@ import { CompletionOverlay } from "./CompletionOverlay";
 import { Keyboard } from "./Keyboard";
 import { GridCanvas } from "./GridCanvas";
 import {
+  IconExit,
   IconPause,
   IconPlay,
   IconRedo,
@@ -932,7 +933,9 @@ export function PuzzlePage() {
             <div className={mobileLandscape ? "landscapeBoardArea" : ""}>
               {mobileLandscape ? (
                 <div className="card landscapeSideRail">
-                  <button className="btn" onClick={() => nav("/")}>← Menu</button>
+                  <button className="btn" onClick={() => nav("/")} title="Exit to menu" aria-label="Exit to menu">
+                    <IconExit />
+                  </button>
                   <button className="btn" onClick={onPausePlayClick} title="Pause or resume" disabled={data.progress.status === "complete"}>
                     {data.progress.status === "complete" ? <IconPause /> : data.progress.paused ? <IconPlay /> : <IconPause />}
                   </button>
