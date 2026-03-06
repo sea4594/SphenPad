@@ -889,25 +889,10 @@ export function PuzzlePage() {
       <div className={"page puzzlePage" + (mobileLandscape ? " mobileLandscape" : "") }>
         <div className={"gridLayout" + (mobileLandscape ? " mobileLandscape" : "") }>
           <div className="boardColumn">
-            <div className="card boardCard">
-              <GridCanvas
-                def={data.def}
-                progress={data.progress}
-                onSelection={setSelection}
-                onLineStroke={onLineStroke}
-                onLineTapCell={onLineTapCell}
-                onLineTapEdge={onLineTapEdge}
-                onDoubleCell={onDoubleSelectCell}
-              />
-            </div>
-          </div>
-
-          <div className="kbdPanel">
-            {mobileLandscape ? (
-              <div className="card landscapeTopbarRow">
-                <button className="btn" onClick={() => nav("/")}>← Menu</button>
-                <div className="puzzleTopbarRight">
-                  <div className="puzzleTimer">{timeStr}</div>
+            <div className={mobileLandscape ? "landscapeBoardArea" : ""}>
+              {mobileLandscape ? (
+                <div className="card landscapeSideRail">
+                  <button className="btn" onClick={() => nav("/")}>← Menu</button>
                   <button className="btn" onClick={onPausePlayClick} title="Pause or resume" disabled={data.progress.status === "complete"}>
                     {data.progress.status === "complete" ? <IconPause /> : data.progress.paused ? <IconPlay /> : <IconPause />}
                   </button>
@@ -915,9 +900,23 @@ export function PuzzlePage() {
                     <IconSettings />
                   </button>
                 </div>
-              </div>
-            ) : null}
+              ) : null}
 
+              <div className="card boardCard">
+                <GridCanvas
+                  def={data.def}
+                  progress={data.progress}
+                  onSelection={setSelection}
+                  onLineStroke={onLineStroke}
+                  onLineTapCell={onLineTapCell}
+                  onLineTapEdge={onLineTapEdge}
+                  onDoubleCell={onDoubleSelectCell}
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="kbdPanel">
             <div className="card puzzleMetaCard">
               <div className="puzzleTitle">{meta?.title || "(untitled)"}</div>
               <div className="puzzleAuthor">{meta?.author || "Unknown author"}</div>
