@@ -46,7 +46,7 @@ export type PuzzleCosmetics = {
   cages?: Array<{ cells: CellRC[]; sum?: string; color?: string }>;
   arrows?: Array<{ bulb: CellRC; path: CellRC[] }>;
   dots?: Array<{ a: CellRC; b: CellRC; kind: "black" | "white" }>;
-  lines?: Array<{ wayPoints: Array<{ x: number; y: number }>; color?: string; thickness?: number }>;
+  lines?: Array<{ wayPoints: Array<{ x: number; y: number }>; color?: string; thickness?: number; target?: string }>;
   underlays?: Array<{
     center: { x: number; y: number };
     width?: number;

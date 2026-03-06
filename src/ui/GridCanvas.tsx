@@ -491,8 +491,31 @@ export function GridCanvas(props: {
       }
     };
 
+    const drawConstraintLines = (layer: "under" | "over") => {
+      if (!def.cosmetics.lines) return;
+      for (const ln of def.cosmetics.lines) {
+        if (ln.wayPoints.length < 2) continue;
+        const target = (ln.target ?? "overlay").toLowerCase();
+        const isUnder = target.includes("under") || target.includes("back");
+        if (layer === "under" ? !isUnder : isUnder) continue;
+
+        ctx.strokeStyle = normalizeFeatureLineColor(ln.color);
+        ctx.lineWidth = (ln.thickness ?? 6) * (cellPx / 50);
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+        ctx.beginPath();
+        ln.wayPoints.forEach((p, i) => {
+          const x = worldX(p.x);
+          const y = worldY(p.y);
+          if (i === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        });
+        ctx.stroke();
+      }
+    };
+
     if (def.cosmetics.underlays?.length) drawLayer(def.cosmetics.underlays, { drawShapes: true, drawText: true });
-    if (def.cosmetics.overlays?.length) drawLayer(def.cosmetics.overlays);
+    drawConstraintLines("under");
 
     // Highlights sit above puzzle artwork but below grid/features and values.
     for (let r = 0; r < n; r++) {
@@ -560,23 +583,8 @@ export function GridCanvas(props: {
       ctx.setLineDash([]);
     }
 
-    if (def.cosmetics.lines) {
-      for (const ln of def.cosmetics.lines) {
-        if (ln.wayPoints.length < 2) continue;
-        ctx.strokeStyle = normalizeFeatureLineColor(ln.color);
-        ctx.lineWidth = (ln.thickness ?? 6) * (cellPx / 50);
-        ctx.lineCap = "round";
-        ctx.lineJoin = "round";
-        ctx.beginPath();
-        ln.wayPoints.forEach((p, i) => {
-          const x = worldX(p.x);
-          const y = worldY(p.y);
-          if (i === 0) ctx.moveTo(x, y);
-          else ctx.lineTo(x, y);
-        });
-        ctx.stroke();
-      }
-    }
+    if (def.cosmetics.overlays?.length) drawLayer(def.cosmetics.overlays);
+    drawConstraintLines("over");
 
     if (def.cosmetics.arrows) {
       ctx.strokeStyle = "#111111";

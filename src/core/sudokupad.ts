@@ -224,6 +224,24 @@ function parseCellRefs(value: any): CellRC[] {
   return [];
 }
 
+function centerFromCells(cells: CellRC[]): { x: number; y: number } | null {
+  if (!cells.length) return null;
+  const sx = cells.reduce((acc, rc) => acc + (rc.c + 0.5), 0);
+  const sy = cells.reduce((acc, rc) => acc + (rc.r + 0.5), 0);
+  return { x: sx / cells.length, y: sy / cells.length };
+}
+
+function spanFromCells(cells: CellRC[]): { width: number; height: number } | null {
+  if (!cells.length) return null;
+  const cols = cells.map((rc) => rc.c);
+  const rows = cells.map((rc) => rc.r);
+  const minC = Math.min(...cols);
+  const maxC = Math.max(...cols);
+  const minR = Math.min(...rows);
+  const maxR = Math.max(...rows);
+  return { width: Math.max(0.2, maxC - minC + 1), height: Math.max(0.2, maxR - minR + 1) };
+}
+
 function inferPuzzleSize(sclObj: any, givens: Array<{ rc: CellRC }>): number {
   const metadataSolution = sclObj?.metadata?.solution;
   const fromSolution =
@@ -435,6 +453,8 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
     ? scl.cages
     : Array.isArray(scl?.killerCages)
       ? scl.killerCages
+      : Array.isArray(scl?.killercage)
+        ? scl.killercage
       : Array.isArray(scl?.killer)
         ? scl.killer
         : [];
@@ -506,9 +526,51 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
           wayPoints,
           color: normalizeColorToken(ln?.color ?? ln?.c),
           thickness: typeof (ln?.thickness ?? ln?.th) === "number" ? (ln?.thickness ?? ln?.th) : undefined,
+          target: typeof ln?.target === "string" ? ln.target : undefined,
         };
       })
       .filter(Boolean) as any;
+  }
+
+  // Thermometer variants: modern `thermos` and legacy `thermometer` with nested `lines`.
+  const thermometerLines = [
+    ...(Array.isArray(scl?.thermos) ? scl.thermos : []),
+    ...(Array.isArray(scl?.thermometer)
+      ? scl.thermometer.flatMap((t: any) => (Array.isArray(t?.lines) ? t.lines.map((line: any) => ({ cells: line })) : [t]))
+      : []),
+  ];
+  if (thermometerLines.length) {
+    const thermoAsLines = thermometerLines
+      .map((item: any) => {
+        const path = parseCellRefs(item?.cells ?? item?.ce ?? item?.line ?? item);
+        if (path.length < 2) return null;
+        return {
+          wayPoints: path.map((rc) => ({ x: rc.c + 0.5, y: rc.r + 0.5 })),
+          color: normalizeColorToken(item?.color ?? "#9fd9ff"),
+          thickness: typeof item?.thickness === "number" ? item.thickness : 10,
+          target: "overlay",
+        };
+      })
+      .filter(Boolean) as NonNullable<PuzzleCosmetics["lines"]>;
+    cosmetics.lines = [...(cosmetics.lines ?? []), ...thermoAsLines];
+
+    const thermoBulbs = thermometerLines
+      .map((item: any) => {
+        const path = parseCellRefs(item?.cells ?? item?.ce ?? item?.line ?? item);
+        if (!path.length) return null;
+        const first = path[0] as CellRC;
+        return {
+          center: { x: first.c + 0.5, y: first.r + 0.5 },
+          width: 0.68,
+          height: 0.68,
+          rounded: true,
+          color: normalizeColorToken(item?.bulbColor ?? item?.color ?? "#c9ecff"),
+          borderColor: normalizeColorToken(item?.borderColor ?? "#6eaed6"),
+          borderThickness: 1.2,
+        };
+      })
+      .filter(Boolean) as NonNullable<PuzzleCosmetics["underlays"]>;
+    if (thermoBulbs.length) cosmetics.underlays = [...(cosmetics.underlays ?? []), ...thermoBulbs];
   }
 
   const parseLayerItem = (item: any) => {
@@ -540,6 +602,80 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
   const underlaysSrc = Array.isArray(scl?.underlays) ? scl.underlays : [];
   if (underlaysSrc.length) {
     cosmetics.underlays = underlaysSrc.map(parseLayerItem).filter(Boolean) as any;
+  }
+
+  // Legacy geometric clue primitives used by some older SudokuPad puzzles.
+  const circleSrc = Array.isArray(scl?.circle) ? scl.circle : [];
+  const rectangleSrc = Array.isArray(scl?.rectangle) ? scl.rectangle : [];
+  const shapeOverlays = [...circleSrc, ...rectangleSrc]
+    .map((item: any) => {
+      const cells = parseCellRefs(item?.cells ?? item?.ce);
+      const center = asPoint(item?.center ?? item?.ct) ?? centerFromCells(cells);
+      if (!center) return null;
+      const span = spanFromCells(cells);
+      return {
+        center,
+        width: typeof item?.width === "number" ? item.width : span?.width,
+        height: typeof item?.height === "number" ? item.height : span?.height,
+        rounded: item?.rounded ?? item?.r ?? circleSrc.includes(item),
+        color: normalizeColorToken(item?.backgroundColor ?? item?.baseC ?? item?.c2),
+        borderColor: normalizeColorToken(item?.borderColor ?? item?.outlineC ?? item?.c1 ?? item?.c),
+        borderThickness: typeof item?.thickness === "number" ? item.thickness : undefined,
+        text: asValue(item?.value),
+        textColor: normalizeColorToken(item?.textColor ?? item?.fontC ?? item?.color),
+        textSize: typeof item?.size === "number" ? Math.max(8, item.size * 28) : undefined,
+        angle: typeof item?.angle === "number" ? item.angle : undefined,
+      };
+    })
+    .filter(Boolean) as NonNullable<PuzzleCosmetics["overlays"]>;
+  if (shapeOverlays.length) cosmetics.overlays = [...(cosmetics.overlays ?? []), ...shapeOverlays];
+
+  // Difference / ratio clues can be represented as dots between two cells.
+  const diffDots = Array.isArray(scl?.difference)
+    ? scl.difference
+        .map((d: any) => {
+          const cells = parseCellRefs(d?.cells ?? d?.ce);
+          if (cells.length !== 2) return null;
+          return { a: cells[0] as CellRC, b: cells[1] as CellRC, kind: "black" as const };
+        })
+        .filter(Boolean)
+    : [];
+  const ratioDots = Array.isArray(scl?.ratio)
+    ? scl.ratio
+        .map((d: any) => {
+          const cells = parseCellRefs(d?.cells ?? d?.ce);
+          if (cells.length !== 2) return null;
+          return { a: cells[0] as CellRC, b: cells[1] as CellRC, kind: "white" as const };
+        })
+        .filter(Boolean)
+    : [];
+  if (diffDots.length || ratioDots.length) {
+    cosmetics.dots = [...(cosmetics.dots ?? []), ...(diffDots as any), ...(ratioDots as any)];
+  }
+
+  // Generic text clues (often directional markers) rendered as overlays.
+  if (Array.isArray(scl?.text)) {
+    const textItems = scl.text
+      .map((t: any) => {
+        const cells = parseCellRefs(t?.cells ?? t?.ce);
+        const center = asPoint(t?.center ?? t?.ct) ?? centerFromCells(cells);
+        if (!center) return null;
+        const sizeScale = typeof t?.size === "number" ? t.size : 0.58;
+        return {
+          center,
+          width: typeof t?.width === "number" ? t.width : undefined,
+          height: typeof t?.height === "number" ? t.height : undefined,
+          rounded: false,
+          color: undefined,
+          borderColor: undefined,
+          text: asValue(t?.value ?? t?.text),
+          textColor: normalizeColorToken(t?.fontC ?? t?.color ?? t?.textColor),
+          textSize: Math.max(9, 28 * sizeScale),
+          angle: typeof t?.angle === "number" ? t.angle : undefined,
+        };
+      })
+      .filter(Boolean) as NonNullable<PuzzleCosmetics["overlays"]>;
+    if (textItems.length) cosmetics.overlays = [...(cosmetics.overlays ?? []), ...textItems];
   }
 
   // line constraints
@@ -619,9 +755,9 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
   }
 
   // Anti-constraints
-  if (scl?.antiKnight) cosmetics.antiKnight = true;
-  if (scl?.antiKing) cosmetics.antiKing = true;
-  if (scl?.antiRook) cosmetics.antiRook = true;
+  if (scl?.antiKnight || scl?.antiknight) cosmetics.antiKnight = true;
+  if (scl?.antiKing || scl?.antiking) cosmetics.antiKing = true;
+  if (scl?.antiRook || scl?.antirook) cosmetics.antiRook = true;
 
   // Fog of war: common SCL keys include foglight/fogLight/fogLights.
   const rawFogLights = scl?.foglight ?? scl?.fogLight ?? scl?.fogLights ?? scl?.fog?.lights ?? scl?.fog?.light;
