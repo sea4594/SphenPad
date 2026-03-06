@@ -85,6 +85,7 @@ export function PuzzlePage() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [restartPromptOpen, setRestartPromptOpen] = useState(false);
   const [restartFromPause, setRestartFromPause] = useState(false);
+  const [mobileLandscape, setMobileLandscape] = useState(false);
   const tickRef = useRef<number | null>(null);
   const holdDelayRef = useRef<number | null>(null);
   const holdIntervalRef = useRef<number | null>(null);
@@ -94,6 +95,21 @@ export function PuzzlePage() {
   const redoRef = useRef<() => void>(() => {});
 
   const userId = firebaseEnabled ? auth?.currentUser?.uid : null;
+
+  useEffect(() => {
+    const updateLayoutMode = () => {
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      setMobileLandscape(w <= 1000 && w > h);
+    };
+    updateLayoutMode();
+    window.addEventListener("resize", updateLayoutMode);
+    window.addEventListener("orientationchange", updateLayoutMode);
+    return () => {
+      window.removeEventListener("resize", updateLayoutMode);
+      window.removeEventListener("orientationchange", updateLayoutMode);
+    };
+  }, []);
 
   function normalizeProgress(progress: PuzzleProgress): PuzzleProgress {
     const cells = progress.cells.map((row) =>
@@ -833,8 +849,8 @@ export function PuzzlePage() {
         </div>
       </div>
 
-      <div className="page puzzlePage">
-        <div className="gridLayout">
+      <div className={"page puzzlePage" + (mobileLandscape ? " mobileLandscape" : "") }>
+        <div className={"gridLayout" + (mobileLandscape ? " mobileLandscape" : "") }>
           <div className="boardColumn">
             <div className="card boardCard">
               <GridCanvas

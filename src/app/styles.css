@@ -126,7 +126,8 @@ body,
 #root {
   margin: 0;
   height: 100%;
-  overflow: hidden;
+  min-height: 100%;
+  overflow-x: hidden;
   background:
     radial-gradient(1100px 650px at -15% -20%, var(--gradient-a) 0%, transparent 66%),
     radial-gradient(1000px 700px at 120% -10%, var(--gradient-b) 0%, transparent 70%),
@@ -140,7 +141,8 @@ button, input, select { font: inherit; color: inherit; }
 .shell {
   display: grid;
   grid-template-rows: auto 1fr;
-  height: 100vh;
+  height: 100dvh;
+  min-height: 100vh;
   overflow: hidden;
 }
 
@@ -148,8 +150,9 @@ button, input, select { font: inherit; color: inherit; }
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 12px;
-  padding: 10px 14px;
+  padding: 10px max(14px, env(safe-area-inset-right)) 10px max(14px, env(safe-area-inset-left));
   background: color-mix(in oklab, var(--bg) 88%, transparent);
   backdrop-filter: blur(8px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
@@ -174,10 +177,11 @@ button, input, select { font: inherit; color: inherit; }
 }
 
 .page {
-  padding: 14px;
+  padding: 14px max(14px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
   display: grid;
   gap: 12px;
   min-height: 0;
+  overflow: auto;
 }
 
 .row {
@@ -192,6 +196,7 @@ button, input, select { font: inherit; color: inherit; }
 input.url {
   flex: 1;
   min-width: 220px;
+  width: 100%;
   padding: 12px;
   border-radius: 10px;
   border: 1px solid color-mix(in oklab, var(--text) 20%, transparent);
@@ -251,12 +256,21 @@ input.url {
   border-color: rgba(255, 255, 255, 0.24);
 }
 
+.menuPuzzleRow > div:first-child {
+  min-width: 0;
+}
+
+.menuPuzzleRow .muted {
+  overflow-wrap: anywhere;
+}
+
 .puzzlePage {
   width: min(1260px, 100%);
   margin: 0 auto;
   height: 100%;
   min-height: 0;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .gridLayout {
@@ -267,12 +281,52 @@ input.url {
   min-height: 0;
 }
 
+.gridLayout > * {
+  min-width: 0;
+}
+
+.puzzlePage.mobileLandscape {
+  overflow: hidden;
+}
+
+.puzzlePage.mobileLandscape .gridLayout {
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 40vw);
+  grid-template-rows: 1fr;
+  height: 100%;
+  align-items: start;
+  gap: 10px;
+}
+
+.puzzlePage.mobileLandscape .boardColumn {
+  height: 100%;
+  overflow: auto;
+}
+
+.puzzlePage.mobileLandscape .kbdPanel {
+  grid-template-rows: auto 1fr;
+  min-height: 0;
+  height: 100%;
+  overflow: auto;
+  align-content: start;
+}
+
+.puzzlePage.mobileLandscape .controlStack {
+  align-content: start;
+  min-height: 0;
+}
+
+.puzzlePage.mobileLandscape .puzzleMetaCard {
+  display: none;
+}
+
 .boardColumn {
   display: grid;
   gap: 8px;
   align-content: start;
   min-height: 0;
-  height: 100%;
+  height: auto;
+  position: relative;
+  z-index: 1;
 }
 
 .boardCard {
@@ -286,6 +340,7 @@ input.url {
   max-width: 100%;
   height: fit-content;
   justify-self: center;
+  overflow: auto;
 }
 
 .boardSurface {
@@ -340,6 +395,8 @@ input.url {
   gap: 8px;
   align-content: start;
   min-height: 0;
+  position: relative;
+  z-index: 2;
 }
 
 .controlStack {
@@ -370,13 +427,20 @@ input.url {
   display: grid;
   place-items: center;
   padding: 16px;
+  overflow: auto;
   z-index: 60;
+}
+
+.topbar .muted {
+  overflow-wrap: anywhere;
 }
 
 .settingsCard {
   width: min(680px, 100%);
   display: grid;
   gap: 14px;
+  max-height: min(88dvh, calc(100vh - 24px));
+  overflow: auto;
 }
 
 .settingsHeader {
@@ -475,10 +539,28 @@ input.url {
 @media (max-width: 760px) {
   .topbar {
     padding: 8px 10px;
+    gap: 8px;
+  }
+
+  .topbar .spacer {
+    display: none;
+  }
+
+  .topbar .row {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .topbar .muted {
+    font-size: 13px;
   }
 
   .page {
     padding: 10px;
+  }
+
+  input.url {
+    min-width: 0;
   }
 
   .puzzlePage {
@@ -486,7 +568,8 @@ input.url {
   }
 
   .gridLayout {
-    grid-template-rows: minmax(0, 1fr) auto;
+    grid-template-rows: auto auto;
+    height: auto;
     gap: 8px;
   }
 
@@ -495,13 +578,21 @@ input.url {
   }
 
   .kbdPanel {
-    grid-template-rows: 1fr;
-    overflow: hidden;
+    grid-template-rows: auto;
+    overflow: visible;
+    min-height: 0;
   }
 
   .controlStack {
     align-content: start;
     padding-bottom: 4px;
+    min-height: auto;
+  }
+
+  .sideActions .btn,
+  .toolSwitcher .btn {
+    min-height: 40px;
+    padding: 8px 6px;
   }
 
   .sideActions {
@@ -518,6 +609,84 @@ input.url {
 
   .themeGrid {
     grid-template-columns: 1fr;
+  }
+
+  .puzzleMetaCard {
+    display: none;
+  }
+
+  .menuPuzzleRow .row {
+    justify-content: flex-start !important;
+  }
+}
+
+@media (max-height: 560px) {
+  .topbar {
+    padding-top: 6px;
+    padding-bottom: 6px;
+  }
+
+  .page {
+    padding-top: 8px;
+  }
+
+  .card {
+    padding: 10px;
+  }
+
+  .btn {
+    min-height: 38px;
+    padding: 8px 10px;
+  }
+
+  .gridLayout {
+    grid-template-rows: auto auto;
+    height: auto;
+  }
+
+  .kbdPanel {
+    grid-template-rows: auto;
+    overflow: visible;
+  }
+
+  .puzzleMetaCard {
+    display: none;
+  }
+}
+
+@media (max-width: 1000px) and (orientation: landscape), (max-width: 1000px) and (max-height: 540px) and (min-aspect-ratio: 1/1) {
+  .puzzlePage {
+    overflow: hidden;
+  }
+
+  .gridLayout {
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 40vw);
+    grid-template-rows: 1fr;
+    height: 100%;
+    align-items: start;
+    gap: 10px;
+  }
+
+  .boardColumn {
+    height: 100%;
+    overflow: auto;
+  }
+
+  .boardCard {
+    max-width: 100%;
+  }
+
+  .kbdPanel {
+    grid-template-rows: auto 1fr;
+    min-height: 0;
+    height: 100%;
+    overflow: auto;
+    align-content: start;
+  }
+
+  .controlStack {
+    align-content: start;
+    min-height: 0;
   }
 
   .puzzleMetaCard {

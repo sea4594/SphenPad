@@ -11,7 +11,7 @@ import { SettingsOverlay } from "./SettingsOverlay";
 export function MainMenu() {
   const nav = useNavigate();
   const [url, setUrl] = useState("");
-  const [rows, setRows] = useState<any[]>([]);
+  const [rows, setRows] = useState<Array<Awaited<ReturnType<typeof listPuzzles>>[number]>>([]);
   const [busy, setBusy] = useState<string>("");
   const [settingsOpen, setSettingsOpen] = useState(false);
 
@@ -33,8 +33,9 @@ export function MainMenu() {
       await upsertPuzzle(key, { def, progress, undo: [], redo: [], updatedAt: Date.now() });
       await refresh();
       nav(`/p/${encodeURIComponent(key)}`);
-    } catch (e: any) {
-      alert(e?.message ?? String(e));
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      alert(msg);
     } finally {
       setBusy("");
     }

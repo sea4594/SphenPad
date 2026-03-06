@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 export type Patch = { path: (string | number)[]; prev: unknown; next: unknown };
 
 // Minimal structural patcher for our state tree (fast enough for MVP).

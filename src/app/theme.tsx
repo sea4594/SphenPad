@@ -14,24 +14,26 @@ const STORAGE_KEY = "sphenpad-theme-v1";
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
-export function ThemeProvider(props: { children: ReactNode }) {
-  const [mode, setMode] = useState<ThemeMode>("dark");
-  const [color, setColor] = useState<ThemeColor>("ocean");
+function readInitialTheme(): { mode: ThemeMode; color: ThemeColor } {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return { mode: "dark", color: "ocean" };
+    const parsed = JSON.parse(raw) as { mode?: ThemeMode; color?: ThemeColor | "sunset" };
+    const mode: ThemeMode = parsed.mode === "light" || parsed.mode === "dark" ? parsed.mode : "dark";
+    const mappedColor = parsed.color === "sunset" ? "sepia" : parsed.color;
+    const color: ThemeColor = ["bw", "ocean", "forest", "sepia", "berry"].includes(mappedColor ?? "")
+      ? (mappedColor as ThemeColor)
+      : "ocean";
+    return { mode, color };
+  } catch {
+    return { mode: "dark", color: "ocean" };
+  }
+}
 
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return;
-      const parsed = JSON.parse(raw) as { mode?: ThemeMode; color?: ThemeColor | "sunset" };
-      if (parsed.mode === "light" || parsed.mode === "dark") setMode(parsed.mode);
-      const mappedColor = parsed.color === "sunset" ? "sepia" : parsed.color;
-      if (["bw", "ocean", "forest", "sepia", "berry"].includes(mappedColor ?? "")) {
-        setColor(mappedColor as ThemeColor);
-      }
-    } catch {
-      // Ignore malformed stored themes.
-    }
-  }, []);
+export function ThemeProvider(props: { children: ReactNode }) {
+  const initialTheme = readInitialTheme();
+  const [mode, setMode] = useState<ThemeMode>(initialTheme.mode);
+  const [color, setColor] = useState<ThemeColor>(initialTheme.color);
 
   useEffect(() => {
     document.documentElement.dataset.mode = mode;
@@ -43,6 +45,7 @@ export function ThemeProvider(props: { children: ReactNode }) {
   return <ThemeContext.Provider value={value}>{props.children}</ThemeContext.Provider>;
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useTheme() {
   const ctx = useContext(ThemeContext);
   if (!ctx) throw new Error("useTheme must be used within ThemeProvider");

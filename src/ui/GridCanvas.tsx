@@ -12,6 +12,7 @@ type DragState = {
   last: CellRC;
   moved: boolean;
   lineKind?: LineKindResolved;
+  lineAction?: "draw" | "erase";
   visited: Set<string>;
   selectionSet?: Set<string>;
   selectionMode?: "replace" | "add" | "remove";
@@ -111,6 +112,24 @@ export function GridCanvas(props: {
     return maxCoord >= n ? 1 : 0;
   }, [def.cosmetics.dots, n]);
 
+  const centerLineKeys = useMemo(() => {
+    const keys = new Set<string>();
+    for (const stroke of progress.lines) {
+      if (stroke.kind !== "center") continue;
+      for (const seg of stroke.segments) keys.add(segKey(seg.a, seg.b));
+    }
+    return keys;
+  }, [progress.lines]);
+
+  const edgeLineKeys = useMemo(() => {
+    const keys = new Set<string>();
+    for (const stroke of progress.lines) {
+      if (stroke.kind !== "edge") continue;
+      for (const seg of stroke.segments) keys.add(segKey(seg.a, seg.b));
+    }
+    return keys;
+  }, [progress.lines]);
+
   function inBounds(r: number, c: number) {
     return r >= 0 && c >= 0 && r < n && c < n;
   }
@@ -186,7 +205,20 @@ export function GridCanvas(props: {
       const topbar = document.querySelector(".topbar") as HTMLElement | null;
       const viewportHeight = window.innerHeight - (topbar?.offsetHeight ?? 0) - 20;
       const measuredHeight = Math.max(boardColumn?.clientHeight ?? 0, gridLayout?.clientHeight ?? 0, pane.clientHeight || 0);
-      const height = measuredHeight > 220 ? measuredHeight : viewportHeight;
+      const isNarrow = window.matchMedia("(max-width: 760px)").matches;
+      const isShort = window.matchMedia("(max-height: 560px)").matches;
+      const isLandscape =
+        window.matchMedia("(orientation: landscape)").matches ||
+        (window.matchMedia("(max-height: 540px)").matches && window.innerWidth > window.innerHeight);
+
+      // Reserve space for mobile controls so undo/redo/select buttons stay reachable.
+      const reservedControlsHeight = isNarrow && !isLandscape ? (isShort ? 170 : 250) : 0;
+      const mobileHeight = Math.max(170, viewportHeight - reservedControlsHeight);
+      const height = isNarrow
+        ? mobileHeight
+        : measuredHeight > 220
+          ? measuredHeight
+          : viewportHeight;
 
       const sideMargin = 8;
       const topBottomPad = 8;
@@ -197,8 +229,10 @@ export function GridCanvas(props: {
       const byHeight = (Math.max(220, height - topBottomPad * 2)) / (spanY + padFactor);
 
       const desktop = window.matchMedia("(min-width: 1080px)").matches;
+      const mobileMinCell = isShort ? 20 : 22;
       const maxCell = desktop ? 96 : 72;
-      const next = Math.floor(Math.min(maxCell, Math.max(28, Math.min(byWidth, byHeight))));
+      const minCell = isNarrow ? mobileMinCell : 28;
+      const next = Math.floor(Math.min(maxCell, Math.max(minCell, Math.min(byWidth, byHeight))));
       setCellPx(next);
     };
     update();
@@ -1101,6 +1135,13 @@ export function GridCanvas(props: {
           continue;
         }
 
+        const key = segKey(drag.last, hop);
+        const occupied = kind === "edge" ? edgeLineKeys.has(key) : centerLineKeys.has(key);
+        if (!drag.lineAction) drag.lineAction = occupied ? "erase" : "draw";
+        if ((drag.lineAction === "erase" && !occupied) || (drag.lineAction === "draw" && occupied)) {
+          continue;
+        }
+
         drag.path.push(hop);
         drag.segments.push({ a: drag.last, b: hop });
         drag.last = hop;
@@ -1113,9 +1154,7 @@ export function GridCanvas(props: {
 
     const pt = eventPoint(e.clientX, e.clientY);
     if (!pt) return;
-    const next = { r: pt.r, c: pt.c };
-    if (next.r === drag.last.r && next.c === drag.last.c) return;
-    const hops = traceCellSteps(drag.last, next, { rows: n, cols: n });
+    const hops = centerHopsFromPointer(drag.last, e.clientX, e.clientY);
     if (!hops.length) return;
 
     const nextSelection = drag.selectionSet ? new Set(drag.selectionSet) : new Set<string>();

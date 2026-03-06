@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import { z } from "zod";
 import { decompressFromBase64 } from "lz-string";
 import { normalizePuzzleKey } from "./id";
@@ -39,7 +41,7 @@ function looksLikePuzzlePayload(text: string): boolean {
   if (/^(scl|ctc|fpuz|fpuzzles)/i.test(t)) return true;
 
   // JSON payloads.
-  if (/^[\[{]/.test(t)) return true;
+  if (/^[[{]/.test(t)) return true;
 
   return false;
 }
@@ -110,7 +112,6 @@ function tryParseLooseObjectLiteral(text: string): unknown | null {
         return `${key}:"${v}"`;
       }
     );
-    // eslint-disable-next-line no-new-func
     return Function("f", "t", "n", "u", `return (${src})`)(false, true, null, undefined);
   } catch {
     return null;

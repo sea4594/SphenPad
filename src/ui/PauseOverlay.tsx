@@ -11,7 +11,7 @@ export function PauseOverlay(props: {
   const { meta, started } = props;
   return (
     <div className="overlayBackdrop">
-      <div className="card" style={{ width: "min(860px, 100%)", maxHeight: "calc(100vh - 36px)", display: "flex", flexDirection: "column" }}>
+      <div className="card" style={{ width: "min(860px, 100%)", maxHeight: "min(92dvh, calc(100vh - 24px))", overflow: "auto", display: "flex", flexDirection: "column" }}>
         <div style={{ fontWeight: 800, fontSize: 22 }}>{meta?.title || "(untitled)"}</div>
         <div className="muted" style={{ marginTop: 6 }}>{meta?.author || ""}</div>
 

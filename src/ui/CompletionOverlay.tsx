@@ -10,7 +10,7 @@ export function CompletionOverlay(props: CompletionOverlayProps) {
   const message = props.meta?.postSolveMessage?.trim() || "Great solve.";
   return (
     <div className="overlayBackdrop">
-      <div className="card" style={{ width: "min(640px, 100%)" }}>
+      <div className="card" style={{ width: "min(640px, 100%)", maxHeight: "min(92dvh, calc(100vh - 24px))", overflow: "auto" }}>
         <div style={{ fontSize: 28, fontWeight: 800 }}>Puzzle Complete</div>
         <div className="muted" style={{ marginTop: 6 }}>
           Completed in <strong>{props.elapsed}</strong>
