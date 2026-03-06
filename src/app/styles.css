@@ -239,8 +239,8 @@ input.url {
   width: 100%;
   padding: 12px;
   border-radius: 0;
-  border: 1px solid color-mix(in oklab, var(--text) 20%, transparent);
-  background: color-mix(in oklab, var(--bg) 70%, #000 30%);
+  border: 1px solid color-mix(in oklab, var(--text) 34%, transparent);
+  background: color-mix(in oklab, var(--panel-soft) 82%, #ffffff 18%);
 }
 
 .btn {
@@ -776,12 +776,13 @@ input.url {
     --panel-cell-ratio: 0.74;
     --panel-cell: calc((100vw - (var(--panel-pad) * 2) - (var(--panel-gap) * 3)) / 4);
     --panel-row: calc(var(--panel-cell) * var(--panel-cell-ratio));
-    --mobile-controls-h: calc((var(--panel-row) * 5) + (var(--panel-gap) * 4) + (var(--panel-pad) * 2));
+    --mobile-controls-h-raw: calc((var(--panel-row) * 5) + (var(--panel-gap) * 4) + (var(--panel-pad) * 2));
+    --mobile-controls-h: clamp(210px, var(--mobile-controls-h-raw), 46dvh);
     grid-template-rows: minmax(0, 1fr) var(--mobile-controls-h);
     height: 100%;
     gap: 0;
     overflow: hidden;
-    align-content: end;
+    align-content: stretch;
   }
 
   .boardColumn {
@@ -799,6 +800,7 @@ input.url {
   .kbdPanel {
     grid-template-rows: 1fr;
     height: var(--mobile-controls-h);
+    max-height: 46dvh;
     width: 100%;
     overflow: hidden;
     min-height: 0;
@@ -818,8 +820,8 @@ input.url {
 
   .mobileControlPanel {
     width: 100%;
-    height: var(--mobile-controls-h);
-    grid-template-rows: repeat(5, var(--panel-row));
+    height: 100%;
+    grid-template-rows: repeat(5, minmax(0, 1fr));
     align-self: stretch;
   }
 
