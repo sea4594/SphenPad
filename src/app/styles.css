@@ -460,8 +460,9 @@ input.url {
   width: 100%;
   height: 100%;
   min-height: 0;
-  padding: 8px;
+  padding: 6px;
   align-content: stretch;
+  border-radius: 0;
 }
 
 .panelBtn {
@@ -470,6 +471,7 @@ input.url {
   width: 100%;
   height: 100%;
   padding: 4px;
+  border-radius: 0;
 }
 
 .panelUndo { grid-column: 1; grid-row: 1; }
@@ -501,6 +503,7 @@ input.url {
   min-height: 0;
   height: 100% !important;
   padding: 4px;
+  border-radius: 0;
 }
 
 .toolSwitcher {
@@ -705,15 +708,18 @@ input.url {
 
   .puzzlePage {
     width: 100%;
-    padding-bottom: 8px;
+    padding-top: 6px;
+    padding-left: max(8px, var(--safe-inline));
+    padding-right: max(8px, var(--safe-inline));
+    padding-bottom: max(4px, calc(env(safe-area-inset-bottom) * 0.35));
     overflow: hidden;
   }
 
   .gridLayout {
-    --mobile-controls-h: clamp(188px, 36dvh, 260px);
+    --mobile-controls-h: clamp(240px, 44dvh, 360px);
     grid-template-rows: minmax(0, 1fr) var(--mobile-controls-h);
     height: 100%;
-    gap: 8px;
+    gap: 6px;
     overflow: hidden;
   }
 
@@ -734,7 +740,8 @@ input.url {
     height: var(--mobile-controls-h);
     overflow: hidden;
     min-height: 0;
-    gap: 6px;
+    gap: 0;
+    align-self: end;
   }
 
   .controlStack {
@@ -808,7 +815,7 @@ input.url {
   }
 
   .gridLayout {
-    grid-template-rows: minmax(0, 1fr) clamp(168px, 38dvh, 212px);
+    grid-template-rows: minmax(0, 1fr) clamp(196px, 44dvh, 268px);
     height: 100%;
   }
 
@@ -835,16 +842,20 @@ input.url {
 
 @media (max-width: 1000px) and (orientation: landscape), (max-width: 1000px) and (max-height: 540px) and (min-aspect-ratio: 1/1) {
   .puzzlePage {
+    padding-top: 6px;
+    padding-bottom: max(4px, calc(env(safe-area-inset-bottom) * 0.3));
+    padding-left: max(6px, env(safe-area-inset-left));
+    padding-right: max(6px, env(safe-area-inset-right));
     overflow: hidden;
   }
 
   .gridLayout {
-    --mobile-controls-w: clamp(216px, 34vw, 280px);
+    --mobile-controls-w: clamp(228px, 35vw, 292px);
     grid-template-columns: minmax(0, 1fr) var(--mobile-controls-w);
     grid-template-rows: 1fr;
     height: 100%;
     align-items: start;
-    gap: 8px;
+    gap: 6px;
   }
 
   .boardColumn {
@@ -863,12 +874,13 @@ input.url {
     width: var(--mobile-controls-w);
     max-width: 100%;
     justify-self: end;
+    align-self: stretch;
     overflow: hidden;
-    align-content: start;
+    align-content: stretch;
   }
 
   .controlStack {
-    align-content: start;
+    align-content: stretch;
     min-height: 0;
     gap: 0;
   }
