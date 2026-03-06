@@ -835,7 +835,8 @@ export function PuzzlePage() {
 
   return (
     <div className="shell">
-      <div className="topbar puzzleTopbar">
+      {!mobileLandscape ? (
+        <div className="topbar puzzleTopbar">
           <button className="btn" onClick={() => nav("/")}>← Menu</button>
           <div className="puzzleTopbarRight">
             <div className="puzzleTimer">{timeStr}</div>
@@ -845,8 +846,9 @@ export function PuzzlePage() {
             <button className="btn" onClick={() => setSettingsOpen(true)} title="Settings">
               <IconSettings />
             </button>
+          </div>
         </div>
-      </div>
+      ) : null}
 
       <div className={"page puzzlePage" + (mobileLandscape ? " mobileLandscape" : "") }>
         <div className={"gridLayout" + (mobileLandscape ? " mobileLandscape" : "") }>
@@ -865,6 +867,21 @@ export function PuzzlePage() {
           </div>
 
           <div className="kbdPanel">
+            {mobileLandscape ? (
+              <div className="card landscapeTopbarRow">
+                <button className="btn" onClick={() => nav("/")}>← Menu</button>
+                <div className="puzzleTopbarRight">
+                  <div className="puzzleTimer">{timeStr}</div>
+                  <button className="btn" onClick={onPausePlayClick} title="Pause or resume" disabled={data.progress.status === "complete"}>
+                    {data.progress.status === "complete" ? <IconPause /> : data.progress.paused ? <IconPlay /> : <IconPause />}
+                  </button>
+                  <button className="btn" onClick={() => setSettingsOpen(true)} title="Settings">
+                    <IconSettings />
+                  </button>
+                </div>
+              </div>
+            ) : null}
+
             <div className="card puzzleMetaCard">
               <div className="puzzleTitle">{meta?.title || "(untitled)"}</div>
               <div className="puzzleAuthor">{meta?.author || "Unknown author"}</div>

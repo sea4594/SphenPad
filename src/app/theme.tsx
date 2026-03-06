@@ -38,6 +38,20 @@ export function ThemeProvider(props: { children: ReactNode }) {
   useEffect(() => {
     document.documentElement.dataset.mode = mode;
     document.documentElement.dataset.theme = color;
+
+    // Keep browser chrome (notch/status bar area) aligned with the active theme color.
+    const bg = getComputedStyle(document.documentElement).getPropertyValue("--bg").trim() || "#191c22";
+    let themeMeta = document.querySelector('meta[name="theme-color"]') as HTMLMetaElement | null;
+    if (!themeMeta) {
+      themeMeta = document.createElement("meta");
+      themeMeta.name = "theme-color";
+      document.head.appendChild(themeMeta);
+    }
+    themeMeta.content = bg;
+
+    document.documentElement.style.backgroundColor = bg;
+    document.body.style.backgroundColor = bg;
+
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ mode, color }));
   }, [mode, color]);
 

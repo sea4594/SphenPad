@@ -98,6 +98,7 @@ export function Keyboard(props: {
         <Key onClick={() => props.onBackspace?.()} title="Backspace">⌫</Key>
         <div />
         <select
+          className="lineKindSelect"
           style={{
             gridColumn: "1 / span 3",
             height: "clamp(44px, 10vw, 52px)",
@@ -124,6 +125,7 @@ export function Keyboard(props: {
 function Grid3x4(props: { children: React.ReactNode }) {
   return (
     <div
+      className="keyGrid"
       style={{
         marginTop: 10,
         display: "grid",
@@ -139,7 +141,7 @@ function Grid3x4(props: { children: React.ReactNode }) {
 
 function Key(props: { children: React.ReactNode; onClick?: () => void; style?: React.CSSProperties; title?: string }) {
   return (
-    <button className="btn" style={{ height: "clamp(44px, 10vw, 52px)", ...props.style }} onClick={props.onClick} title={props.title}>
+    <button className="btn keyButton" style={{ height: "clamp(44px, 10vw, 52px)", ...props.style }} onClick={props.onClick} title={props.title}>
       {props.children}
     </button>
   );
@@ -148,7 +150,7 @@ function Key(props: { children: React.ReactNode; onClick?: () => void; style?: R
 function ColorKey(props: { color: string; onClick?: () => void; label?: string }) {
   return (
     <button
-      className="btn"
+      className="btn keyButton"
       onClick={props.onClick}
       title={props.label ?? props.color}
       style={{

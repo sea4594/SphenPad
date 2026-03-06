@@ -203,19 +203,18 @@ export function GridCanvas(props: {
       const width = pane.clientWidth || window.innerWidth;
 
       const topbar = document.querySelector(".topbar") as HTMLElement | null;
-      const viewportHeight = window.innerHeight - (topbar?.offsetHeight ?? 0) - 20;
+      const viewportHeight = Math.max(180, window.innerHeight - (topbar?.offsetHeight ?? 0) - 16);
       const measuredHeight = Math.max(boardColumn?.clientHeight ?? 0, gridLayout?.clientHeight ?? 0, pane.clientHeight || 0);
+      const boardHeight = Math.max(0, boardColumn?.clientHeight ?? pane.clientHeight ?? 0);
       const isNarrow = window.matchMedia("(max-width: 760px)").matches;
+      const isMobile = window.matchMedia("(max-width: 1000px)").matches;
       const isShort = window.matchMedia("(max-height: 560px)").matches;
       const isLandscape =
         window.matchMedia("(orientation: landscape)").matches ||
         (window.matchMedia("(max-height: 540px)").matches && window.innerWidth > window.innerHeight);
 
-      // Reserve space for mobile controls so undo/redo/select buttons stay reachable.
-      const reservedControlsHeight = isNarrow && !isLandscape ? (isShort ? 170 : 250) : 0;
-      const mobileHeight = Math.max(170, viewportHeight - reservedControlsHeight);
-      const height = isNarrow
-        ? mobileHeight
+      const height = isMobile
+        ? Math.max(160, boardHeight || viewportHeight)
         : measuredHeight > 220
           ? measuredHeight
           : viewportHeight;
@@ -229,7 +228,7 @@ export function GridCanvas(props: {
       const byHeight = (Math.max(220, height - topBottomPad * 2)) / (spanY + padFactor);
 
       const desktop = window.matchMedia("(min-width: 1080px)").matches;
-      const mobileMinCell = isShort ? 20 : 22;
+      const mobileMinCell = isLandscape ? 18 : isShort ? 19 : 21;
       const maxCell = desktop ? 96 : 72;
       const minCell = isNarrow ? mobileMinCell : 28;
       const next = Math.floor(Math.min(maxCell, Math.max(minCell, Math.min(byWidth, byHeight))));
@@ -1220,7 +1219,7 @@ export function GridCanvas(props: {
   }
 
   return (
-    <div ref={wrapRef} className="boardSurface" style={{ display: "grid", placeItems: "center" }}>
+    <div ref={wrapRef} className="boardSurface" style={{ display: "grid", placeItems: "center", maxWidth: "100%", maxHeight: "100%" }}>
       <canvas
         ref={canvasRef}
         style={{ maxWidth: "100%", touchAction: "none", userSelect: "none" }}

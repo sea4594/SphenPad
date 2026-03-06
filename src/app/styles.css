@@ -125,9 +125,11 @@ html,
 body,
 #root {
   margin: 0;
+  width: 100%;
   height: 100%;
   min-height: 100%;
   overflow-x: hidden;
+  overscroll-behavior: none;
   background:
     radial-gradient(1100px 650px at -15% -20%, var(--gradient-a) 0%, transparent 66%),
     radial-gradient(1000px 700px at 120% -10%, var(--gradient-b) 0%, transparent 70%),
@@ -142,7 +144,7 @@ button, input, select { font: inherit; color: inherit; }
   display: grid;
   grid-template-rows: auto 1fr;
   height: 100dvh;
-  min-height: 100vh;
+  min-height: 100svh;
   overflow: hidden;
 }
 
@@ -152,7 +154,7 @@ button, input, select { font: inherit; color: inherit; }
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 12px;
-  padding: 10px max(14px, env(safe-area-inset-right)) 10px max(14px, env(safe-area-inset-left));
+  padding: max(8px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) 10px max(14px, env(safe-area-inset-left));
   background: color-mix(in oklab, var(--bg) 88%, transparent);
   backdrop-filter: blur(8px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
@@ -287,8 +289,7 @@ input.url {
   margin: 0 auto;
   height: 100%;
   min-height: 0;
-  overflow-y: auto;
-  overflow-x: hidden;
+  overflow: hidden;
 }
 
 .gridLayout {
@@ -297,6 +298,8 @@ input.url {
   gap: 12px;
   height: 100%;
   min-height: 0;
+  align-items: stretch;
+  overflow: hidden;
 }
 
 .gridLayout > * {
@@ -317,14 +320,14 @@ input.url {
 
 .puzzlePage.mobileLandscape .boardColumn {
   height: 100%;
-  overflow: auto;
+  overflow: hidden;
 }
 
 .puzzlePage.mobileLandscape .kbdPanel {
   grid-template-rows: auto 1fr;
   min-height: 0;
   height: 100%;
-  overflow: auto;
+  overflow: hidden;
   align-content: start;
 }
 
@@ -340,9 +343,11 @@ input.url {
 .boardColumn {
   display: grid;
   gap: 8px;
+  justify-items: center;
   align-content: start;
   min-height: 0;
   height: auto;
+  overflow: hidden;
 }
 
 .boardCard {
@@ -354,9 +359,11 @@ input.url {
   border-color: rgba(28, 40, 58, 0.25);
   width: fit-content;
   max-width: 100%;
+  max-height: 100%;
   height: fit-content;
   justify-self: center;
-  overflow: auto;
+  margin-inline: auto;
+  overflow: hidden;
 }
 
 .boardSurface {
@@ -364,6 +371,8 @@ input.url {
   place-items: center;
   width: fit-content;
   height: fit-content;
+  max-width: 100%;
+  max-height: 100%;
   background: #ffffff;
 }
 
@@ -411,6 +420,7 @@ input.url {
   gap: 8px;
   align-content: start;
   min-height: 0;
+  overflow: hidden;
 }
 
 .controlStack {
@@ -432,6 +442,29 @@ input.url {
   place-items: center;
   min-width: 0;
   padding: 8px;
+}
+
+.keyGrid {
+  margin-top: 10px;
+}
+
+.keyButton {
+  min-height: 40px;
+}
+
+.lineKindSelect {
+  min-height: 40px;
+}
+
+.landscapeTopbarRow {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+}
+
+.landscapeTopbarRow .puzzleTopbarRight {
+  margin-left: 0;
 }
 
 .overlayBackdrop {
@@ -552,7 +585,7 @@ input.url {
 
 @media (max-width: 760px) {
   .topbar {
-    padding: 8px 10px;
+    padding: max(6px, env(safe-area-inset-top)) 10px 8px 10px;
     gap: 8px;
   }
 
@@ -566,17 +599,21 @@ input.url {
   }
 
   .puzzleTopbar {
-    padding: 8px 10px;
-    gap: 6px;
+    padding: max(4px, env(safe-area-inset-top)) 10px 6px 10px;
+    gap: 4px;
   }
 
   .puzzleTopbar .btn {
-    min-height: 36px;
-    padding: 6px 8px;
+    min-height: 34px;
+    padding: 5px 8px;
   }
 
   .puzzleTopbarRight {
-    gap: 6px;
+    gap: 5px;
+  }
+
+  .puzzleTopbar .puzzleTimer {
+    font-size: 14px;
   }
 
   .topbar .muted {
@@ -592,35 +629,61 @@ input.url {
   }
 
   .puzzlePage {
-    padding-bottom: 10px;
+    width: 100%;
+    padding-bottom: 8px;
+    overflow: hidden;
   }
 
   .gridLayout {
-    grid-template-rows: auto auto;
-    height: auto;
+    grid-template-rows: minmax(0, 1fr) auto;
+    height: 100%;
     gap: 8px;
+    overflow: hidden;
+  }
+
+  .boardColumn {
+    width: 100%;
+    min-height: 0;
+    overflow: hidden;
   }
 
   .boardCard {
-    height: fit-content;
+    height: 100%;
+    max-height: 100%;
+    padding: 4px;
   }
 
   .kbdPanel {
     grid-template-rows: auto;
-    overflow: visible;
+    overflow: hidden;
     min-height: 0;
+    gap: 6px;
   }
 
   .controlStack {
     align-content: start;
-    padding-bottom: 4px;
+    padding-bottom: 0;
     min-height: auto;
+    gap: 6px;
   }
 
   .sideActions .btn,
   .toolSwitcher .btn {
     min-height: 40px;
     padding: 8px 6px;
+  }
+
+  .keyGrid {
+    gap: 6px !important;
+    grid-template-rows: repeat(4, minmax(38px, 44px)) !important;
+  }
+
+  .keyButton,
+  .lineKindSelect {
+    min-height: 36px;
+    height: clamp(38px, 8.2vw, 44px) !important;
+    padding-top: 6px;
+    padding-bottom: 6px;
   }
 
   .sideActions {
@@ -668,13 +731,23 @@ input.url {
   }
 
   .gridLayout {
-    grid-template-rows: auto auto;
-    height: auto;
+    grid-template-rows: minmax(0, 1fr) auto;
+    height: 100%;
   }
 
   .kbdPanel {
     grid-template-rows: auto;
-    overflow: visible;
+    overflow: hidden;
+  }
+
+  .keyGrid {
+    grid-template-rows: repeat(4, minmax(34px, 40px)) !important;
+  }
+
+  .keyButton,
+  .lineKindSelect {
+    height: clamp(34px, 7.6vh, 40px) !important;
+    min-height: 34px;
   }
 
   .puzzleMetaCard {
@@ -688,16 +761,16 @@ input.url {
   }
 
   .gridLayout {
-    grid-template-columns: minmax(0, 1fr) minmax(280px, 40vw);
+    grid-template-columns: minmax(0, 1fr) minmax(250px, 38vw);
     grid-template-rows: 1fr;
     height: 100%;
     align-items: start;
-    gap: 10px;
+    gap: 8px;
   }
 
   .boardColumn {
     height: 100%;
-    overflow: auto;
+    overflow: hidden;
   }
 
   .boardCard {
@@ -708,13 +781,36 @@ input.url {
     grid-template-rows: auto 1fr;
     min-height: 0;
     height: 100%;
-    overflow: auto;
+    overflow: hidden;
     align-content: start;
   }
 
   .controlStack {
     align-content: start;
     min-height: 0;
+    gap: 6px;
+  }
+
+  .landscapeTopbarRow {
+    padding: 8px;
+    gap: 6px;
+    justify-content: flex-end;
+  }
+
+  .landscapeTopbarRow .btn {
+    min-height: 36px;
+    padding: 6px 8px;
+  }
+
+  .keyGrid {
+    gap: 6px !important;
+    grid-template-rows: repeat(4, minmax(34px, 42px)) !important;
+  }
+
+  .keyButton,
+  .lineKindSelect {
+    height: clamp(34px, 7.2vh, 42px) !important;
+    min-height: 34px;
   }
 
   .puzzleMetaCard {
