@@ -518,10 +518,6 @@ export function GridCanvas(props: {
         const isUnder = target.includes("under") || target.includes("back");
         if (layer === "under" ? !isUnder : isUnder) continue;
 
-        ctx.strokeStyle = normalizeFeatureLineColor(ln.color);
-        ctx.lineWidth = (ln.thickness ?? 6) * (cellPx / 56);
-        ctx.lineCap = "round";
-        ctx.lineJoin = "round";
         ctx.beginPath();
         ln.wayPoints.forEach((p, i) => {
           const x = worldX(p.x);
@@ -529,7 +525,21 @@ export function GridCanvas(props: {
           if (i === 0) ctx.moveTo(x, y);
           else ctx.lineTo(x, y);
         });
-        ctx.stroke();
+        if (ln.closePath) ctx.closePath();
+
+        if (ln.fillColor) {
+          ctx.fillStyle = ln.fillColor;
+          ctx.fill();
+        }
+
+        const hasStroke = Boolean(ln.color) && (ln.thickness ?? 6) > 0;
+        if (hasStroke) {
+          ctx.strokeStyle = normalizeFeatureLineColor(ln.color);
+          ctx.lineWidth = (ln.thickness ?? 6) * (cellPx / 56);
+          ctx.lineCap = "round";
+          ctx.lineJoin = "round";
+          ctx.stroke();
+        }
       }
     };
 

@@ -240,6 +240,119 @@ function parseCellRefs(value: any): CellRC[] {
   return [];
 }
 
+function pointsAlmostEqual(a: { x: number; y: number }, b: { x: number; y: number }, eps = 1e-6) {
+  return Math.abs(a.x - b.x) <= eps && Math.abs(a.y - b.y) <= eps;
+}
+
+function cubicAt(p0: number, p1: number, p2: number, p3: number, t: number) {
+  const mt = 1 - t;
+  return mt * mt * mt * p0 + 3 * mt * mt * t * p1 + 3 * mt * t * t * p2 + t * t * t * p3;
+}
+
+function parseSvgPathToWayPoints(pathData: string, pxPerCell = 50): Array<{ x: number; y: number }> {
+  const tokens = pathData.match(/[a-zA-Z]|-?\d*\.?\d+(?:e[-+]?\d+)?/g);
+  if (!tokens?.length) return [];
+
+  const out: Array<{ x: number; y: number }> = [];
+  const toGrid = (n: number) => n / pxPerCell;
+  const readNum = (i: number) => Number.parseFloat(tokens[i] ?? "NaN");
+  const isNum = (tk?: string) => tk != null && !/^[a-zA-Z]$/.test(tk);
+
+  let i = 0;
+  let cmd = "";
+  let cx = 0;
+  let cy = 0;
+  let sx = 0;
+  let sy = 0;
+
+  while (i < tokens.length) {
+    const tk = tokens[i] as string;
+    if (/^[a-zA-Z]$/.test(tk)) {
+      cmd = tk;
+      i += 1;
+    }
+    if (!cmd) break;
+
+    if (cmd === "M" || cmd === "m") {
+      let first = true;
+      while (i + 1 < tokens.length && isNum(tokens[i]) && isNum(tokens[i + 1])) {
+        const nx = readNum(i);
+        const ny = readNum(i + 1);
+        i += 2;
+        if (!Number.isFinite(nx) || !Number.isFinite(ny)) break;
+        cx = cmd === "m" ? cx + nx : nx;
+        cy = cmd === "m" ? cy + ny : ny;
+        if (first) {
+          sx = cx;
+          sy = cy;
+          first = false;
+        }
+        out.push({ x: toGrid(cx), y: toGrid(cy) });
+      }
+      continue;
+    }
+
+    if (cmd === "L" || cmd === "l") {
+      while (i + 1 < tokens.length && isNum(tokens[i]) && isNum(tokens[i + 1])) {
+        const nx = readNum(i);
+        const ny = readNum(i + 1);
+        i += 2;
+        if (!Number.isFinite(nx) || !Number.isFinite(ny)) break;
+        cx = cmd === "l" ? cx + nx : nx;
+        cy = cmd === "l" ? cy + ny : ny;
+        out.push({ x: toGrid(cx), y: toGrid(cy) });
+      }
+      continue;
+    }
+
+    if (cmd === "C" || cmd === "c") {
+      while (
+        i + 5 < tokens.length &&
+        isNum(tokens[i]) && isNum(tokens[i + 1]) && isNum(tokens[i + 2]) &&
+        isNum(tokens[i + 3]) && isNum(tokens[i + 4]) && isNum(tokens[i + 5])
+      ) {
+        const x1 = readNum(i);
+        const y1 = readNum(i + 1);
+        const x2 = readNum(i + 2);
+        const y2 = readNum(i + 3);
+        const x3 = readNum(i + 4);
+        const y3 = readNum(i + 5);
+        i += 6;
+        if (![x1, y1, x2, y2, x3, y3].every(Number.isFinite)) break;
+        const p0x = cx;
+        const p0y = cy;
+        const p1x = cmd === "c" ? cx + x1 : x1;
+        const p1y = cmd === "c" ? cy + y1 : y1;
+        const p2x = cmd === "c" ? cx + x2 : x2;
+        const p2y = cmd === "c" ? cy + y2 : y2;
+        const p3x = cmd === "c" ? cx + x3 : x3;
+        const p3y = cmd === "c" ? cy + y3 : y3;
+        const steps = 12;
+        for (let step = 1; step <= steps; step++) {
+          const t = step / steps;
+          out.push({
+            x: toGrid(cubicAt(p0x, p1x, p2x, p3x, t)),
+            y: toGrid(cubicAt(p0y, p1y, p2y, p3y, t)),
+          });
+        }
+        cx = p3x;
+        cy = p3y;
+      }
+      continue;
+    }
+
+    if (cmd === "Z" || cmd === "z") {
+      out.push({ x: toGrid(sx), y: toGrid(sy) });
+      continue;
+    }
+
+    // Unsupported command: consume one token to avoid stalling.
+    i += 1;
+  }
+
+  return out;
+}
+
 function centerFromCells(cells: CellRC[]): { x: number; y: number } | null {
   if (!cells.length) return null;
   const sx = cells.reduce((acc, rc) => acc + (rc.c + 0.5), 0);
@@ -668,13 +781,22 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
   if (linesSrc.length) {
     cosmetics.lines = linesSrc
       .map((ln: any) => {
-        const wayPoints = (ln?.wayPoints ?? ln?.points ?? ln?.wp ?? [])
+        const wayPointsRaw = (ln?.wayPoints ?? ln?.points ?? ln?.wp ?? [])
           .map(asPoint)
           .filter(Boolean) as Array<{ x: number; y: number }>;
+        const svgPathPoints = typeof ln?.d2 === "string"
+          ? parseSvgPathToWayPoints(ln.d2, Number(scl?.cellSize) || 50)
+          : [];
+        const wayPoints = wayPointsRaw.length >= 2 ? wayPointsRaw : svgPathPoints;
         if (wayPoints.length < 2) return null;
+        const strokeToken = normalizeColorToken(ln?.color ?? ln?.lineColor ?? ln?.stroke ?? ln?.c);
+        const fillToken = normalizeColorToken(ln?.fill ?? ln?.backgroundColor ?? ln?.c2);
+        const closedByShape = wayPoints.length > 2 && pointsAlmostEqual(wayPoints[0] as { x: number; y: number }, wayPoints[wayPoints.length - 1] as { x: number; y: number });
         return {
           wayPoints,
-          color: normalizeColorToken(ln?.color ?? ln?.c),
+          color: strokeToken === "#0" ? undefined : strokeToken,
+          fillColor: fillToken === "#0" ? undefined : fillToken,
+          closePath: Boolean(ln?.closed ?? ln?.closePath ?? ln?.fill) || closedByShape,
           thickness: typeof (ln?.thickness ?? ln?.th) === "number" ? (ln?.thickness ?? ln?.th) : undefined,
           target: typeof ln?.target === "string" ? ln.target : undefined,
         };

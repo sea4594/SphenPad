@@ -151,6 +151,18 @@ body {
 a { color: inherit; text-decoration: none; }
 button, input, select { font: inherit; color: inherit; }
 
+button,
+.btn,
+.keyButton,
+.btn > span,
+.btn svg,
+.keyButton > span,
+.keyButton svg {
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
 .shell {
   display: grid;
   grid-template-rows: auto 1fr;
