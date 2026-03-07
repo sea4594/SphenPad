@@ -512,6 +512,7 @@ export function GridCanvas(props: {
 
     const drawConstraintLines = (layer: "under" | "over") => {
       if (!def.cosmetics.lines) return;
+      const puzzleLineWidthScale = 0.9;
       for (const ln of def.cosmetics.lines) {
         if (ln.wayPoints.length < 2) continue;
         const target = (ln.target ?? "overlay").toLowerCase();
@@ -535,7 +536,7 @@ export function GridCanvas(props: {
         const hasStroke = Boolean(ln.color) && (ln.thickness ?? 6) > 0;
         if (hasStroke) {
           ctx.strokeStyle = normalizeFeatureLineColor(ln.color);
-          ctx.lineWidth = (ln.thickness ?? 6) * (cellPx / 56);
+          ctx.lineWidth = (ln.thickness ?? 6) * (cellPx / 56) * puzzleLineWidthScale;
           ctx.lineCap = "round";
           ctx.lineJoin = "round";
           ctx.stroke();
