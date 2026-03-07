@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type { CellRC, PuzzleDefinition, PuzzleProgress } from "../core/model";
 
 type LineKindResolved = "center" | "edge";
+type LineKindStored = LineKindResolved | "both";
 type EdgeTrack = "top" | "bottom" | "left" | "right";
 type LineSegmentDraft = { a: CellRC; b: CellRC; edgeTrack?: EdgeTrack };
 type LayerItem = NonNullable<PuzzleDefinition["cosmetics"]["underlays"]>[number];
@@ -34,8 +35,12 @@ function segKey(a: CellRC, b: CellRC) {
   return ak < bk ? `${ak}|${bk}` : `${bk}|${ak}`;
 }
 
-function segKeyWithTrack(seg: { a: CellRC; b: CellRC; edgeTrack?: EdgeTrack }) {
-  return segKey(seg.a, seg.b);
+function lineKindNamespace(kind: LineKindStored): LineKindResolved {
+  return kind === "edge" ? "edge" : "center";
+}
+
+function segKeyWithKind(seg: { a: CellRC; b: CellRC; edgeTrack?: EdgeTrack }, kind: LineKindStored) {
+  return `${lineKindNamespace(kind)}:${segKey(seg.a, seg.b)}`;
 }
 
 export function GridCanvas(props: {
@@ -721,18 +726,21 @@ export function GridCanvas(props: {
 
     const drawUserLines = () => {
       const previewKeys = linePreview?.segments?.length
-        ? new Set(linePreview.segments.map(segKeyWithTrack))
+        ? new Set(linePreview.segments.map((seg) => segKeyWithKind(seg, linePreview.kind)))
         : null;
       const erasePreview = Boolean(
         previewKeys &&
           progress.lines.some((stroke) =>
-            stroke.segments.some((seg) => previewKeys.has(segKeyWithTrack(seg)))
+            lineKindNamespace(stroke.kind) === linePreview?.kind &&
+            stroke.segments.some((seg) => previewKeys.has(segKeyWithKind(seg, stroke.kind)))
           )
       );
 
       for (const stroke of progress.lines) {
         const segments = erasePreview && previewKeys
-          ? stroke.segments.filter((seg) => !previewKeys.has(segKeyWithTrack(seg)))
+          ? (lineKindNamespace(stroke.kind) === linePreview?.kind
+            ? stroke.segments.filter((seg) => !previewKeys.has(segKeyWithKind(seg, stroke.kind)))
+            : stroke.segments)
           : stroke.segments;
         if (!segments.length) continue;
         if (stroke.kind === "edge") drawEdgeStroke(segments, stroke.color);
@@ -1085,27 +1093,40 @@ export function GridCanvas(props: {
     return null;
   }
 
-  function pickEdgeByPointer(clientX: number, clientY: number, threshold = 0.28): { a: CellRC; b: CellRC } | null {
+  function pickEdgeByPointer(clientX: number, clientY: number, threshold = 0.38): { a: CellRC; b: CellRC } | null {
     const gp = eventGridPoint(clientX, clientY);
     if (!gp) return null;
 
-    let best: { a: CellRC; b: CellRC; dist: number } | null = null;
-    for (let r = 0; r < n; r++) {
-      for (let c = 0; c < n; c++) {
-        const candidates = [
-          { a: { r, c }, b: { r, c: c + 1 }, mx: c + 0.5, my: r },
-          { a: { r, c }, b: { r: r + 1, c }, mx: c, my: r + 0.5 },
-          { a: { r: r + 1, c }, b: { r: r + 1, c: c + 1 }, mx: c + 0.5, my: r + 1 },
-          { a: { r, c: c + 1 }, b: { r: r + 1, c: c + 1 }, mx: c + 1, my: r + 0.5 },
-        ];
+    const distToSegment = (x: number, y: number, x1: number, y1: number, x2: number, y2: number) => {
+      const dx = x2 - x1;
+      const dy = y2 - y1;
+      const len2 = dx * dx + dy * dy;
+      if (len2 <= 0) return Math.hypot(x - x1, y - y1);
+      const tRaw = ((x - x1) * dx + (y - y1) * dy) / len2;
+      const t = Math.max(0, Math.min(1, tRaw));
+      const px = x1 + t * dx;
+      const py = y1 + t * dy;
+      return Math.hypot(x - px, y - py);
+    };
 
-        for (const edge of candidates) {
-          if (edge.a.r < 0 || edge.a.c < 0 || edge.a.r > n || edge.a.c > n) continue;
-          if (edge.b.r < 0 || edge.b.c < 0 || edge.b.r > n || edge.b.c > n) continue;
-          const d = Math.hypot(gp.gx - edge.mx, gp.gy - edge.my);
-          if (d > threshold) continue;
-          if (!best || d < best.dist) best = { a: edge.a, b: edge.b, dist: d };
-        }
+    let best: { a: CellRC; b: CellRC; dist: number } | null = null;
+    // Horizontal edges between grid nodes.
+    for (let r = 0; r <= n; r++) {
+      for (let c = 0; c < n; c++) {
+        const d = distToSegment(gp.gx, gp.gy, c, r, c + 1, r);
+        if (d > threshold) continue;
+        const candidate = { a: { r, c }, b: { r, c: c + 1 }, dist: d };
+        if (!best || candidate.dist < best.dist) best = candidate;
+      }
+    }
+
+    // Vertical edges between grid nodes.
+    for (let c = 0; c <= n; c++) {
+      for (let r = 0; r < n; r++) {
+        const d = distToSegment(gp.gx, gp.gy, c, r, c, r + 1);
+        if (d > threshold) continue;
+        const candidate = { a: { r, c }, b: { r: r + 1, c }, dist: d };
+        if (!best || candidate.dist < best.dist) best = candidate;
       }
     }
 
@@ -1276,7 +1297,7 @@ export function GridCanvas(props: {
       const kind = drag.lineKind ?? "center";
       if (!drag.moved) {
         if (kind === "edge") {
-          const tappedEdge = pickEdgeByPointer(e.clientX, e.clientY, 0.3);
+          const tappedEdge = pickEdgeByPointer(e.clientX, e.clientY, 0.4);
           if (tappedEdge) {
             props.onLineTapEdge(tappedEdge.a, tappedEdge.b);
           } else {

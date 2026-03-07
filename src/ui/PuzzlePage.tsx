@@ -39,8 +39,15 @@ function segKey(a: CellRC, b: CellRC) {
   return ak < bk ? `${ak}|${bk}` : `${bk}|${ak}`;
 }
 
-function segKeyWithTrack(seg: { a: CellRC; b: CellRC; edgeTrack?: "top" | "bottom" | "left" | "right" }) {
-  return segKey(seg.a, seg.b);
+function lineKindNamespace(kind: "center" | "edge" | "both"): "center" | "edge" {
+  return kind === "edge" ? "edge" : "center";
+}
+
+function segKeyWithKind(
+  seg: { a: CellRC; b: CellRC; edgeTrack?: "top" | "bottom" | "left" | "right" },
+  kind: "center" | "edge" | "both"
+) {
+  return `${lineKindNamespace(kind)}:${segKey(seg.a, seg.b)}`;
 }
 
 function isPatchLike(p: unknown): p is Patch {
@@ -651,15 +658,17 @@ export function PuzzlePage() {
     if (!segments.length) return;
 
     const uniqueByKey = new Map<string, { a: CellRC; b: CellRC; edgeTrack?: "top" | "bottom" | "left" | "right" }>();
-    for (const seg of segments) uniqueByKey.set(segKeyWithTrack(seg), seg);
+    for (const seg of segments) uniqueByKey.set(segKeyWithKind(seg, resolvedKind), seg);
     const uniqueSegments = Array.from(uniqueByKey.values());
-    const drawKeys = new Set(uniqueSegments.map(segKeyWithTrack));
+    const drawKeys = new Set(uniqueSegments.map((seg) => segKeyWithKind(seg, resolvedKind)));
 
     if (action === "erase") {
       const lines = data.progress.lines
         .map((stroke) => ({
           ...stroke,
-          segments: stroke.segments.filter((seg) => !drawKeys.has(segKeyWithTrack(seg))),
+          segments: lineKindNamespace(stroke.kind) === resolvedKind
+            ? stroke.segments.filter((seg) => !drawKeys.has(segKeyWithKind(seg, stroke.kind)))
+            : stroke.segments,
         }))
         .filter((stroke) => stroke.segments.length > 0);
       if (lines.length === data.progress.lines.length && lines.every((stroke, i) => stroke.segments.length === data.progress.lines[i]?.segments.length)) {
@@ -671,10 +680,11 @@ export function PuzzlePage() {
 
     const occupied = new Set<string>();
     for (const stroke of data.progress.lines) {
-      for (const seg of stroke.segments) occupied.add(segKeyWithTrack(seg));
+      if (lineKindNamespace(stroke.kind) !== resolvedKind) continue;
+      for (const seg of stroke.segments) occupied.add(segKeyWithKind(seg, stroke.kind));
     }
 
-    const drawable = uniqueSegments.filter((seg) => !occupied.has(segKeyWithTrack(seg)));
+    const drawable = uniqueSegments.filter((seg) => !occupied.has(segKeyWithKind(seg, resolvedKind)));
     if (!drawable.length) return;
 
     const stroke: LineStroke = {
