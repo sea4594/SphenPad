@@ -135,18 +135,22 @@ function normalizeCompactScl(input: any): any {
 
   if (!scl.metadata) scl.metadata = {};
 
-  // Some compact payloads keep title/author/rules as an array of "key: value" strings in `ca`.
-  if (Array.isArray(input?.ca)) {
-    for (const item of input.ca) {
-      const v = typeof item?.v === "string" ? item.v : "";
-      const m = v.match(/^\s*(title|author|rules?)\s*:\s*(.+)$/i);
-      if (!m) continue;
-      const key = m[1].toLowerCase();
-      const value = m[2].trim();
-      if ((key === "rule" || key === "rules") && !scl.metadata.rules) scl.metadata.rules = value;
-      if (key === "title" && !scl.metadata.title) scl.metadata.title = value;
-      if (key === "author" && !scl.metadata.author) scl.metadata.author = value;
-    }
+  // Some payloads encode title/author/rules as "key: value" strings inside cage-like arrays.
+  const metadataFromCageLikeArrays = [input?.ca, input?.cages, scl?.ca, scl?.cages]
+    .filter(Array.isArray)
+    .flat() as any[];
+  for (const item of metadataFromCageLikeArrays) {
+    const rawValue =
+      typeof item?.v === "string" ? item.v
+      : typeof item?.value === "string" ? item.value
+      : "";
+    const m = rawValue.match(/^\s*(title|author|rules?)\s*:\s*([\s\S]+)$/i);
+    if (!m) continue;
+    const key = m[1].toLowerCase();
+    const value = m[2].trim();
+    if ((key === "rule" || key === "rules") && !scl.metadata.rules) scl.metadata.rules = value;
+    if (key === "title" && !scl.metadata.title) scl.metadata.title = value;
+    if (key === "author" && !scl.metadata.author) scl.metadata.author = value;
   }
 
   return scl;
