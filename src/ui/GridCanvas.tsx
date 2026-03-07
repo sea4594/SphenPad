@@ -709,7 +709,6 @@ export function GridCanvas(props: {
       drawOverlays("regular");
       drawConstraintLines("over");
       drawArrows();
-      drawOverlays("markers");
     };
 
     drawTopPuzzleFeatures();
@@ -1002,7 +1001,7 @@ export function GridCanvas(props: {
     // Always keep user lines on top of artwork/fog.
     drawUserLines();
 
-    // Dots should sit above user lines so strokes never show through/over them.
+    // Dots and marker overlays should sit above grid/user lines.
     if (fogDefined) {
       ctx.save();
       ctx.beginPath();
@@ -1014,9 +1013,11 @@ export function GridCanvas(props: {
       }
       ctx.clip();
       drawDots();
+      drawOverlays("markers");
       ctx.restore();
     } else {
       drawDots();
+      drawOverlays("markers");
     }
 
     drawSelectionOutlines();
