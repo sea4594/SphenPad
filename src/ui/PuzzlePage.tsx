@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { getPuzzle, upsertPuzzle } from "../core/storage";
+import { deletePuzzle, getPuzzle, upsertPuzzle } from "../core/storage";
 import type { CellRC, PersistedPuzzle, PuzzleProgress, LineStroke } from "../core/model";
 import { fmtHMS } from "../core/time";
 import { makeInitialProgress } from "../core/scl";
@@ -17,6 +17,7 @@ import {
   IconExit,
   IconPause,
   IconPlay,
+  IconReload,
   IconRedo,
   IconSelectMode,
   IconSettings,
@@ -28,6 +29,7 @@ import {
   IconUndo,
 } from "./icons";
 import { auth, firebaseEnabled, pullPuzzle, pushPuzzle } from "../firebase/client";
+import { deleteCloudPuzzle } from "../firebase/client";
 import { SettingsOverlay } from "./SettingsOverlay";
 
 function rcKey(rc: CellRC) {
@@ -129,6 +131,7 @@ export function PuzzlePage() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [restartPromptOpen, setRestartPromptOpen] = useState(false);
   const [restartFromPause, setRestartFromPause] = useState(false);
+  const [reloadingPuzzle, setReloadingPuzzle] = useState(false);
   const [mobileLandscape, setMobileLandscape] = useState(false);
   const tickRef = useRef<number | null>(null);
   const holdDelayRef = useRef<number | null>(null);
@@ -544,6 +547,54 @@ export function PuzzlePage() {
     }
     pushPatch(patchAt(data.progress, ["paused"], true), { recordHistory: false });
     setPauseMenuOpen(true);
+  }
+
+  async function onReloadPuzzleClick() {
+    if (!data || reloadingPuzzle) return;
+    const source = (data.def.sourceId ?? key).trim();
+    if (!source) {
+      alert("Unable to reload this puzzle because its source id is missing.");
+      return;
+    }
+
+    const proceed = window.confirm("Reload this puzzle from SudokuPad and erase all local progress?");
+    if (!proceed) return;
+
+    setReloadingPuzzle(true);
+    try {
+      const loaded = await loadFromSudokuPad(source);
+      const freshKey = loaded.key;
+      const freshDef = loaded.def;
+      const freshProgress = makeInitialProgress(freshDef);
+      const freshData: PersistedPuzzle = {
+        def: freshDef,
+        progress: freshProgress,
+        undo: [],
+        redo: [],
+        updatedAt: Date.now(),
+      };
+
+      await deletePuzzle(key);
+      if (userId) await deleteCloudPuzzle(userId, key);
+
+      await upsertPuzzle(freshKey, freshData);
+      if (userId) await pushPuzzle(userId, freshKey, freshData);
+
+      if (freshKey !== key) {
+        nav(`/p/${encodeURIComponent(freshKey)}`);
+        return;
+      }
+
+      setData(freshData);
+      setCompletionOpen(false);
+      setRestartPromptOpen(false);
+      setPauseMenuOpen(false);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      alert(`Failed to reload puzzle: ${msg}`);
+    } finally {
+      setReloadingPuzzle(false);
+    }
   }
 
   function setActiveTool(tool: PuzzleProgress["activeTool"]) {
@@ -1011,6 +1062,9 @@ export function PuzzlePage() {
             <button className="btn" onClick={onPausePlayClick} title="Pause or resume" disabled={data.progress.status === "complete"}>
               {data.progress.status === "complete" ? <IconPause /> : data.progress.paused ? <IconPlay /> : <IconPause />}
             </button>
+            <button className="btn" onClick={onReloadPuzzleClick} title="Reload puzzle from SudokuPad" disabled={reloadingPuzzle}>
+              <IconReload />
+            </button>
             <button className="btn" onClick={() => setSettingsOpen(true)} title="Settings">
               <IconSettings />
             </button>
@@ -1029,6 +1083,9 @@ export function PuzzlePage() {
                   </button>
                   <button className="btn" onClick={onPausePlayClick} title="Pause or resume" disabled={data.progress.status === "complete"}>
                     {data.progress.status === "complete" ? <IconPause /> : data.progress.paused ? <IconPlay /> : <IconPause />}
+                  </button>
+                  <button className="btn" onClick={onReloadPuzzleClick} title="Reload puzzle from SudokuPad" disabled={reloadingPuzzle}>
+                    <IconReload />
                   </button>
                   <button className="btn" onClick={() => setSettingsOpen(true)} title="Settings">
                     <IconSettings />

@@ -1,6 +1,6 @@
 import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from "firebase/auth";
-import { getFirestore, doc, getDoc, setDoc } from "firebase/firestore";
+import { getFirestore, doc, getDoc, setDoc, deleteDoc } from "firebase/firestore";
 import type { FirebaseApp } from "firebase/app";
 import type { Auth } from "firebase/auth";
 import type { Firestore } from "firebase/firestore";
@@ -44,4 +44,10 @@ export async function pushPuzzle(userId: string, key: string, data: PersistedPuz
   if (!firebaseEnabled || !db) return;
   const ref = doc(db, "users", userId, "puzzles", key);
   await setDoc(ref, { data }, { merge: true });
+}
+
+export async function deleteCloudPuzzle(userId: string, key: string) {
+  if (!firebaseEnabled || !db) return;
+  const ref = doc(db, "users", userId, "puzzles", key);
+  await deleteDoc(ref);
 }
