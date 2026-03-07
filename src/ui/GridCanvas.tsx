@@ -525,7 +525,8 @@ export function GridCanvas(props: {
       }
     }
 
-    if (def.cosmetics.cages) {
+    const drawCages = () => {
+      if (!def.cosmetics.cages) return;
       ctx.strokeStyle = "#000000";
       ctx.lineWidth = 1.25;
       ctx.setLineDash([5, 3]);
@@ -581,12 +582,10 @@ export function GridCanvas(props: {
         }
       }
       ctx.setLineDash([]);
-    }
+    };
 
-    if (def.cosmetics.overlays?.length) drawLayer(def.cosmetics.overlays);
-    drawConstraintLines("over");
-
-    if (def.cosmetics.arrows) {
+    const drawArrows = () => {
+      if (!def.cosmetics.arrows) return;
       ctx.strokeStyle = "#111111";
       ctx.lineWidth = 3;
       for (const a of def.cosmetics.arrows) {
@@ -604,9 +603,10 @@ export function GridCanvas(props: {
         ctx.arc(cellX(b.c) + cellPx / 2, cellY(b.r) + cellPx / 2, 8, 0, Math.PI * 2);
         ctx.fill();
       }
-    }
+    };
 
-    if (def.cosmetics.dots) {
+    const drawDots = () => {
+      if (!def.cosmetics.dots) return;
       for (const d of def.cosmetics.dots) {
         const a = normalizeDotRc(d.a);
         const b = normalizeDotRc(d.b);
@@ -625,7 +625,13 @@ export function GridCanvas(props: {
         ctx.lineWidth = 2;
         ctx.stroke();
       }
-    }
+    };
+
+    drawCages();
+    if (def.cosmetics.overlays?.length) drawLayer(def.cosmetics.overlays);
+    drawConstraintLines("over");
+    drawArrows();
+    drawDots();
 
     // Grid borders stay above highlights.
     drawGridLines();
@@ -837,6 +843,13 @@ export function GridCanvas(props: {
           drawCellHighlights(r, c, display, highlightAlpha);
         }
       }
+
+      // Keep puzzle feature layers above highlights under fog too.
+      drawCages();
+      if (def.cosmetics.overlays?.length) drawLayer(def.cosmetics.overlays);
+      drawConstraintLines("over");
+      drawArrows();
+      drawDots();
 
       // Keep grid visible on top of fog.
       for (let i = 0; i <= n; i++) {
