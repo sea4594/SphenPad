@@ -673,7 +673,6 @@ export function GridCanvas(props: {
       drawOverlays("regular");
       drawConstraintLines("over");
       drawArrows();
-      drawDots();
       drawOverlays("markers");
     };
 
@@ -959,6 +958,23 @@ export function GridCanvas(props: {
 
     // Always keep user lines on top of artwork/fog.
     drawUserLines();
+
+    // Dots should sit above user lines so strokes never show through/over them.
+    if (fogDefined) {
+      ctx.save();
+      ctx.beginPath();
+      for (let r = 0; r < n; r++) {
+        for (let c = 0; c < n; c++) {
+          if (!lit[r][c]) continue;
+          ctx.rect(cellX(c), cellY(r), cellPx, cellPx);
+        }
+      }
+      ctx.clip();
+      drawDots();
+      ctx.restore();
+    } else {
+      drawDots();
+    }
 
     drawSelectionOutlines();
   }, [
