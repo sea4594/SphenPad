@@ -746,13 +746,6 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
     const fillColor = normalizeColorToken(item?.backgroundColor ?? item?.c2 ?? item?.fill);
     const noVisibleStroke = !borderColor;
     const isRoundedTextMarker = textStr.length > 0 && rounded && noVisibleStroke;
-    const isSmallDotMarker =
-      rounded &&
-      textStr.length === 0 &&
-      typeof width === "number" &&
-      typeof height === "number" &&
-      width <= 0.36 &&
-      height <= 0.36;
     const suppressShape = isTinyTextMarker || isRoundedTextMarker;
 
     return {
@@ -761,7 +754,7 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
       height,
       rounded: suppressShape ? false : rounded,
       color: suppressShape ? undefined : fillColor,
-      borderColor: suppressShape || isSmallDotMarker ? undefined : borderColor,
+      borderColor: suppressShape ? undefined : borderColor,
       borderThickness: typeof (item?.thickness ?? item?.th) === "number" ? (item?.thickness ?? item?.th) : undefined,
       text,
       textColor: normalizeColorToken(item?.color ?? item?.textColor),
