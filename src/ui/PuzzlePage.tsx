@@ -137,7 +137,7 @@ export function PuzzlePage() {
   const activeHoldKeyRef = useRef<"n" | "m" | null>(null);
   const undoRef = useRef<() => void>(() => {});
   const redoRef = useRef<() => void>(() => {});
-  const metadataRefreshRef = useRef(new Set<string>());
+  const metadataRefreshInFlightRef = useRef(new Set<string>());
 
   const userId = firebaseEnabled ? auth?.currentUser?.uid : null;
 
@@ -211,12 +211,12 @@ export function PuzzlePage() {
   useEffect(() => {
     if (!data) return;
     if (!hasIncompleteMeta(data)) return;
-    const source = (data.def.sourceId ?? "").trim();
+    const source = (data.def.sourceId ?? key ?? "").trim();
     if (!source) return;
 
     const refreshKey = `${key}::${source}`;
-    if (metadataRefreshRef.current.has(refreshKey)) return;
-    metadataRefreshRef.current.add(refreshKey);
+    if (metadataRefreshInFlightRef.current.has(refreshKey)) return;
+    metadataRefreshInFlightRef.current.add(refreshKey);
 
     (async () => {
       try {
@@ -250,9 +250,11 @@ export function PuzzlePage() {
         if (userId) await pushPuzzle(userId, key, next);
       } catch {
         // Keep existing metadata if refresh fails.
+      } finally {
+        metadataRefreshInFlightRef.current.delete(refreshKey);
       }
     })();
-  }, [data, key, userId]);
+  }, [data, key, userId, pauseMenuOpen]);
 
   async function persist(next: PersistedPuzzle) {
     setData(next);

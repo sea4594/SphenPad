@@ -802,6 +802,12 @@ export function GridCanvas(props: {
     };
 
     const lit = Array.from({ length: n }, () => Array.from({ length: n }, () => false));
+    const cageLabelCells = new Set<string>();
+    for (const cage of def.cosmetics.cages ?? []) {
+      if (!cage.sum || !cage.cells?.length) continue;
+      const first = cage.cells[0] as CellRC;
+      cageLabelCells.add(`${first.r},${first.c}`);
+    }
     const valueFontPx = Math.max(28, Math.min(42, Math.round(cellPx * 0.58)));
     const fogDefined = (def.cosmetics.fogLights?.length ?? 0) > 0 || (def.cosmetics.fogTriggerEffects?.length ?? 0) > 0;
     if (fogDefined) {
@@ -853,8 +859,9 @@ export function GridCanvas(props: {
 
           const corner = [...cell.notes.corner].sort();
           if (corner.length) {
+            const hasCageLabel = cageLabelCells.has(`${r},${c}`);
             ctx.textAlign = "left";
-            ctx.fillText(corner.join(""), x0 + 4, y0 + 12);
+            ctx.fillText(corner.join(""), x0 + 4, y0 + (hasCageLabel ? 24 : 12));
           }
 
           const center = [...cell.notes.center].sort();
