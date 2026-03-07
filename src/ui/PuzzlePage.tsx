@@ -6,6 +6,7 @@ import { getPuzzle, upsertPuzzle } from "../core/storage";
 import type { CellRC, PersistedPuzzle, PuzzleProgress, LineStroke } from "../core/model";
 import { fmtHMS } from "../core/time";
 import { makeInitialProgress } from "../core/scl";
+import { loadFromSudokuPad } from "../core/sudokupad";
 import type { Patch } from "../core/undo";
 import { applyPatch, invertPatch, patchAt } from "../core/undo";
 import { PauseOverlay } from "./PauseOverlay";
@@ -102,6 +103,13 @@ function sharesSelectedCell(a: CellRC, b: CellRC, selected: Set<string>) {
   return selected.has(rcKey(a)) || selected.has(rcKey(b));
 }
 
+function hasIncompleteMeta(p: PersistedPuzzle): boolean {
+  const title = (p.def.meta?.title ?? "").trim();
+  const author = (p.def.meta?.author ?? "").trim();
+  const rules = (p.def.meta?.rules ?? "").trim();
+  return !title || !author || !rules || /auto-generated because this puzzle has no rules text/i.test(rules);
+}
+
 const highlightPalettePages = [
   ["#d9d9d9", "#9b9b9b", "#4f4f4f", "#57d38c", "#ff8fc3", "#ffae57", "#ff5f57", "#ffe066", "#63a6ff"],
   ["#000000", "#ffa0a0", "#ffdf61", "#feffaf", "#b0ffb0", "#61d060", "#d0d0ff", "#8180f0", "#ff08ff"],
@@ -129,6 +137,7 @@ export function PuzzlePage() {
   const activeHoldKeyRef = useRef<"n" | "m" | null>(null);
   const undoRef = useRef<() => void>(() => {});
   const redoRef = useRef<() => void>(() => {});
+  const metadataRefreshRef = useRef(new Set<string>());
 
   const userId = firebaseEnabled ? auth?.currentUser?.uid : null;
 
@@ -198,6 +207,52 @@ export function PuzzlePage() {
       setPauseMenuOpen(Boolean(normalized.progress.paused));
     })();
   }, [key, nav, userId]);
+
+  useEffect(() => {
+    if (!data) return;
+    if (!hasIncompleteMeta(data)) return;
+    const source = (data.def.sourceId ?? "").trim();
+    if (!source) return;
+
+    const refreshKey = `${key}::${source}`;
+    if (metadataRefreshRef.current.has(refreshKey)) return;
+    metadataRefreshRef.current.add(refreshKey);
+
+    (async () => {
+      try {
+        const loaded = await loadFromSudokuPad(source);
+        const freshMeta = loaded.def.meta;
+        const nextTitle = (freshMeta.title ?? data.def.meta.title ?? "").trim();
+        const nextAuthor = (freshMeta.author ?? data.def.meta.author ?? "").trim();
+        const nextRules = (freshMeta.rules ?? data.def.meta.rules ?? "").trim();
+        const changed =
+          nextTitle !== (data.def.meta.title ?? "").trim() ||
+          nextAuthor !== (data.def.meta.author ?? "").trim() ||
+          nextRules !== (data.def.meta.rules ?? "").trim() ||
+          (freshMeta.solveCount ?? null) !== (data.def.meta.solveCount ?? null);
+        if (!changed) return;
+
+        const nextMeta = {
+          ...data.def.meta,
+          ...freshMeta,
+        };
+        const next: PersistedPuzzle = {
+          ...data,
+          def: {
+            ...data.def,
+            meta: nextMeta,
+          },
+          updatedAt: Date.now(),
+        };
+
+        setData(next);
+        await upsertPuzzle(key, next);
+        if (userId) await pushPuzzle(userId, key, next);
+      } catch {
+        // Keep existing metadata if refresh fails.
+      }
+    })();
+  }, [data, key, userId]);
 
   async function persist(next: PersistedPuzzle) {
     setData(next);

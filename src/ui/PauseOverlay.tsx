@@ -12,10 +12,14 @@ export function PauseOverlay(props: {
   const { meta, started } = props;
   const sourcePath = (props.sourceId ?? "").trim().replace(/^\/+/, "");
   const sudokuPadUrl = sourcePath ? `https://sudokupad.app/${encodeURI(sourcePath)}` : "";
+  const onBackdropClick = () => {
+    if (started) props.onResume();
+    else props.onStayPaused();
+  };
 
   return (
-    <div className="overlayBackdrop">
-      <div className="card" style={{ width: "min(860px, 100%)", maxHeight: "min(92dvh, calc(100vh - 24px))", overflow: "auto", display: "flex", flexDirection: "column" }}>
+    <div className="overlayBackdrop" onClick={onBackdropClick}>
+      <div className="card" onClick={(e) => e.stopPropagation()} style={{ width: "min(860px, 100%)", maxHeight: "min(92dvh, calc(100vh - 24px))", overflow: "auto", display: "flex", flexDirection: "column" }}>
         <div className="row" style={{ justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "nowrap" }}>
           <div style={{ fontWeight: 800, fontSize: 22, minWidth: 0, overflowWrap: "anywhere" }}>{meta?.title || "(untitled)"}</div>
           {sudokuPadUrl ? (
