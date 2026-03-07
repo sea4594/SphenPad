@@ -688,13 +688,54 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
       })
       .filter((x): x is NonNullable<typeof x> => x !== null) ?? [];
 
+  // Between lines are represented like thermos but with line-only semantics.
+  if (Array.isArray(scl?.betweenline)) {
+    const betweenAsLines = scl.betweenline
+      .flatMap((item: any) => (Array.isArray(item?.lines) ? item.lines.map((line: any) => ({ cells: line, color: item?.color })) : [item]))
+      .map((item: any) => {
+        const path = parseCellRefs(item?.cells ?? item?.ce ?? item?.line ?? item);
+        if (path.length < 2) return null;
+        return {
+          wayPoints: path.map((rc) => ({ x: rc.c + 0.5, y: rc.r + 0.5 })),
+          color: normalizeColorToken(item?.color ?? "#9ba6bf"),
+          thickness: typeof item?.thickness === "number" ? item.thickness : 8,
+          target: "overlay",
+        };
+      })
+      .filter(Boolean) as NonNullable<PuzzleCosmetics["lines"]>;
+    if (betweenAsLines.length) cosmetics.lines = [...(cosmetics.lines ?? []), ...betweenAsLines];
+  }
+
   if (Array.isArray(scl?.thermos)) cosmetics.thermolines = extractPathConstraint(scl.thermos, "#ff6b6b") as any;
   if (Array.isArray(scl?.whispers)) cosmetics.whispers = extractPathConstraint(scl.whispers, "#00c2a8") as any;
   if (Array.isArray(scl?.palindromes)) cosmetics.palindromes = extractPathConstraint(scl.palindromes, "#ffa500") as any;
+  if (!cosmetics.palindromes && Array.isArray(scl?.palindrome)) cosmetics.palindromes = extractPathConstraint(scl.palindrome, "#ffa500") as any;
   if (Array.isArray(scl?.renban)) cosmetics.renbanlines = extractPathConstraint(scl.renban, "#7c3aed") as any;
   if (Array.isArray(scl?.entropic)) cosmetics.entropics = extractPathConstraint(scl.entropic, "#f72585") as any;
   if (Array.isArray(scl?.germanwhispers)) cosmetics.germanwhispers = extractPathConstraint(scl.germanwhispers, "#00d4ff") as any;
   if (Array.isArray(scl?.modular)) cosmetics.modularlines = extractPathConstraint(scl.modular, "#ffb703") as any;
+
+  // Odd/even markers (legacy fpuz fields).
+  const oddSrc = Array.isArray(scl?.odd) ? scl.odd : [];
+  const evenSrc = Array.isArray(scl?.even) ? scl.even : [];
+  const parityOverlays = [...oddSrc.map((v: any) => ({ ...v, __kind: "odd" })), ...evenSrc.map((v: any) => ({ ...v, __kind: "even" }))]
+    .map((item: any) => {
+      const rc = asRC(item?.cell ?? item?.rc ?? item?.ce);
+      const center = rc ? { x: rc.c + 0.5, y: rc.r + 0.5 } : asPoint(item?.center ?? item?.ct);
+      if (!center) return null;
+      const isOdd = item.__kind === "odd";
+      return {
+        center,
+        width: 0.56,
+        height: 0.56,
+        rounded: isOdd,
+        color: isOdd ? "rgba(0,0,0,0.16)" : "rgba(255,255,255,0.6)",
+        borderColor: isOdd ? "#000000" : "#222222",
+        borderThickness: 1.1,
+      };
+    })
+    .filter(Boolean) as NonNullable<PuzzleCosmetics["underlays"]>;
+  if (parityOverlays.length) cosmetics.underlays = [...(cosmetics.underlays ?? []), ...parityOverlays];
 
   // Clues around grid
   if (scl?.clues) {
