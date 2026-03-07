@@ -641,12 +641,35 @@ export function GridCanvas(props: {
       }
     };
 
+    const isMarkerOverlay = (item: LayerItem) => {
+      const noText = item.text == null || String(item.text).trim().length === 0;
+      return (
+        Boolean(item.rounded) &&
+        noText &&
+        typeof item.width === "number" &&
+        typeof item.height === "number" &&
+        item.width <= 0.45 &&
+        item.height <= 0.45
+      );
+    };
+
+    const drawOverlays = (mode: "regular" | "markers" | "all") => {
+      if (!def.cosmetics.overlays?.length) return;
+      const overlays =
+        mode === "all"
+          ? def.cosmetics.overlays
+          : def.cosmetics.overlays.filter((item) => (mode === "markers" ? isMarkerOverlay(item) : !isMarkerOverlay(item)));
+      if (!overlays.length) return;
+      drawLayer(overlays as NonNullable<PuzzleDefinition["cosmetics"]["underlays"]>);
+    };
+
     const drawTopPuzzleFeatures = () => {
       drawCages();
-      if (def.cosmetics.overlays?.length) drawLayer(def.cosmetics.overlays);
+      drawOverlays("regular");
       drawConstraintLines("over");
       drawArrows();
       drawDots();
+      drawOverlays("markers");
     };
 
     drawTopPuzzleFeatures();
