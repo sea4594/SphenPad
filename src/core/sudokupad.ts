@@ -12,6 +12,9 @@ import type { PuzzleDefinition, CellRC, PuzzleCosmetics } from "./model";
 const DEV_API_BASE = "/sp-api/api/puzzle";
 const PROD_PROXY_A = "https://api.codetabs.com/v1/proxy/?quest=https://sudokupad.app/api/puzzle";
 const PROD_API_BASE = "https://api.allorigins.win/raw?url=https://sudokupad.app/api/puzzle";
+const COUNTER_API_BASE = "https://api.sudokupad.com/counter";
+const COUNTER_PROXY_A = "https://api.codetabs.com/v1/proxy/?quest=https://api.sudokupad.com/counter";
+const COUNTER_PROXY_B = "https://api.allorigins.win/raw?url=https://api.sudokupad.com/counter";
 
 function timeout(ms: number) {
   return new Promise<never>((_, rej) => setTimeout(() => rej(new Error("Timeout")), ms));
@@ -28,6 +31,15 @@ function buildPuzzleApiUrls(sourceId: string): string[] {
   urls.push(`${PROD_PROXY_A}/${encoded}`);
   urls.push(`${PROD_API_BASE}/${encoded}`);
   return urls;
+}
+
+function buildCounterApiUrls(counterId: string): string[] {
+  const encoded = encodeURIComponent(counterId);
+  return [
+    `${COUNTER_API_BASE}/${encoded}`,
+    `${COUNTER_PROXY_A}/${encoded}`,
+    `${COUNTER_PROXY_B}/${encoded}`,
+  ];
 }
 
 function looksLikePuzzlePayload(text: string): boolean {
@@ -299,6 +311,86 @@ function parseSolveCount(...values: unknown[]): number | undefined {
   return undefined;
 }
 
+function firstNonEmptyString(...values: unknown[]): string | undefined {
+  for (const v of values) {
+    if (typeof v !== "string") continue;
+    const s = v.trim();
+    if (s) return s;
+  }
+  return undefined;
+}
+
+function extractRulesText(value: unknown): string | undefined {
+  if (typeof value === "string") {
+    const normalized = value.replace(/<br\s*\/?\s*>/gi, "\n").trim();
+    return normalized || undefined;
+  }
+
+  if (Array.isArray(value)) {
+    const parts = value
+      .map((v) => extractRulesText(v))
+      .filter((v): v is string => Boolean(v));
+    if (!parts.length) return undefined;
+    return parts.join("\n\n");
+  }
+
+  if (value && typeof value === "object") {
+    const obj = value as Record<string, unknown>;
+    const candidate =
+      extractRulesText(obj.rules) ??
+      extractRulesText(obj.rule) ??
+      extractRulesText(obj.ruleset) ??
+      extractRulesText(obj.description) ??
+      extractRulesText(obj.instructions) ??
+      extractRulesText(obj.text) ??
+      extractRulesText(obj.value) ??
+      extractRulesText(obj.content) ??
+      extractRulesText(obj.body);
+    if (candidate) return candidate;
+  }
+
+  return undefined;
+}
+
+function buildCounterId(author: string, title: string): string | undefined {
+  const reCleanStr = /[^a-z0-9+_\-&!?.,:;\/\\'"()]+/ig;
+  const authorPart = author.replace(reCleanStr, "").toLowerCase();
+  const titlePart = title.replace(reCleanStr, "").toLowerCase();
+  if (!authorPart || !titlePart) return undefined;
+  const counterId = `${authorPart}-${titlePart}`;
+  const blocked = new Set([
+    "author-title",
+    "unknown-untitled",
+    "unknown-classicsudoku",
+    "jamessinclair-tbd",
+    "unknown-namelesssudoku",
+  ]);
+  if (blocked.has(counterId)) return undefined;
+  return counterId;
+}
+
+async function fetchSolveCountByCounterId(counterId: string): Promise<number | undefined> {
+  const urls = buildCounterApiUrls(counterId);
+  for (const url of urls) {
+    try {
+      const res = await Promise.race([fetch(url), timeout(12000)]) as Response;
+      if (!res.ok) continue;
+      const text = await res.text();
+      const parsed = tryParseJson(text);
+      const count = parseSolveCount(
+        (parsed as { count?: unknown } | null)?.count,
+        (parsed as { solves?: unknown } | null)?.solves,
+        (parsed as { solveCount?: unknown } | null)?.solveCount,
+        text,
+      );
+      if (count != null) return count;
+    } catch {
+      // try next fallback endpoint
+    }
+  }
+  return undefined;
+}
+
 function inferredRulesFromCosmetics(cosmetics: PuzzleCosmetics): string {
   const lines: string[] = ["Normal Sudoku rules apply."];
 
@@ -346,21 +438,61 @@ export async function loadFromSudokuPad(inputUrlOrId: string): Promise<{ key: st
 
   const cosmetics = extractCosmetics(sclObj);
 
-  const meta = {
-    title:
-      sclObj?.metadata?.title ??
-      sclObj?.metadata?.name ??
-      sclObj?.metadata?.t ??
-      sclObj?.metadata?.puzzleTitle ??
-      sclObj?.title ??
-      sclObj?.name ??
-      "",
-    author: sclObj?.metadata?.author ?? sclObj?.metadata?.by ?? sclObj?.metadata?.creator ?? "",
-    rules:
+  const title = firstNonEmptyString(
+    sclObj?.metadata?.title,
+    sclObj?.metadata?.name,
+    sclObj?.metadata?.t,
+    sclObj?.metadata?.puzzleTitle,
+    sclObj?.title,
+    sclObj?.name,
+    sclObj?.puzzleTitle,
+  ) ?? "";
+
+  const author = firstNonEmptyString(
+    sclObj?.metadata?.author,
+    sclObj?.metadata?.by,
+    sclObj?.metadata?.creator,
+    sclObj?.author,
+    sclObj?.by,
+    sclObj?.creator,
+  ) ?? "";
+
+  const rules =
+    extractRulesText(
       sclObj?.metadata?.rules ??
       sclObj?.metadata?.rule ??
       sclObj?.metadata?.description ??
-      inferredRulesFromCosmetics(cosmetics),
+      sclObj?.metadata?.ruleset ??
+      sclObj?.rules ??
+      sclObj?.rule ??
+      sclObj?.description ??
+      sclObj?.ruleset
+    ) ??
+    inferredRulesFromCosmetics(cosmetics);
+
+  const puzzleSolveCount = parseSolveCount(
+    sclObj?.metadata?.solveCount,
+    sclObj?.metadata?.solves,
+    sclObj?.metadata?.solveCounter,
+    sclObj?.metadata?.nbSolves,
+    sclObj?.metadata?.numSolves,
+    sclObj?.metadata?.solvecount,
+    sclObj?.metadata?.nsolves,
+    sclObj?.metadata?.stats?.solves,
+    sclObj?.metadata?.stats?.solveCount,
+    sclObj?.stats?.solves,
+    sclObj?.stats?.solveCount,
+  );
+
+  const counterId = buildCounterId(author, title);
+  const counterSolveCount = puzzleSolveCount == null && counterId
+    ? await fetchSolveCountByCounterId(counterId)
+    : undefined;
+
+  const meta = {
+    title,
+    author,
+    rules,
     postSolveMessage:
       sclObj?.metadata?.postSolveMessage ??
       sclObj?.metadata?.postsolve ??
@@ -369,19 +501,7 @@ export async function loadFromSudokuPad(inputUrlOrId: string): Promise<{ key: st
       sclObj?.metadata?.msgcorrect ??
       sclObj?.metadata?.messageAfterSolve ??
       "",
-    solveCount: parseSolveCount(
-      sclObj?.metadata?.solveCount,
-      sclObj?.metadata?.solves,
-      sclObj?.metadata?.solveCounter,
-      sclObj?.metadata?.nbSolves,
-      sclObj?.metadata?.numSolves,
-      sclObj?.metadata?.solvecount,
-      sclObj?.metadata?.nsolves,
-      sclObj?.metadata?.stats?.solves,
-      sclObj?.metadata?.stats?.solveCount,
-      sclObj?.stats?.solves,
-      sclObj?.stats?.solveCount,
-    ),
+    solveCount: puzzleSolveCount ?? counterSolveCount,
   };
 
   const givens = extractGivens(sclObj);
