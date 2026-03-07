@@ -860,10 +860,6 @@ export function GridCanvas(props: {
           }
         }
 
-        if (cell.given) {
-          ctx.fillStyle = "rgba(32, 68, 112, .06)";
-          ctx.fillRect(x0 + 2, y0 + 2, cellPx - 4, cellPx - 4);
-        }
       }
     }
 
