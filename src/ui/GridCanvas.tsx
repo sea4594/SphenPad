@@ -86,7 +86,17 @@ export function GridCanvas(props: {
       const hasShape = Boolean(item?.color || item?.borderColor || item?.rounded);
       const w = Number.isFinite(item?.width) ? Number(item.width) : hasShape || hasExplicitBox ? 1 : 0;
       const h = Number.isFinite(item?.height) ? Number(item.height) : hasShape || hasExplicitBox ? 1 : 0;
-      if (w <= 0 && h <= 0) return;
+      // Text-only labels near/above grid edges need extra bounds so glyphs are not clipped.
+      const text = item?.text == null ? "" : String(item.text);
+      if ((w <= 0 && h <= 0) && !text.trim().length) return;
+      if (w <= 0 && h <= 0) {
+        const textSize = Number.isFinite(item?.textSize) ? Number(item.textSize) : 16;
+        const approxHeightCells = Math.max(0.4, textSize / 56);
+        const approxWidthCells = Math.max(0.6, Math.min(3.5, (text.length || 1) * (textSize / 92)));
+        includePoint(cx - approxWidthCells / 2, cy - approxHeightCells / 2);
+        includePoint(cx + approxWidthCells / 2, cy + approxHeightCells / 2);
+        return;
+      }
       includePoint(cx - w / 2, cy - h / 2);
       includePoint(cx + w / 2, cy + h / 2);
     };
@@ -507,7 +517,21 @@ export function GridCanvas(props: {
             ctx.fillStyle = item.textColor ?? "#111111";
           }
 
-          ctx.fillText(text, tx, ty);
+          const isTightNumberLabel = /^\d{2,}$/.test(text);
+          if (isTightNumberLabel) {
+            const chars = Array.from(text);
+            const widths = chars.map((ch) => ctx.measureText(ch).width);
+            const kerning = Math.max(0.5, px * 0.08);
+            const total = widths.reduce((a, b) => a + b, 0) - kerning * (chars.length - 1);
+            let cursor = tx - total / 2;
+            for (let i = 0; i < chars.length; i++) {
+              const w = widths[i] as number;
+              ctx.fillText(chars[i] as string, cursor + w / 2, ty);
+              cursor += w - kerning;
+            }
+          } else {
+            ctx.fillText(text, tx, ty);
+          }
           ctx.restore();
         }
       }
@@ -569,8 +593,9 @@ export function GridCanvas(props: {
       }
     };
 
-    if (def.cosmetics.underlays?.length) drawLayer(def.cosmetics.underlays, { drawShapes: true, drawText: true });
+    // Draw underlay polygon/line art first, then underlay labels/emoji above it.
     drawConstraintLines("under");
+    if (def.cosmetics.underlays?.length) drawLayer(def.cosmetics.underlays, { drawShapes: true, drawText: true });
 
     // Highlights sit above puzzle artwork but below grid/features and values.
     for (let r = 0; r < n; r++) {
