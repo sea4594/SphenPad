@@ -295,6 +295,30 @@ function parseSolveCount(...values: unknown[]): number | undefined {
   return undefined;
 }
 
+function inferredRulesFromCosmetics(cosmetics: PuzzleCosmetics): string {
+  const lines: string[] = ["Normal Sudoku rules apply."];
+
+  if (cosmetics.cages?.length) lines.push("Killer cages are present: digits in a cage sum to the clue and may not repeat within a cage.");
+  if (cosmetics.arrows?.length) lines.push("Arrow constraints are present.");
+  if (cosmetics.dots?.length) lines.push("Dot constraints are present between adjacent cells.");
+  if (cosmetics.lines?.length) lines.push("Additional line constraints are present.");
+  if (cosmetics.thermolines?.length) lines.push("Thermo constraints are present: values increase from bulb to tip.");
+  if (cosmetics.whispers?.length || cosmetics.germanwhispers?.length) lines.push("Whisper-style line constraints are present.");
+  if (cosmetics.palindromes?.length) lines.push("Palindrome lines are present.");
+  if (cosmetics.renbanlines?.length) lines.push("Renban lines are present.");
+  if (cosmetics.entropics?.length) lines.push("Entropic lines are present.");
+  if (cosmetics.antiKnight) lines.push("Anti-knight constraint applies.");
+  if (cosmetics.antiKing) lines.push("Anti-king constraint applies.");
+  if (cosmetics.antiRook) lines.push("Anti-rook constraint applies.");
+
+  if (lines.length === 1) {
+    lines.push("No additional constraints were found in puzzle metadata.");
+  }
+
+  lines.push("(Auto-generated because this puzzle has no rules text in imported metadata.)");
+  return lines.join("\n\n");
+}
+
 export async function loadFromSudokuPad(inputUrlOrId: string): Promise<{ key: string; def: PuzzleDefinition; raw: any }> {
   const sourceIdRaw = parseSourceId(inputUrlOrId);
   const sourceId = fixURIComponentish(sourceIdRaw);
@@ -316,6 +340,8 @@ export async function loadFromSudokuPad(inputUrlOrId: string): Promise<{ key: st
   // Canonicalize to “SCL object” (best-effort).
   const sclObj = coerceToScl(raw);
 
+  const cosmetics = extractCosmetics(sclObj);
+
   const meta = {
     title:
       sclObj?.metadata?.title ??
@@ -330,7 +356,7 @@ export async function loadFromSudokuPad(inputUrlOrId: string): Promise<{ key: st
       sclObj?.metadata?.rules ??
       sclObj?.metadata?.rule ??
       sclObj?.metadata?.description ??
-      "",
+      inferredRulesFromCosmetics(cosmetics),
     postSolveMessage:
       sclObj?.metadata?.postSolveMessage ??
       sclObj?.metadata?.postsolve ??
@@ -355,7 +381,6 @@ export async function loadFromSudokuPad(inputUrlOrId: string): Promise<{ key: st
   };
 
   const givens = extractGivens(sclObj);
-  const cosmetics = extractCosmetics(sclObj);
   const size = inferPuzzleSize(sclObj, givens);
 
   const key = normalizePuzzleKey(sourceId);

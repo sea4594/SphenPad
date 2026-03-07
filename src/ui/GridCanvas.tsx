@@ -784,6 +784,7 @@ export function GridCanvas(props: {
     };
 
     const lit = Array.from({ length: n }, () => Array.from({ length: n }, () => false));
+    const valueFontPx = Math.max(28, Math.min(42, Math.round(cellPx * 0.58)));
     const fogDefined = (def.cosmetics.fogLights?.length ?? 0) > 0 || (def.cosmetics.fogTriggerEffects?.length ?? 0) > 0;
     if (fogDefined) {
       const addLight = (rc: CellRC) => {
@@ -822,7 +823,7 @@ export function GridCanvas(props: {
 
         if (cell.value) {
           ctx.fillStyle = cell.given ? "#111111" : "#123f9a";
-          ctx.font = cell.given ? "700 26px ui-sans-serif" : "650 26px ui-sans-serif";
+          ctx.font = cell.given ? `700 ${valueFontPx}px ui-sans-serif` : `650 ${valueFontPx}px ui-sans-serif`;
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";
           ctx.fillText(cell.value, x0 + cellPx / 2, y0 + cellPx / 2 + 1);
@@ -924,7 +925,7 @@ export function GridCanvas(props: {
           if (cell.value) {
             if (cell.given && !lit[r][c]) continue;
             ctx.fillStyle = cell.given ? "#111111" : "#123f9a";
-            ctx.font = cell.given ? "700 26px ui-sans-serif" : "650 26px ui-sans-serif";
+            ctx.font = cell.given ? `700 ${valueFontPx}px ui-sans-serif` : `650 ${valueFontPx}px ui-sans-serif`;
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
             ctx.fillText(cell.value, x0 + cellPx / 2, y0 + cellPx / 2 + 1);
