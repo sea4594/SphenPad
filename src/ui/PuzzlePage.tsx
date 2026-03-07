@@ -190,10 +190,34 @@ export function PuzzlePage() {
       if (userId) {
         const cloud = await pullPuzzle(userId, key);
         if (cloud) {
-          const normalized = { ...cloud, progress: normalizeProgress(cloud.progress) };
-          setData(normalized);
-          setPauseMenuOpen(Boolean(normalized.progress.paused));
-          await upsertPuzzle(key, normalized);
+          const normalizedCloud = { ...cloud, progress: normalizeProgress(cloud.progress) };
+          const normalizedLocal = local ? { ...local, progress: normalizeProgress(local.progress) } : null;
+
+          const localIsNewer = Boolean(normalizedLocal && normalizedLocal.updatedAt >= normalizedCloud.updatedAt);
+          const cloudMetaIncomplete = hasIncompleteMeta(normalizedCloud);
+          const localMetaComplete = Boolean(normalizedLocal && !hasIncompleteMeta(normalizedLocal));
+
+          const merged = localIsNewer && normalizedLocal
+            ? normalizedLocal
+            : cloudMetaIncomplete && localMetaComplete && normalizedLocal
+              ? {
+                  ...normalizedCloud,
+                  def: {
+                    ...normalizedCloud.def,
+                    // Keep cloud progress but use richer local puzzle metadata/definition when available.
+                    ...normalizedLocal.def,
+                    meta: {
+                      ...normalizedCloud.def.meta,
+                      ...normalizedLocal.def.meta,
+                    },
+                  },
+                }
+              : normalizedCloud;
+
+          setData(merged);
+          setPauseMenuOpen(Boolean(merged.progress.paused));
+          await upsertPuzzle(key, merged);
+          await pushPuzzle(userId, key, merged);
           return;
         }
       }
