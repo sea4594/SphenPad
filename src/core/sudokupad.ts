@@ -249,7 +249,7 @@ function cubicAt(p0: number, p1: number, p2: number, p3: number, t: number) {
   return mt * mt * mt * p0 + 3 * mt * mt * t * p1 + 3 * mt * t * t * p2 + t * t * t * p3;
 }
 
-function parseSvgPathToWayPoints(pathData: string, pxPerCell = 50): Array<{ x: number; y: number }> {
+function parseSvgPathToWayPoints(pathData: string, pxPerCell = 56): Array<{ x: number; y: number }> {
   const tokens = pathData.match(/[a-zA-Z]|-?\d*\.?\d+(?:e[-+]?\d+)?/g);
   if (!tokens?.length) return [];
 
@@ -785,7 +785,7 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
           .map(asPoint)
           .filter(Boolean) as Array<{ x: number; y: number }>;
         const svgPathPoints = typeof ln?.d2 === "string"
-          ? parseSvgPathToWayPoints(ln.d2, Number(scl?.cellSize) || 50)
+          ? parseSvgPathToWayPoints(ln.d2, Number(scl?.cellSize) || 56)
           : [];
         const wayPoints = wayPointsRaw.length >= 2 ? wayPointsRaw : svgPathPoints;
         if (wayPoints.length < 2) return null;

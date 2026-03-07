@@ -477,7 +477,7 @@ export function GridCanvas(props: {
           }
           ctx.fillStyle = item.textColor ?? "#111111";
           const px = (item.textSize ?? 16) * (cellPx / 56);
-          ctx.font = `600 ${Math.max(10, px)}px ui-sans-serif`;
+          ctx.font = `600 ${Math.max(10, px)}px ui-sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji"`;
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";
           const text = String(item.text);
