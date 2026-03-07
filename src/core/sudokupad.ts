@@ -433,6 +433,26 @@ function firstNonEmptyString(...values: unknown[]): string | undefined {
   return undefined;
 }
 
+function extractInlineMetadata(sclObj: any): { title?: string; author?: string; rules?: string } {
+  const out: { title?: string; author?: string; rules?: string } = {};
+  const entries = [sclObj?.ca, sclObj?.cages].filter(Array.isArray).flat() as any[];
+  for (const item of entries) {
+    const raw =
+      typeof item?.v === "string" ? item.v
+      : typeof item?.value === "string" ? item.value
+      : "";
+    const m = raw.match(/^\s*(title|author|rules?)\s*:\s*([\s\S]+)$/i);
+    if (!m) continue;
+    const k = m[1].toLowerCase();
+    const v = m[2].trim();
+    if (!v) continue;
+    if (k === "title" && !out.title) out.title = v;
+    if (k === "author" && !out.author) out.author = v;
+    if ((k === "rule" || k === "rules") && !out.rules) out.rules = v;
+  }
+  return out;
+}
+
 function extractRulesText(value: unknown): string | undefined {
   if (typeof value === "string") {
     const normalized = value.replace(/<br\s*\/?\s*>/gi, "\n").trim();
@@ -550,6 +570,7 @@ export async function loadFromSudokuPad(inputUrlOrId: string): Promise<{ key: st
   const sclObj = coerceToScl(raw);
 
   const cosmetics = extractCosmetics(sclObj);
+  const inlineMeta = extractInlineMetadata(sclObj);
 
   const title = firstNonEmptyString(
     sclObj?.metadata?.title,
@@ -559,6 +580,7 @@ export async function loadFromSudokuPad(inputUrlOrId: string): Promise<{ key: st
     sclObj?.title,
     sclObj?.name,
     sclObj?.puzzleTitle,
+    inlineMeta.title,
   ) ?? "";
 
   const author = firstNonEmptyString(
@@ -568,6 +590,7 @@ export async function loadFromSudokuPad(inputUrlOrId: string): Promise<{ key: st
     sclObj?.author,
     sclObj?.by,
     sclObj?.creator,
+    inlineMeta.author,
   ) ?? "";
 
   const rules =
@@ -579,7 +602,8 @@ export async function loadFromSudokuPad(inputUrlOrId: string): Promise<{ key: st
       sclObj?.rules ??
       sclObj?.rule ??
       sclObj?.description ??
-      sclObj?.ruleset
+      sclObj?.ruleset ??
+      inlineMeta.rules
     ) ??
     inferredRulesFromCosmetics(cosmetics);
 
@@ -656,23 +680,23 @@ function coerceToScl(raw: any): any {
       }
       const decompressed = decompressFromBase64(b64);
       const j = tryParseJson(decompressed);
-      if (j) return j;
+      if (j) return normalizeCompactScl(j);
       const jLoose = tryParseLooseObjectLiteral(decompressed);
       if (jLoose) return normalizeCompactScl(jLoose);
       const j2 = tryParseJson(decompressedFromMaybeZipped(decompressed));
-      if (j2) return j2;
+      if (j2) return normalizeCompactScl(j2);
     }
 
     // If it's plain JSON text
     const j = tryParseJson(s);
-    if (j) return j;
+    if (j) return normalizeCompactScl(j);
 
     const jLoose = tryParseLooseObjectLiteral(s);
     if (jLoose) return normalizeCompactScl(jLoose);
 
     // Otherwise: best-effort — maybe already decompressed but still JSON-ish
     const j3 = tryParseJson(decompressedFromMaybeZipped(s));
-    if (j3) return j3;
+    if (j3) return normalizeCompactScl(j3);
   }
 
   return null;
