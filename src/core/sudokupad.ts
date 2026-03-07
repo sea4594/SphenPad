@@ -461,6 +461,7 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
   if (cagesSrc.length) {
     cosmetics.cages = cagesSrc
       .map((cg: any) => {
+        if (cg?.hidden === true) return null;
         const cells = parseCellRefs(cg?.cells ?? cg?.ce);
         if (!cells.length) return null;
         return {
@@ -594,6 +595,13 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
     const strokeToken = normalizeColorToken(item?.borderColor ?? item?.stroke ?? item?.c ?? item?.c1);
     const borderColor = strokeToken === "#0" ? undefined : strokeToken;
     const fillColor = normalizeColorToken(item?.backgroundColor ?? item?.c2 ?? item?.fill);
+    const isSmallDotMarker =
+      rounded &&
+      textStr.length === 0 &&
+      typeof width === "number" &&
+      typeof height === "number" &&
+      width <= 0.36 &&
+      height <= 0.36;
 
     return {
       center: ct,
@@ -601,7 +609,7 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
       height,
       rounded: isTinyTextMarker ? false : rounded,
       color: isTinyTextMarker ? undefined : fillColor,
-      borderColor: isTinyTextMarker ? undefined : borderColor,
+      borderColor: isTinyTextMarker || isSmallDotMarker ? undefined : borderColor,
       borderThickness: typeof (item?.thickness ?? item?.th) === "number" ? (item?.thickness ?? item?.th) : undefined,
       text,
       textColor: normalizeColorToken(item?.color ?? item?.textColor),
