@@ -576,15 +576,34 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
   const parseLayerItem = (item: any) => {
     const ct = asPoint(item?.center ?? item?.ct);
     if (!ct) return null;
+    const rawWidth = item?.width ?? item?.w;
+    const rawHeight = item?.height ?? item?.h;
+    const width = typeof rawWidth === "number" ? rawWidth : undefined;
+    const height = typeof rawHeight === "number" ? rawHeight : undefined;
+    const rounded = Boolean(item?.rounded ?? item?.r);
+    const text = item?.text ?? item?.te;
+    const textStr = typeof text === "string" ? text.trim() : "";
+    const isTinyTextMarker =
+      textStr.length === 1 &&
+      typeof width === "number" &&
+      typeof height === "number" &&
+      width <= 0.42 &&
+      height <= 0.42;
+
+    // In compact SudokuPad payloads, '#0' in stroke-like keys frequently means no visible stroke.
+    const strokeToken = normalizeColorToken(item?.borderColor ?? item?.stroke ?? item?.c ?? item?.c1);
+    const borderColor = strokeToken === "#0" ? undefined : strokeToken;
+    const fillColor = normalizeColorToken(item?.backgroundColor ?? item?.c2 ?? item?.fill);
+
     return {
       center: ct,
-      width: typeof (item?.width ?? item?.w) === "number" ? (item?.width ?? item?.w) : undefined,
-      height: typeof (item?.height ?? item?.h) === "number" ? (item?.height ?? item?.h) : undefined,
-      rounded: Boolean(item?.rounded ?? item?.r),
-      color: normalizeColorToken(item?.backgroundColor ?? item?.c2 ?? item?.fill),
-      borderColor: normalizeColorToken(item?.borderColor ?? item?.stroke ?? item?.c ?? item?.c1),
+      width,
+      height,
+      rounded: isTinyTextMarker ? false : rounded,
+      color: isTinyTextMarker ? undefined : fillColor,
+      borderColor: isTinyTextMarker ? undefined : borderColor,
       borderThickness: typeof (item?.thickness ?? item?.th) === "number" ? (item?.thickness ?? item?.th) : undefined,
-      text: item?.text ?? item?.te,
+      text,
       textColor: normalizeColorToken(item?.color ?? item?.textColor),
       textSize:
         typeof (item?.textSize ?? item?.fontSize ?? item?.fs) === "number"

@@ -421,9 +421,16 @@ export function GridCanvas(props: {
           }
           ctx.fillStyle = item.color;
           if (item.rounded) {
-            ctx.beginPath();
-            ctx.roundRect(x, y, rw, rh, Math.min(14, cellPx * 0.25));
-            ctx.fill();
+            const nearlyCircle = Math.abs(rw - rh) <= Math.max(1, cellPx * 0.02);
+            if (nearlyCircle) {
+              ctx.beginPath();
+              ctx.ellipse(cx, cy, rw / 2, rh / 2, 0, 0, Math.PI * 2);
+              ctx.fill();
+            } else {
+              ctx.beginPath();
+              ctx.roundRect(x, y, rw, rh, Math.min(14, cellPx * 0.25));
+              ctx.fill();
+            }
           } else {
             ctx.fillRect(x, y, rw, rh);
           }
@@ -440,9 +447,16 @@ export function GridCanvas(props: {
           ctx.strokeStyle = item.borderColor;
           ctx.lineWidth = (item.borderThickness ?? 1.4) * (cellPx / 56);
           if (item.rounded) {
-            ctx.beginPath();
-            ctx.roundRect(x, y, rw, rh, Math.min(14, cellPx * 0.25));
-            ctx.stroke();
+            const nearlyCircle = Math.abs(rw - rh) <= Math.max(1, cellPx * 0.02);
+            if (nearlyCircle) {
+              ctx.beginPath();
+              ctx.ellipse(cx, cy, rw / 2, rh / 2, 0, 0, Math.PI * 2);
+              ctx.stroke();
+            } else {
+              ctx.beginPath();
+              ctx.roundRect(x, y, rw, rh, Math.min(14, cellPx * 0.25));
+              ctx.stroke();
+            }
           } else {
             ctx.strokeRect(x, y, rw, rh);
           }
