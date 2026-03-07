@@ -477,10 +477,13 @@ export function GridCanvas(props: {
           }
           ctx.fillStyle = item.textColor ?? "#111111";
           const px = (item.textSize ?? 16) * (cellPx / 56);
-          ctx.font = `600 ${Math.max(10, px)}px ui-sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji"`;
+          const text = String(item.text);
+          const hasEmoji = /\p{Extended_Pictographic}/u.test(text);
+          ctx.font = hasEmoji
+            ? `${Math.max(10, px)}px "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", ui-sans-serif`
+            : `600 ${Math.max(10, px)}px ui-sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji"`;
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";
-          const text = String(item.text);
           const tx = worldX(item.center.x);
           const ty = worldY(item.center.y);
           const onOrOutsideGridBorder =
@@ -519,27 +522,49 @@ export function GridCanvas(props: {
         const isUnder = target.includes("under") || target.includes("back");
         if (layer === "under" ? !isUnder : isUnder) continue;
 
-        ctx.beginPath();
-        ln.wayPoints.forEach((p, i) => {
-          const x = worldX(p.x);
-          const y = worldY(p.y);
-          if (i === 0) ctx.moveTo(x, y);
-          else ctx.lineTo(x, y);
-        });
-        if (ln.closePath) ctx.closePath();
+        const hasSvgPath = typeof ln.svgPathData === "string" && ln.svgPathData.length > 0;
+        if (hasSvgPath) {
+          const units = Number(ln.svgUnitsPerCell) || 56;
+          const path = new Path2D(ln.svgPathData as string);
+          ctx.save();
+          ctx.translate(originX, originY);
+          ctx.scale(cellPx / units, cellPx / units);
+          if (ln.fillColor) {
+            ctx.fillStyle = ln.fillColor;
+            ctx.fill(path);
+          }
+          const hasStroke = Boolean(ln.color) && (ln.thickness ?? 6) > 0;
+          if (hasStroke) {
+            ctx.strokeStyle = normalizeFeatureLineColor(ln.color);
+            ctx.lineWidth = (ln.thickness ?? 6) * puzzleLineWidthScale;
+            ctx.lineCap = "round";
+            ctx.lineJoin = "round";
+            ctx.stroke(path);
+          }
+          ctx.restore();
+        } else {
+          ctx.beginPath();
+          ln.wayPoints.forEach((p, i) => {
+            const x = worldX(p.x);
+            const y = worldY(p.y);
+            if (i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+          });
+          if (ln.closePath) ctx.closePath();
 
-        if (ln.fillColor) {
-          ctx.fillStyle = ln.fillColor;
-          ctx.fill();
-        }
+          if (ln.fillColor) {
+            ctx.fillStyle = ln.fillColor;
+            ctx.fill();
+          }
 
-        const hasStroke = Boolean(ln.color) && (ln.thickness ?? 6) > 0;
-        if (hasStroke) {
-          ctx.strokeStyle = normalizeFeatureLineColor(ln.color);
-          ctx.lineWidth = (ln.thickness ?? 6) * (cellPx / 56) * puzzleLineWidthScale;
-          ctx.lineCap = "round";
-          ctx.lineJoin = "round";
-          ctx.stroke();
+          const hasStroke = Boolean(ln.color) && (ln.thickness ?? 6) > 0;
+          if (hasStroke) {
+            ctx.strokeStyle = normalizeFeatureLineColor(ln.color);
+            ctx.lineWidth = (ln.thickness ?? 6) * (cellPx / 56) * puzzleLineWidthScale;
+            ctx.lineCap = "round";
+            ctx.lineJoin = "round";
+            ctx.stroke();
+          }
         }
       }
     };

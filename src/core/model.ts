@@ -53,6 +53,8 @@ export type PuzzleCosmetics = {
     target?: string;
     fillColor?: string;
     closePath?: boolean;
+    svgPathData?: string;
+    svgUnitsPerCell?: number;
   }>;
   underlays?: Array<{
     center: { x: number; y: number };

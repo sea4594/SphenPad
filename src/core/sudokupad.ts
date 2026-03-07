@@ -821,6 +821,8 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
           color: strokeToken === "#0" ? undefined : strokeToken,
           fillColor: fillToken === "#0" ? undefined : fillToken,
           closePath: Boolean(ln?.closed ?? ln?.closePath ?? ln?.fill) || closedByShape,
+          svgPathData: typeof ln?.d2 === "string" ? ln.d2 : undefined,
+          svgUnitsPerCell: Number(scl?.cellSize) || 56,
           thickness: typeof (ln?.thickness ?? ln?.th) === "number" ? (ln?.thickness ?? ln?.th) : undefined,
           target: typeof ln?.target === "string" ? ln.target : undefined,
         };
