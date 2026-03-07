@@ -514,7 +514,7 @@ export function GridCanvas(props: {
         if (layer === "under" ? !isUnder : isUnder) continue;
 
         ctx.strokeStyle = normalizeFeatureLineColor(ln.color);
-        ctx.lineWidth = (ln.thickness ?? 6) * (cellPx / 50);
+        ctx.lineWidth = (ln.thickness ?? 6) * (cellPx / 56);
         ctx.lineCap = "round";
         ctx.lineJoin = "round";
         ctx.beginPath();
