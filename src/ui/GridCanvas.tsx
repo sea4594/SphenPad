@@ -627,11 +627,15 @@ export function GridCanvas(props: {
       }
     };
 
-    drawCages();
-    if (def.cosmetics.overlays?.length) drawLayer(def.cosmetics.overlays);
-    drawConstraintLines("over");
-    drawArrows();
-    drawDots();
+    const drawTopPuzzleFeatures = () => {
+      drawCages();
+      if (def.cosmetics.overlays?.length) drawLayer(def.cosmetics.overlays);
+      drawConstraintLines("over");
+      drawArrows();
+      drawDots();
+    };
+
+    drawTopPuzzleFeatures();
 
     // Grid borders stay above highlights.
     drawGridLines();
@@ -844,12 +848,18 @@ export function GridCanvas(props: {
         }
       }
 
-      // Keep puzzle feature layers above highlights under fog too.
-      drawCages();
-      if (def.cosmetics.overlays?.length) drawLayer(def.cosmetics.overlays);
-      drawConstraintLines("over");
-      drawArrows();
-      drawDots();
+      // Keep puzzle feature layers above highlights under fog, but only in lit cells.
+      ctx.save();
+      ctx.beginPath();
+      for (let r = 0; r < n; r++) {
+        for (let c = 0; c < n; c++) {
+          if (!lit[r][c]) continue;
+          ctx.rect(cellX(c), cellY(r), cellPx, cellPx);
+        }
+      }
+      ctx.clip();
+      drawTopPuzzleFeatures();
+      ctx.restore();
 
       // Keep grid visible on top of fog.
       for (let i = 0; i <= n; i++) {
