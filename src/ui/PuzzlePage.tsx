@@ -106,6 +106,46 @@ function sharesSelectedCell(a: CellRC, b: CellRC, selected: Set<string>) {
   return selected.has(rcKey(a)) || selected.has(rcKey(b));
 }
 
+function cellsTouchedByNodeEdge(a: CellRC, b: CellRC, rows: number, cols: number): CellRC[] {
+  const dr = b.r - a.r;
+  const dc = b.c - a.c;
+  if (Math.abs(dr) + Math.abs(dc) !== 1) return [];
+
+  const out: CellRC[] = [];
+  if (dc === 0) {
+    const r = Math.min(a.r, b.r);
+    const c = a.c;
+    const left = { r, c: c - 1 };
+    const right = { r, c };
+    if (left.r >= 0 && left.r < rows && left.c >= 0 && left.c < cols) out.push(left);
+    if (right.r >= 0 && right.r < rows && right.c >= 0 && right.c < cols) out.push(right);
+    return out;
+  }
+
+  const r = a.r;
+  const c = Math.min(a.c, b.c);
+  const top = { r: r - 1, c };
+  const bottom = { r, c };
+  if (top.r >= 0 && top.r < rows && top.c >= 0 && top.c < cols) out.push(top);
+  if (bottom.r >= 0 && bottom.r < rows && bottom.c >= 0 && bottom.c < cols) out.push(bottom);
+  return out;
+}
+
+function edgeLikeTouchesSelection(
+  a: CellRC,
+  b: CellRC,
+  selected: Set<string>,
+  rows: number,
+  cols: number
+): boolean {
+  const aIsCell = a.r >= 0 && a.r < rows && a.c >= 0 && a.c < cols;
+  const bIsCell = b.r >= 0 && b.r < rows && b.c >= 0 && b.c < cols;
+  if (aIsCell && bIsCell) return sharesSelectedCell(a, b, selected);
+
+  const touchedCells = cellsTouchedByNodeEdge(a, b, rows, cols);
+  return touchedCells.some((rc) => selected.has(rcKey(rc)));
+}
+
 function hasIncompleteMeta(p: PersistedPuzzle): boolean {
   const title = (p.def.meta?.title ?? "").trim();
   const author = (p.def.meta?.author ?? "").trim();
@@ -713,10 +753,15 @@ export function PuzzlePage() {
 
   function clearLinesForSelection(progress: PuzzleProgress, selected: CellRC[]): { lines: LineStroke[]; changed: boolean } {
     const selectedSet = new Set(selected.map(rcKey));
+    const rows = progress.cells.length;
+    const cols = progress.cells[0]?.length ?? 0;
     let changed = false;
     const nextLines: LineStroke[] = [];
     for (const stroke of progress.lines) {
-      const nextSegments = stroke.segments.filter((seg) => !sharesSelectedCell(seg.a, seg.b, selectedSet));
+      const nextSegments = stroke.segments.filter((seg) => {
+        if (stroke.kind !== "edge") return !sharesSelectedCell(seg.a, seg.b, selectedSet);
+        return !edgeLikeTouchesSelection(seg.a, seg.b, selectedSet, rows, cols);
+      });
       if (nextSegments.length !== stroke.segments.length) changed = true;
       if (nextSegments.length) nextLines.push({ ...stroke, segments: nextSegments });
     }
@@ -727,6 +772,8 @@ export function PuzzlePage() {
     const sel = progress.selection;
     if (!sel.length) return [];
     const selectedSet = new Set(sel.map(rcKey));
+    const rows = progress.cells.length;
+    const cols = progress.cells[0]?.length ?? 0;
     const editable = sel.filter((rc) => !progress.cells[rc.r][rc.c].given);
     const patches: Patch[] = [];
 
@@ -761,7 +808,7 @@ export function PuzzlePage() {
     const centerMarks = progress.lineCenterMarks.filter((m) => !selectedSet.has(rcKey(m.rc)));
     if (centerMarks.length !== progress.lineCenterMarks.length) patches.push(patchAt(progress, ["lineCenterMarks"], centerMarks));
 
-    const edgeMarks = progress.lineEdgeMarks.filter((m) => !sharesSelectedCell(m.a, m.b, selectedSet));
+    const edgeMarks = progress.lineEdgeMarks.filter((m) => !edgeLikeTouchesSelection(m.a, m.b, selectedSet, rows, cols));
     if (edgeMarks.length !== progress.lineEdgeMarks.length) patches.push(patchAt(progress, ["lineEdgeMarks"], edgeMarks));
 
     return patches;
