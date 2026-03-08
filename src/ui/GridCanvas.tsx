@@ -119,13 +119,6 @@ export function GridCanvas(props: {
       const sinA = Math.abs(Math.sin(angleRad));
       const boundsHalfW = halfW * cosA + halfH * sinA;
       const boundsHalfH = halfW * sinA + halfH * cosA;
-      const left = Number(cx) - boundsHalfW;
-      const right = Number(cx) + boundsHalfW;
-      const top = Number(cy) - boundsHalfH;
-      const bottom = Number(cy) + boundsHalfH;
-      const fullyOutside = right <= 0 || left >= cols || bottom <= 0 || top >= rows;
-      const tinyShapeOnly = !hasText && (Boolean(item?.color) || Boolean(item?.borderColor)) && Math.max(w, h) <= 0.22;
-      if (tinyShapeOnly && fullyOutside) return;
 
       includePoint(cx, cy);
       const textSize = Number.isFinite(item?.textSize) ? Number(item.textSize) : 16;
@@ -300,23 +293,6 @@ export function GridCanvas(props: {
     const b = Math.max(0, Math.min(255, Math.round((n & 0xff) * (1 - amount))));
     const body = ((r << 16) | (g << 8) | b).toString(16).padStart(6, "0");
     return `#${body}${a}`;
-  }
-
-  function isVeryLightColor(color: string | undefined): boolean {
-    if (!color) return false;
-    const s = color.trim().toLowerCase();
-    if (!s.startsWith("#")) return false;
-    const h = s.slice(1);
-    if (![3, 4, 6, 8].includes(h.length)) return false;
-    const full = h.length <= 4 ? h.split("").map((ch) => ch + ch).join("") : h;
-    const rgb = full.slice(0, 6);
-    const n = Number.parseInt(rgb, 16);
-    if (!Number.isFinite(n)) return false;
-    const r = (n >> 16) & 0xff;
-    const g = (n >> 8) & 0xff;
-    const b = n & 0xff;
-    const lum = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
-    return lum >= 0.94;
   }
 
   useEffect(() => {
@@ -519,23 +495,6 @@ export function GridCanvas(props: {
       for (const item of items) {
         const w = Number.isFinite(item.width) ? item.width! : 1;
         const h = Number.isFinite(item.height) ? item.height! : 1;
-        const text = item.text == null ? "" : String(item.text).trim();
-        const halfW = Math.max(0, w / 2);
-        const halfH = Math.max(0, h / 2);
-        const left = item.center.x - halfW;
-        const right = item.center.x + halfW;
-        const top = item.center.y - halfH;
-        const bottom = item.center.y + halfH;
-        const fullyOutside = right <= 0 || left >= cols || bottom <= 0 || top >= rows;
-        const intersectsGrid = !(right <= 0 || left >= cols || bottom <= 0 || top >= rows);
-
-        // Compact exports can include tiny helper fragments around corners; ignore when fully outside.
-        const tinyShapeOnly = !text.length && (Boolean(item.color) || Boolean(item.borderColor)) && Math.max(w, h) <= 0.22;
-        if (tinyShapeOnly && fullyOutside) continue;
-
-        const shouldClipLightShapeToGrid = intersectsGrid &&
-          (left < 0 || right > cols || top < 0 || bottom > rows) &&
-          (isVeryLightColor(item.color) || isVeryLightColor(item.borderColor));
 
         const x = worldX(item.center.x - w / 2);
         const y = worldY(item.center.y - h / 2);
@@ -549,11 +508,6 @@ export function GridCanvas(props: {
         if (drawShapes && item.color) {
           ctx.save();
           ctx.globalAlpha *= itemOpacity;
-          if (shouldClipLightShapeToGrid) {
-            ctx.beginPath();
-            ctx.rect(cellX(0), cellY(0), cellPx * cols, cellPx * rows);
-            ctx.clip();
-          }
           if (angleRad) {
             ctx.translate(cx, cy);
             ctx.rotate(angleRad);
@@ -580,11 +534,6 @@ export function GridCanvas(props: {
         if (drawShapes && item.borderColor) {
           ctx.save();
           ctx.globalAlpha *= itemOpacity;
-          if (shouldClipLightShapeToGrid) {
-            ctx.beginPath();
-            ctx.rect(cellX(0), cellY(0), cellPx * cols, cellPx * rows);
-            ctx.clip();
-          }
           if (angleRad) {
             ctx.translate(cx, cy);
             ctx.rotate(angleRad);
