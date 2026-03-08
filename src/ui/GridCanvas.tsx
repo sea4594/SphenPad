@@ -119,6 +119,7 @@ export function GridCanvas(props: {
       const sinA = Math.abs(Math.sin(angleRad));
       const boundsHalfW = halfW * cosA + halfH * sinA;
       const boundsHalfH = halfW * sinA + halfH * cosA;
+      const borderPad = Math.max(0, ((item?.borderThickness ?? 0) / cosmeticUnit) / 2);
 
       includePoint(cx, cy);
       const textSize = Number.isFinite(item?.textSize) ? Number(item.textSize) : 16;
@@ -129,8 +130,14 @@ export function GridCanvas(props: {
         includePoint(cx + textHalfWidth, cy + textHalfHeight);
         return;
       }
-      includePoint(cx - Math.max(boundsHalfW, hasText ? textHalfWidth : 0), cy - Math.max(boundsHalfH, hasText ? textHalfHeight : 0));
-      includePoint(cx + Math.max(boundsHalfW, hasText ? textHalfWidth : 0), cy + Math.max(boundsHalfH, hasText ? textHalfHeight : 0));
+      includePoint(
+        cx - Math.max(boundsHalfW + borderPad, hasText ? textHalfWidth : 0),
+        cy - Math.max(boundsHalfH + borderPad, hasText ? textHalfHeight : 0)
+      );
+      includePoint(
+        cx + Math.max(boundsHalfW + borderPad, hasText ? textHalfWidth : 0),
+        cy + Math.max(boundsHalfH + borderPad, hasText ? textHalfHeight : 0)
+      );
     };
 
     for (const item of def.cosmetics.overlays ?? []) includeLayer(item);
