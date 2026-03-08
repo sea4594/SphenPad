@@ -74,8 +74,13 @@ export function GridCanvas(props: {
   const [bgImage, setBgImage] = useState<HTMLImageElement | null>(null);
   const [linePreview, setLinePreview] = useState<{ segments: LineSegmentDraft[]; kind: LineKindResolved } | null>(null);
   const [emojiRenderVersion, setEmojiRenderVersion] = useState(0);
+  const [mobileViewport, setMobileViewport] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.matchMedia("(max-width: 1000px)").matches;
+  });
 
-  const pad = Math.max(14, Math.round(cellPx * 0.32));
+  const basePad = Math.max(14, Math.round(cellPx * 0.32));
+  const pad = mobileViewport ? Math.max(3, Math.round(basePad * 0.2)) : basePad;
   const worldBounds = useMemo(() => {
     let minX = 0;
     let minY = 0;
@@ -317,6 +322,7 @@ export function GridCanvas(props: {
       const minCell = isNarrow ? mobileMinCell : 28;
       const next = Math.floor(Math.min(maxCell, Math.max(minCell, Math.min(byWidth, byHeight))));
       setCellPx(next);
+      setMobileViewport(isMobile);
     };
     update();
     const ro = new ResizeObserver(update);
@@ -1033,8 +1039,15 @@ export function GridCanvas(props: {
         const dr = mark.b.r - mark.a.r;
         const dc = mark.b.c - mark.a.c;
         if (Math.abs(dr) + Math.abs(dc) !== 1) continue;
-        const x = (cellX(mark.a.c) + cellX(mark.b.c)) / 2;
-        const y = (cellY(mark.a.r) + cellY(mark.b.r)) / 2;
+        const aInCellBounds = inBounds(mark.a.r, mark.a.c);
+        const bInCellBounds = inBounds(mark.b.r, mark.b.c);
+        const useCellCenters = aInCellBounds && bInCellBounds;
+        const x = useCellCenters
+          ? (cellX(mark.a.c) + cellPx / 2 + (cellX(mark.b.c) + cellPx / 2)) / 2
+          : (cellX(mark.a.c) + cellX(mark.b.c)) / 2;
+        const y = useCellCenters
+          ? (cellY(mark.a.r) + cellPx / 2 + (cellY(mark.b.r) + cellPx / 2)) / 2
+          : (cellY(mark.a.r) + cellY(mark.b.r)) / 2;
         ctx.strokeStyle = mark.color;
         ctx.lineWidth = 2.6;
         const r = Math.max(4, cellPx * 0.11);
@@ -1327,20 +1340,34 @@ export function GridCanvas(props: {
     return out;
   }
 
-  function centerHopsFromPointer(last: CellRC, clientX: number, clientY: number): CellRC[] {
+  function centerHopsFromPointer(
+    last: CellRC,
+    clientX: number,
+    clientY: number,
+    opts?: { diagonalAssistThreshold?: number }
+  ): CellRC[] {
     const gp = eventGridPoint(clientX, clientY);
     if (!gp) return [];
 
     const target = { x: gp.gx - 0.5, y: gp.gy - 0.5 };
+    const diagonalAssistThreshold = Math.max(0, Math.min(0.49, opts?.diagonalAssistThreshold ?? 0.5));
     const hops: CellRC[] = [];
     let cur = { ...last };
 
     for (let i = 0; i < 10; i++) {
       const dx = target.x - cur.c;
       const dy = target.y - cur.r;
-      // Only advance after crossing into the adjacent center zone.
-      const stepC = dx >= 0.5 ? 1 : dx <= -0.5 ? -1 : 0;
-      const stepR = dy >= 0.5 ? 1 : dy <= -0.5 ? -1 : 0;
+      const absDx = Math.abs(dx);
+      const absDy = Math.abs(dy);
+      const stepCX = dx > 0 ? 1 : dx < 0 ? -1 : 0;
+      const stepRY = dy > 0 ? 1 : dy < 0 ? -1 : 0;
+      let stepC = absDx >= 0.5 ? stepCX : 0;
+      let stepR = absDy >= 0.5 ? stepRY : 0;
+
+      // Widen diagonal routing corridor so near-corner drags prefer diagonal hops.
+      if (!stepC && stepR && stepCX && absDx >= diagonalAssistThreshold) stepC = stepCX;
+      if (!stepR && stepC && stepRY && absDy >= diagonalAssistThreshold) stepR = stepRY;
+
       if (!stepR && !stepC) break;
 
       const next = { r: cur.r + stepR, c: cur.c + stepC };
@@ -1381,25 +1408,47 @@ export function GridCanvas(props: {
     return null;
   }
 
-  function pickEdgeByPointer(clientX: number, clientY: number, threshold = 0.22): { a: CellRC; b: CellRC } | null {
+  function pickEdgeByPointer(clientX: number, clientY: number, threshold = 0.3): { a: CellRC; b: CellRC } | null {
     const pt = eventPoint(clientX, clientY);
     if (!pt) return null;
 
-    const candidates = [
-      { dist: pt.fy, a: { r: pt.r, c: pt.c }, b: { r: pt.r, c: pt.c + 1 } },
-      { dist: 1 - pt.fy, a: { r: pt.r + 1, c: pt.c }, b: { r: pt.r + 1, c: pt.c + 1 } },
-      { dist: pt.fx, a: { r: pt.r, c: pt.c }, b: { r: pt.r + 1, c: pt.c } },
-      { dist: 1 - pt.fx, a: { r: pt.r, c: pt.c + 1 }, b: { r: pt.r + 1, c: pt.c + 1 } },
+    const edgeCenters = [
+      { fx: 0.5, fy: 0, side: "top" as const },
+      { fx: 1, fy: 0.5, side: "right" as const },
+      { fx: 0.5, fy: 1, side: "bottom" as const },
+      { fx: 0, fy: 0.5, side: "left" as const },
     ];
 
-    let best = candidates[0] as { dist: number; a: CellRC; b: CellRC };
-    for (let i = 1; i < candidates.length; i++) {
-      const candidate = candidates[i] as { dist: number; a: CellRC; b: CellRC };
-      if (candidate.dist < best.dist) best = candidate;
+    let best = edgeCenters[0] as { fx: number; fy: number; side: "top" | "right" | "bottom" | "left" };
+    let bestDist = Math.hypot(pt.fx - best.fx, pt.fy - best.fy);
+    for (let i = 1; i < edgeCenters.length; i++) {
+      const edge = edgeCenters[i] as { fx: number; fy: number; side: "top" | "right" | "bottom" | "left" };
+      const dist = Math.hypot(pt.fx - edge.fx, pt.fy - edge.fy);
+      if (dist < bestDist) {
+        best = edge;
+        bestDist = dist;
+      }
     }
 
-    if (best.dist > threshold) return null;
-    return { a: best.a, b: best.b };
+    if (bestDist > threshold) return null;
+
+    if (best.side === "top") {
+      if (pt.r - 1 < 0) return null;
+      return { a: { r: pt.r, c: pt.c }, b: { r: pt.r - 1, c: pt.c } };
+    }
+
+    if (best.side === "bottom") {
+      if (pt.r + 1 >= rows) return null;
+      return { a: { r: pt.r, c: pt.c }, b: { r: pt.r + 1, c: pt.c } };
+    }
+
+    if (best.side === "left") {
+      if (pt.c - 1 < 0) return null;
+      return { a: { r: pt.r, c: pt.c }, b: { r: pt.r, c: pt.c - 1 } };
+    }
+
+    if (pt.c + 1 >= cols) return null;
+    return { a: { r: pt.r, c: pt.c }, b: { r: pt.r, c: pt.c + 1 } };
   }
 
   function resolveInitialLineKind(point: { fx: number; fy: number }): LineKindResolved {
@@ -1542,7 +1591,7 @@ export function GridCanvas(props: {
       drag.selectionDragActive = true;
     }
 
-    const hops = centerHopsFromPointer(drag.last, e.clientX, e.clientY);
+    const hops = centerHopsFromPointer(drag.last, e.clientX, e.clientY, { diagonalAssistThreshold: 0.26 });
     if (!hops.length) return;
 
     const nextSelection = drag.selectionSet ? new Set(drag.selectionSet) : new Set<string>();
@@ -1568,7 +1617,7 @@ export function GridCanvas(props: {
       const kind = drag.lineKind ?? "center";
       if (!drag.moved) {
         if (kind === "edge") {
-          const tappedEdge = pickEdgeByPointer(e.clientX, e.clientY, 0.24);
+          const tappedEdge = pickEdgeByPointer(e.clientX, e.clientY, 0.32);
           if (tappedEdge) {
             props.onLineTapEdge(tappedEdge.a, tappedEdge.b);
           } else {
