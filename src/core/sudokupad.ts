@@ -429,6 +429,62 @@ function inferPuzzleSize(sclObj: any, givens: Array<{ rc: CellRC }>): number {
   return inferred > 0 ? inferred : 9;
 }
 
+function standardSubgridForSize(n: number): { r: number; c: number } | null {
+  if (n === 6) return { r: 2, c: 3 };
+  if (n === 8) return { r: 2, c: 4 };
+  if (n === 10) return { r: 2, c: 5 };
+  if (n === 12) return { r: 3, c: 4 };
+  const s = Math.sqrt(n);
+  if (Number.isInteger(s)) return { r: s, c: s };
+  return null;
+}
+
+function detectStandardSubgrid(sclObj: any, n: number): { r: number; c: number } | undefined {
+  const candidate = standardSubgridForSize(n);
+  if (!candidate) return undefined;
+
+  const regionsRaw = Array.isArray(sclObj?.regions)
+    ? sclObj.regions
+    : Array.isArray(sclObj?.re)
+      ? sclObj.re
+      : null;
+  if (!regionsRaw?.length) return undefined;
+
+  const parsedRegions = regionsRaw
+    .map((region: any) => parseCellRefs(region))
+    .filter((cells: CellRC[]) => cells.length > 0);
+  if (!parsedRegions.length) return undefined;
+
+  const expectedRegionCount = (n / candidate.r) * (n / candidate.c);
+  if (parsedRegions.length !== expectedRegionCount) return undefined;
+  if (!parsedRegions.every((cells: CellRC[]) => cells.length === candidate.r * candidate.c)) return undefined;
+
+  const canonical = (cells: CellRC[]) => cells
+    .map((rc) => `${rc.r},${rc.c}`)
+    .sort()
+    .join("|");
+
+  const actual = parsedRegions.map(canonical).sort();
+  const expected: string[] = [];
+  for (let br = 0; br < n; br += candidate.r) {
+    for (let bc = 0; bc < n; bc += candidate.c) {
+      const box: CellRC[] = [];
+      for (let r = 0; r < candidate.r; r++) {
+        for (let c = 0; c < candidate.c; c++) {
+          box.push({ r: br + r, c: bc + c });
+        }
+      }
+      expected.push(canonical(box));
+    }
+  }
+  expected.sort();
+
+  for (let i = 0; i < expected.length; i++) {
+    if (expected[i] !== actual[i]) return undefined;
+  }
+  return candidate;
+}
+
 function parseSolveCount(...values: unknown[]): number | undefined {
   for (const v of values) {
     if (typeof v === "number" && Number.isFinite(v) && v >= 0) return Math.floor(v);
@@ -661,6 +717,7 @@ export async function loadFromSudokuPad(inputUrlOrId: string): Promise<{ key: st
 
   const givens = extractGivens(sclObj);
   const size = inferPuzzleSize(sclObj, givens);
+  const subgrid = detectStandardSubgrid(sclObj, size);
 
   const key = normalizePuzzleKey(sourceId);
   const def: PuzzleDefinition = {
@@ -669,7 +726,10 @@ export async function loadFromSudokuPad(inputUrlOrId: string): Promise<{ key: st
     size,
     meta,
     givens,
-    cosmetics,
+    cosmetics: {
+      ...cosmetics,
+      ...(subgrid ? { subgrid } : {}),
+    },
   };
 
   return { key, def, raw: sclObj ?? raw };

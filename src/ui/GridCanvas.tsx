@@ -383,15 +383,7 @@ export function GridCanvas(props: {
       ctx.restore();
     };
 
-    const subgrid = (() => {
-      if (n === 6) return { r: 2, c: 3 };
-      if (n === 8) return { r: 2, c: 4 };
-      if (n === 10) return { r: 2, c: 5 };
-      if (n === 12) return { r: 3, c: 4 };
-      const s = Math.sqrt(n);
-      if (Number.isInteger(s)) return { r: s, c: s };
-      return { r: 1, c: 1 };
-    })();
+    const subgrid = def.cosmetics.subgrid ?? { r: 1, c: 1 };
 
     const drawGridLines = () => {
       for (let i = 0; i <= n; i++) {
