@@ -8,14 +8,15 @@ export const IconPause = () => (
 );
 export const IconPlay = () => (
 	<svg width="18" height="18" viewBox="0 0 20 20" aria-hidden>
-		<path d="M6.4 4.4v11.2L15.4 10 6.4 4.4Z" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
+		<path d="M6.2 4.8a1 1 0 0 1 1.53-.84l7.15 5a1 1 0 0 1 0 1.64l-7.15 5a1 1 0 0 1-1.53-.82V4.8Z" fill="currentColor" />
 	</svg>
 );
 export const IconReload = () => (
-	<svg width="18" height="18" viewBox="0 0 20 20" aria-hidden>
-		<path d="M16.2 10a6.2 6.2 0 1 1-1.92-4.49" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-		<path d="M11.9 3.1h4.8v4.8" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-		<path d="M16.7 3.1 12.2 7.6" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+	<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden>
+		<path d="M21 2v6h-6" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
+		<path d="M21 12a9 9 0 0 0-14.13-7.5L3 10" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
+		<path d="M3 22v-6h6" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
+		<path d="M3 12a9 9 0 0 0 14.13 7.5L21 14" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
 	</svg>
 );
 export const IconCopyLink = () => (

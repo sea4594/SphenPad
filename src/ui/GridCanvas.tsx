@@ -861,42 +861,12 @@ export function GridCanvas(props: {
       }
     };
 
-    const isMarkerOverlay = (item: LayerItem) => {
-      const txt = item.text == null ? "" : String(item.text).trim();
-      const noText = txt.length === 0;
-      const singleMarkerChar = txt.length === 1 && /^[xv]$/i.test(txt);
-      return (
-        Boolean(item.rounded) &&
-        (noText || singleMarkerChar) &&
-        typeof item.width === "number" &&
-        typeof item.height === "number" &&
-        item.width <= 0.62 &&
-        item.height <= 0.62
-      );
-    };
-
-    const drawOverlays = (mode: "regular" | "markers" | "all") => {
-      if (!def.cosmetics.overlays?.length) return;
-      const overlays =
-        mode === "all"
-          ? def.cosmetics.overlays
-          : def.cosmetics.overlays.filter((item) => (mode === "markers" ? isMarkerOverlay(item) : !isMarkerOverlay(item)));
-      if (!overlays.length) return;
-      drawLayer(overlays as NonNullable<PuzzleDefinition["cosmetics"]["underlays"]>);
-    };
-
-    const drawRegularOverlays = (opts?: { drawShapes?: boolean; drawText?: boolean }) => {
-      if (!def.cosmetics.overlays?.length) return;
-      const overlays = def.cosmetics.overlays.filter((item) => !isMarkerOverlay(item));
-      if (!overlays.length) return;
-      drawLayer(overlays as NonNullable<PuzzleDefinition["cosmetics"]["underlays"]>, opts);
-    };
-
     const drawTopPuzzleFeatures = () => {
       drawCages();
       drawConstraintLines("over");
-      drawRegularOverlays({ drawShapes: true, drawText: false });
-      drawRegularOverlays({ drawShapes: false, drawText: true });
+      if (def.cosmetics.overlays?.length) {
+        drawLayer(def.cosmetics.overlays as NonNullable<PuzzleDefinition["cosmetics"]["underlays"]>);
+      }
       drawArrows();
     };
 
@@ -1205,7 +1175,7 @@ export function GridCanvas(props: {
     // Always keep user lines on top of artwork/fog.
     drawUserLines();
 
-    // Dots and marker overlays should sit above grid/user lines.
+    // Dots should sit above grid/user lines.
     if (fogDefined) {
       ctx.save();
       ctx.beginPath();
@@ -1217,11 +1187,9 @@ export function GridCanvas(props: {
       }
       ctx.clip();
       drawDots();
-      drawOverlays("markers");
       ctx.restore();
     } else {
       drawDots();
-      drawOverlays("markers");
     }
 
     drawSelectionOutlines();

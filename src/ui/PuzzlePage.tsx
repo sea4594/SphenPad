@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { deletePuzzle, getPuzzle, upsertPuzzle } from "../core/storage";
-import type { CellRC, PersistedPuzzle, PuzzleProgress, LineStroke } from "../core/model";
+import type { CellRC, PersistedPuzzle, PuzzleProgress, LineStroke, PuzzleDefinition } from "../core/model";
 import { fmtHMS } from "../core/time";
 import { makeInitialProgress } from "../core/scl";
 import { loadFromSudokuPad } from "../core/sudokupad";
@@ -160,7 +160,7 @@ function normalizePersistedDefinition(p: PersistedPuzzle): PersistedPuzzle {
   const hasGridShape = p.def.rows === rowsFromProgress && p.def.cols === colsFromProgress;
   const overlays = p.def.cosmetics.overlays ?? [];
   let changed = false;
-  const nextOverlays = overlays.map((item) => {
+  const normalizeLayerItem = (item: NonNullable<PuzzleDefinition["cosmetics"]["overlays"]>[number]) => {
     const text = item.text == null ? "" : String(item.text).trim();
     const width = typeof item.width === "number" ? item.width : NaN;
     const height = typeof item.height === "number" ? item.height : NaN;
@@ -170,14 +170,45 @@ function normalizePersistedDefinition(p: PersistedPuzzle): PersistedPuzzle {
       Number.isFinite(height) &&
       width <= 0.35 &&
       height <= 0.35;
+    const zeroSpanTextAnchor =
+      text.length > 0 &&
+      ((Number.isFinite(width) && width <= 0.001) || (Number.isFinite(height) && height <= 0.001));
+    const slenderTextAnchor =
+      text.length > 0 &&
+      Number.isFinite(width) &&
+      Number.isFinite(height) &&
+      Math.min(width, height) <= 0.2 &&
+      Math.max(width, height) >= 0.45;
     const currentSize = typeof item.textSize === "number" ? item.textSize : undefined;
-    if (!tinyTextAnchor || (currentSize != null && currentSize >= 9)) return item;
+    let next = item;
 
-    changed = true;
-    const minSpan = Math.min(width, height);
-    const inferred = Math.max(9, Math.min(14, minSpan * 56 * 2.0));
-    return { ...item, textSize: inferred };
-  });
+    if (tinyTextAnchor && (currentSize == null || currentSize < 9)) {
+      changed = true;
+      const minSpan = Math.min(width, height);
+      const inferred = Math.max(9, Math.min(14, minSpan * 56 * 2.0));
+      next = { ...next, textSize: inferred };
+    }
+
+    if (zeroSpanTextAnchor || slenderTextAnchor) {
+      const hasShape = next.color != null || next.borderColor != null || next.rounded === true;
+      if (hasShape) {
+        changed = true;
+        next = {
+          ...next,
+          rounded: false,
+          color: undefined,
+          borderColor: undefined,
+          borderThickness: undefined,
+        };
+      }
+    }
+
+    return next;
+  };
+
+  const nextOverlays = overlays.map(normalizeLayerItem);
+  const underlays = p.def.cosmetics.underlays ?? [];
+  const nextUnderlays = underlays.map(normalizeLayerItem);
 
   if (!changed && hasGridShape) return p;
   return {
@@ -189,6 +220,7 @@ function normalizePersistedDefinition(p: PersistedPuzzle): PersistedPuzzle {
       cosmetics: {
         ...p.def.cosmetics,
         overlays: nextOverlays,
+        underlays: nextUnderlays,
       },
     },
   };
