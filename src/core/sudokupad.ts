@@ -973,10 +973,21 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
         if (cg?.hidden === true) return null;
         const cells = parseCellRefs(cg?.cells ?? cg?.ce);
         if (!cells.length) return null;
+        const rawDash = cg?.["stroke-dasharray"] ?? cg?.dashArray ?? cg?.dash;
+        const dashArray = Array.isArray(rawDash)
+          ? rawDash.map((n: unknown) => Number(n)).filter(Number.isFinite)
+          : typeof rawDash === "string"
+            ? rawDash.split(/[ ,]+/).map((n: string) => Number(n.trim())).filter(Number.isFinite)
+            : undefined;
         return {
           cells,
           sum: asValue(cg?.value ?? cg?.sum ?? cg?.v),
-          color: cg?.outlineC ?? cg?.color ?? undefined,
+          color: normalizeColorToken(cg?.outlineC ?? cg?.borderColor ?? cg?.stroke ?? cg?.color),
+          textColor: normalizeColorToken(cg?.fontC ?? cg?.fontColor ?? cg?.textColor ?? cg?.labelColor ?? cg?.color),
+          fillColor: normalizeColorToken(cg?.backgroundColor ?? cg?.fill ?? cg?.c2),
+          thickness: parseFiniteNumberToken(cg?.thickness ?? cg?.borderThickness ?? cg?.th),
+          dashArray: dashArray?.length ? dashArray : undefined,
+          opacity: parseOpacityToken(cg?.opacity ?? cg?.alpha),
         };
       })
       .filter(Boolean) as any;

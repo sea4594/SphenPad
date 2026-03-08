@@ -605,9 +605,6 @@ export function GridCanvas(props: {
 
     const drawCages = () => {
       if (!def.cosmetics.cages) return;
-      ctx.strokeStyle = "#000000";
-      ctx.lineWidth = 1.25;
-      ctx.setLineDash([5, 3]);
       const hasMatchingCornerLabel = (cageCells: CellRC[], sum: string) => {
         const labels = [...(def.cosmetics.overlays ?? []), ...(def.cosmetics.underlays ?? [])];
         const expected = String(sum).trim();
@@ -624,14 +621,18 @@ export function GridCanvas(props: {
         });
       };
       for (const cage of def.cosmetics.cages) {
+        const cageOpacity = Number.isFinite(cage.opacity) ? Math.max(0, Math.min(1, Number(cage.opacity))) : 1;
+        const cageStroke = cage.color ?? "#000000";
+        const cageLineWidth = (cage.thickness ?? 1.25) * (cellPx / 56);
+        const cageDash = cage.dashArray?.length ? cage.dashArray : [5, 3];
         const set = new Set(cage.cells.map((rc) => `${rc.r},${rc.c}`));
-        const cageFill = cage.color ? darkenColor(cage.color, -0.05) : undefined;
         for (const rc of cage.cells) {
-          if (cageFill) {
-            ctx.fillStyle = cageFill;
-            ctx.globalAlpha = 0.12;
-            ctx.fillRect(cellX(rc.c) + 2, cellY(rc.r) + 2, cellPx - 4, cellPx - 4);
-            ctx.globalAlpha = 1;
+          if (cage.fillColor) {
+            ctx.save();
+            ctx.globalAlpha *= cageOpacity;
+            ctx.fillStyle = cage.fillColor;
+            ctx.fillRect(cellX(rc.c), cellY(rc.r), cellPx, cellPx);
+            ctx.restore();
           }
           const x = cellX(rc.c);
           const y = cellY(rc.r);
@@ -642,6 +643,11 @@ export function GridCanvas(props: {
             down: `${rc.r + 1},${rc.c}`,
             left: `${rc.r},${rc.c - 1}`,
           };
+          ctx.save();
+          ctx.globalAlpha *= cageOpacity;
+          ctx.strokeStyle = cageStroke;
+          ctx.lineWidth = cageLineWidth;
+          ctx.setLineDash(cageDash);
           if (!set.has(neighbors.up)) {
             ctx.beginPath();
             ctx.moveTo(x + inset, y + inset);
@@ -666,17 +672,17 @@ export function GridCanvas(props: {
             ctx.lineTo(x + inset, y + cellPx - inset);
             ctx.stroke();
           }
+          ctx.restore();
         }
         if (cage.sum) {
           const first = cage.cells[0];
           if (!hasMatchingCornerLabel(cage.cells, cage.sum)) {
-            ctx.fillStyle = "#111111";
+            ctx.fillStyle = cage.textColor ?? cage.color ?? "#111111";
             ctx.font = `12px ${gridTextFont}, ${emojiTextFont}`;
             ctx.fillText(cage.sum, cellX(first.c) + 6, cellY(first.r) + 14);
           }
         }
       }
-      ctx.setLineDash([]);
     };
 
     const drawArrows = () => {
