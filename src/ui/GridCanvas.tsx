@@ -475,9 +475,12 @@ export function GridCanvas(props: {
 
     const drawGridLines = () => {
       if (def.cosmetics.gridVisible === false) return;
+      const unitScale = cellPx / cosmeticUnit;
+      const thinGridLine = Math.max(0.9, 1.0 * unitScale);
+      const thickGridLine = Math.max(1.8, 2.2 * unitScale);
+      ctx.strokeStyle = "#000000";
       for (let i = 0; i <= rows; i++) {
-        ctx.lineWidth = i % subgrid.r === 0 ? 2.2 : 1;
-        ctx.strokeStyle = "#000000";
+        ctx.lineWidth = i % subgrid.r === 0 ? thickGridLine : thinGridLine;
         ctx.beginPath();
         ctx.moveTo(cellX(0), cellY(i));
         ctx.lineTo(cellX(cols), cellY(i));
@@ -485,7 +488,7 @@ export function GridCanvas(props: {
       }
 
       for (let i = 0; i <= cols; i++) {
-        ctx.lineWidth = i % subgrid.c === 0 ? 2.2 : 1;
+        ctx.lineWidth = i % subgrid.c === 0 ? thickGridLine : thinGridLine;
         ctx.beginPath();
         ctx.moveTo(cellX(i), cellY(0));
         ctx.lineTo(cellX(i), cellY(rows));
@@ -1142,9 +1145,12 @@ export function GridCanvas(props: {
 
       // Keep grid visible on top of fog when enabled.
       if (def.cosmetics.gridVisible !== false) {
+        const unitScale = cellPx / cosmeticUnit;
+        const thinGridLine = Math.max(0.9, 1.0 * unitScale);
+        const thickGridLine = Math.max(1.9, 2.5 * unitScale);
+        ctx.strokeStyle = "#000000";
         for (let i = 0; i <= rows; i++) {
-          ctx.lineWidth = i % subgrid.r === 0 ? 2.5 : 1;
-          ctx.strokeStyle = "#000000";
+          ctx.lineWidth = i % subgrid.r === 0 ? thickGridLine : thinGridLine;
           ctx.beginPath();
           ctx.moveTo(cellX(0), cellY(i));
           ctx.lineTo(cellX(cols), cellY(i));
@@ -1152,7 +1158,7 @@ export function GridCanvas(props: {
         }
 
         for (let i = 0; i <= cols; i++) {
-          ctx.lineWidth = i % subgrid.c === 0 ? 2.5 : 1;
+          ctx.lineWidth = i % subgrid.c === 0 ? thickGridLine : thinGridLine;
           ctx.beginPath();
           ctx.moveTo(cellX(i), cellY(0));
           ctx.lineTo(cellX(i), cellY(rows));
