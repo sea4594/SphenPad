@@ -1243,6 +1243,9 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
       Number.isFinite(height) &&
       Number(width) <= 0.5 &&
       Number(height) <= 0.5;
+    const hasZeroSpan =
+      (Number.isFinite(width) && Number(width) <= 0.001) ||
+      (Number.isFinite(height) && Number(height) <= 0.001);
     const strokeActsAsTextColor = isTinyRoundedTextMarker && !hasExplicitBorderColor && item?.stroke != null;
     const borderColor = strokeActsAsTextColor || isNoStrokeToken(rawStroke) ? undefined : strokeToken;
     const fillColor = normalizeColorToken(item?.backgroundColor ?? item?.c2 ?? item?.fill);
@@ -1253,10 +1256,9 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
       Number(Math.min(width as number, height as number)) <= 0.2 &&
       Number(Math.max(width as number, height as number)) >= 0.45;
     const shouldTreatAsTextOnly =
+      hasZeroSpan ||
       isSlenderTextAnchor &&
-      !hasExplicitFillColor &&
-      !hasExplicitBorderColor &&
-      item?.stroke == null;
+      !hasExplicitFillColor;
     const noVisibleStroke = !borderColor;
     const isRoundedTextMarker = textStr.length > 0 && rounded && noVisibleStroke;
     const tinyMarkerShouldKeepShape = isTinyTextMarker && rounded && (Boolean(fillColor) || Boolean(borderColor));
@@ -1274,7 +1276,12 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
       borderColor: suppressShape ? undefined : borderColor,
       borderThickness: parseFiniteNumberToken(item?.thickness ?? item?.th),
       text,
-      textColor: normalizeColorToken(item?.color ?? item?.textColor ?? item?.c ?? (strokeActsAsTextColor ? item?.stroke : undefined)),
+      textColor: normalizeColorToken(
+        item?.color ??
+        item?.textColor ??
+        item?.c ??
+        (strokeActsAsTextColor || shouldTreatAsTextOnly ? item?.stroke : undefined)
+      ),
       textSize: explicitTextSize ?? inferredTinyTextSize,
       angle: parseFiniteNumberToken(item?.angle),
       target: typeof item?.target === "string" ? item.target : undefined,
