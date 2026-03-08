@@ -101,7 +101,7 @@ export function GridCanvas(props: {
     const includeLayer = (item: LayerItem) => {
       const cx = item?.center?.x;
       const cy = item?.center?.y;
-      includePoint(cx, cy);
+      if (!Number.isFinite(cx) || !Number.isFinite(cy)) return;
 
       const hasExplicitBox = Number.isFinite(item?.width) || Number.isFinite(item?.height);
       const hasShape = Boolean(item?.color || item?.borderColor || item?.rounded);
@@ -109,7 +109,30 @@ export function GridCanvas(props: {
       const h = Number.isFinite(item?.height) ? Number(item.height) : hasShape || hasExplicitBox ? 1 : 0;
       // Text-only labels near/above grid edges need extra bounds so glyphs are not clipped.
       const text = item?.text == null ? "" : String(item.text);
-      if ((w <= 0 && h <= 0) && !text.trim().length) return;
+      const textTrim = text.trim();
+      const hasText = textTrim.length > 0;
+      if ((w <= 0 && h <= 0) && !hasText) return;
+
+      const halfW = Math.max(0, w / 2);
+      const halfH = Math.max(0, h / 2);
+      const left = Number(cx) - halfW;
+      const right = Number(cx) + halfW;
+      const top = Number(cy) - halfH;
+      const bottom = Number(cy) + halfH;
+      const fullyOutside = right <= 0 || left >= cols || bottom <= 0 || top >= rows;
+
+      // Compact exports can include tiny anti-alias helper fragments fully outside the board.
+      const tinyShapeOnly = !hasText && (Boolean(item?.color) || Boolean(item?.borderColor)) && Math.max(w, h) <= 0.25;
+      if (tinyShapeOnly && fullyOutside) return;
+
+      // Border-only near-grid frames are usually bevel/shadow artifacts, not standalone outside art.
+      const borderOnly = !hasText && !item?.color && Boolean(item?.borderColor) && (item?.borderThickness ?? 1.4) > 0;
+      const centeredOnGrid = Math.abs(Number(cx) - cols / 2) <= 0.4 && Math.abs(Number(cy) - rows / 2) <= 0.4;
+      const frameSized = w >= cols && h >= rows && w <= cols + 1.5 && h <= rows + 1.5;
+      if (borderOnly && centeredOnGrid && frameSized) return;
+
+      includePoint(cx, cy);
+
       const textSize = Number.isFinite(item?.textSize) ? Number(item.textSize) : 16;
       const textHalfHeight = Math.max(0.42, (textSize / cosmeticUnit) * 0.98);
       const textHalfWidth = Math.max(0.5, Math.min(5.2, (Math.max(1, text.length) * textSize) / 108));
@@ -118,8 +141,8 @@ export function GridCanvas(props: {
         includePoint(cx + textHalfWidth, cy + textHalfHeight);
         return;
       }
-      includePoint(cx - Math.max(w / 2, text.trim().length ? textHalfWidth : 0), cy - Math.max(h / 2, text.trim().length ? textHalfHeight : 0));
-      includePoint(cx + Math.max(w / 2, text.trim().length ? textHalfWidth : 0), cy + Math.max(h / 2, text.trim().length ? textHalfHeight : 0));
+      includePoint(cx - Math.max(w / 2, hasText ? textHalfWidth : 0), cy - Math.max(h / 2, hasText ? textHalfHeight : 0));
+      includePoint(cx + Math.max(w / 2, hasText ? textHalfWidth : 0), cy + Math.max(h / 2, hasText ? textHalfHeight : 0));
     };
 
     for (const item of def.cosmetics.overlays ?? []) includeLayer(item);
@@ -140,6 +163,7 @@ export function GridCanvas(props: {
   const outsideTop = Math.max(0, -worldBounds.minY);
   const outsideRight = Math.max(0, worldBounds.maxX - cols);
   const outsideBottom = Math.max(0, worldBounds.maxY - rows);
+  const hasOutsideArtwork = outsideLeft > 0.001 || outsideTop > 0.001 || outsideRight > 0.001 || outsideBottom > 0.001;
 
   const originX = pad + outsideLeft * cellPx;
   const originY = pad + outsideTop * cellPx;
@@ -372,8 +396,10 @@ export function GridCanvas(props: {
       ctx.globalAlpha = 1;
     }
 
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, widthPx, heightPx);
+    if (!hasOutsideArtwork) {
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, widthPx, heightPx);
+    }
 
     // Keep the full Sudoku grid area pure white regardless of global theme.
     ctx.fillStyle = "#ffffff";
@@ -484,6 +510,25 @@ export function GridCanvas(props: {
       for (const item of items) {
         const w = Number.isFinite(item.width) ? item.width! : 1;
         const h = Number.isFinite(item.height) ? item.height! : 1;
+        const text = item.text == null ? "" : String(item.text).trim();
+        const halfW = Math.max(0, w / 2);
+        const halfH = Math.max(0, h / 2);
+        const left = item.center.x - halfW;
+        const right = item.center.x + halfW;
+        const top = item.center.y - halfH;
+        const bottom = item.center.y + halfH;
+        const fullyOutside = right <= 0 || left >= cols || bottom <= 0 || top >= rows;
+
+        // Compact exports can include tiny helper shapes fully outside the board.
+        const tinyShapeOnly = !text.length && (Boolean(item.color) || Boolean(item.borderColor)) && Math.max(w, h) <= 0.25;
+        if (tinyShapeOnly && fullyOutside) continue;
+
+        // Ignore artifact frame strokes hugging the board extents.
+        const borderOnly = !text.length && !item.color && Boolean(item.borderColor) && (item.borderThickness ?? 1.4) > 0;
+        const centeredOnGrid = Math.abs(item.center.x - cols / 2) <= 0.4 && Math.abs(item.center.y - rows / 2) <= 0.4;
+        const frameSized = w >= cols && h >= rows && w <= cols + 1.5 && h <= rows + 1.5;
+        if (borderOnly && centeredOnGrid && frameSized) continue;
+
         const x = worldX(item.center.x - w / 2);
         const y = worldY(item.center.y - h / 2);
         const rw = w * cellPx;
