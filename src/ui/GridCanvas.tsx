@@ -541,19 +541,27 @@ export function GridCanvas(props: {
           }
         } else {
           ctx.strokeStyle = item.borderColor as string;
-          ctx.lineWidth = (item.borderThickness ?? 1.4) * (cellPx / cosmeticUnit);
+          const borderWidth = (item.borderThickness ?? 1.4) * (cellPx / cosmeticUnit);
+          // SudokuPad-exported layer thickness behaves like an inset (inner) border.
+          // Canvas strokes are centered by default, so inset the path by half width.
+          ctx.lineWidth = borderWidth;
+          const inset = borderWidth / 2;
+          const sx = x + inset;
+          const sy = y + inset;
+          const sw = Math.max(0, rw - borderWidth);
+          const sh = Math.max(0, rh - borderWidth);
           if (item.rounded) {
             if (nearlyCircle) {
               ctx.beginPath();
-              ctx.ellipse(cx, cy, rw / 2, rh / 2, 0, 0, Math.PI * 2);
+              ctx.ellipse(cx, cy, sw / 2, sh / 2, 0, 0, Math.PI * 2);
               ctx.stroke();
             } else {
               ctx.beginPath();
-              ctx.roundRect(x, y, rw, rh, Math.min(14, cellPx * 0.25));
+              ctx.roundRect(sx, sy, sw, sh, Math.min(14, cellPx * 0.25));
               ctx.stroke();
             }
           } else {
-            ctx.strokeRect(x, y, rw, rh);
+            ctx.strokeRect(sx, sy, sw, sh);
           }
         }
         ctx.restore();
