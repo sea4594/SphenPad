@@ -109,30 +109,25 @@ export function GridCanvas(props: {
       const h = Number.isFinite(item?.height) ? Number(item.height) : hasShape || hasExplicitBox ? 1 : 0;
       // Text-only labels near/above grid edges need extra bounds so glyphs are not clipped.
       const text = item?.text == null ? "" : String(item.text);
-      const textTrim = text.trim();
-      const hasText = textTrim.length > 0;
+      const hasText = text.trim().length > 0;
       if ((w <= 0 && h <= 0) && !hasText) return;
 
+      const angleRad = ((Number(item?.angle) || 0) * Math.PI) / 180;
       const halfW = Math.max(0, w / 2);
       const halfH = Math.max(0, h / 2);
-      const left = Number(cx) - halfW;
-      const right = Number(cx) + halfW;
-      const top = Number(cy) - halfH;
-      const bottom = Number(cy) + halfH;
+      const cosA = Math.abs(Math.cos(angleRad));
+      const sinA = Math.abs(Math.sin(angleRad));
+      const boundsHalfW = halfW * cosA + halfH * sinA;
+      const boundsHalfH = halfW * sinA + halfH * cosA;
+      const left = Number(cx) - boundsHalfW;
+      const right = Number(cx) + boundsHalfW;
+      const top = Number(cy) - boundsHalfH;
+      const bottom = Number(cy) + boundsHalfH;
       const fullyOutside = right <= 0 || left >= cols || bottom <= 0 || top >= rows;
-
-      // Compact exports can include tiny anti-alias helper fragments fully outside the board.
-      const tinyShapeOnly = !hasText && (Boolean(item?.color) || Boolean(item?.borderColor)) && Math.max(w, h) <= 0.25;
+      const tinyShapeOnly = !hasText && (Boolean(item?.color) || Boolean(item?.borderColor)) && Math.max(w, h) <= 0.22;
       if (tinyShapeOnly && fullyOutside) return;
 
-      // Border-only near-grid frames are usually bevel/shadow artifacts, not standalone outside art.
-      const borderOnly = !hasText && !item?.color && Boolean(item?.borderColor) && (item?.borderThickness ?? 1.4) > 0;
-      const centeredOnGrid = Math.abs(Number(cx) - cols / 2) <= 0.4 && Math.abs(Number(cy) - rows / 2) <= 0.4;
-      const frameSized = w >= cols && h >= rows && w <= cols + 1.5 && h <= rows + 1.5;
-      if (borderOnly && centeredOnGrid && frameSized) return;
-
       includePoint(cx, cy);
-
       const textSize = Number.isFinite(item?.textSize) ? Number(item.textSize) : 16;
       const textHalfHeight = Math.max(0.42, (textSize / cosmeticUnit) * 0.98);
       const textHalfWidth = Math.max(0.5, Math.min(5.2, (Math.max(1, text.length) * textSize) / 108));
@@ -141,8 +136,8 @@ export function GridCanvas(props: {
         includePoint(cx + textHalfWidth, cy + textHalfHeight);
         return;
       }
-      includePoint(cx - Math.max(w / 2, hasText ? textHalfWidth : 0), cy - Math.max(h / 2, hasText ? textHalfHeight : 0));
-      includePoint(cx + Math.max(w / 2, hasText ? textHalfWidth : 0), cy + Math.max(h / 2, hasText ? textHalfHeight : 0));
+      includePoint(cx - Math.max(boundsHalfW, hasText ? textHalfWidth : 0), cy - Math.max(boundsHalfH, hasText ? textHalfHeight : 0));
+      includePoint(cx + Math.max(boundsHalfW, hasText ? textHalfWidth : 0), cy + Math.max(boundsHalfH, hasText ? textHalfHeight : 0));
     };
 
     for (const item of def.cosmetics.overlays ?? []) includeLayer(item);
@@ -163,7 +158,6 @@ export function GridCanvas(props: {
   const outsideTop = Math.max(0, -worldBounds.minY);
   const outsideRight = Math.max(0, worldBounds.maxX - cols);
   const outsideBottom = Math.max(0, worldBounds.maxY - rows);
-  const hasOutsideArtwork = outsideLeft > 0.001 || outsideTop > 0.001 || outsideRight > 0.001 || outsideBottom > 0.001;
 
   const originX = pad + outsideLeft * cellPx;
   const originY = pad + outsideTop * cellPx;
@@ -308,6 +302,23 @@ export function GridCanvas(props: {
     return `#${body}${a}`;
   }
 
+  function isVeryLightColor(color: string | undefined): boolean {
+    if (!color) return false;
+    const s = color.trim().toLowerCase();
+    if (!s.startsWith("#")) return false;
+    const h = s.slice(1);
+    if (![3, 4, 6, 8].includes(h.length)) return false;
+    const full = h.length <= 4 ? h.split("").map((ch) => ch + ch).join("") : h;
+    const rgb = full.slice(0, 6);
+    const n = Number.parseInt(rgb, 16);
+    if (!Number.isFinite(n)) return false;
+    const r = (n >> 16) & 0xff;
+    const g = (n >> 8) & 0xff;
+    const b = n & 0xff;
+    const lum = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+    return lum >= 0.94;
+  }
+
   useEffect(() => {
     const el = wrapRef.current;
     if (!el) return;
@@ -396,10 +407,8 @@ export function GridCanvas(props: {
       ctx.globalAlpha = 1;
     }
 
-    if (!hasOutsideArtwork) {
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(0, 0, widthPx, heightPx);
-    }
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, widthPx, heightPx);
 
     // Keep the full Sudoku grid area pure white regardless of global theme.
     ctx.fillStyle = "#ffffff";
@@ -518,16 +527,15 @@ export function GridCanvas(props: {
         const top = item.center.y - halfH;
         const bottom = item.center.y + halfH;
         const fullyOutside = right <= 0 || left >= cols || bottom <= 0 || top >= rows;
+        const intersectsGrid = !(right <= 0 || left >= cols || bottom <= 0 || top >= rows);
 
-        // Compact exports can include tiny helper shapes fully outside the board.
-        const tinyShapeOnly = !text.length && (Boolean(item.color) || Boolean(item.borderColor)) && Math.max(w, h) <= 0.25;
+        // Compact exports can include tiny helper fragments around corners; ignore when fully outside.
+        const tinyShapeOnly = !text.length && (Boolean(item.color) || Boolean(item.borderColor)) && Math.max(w, h) <= 0.22;
         if (tinyShapeOnly && fullyOutside) continue;
 
-        // Ignore artifact frame strokes hugging the board extents.
-        const borderOnly = !text.length && !item.color && Boolean(item.borderColor) && (item.borderThickness ?? 1.4) > 0;
-        const centeredOnGrid = Math.abs(item.center.x - cols / 2) <= 0.4 && Math.abs(item.center.y - rows / 2) <= 0.4;
-        const frameSized = w >= cols && h >= rows && w <= cols + 1.5 && h <= rows + 1.5;
-        if (borderOnly && centeredOnGrid && frameSized) continue;
+        const shouldClipLightShapeToGrid = intersectsGrid &&
+          (left < 0 || right > cols || top < 0 || bottom > rows) &&
+          (isVeryLightColor(item.color) || isVeryLightColor(item.borderColor));
 
         const x = worldX(item.center.x - w / 2);
         const y = worldY(item.center.y - h / 2);
@@ -541,6 +549,11 @@ export function GridCanvas(props: {
         if (drawShapes && item.color) {
           ctx.save();
           ctx.globalAlpha *= itemOpacity;
+          if (shouldClipLightShapeToGrid) {
+            ctx.beginPath();
+            ctx.rect(cellX(0), cellY(0), cellPx * cols, cellPx * rows);
+            ctx.clip();
+          }
           if (angleRad) {
             ctx.translate(cx, cy);
             ctx.rotate(angleRad);
@@ -567,6 +580,11 @@ export function GridCanvas(props: {
         if (drawShapes && item.borderColor) {
           ctx.save();
           ctx.globalAlpha *= itemOpacity;
+          if (shouldClipLightShapeToGrid) {
+            ctx.beginPath();
+            ctx.rect(cellX(0), cellY(0), cellPx * cols, cellPx * rows);
+            ctx.clip();
+          }
           if (angleRad) {
             ctx.translate(cx, cy);
             ctx.rotate(angleRad);
