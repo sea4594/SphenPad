@@ -142,6 +142,7 @@ export type PuzzleCosmetics = {
 export type PuzzleDefinition = {
   id: string;
   sourceId: string;
+  importRevision?: number;
   size: number;
   rows: number;
   cols: number;

@@ -16,6 +16,8 @@ const COUNTER_API_BASE = "https://api.sudokupad.com/counter";
 const COUNTER_PROXY_A = "https://api.codetabs.com/v1/proxy/?quest=https://api.sudokupad.com/counter";
 const COUNTER_PROXY_B = "https://api.allorigins.win/raw?url=https://api.sudokupad.com/counter";
 
+export const SUDOKUPAD_IMPORT_REVISION = 4;
+
 function timeout(ms: number) {
   return new Promise<never>((_, rej) => setTimeout(() => rej(new Error("Timeout")), ms));
 }
@@ -980,6 +982,7 @@ export async function loadFromSudokuPad(inputUrlOrId: string): Promise<{ key: st
   const def: PuzzleDefinition = {
     id: key,
     sourceId,
+    importRevision: SUDOKUPAD_IMPORT_REVISION,
     size,
     rows: shape.rows,
     cols: shape.cols,

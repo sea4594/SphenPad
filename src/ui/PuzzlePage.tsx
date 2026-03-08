@@ -6,7 +6,7 @@ import { deletePuzzle, getPuzzle, upsertPuzzle } from "../core/storage";
 import type { CellRC, PersistedPuzzle, PuzzleProgress, LineStroke, PuzzleDefinition } from "../core/model";
 import { fmtHMS } from "../core/time";
 import { makeInitialProgress } from "../core/scl";
-import { loadFromSudokuPad } from "../core/sudokupad";
+import { loadFromSudokuPad, SUDOKUPAD_IMPORT_REVISION } from "../core/sudokupad";
 import type { Patch } from "../core/undo";
 import { applyPatch, invertPatch, patchAt } from "../core/undo";
 import { PauseOverlay } from "./PauseOverlay";
@@ -174,6 +174,80 @@ function hasIncompleteMeta(p: PersistedPuzzle): boolean {
   return !title || !author || !rules || /auto-generated because this puzzle has no rules text/i.test(rules);
 }
 
+function inBoundsFor(def: PuzzleDefinition, rc: CellRC): boolean {
+  return rc.r >= 0 && rc.c >= 0 && rc.r < def.rows && rc.c < def.cols;
+}
+
+function hasMeaningfulProgress(p: PersistedPuzzle): boolean {
+  const { progress, def } = p;
+  for (let r = 0; r < progress.cells.length; r++) {
+    for (let c = 0; c < progress.cells[r].length; c++) {
+      const cell = progress.cells[r][c];
+      if (!cell) continue;
+      const given = def.givens.some((g) => g.rc.r === r && g.rc.c === c);
+      if (!given && cell.value) return true;
+      if (cell.notes.center.size || cell.notes.corner.size || cell.notes.candidates.size) return true;
+      if ((cell.highlights?.length ?? 0) > 0) return true;
+    }
+  }
+  return (
+    progress.lines.length > 0 ||
+    progress.lineCenterMarks.length > 0 ||
+    progress.lineEdgeMarks.length > 0 ||
+    p.undo.length > 0 ||
+    p.redo.length > 0
+  );
+}
+
+function migrateProgressToDefinition(oldData: PersistedPuzzle, nextDef: PuzzleDefinition): PuzzleProgress {
+  const base = makeInitialProgress(nextDef);
+  const old = oldData.progress;
+  const rowCap = Math.min(old.cells.length, base.cells.length);
+  const colCap = Math.min(old.cells[0]?.length ?? 0, base.cells[0]?.length ?? 0);
+
+  for (let r = 0; r < rowCap; r++) {
+    for (let c = 0; c < colCap; c++) {
+      const src = old.cells[r][c];
+      const dst = base.cells[r][c];
+      if (!src || !dst) continue;
+      if (!dst.given) dst.value = src.value;
+      dst.notes.center = new Set(src.notes.center);
+      dst.notes.corner = new Set(src.notes.corner);
+      dst.notes.candidates = new Set(src.notes.candidates);
+      dst.highlights = [...(src.highlights ?? [])];
+    }
+  }
+
+  const lineInBounds = (seg: { a: CellRC; b: CellRC }) => {
+    return inBoundsFor(nextDef, seg.a) && inBoundsFor(nextDef, seg.b);
+  };
+
+  const lines = old.lines
+    .map((line) => ({ ...line, segments: line.segments.filter(lineInBounds) }))
+    .filter((line) => line.segments.length > 0);
+
+  return {
+    ...base,
+    totalMillis: old.totalMillis,
+    startedAt: old.startedAt,
+    status: old.status,
+    paused: old.paused,
+    selection: old.selection.filter((rc) => inBoundsFor(nextDef, rc)),
+    multiSelect: old.multiSelect,
+    entryMode: old.entryMode,
+    alphabetMode: old.alphabetMode,
+    highlightPalettePage: old.highlightPalettePage,
+    activeHighlightColor: old.activeHighlightColor,
+    linePaletteColor: old.linePaletteColor,
+    linePaletteKind: old.linePaletteKind,
+    activeTool: old.activeTool,
+    storedSelectionWhenLineTool: old.storedSelectionWhenLineTool?.filter((rc) => inBoundsFor(nextDef, rc)),
+    lines,
+    lineCenterMarks: old.lineCenterMarks.filter((m) => inBoundsFor(nextDef, m.rc)),
+    lineEdgeMarks: old.lineEdgeMarks.filter((m) => inBoundsFor(nextDef, m.a) && inBoundsFor(nextDef, m.b)),
+  };
+}
+
 function normalizePersistedDefinition(p: PersistedPuzzle): PersistedPuzzle {
   const rowsFromProgress = p.progress.cells.length;
   const colsFromProgress = p.progress.cells[0]?.length ?? p.def.size;
@@ -275,6 +349,7 @@ export function PuzzlePage() {
   const undoRef = useRef<() => void>(() => {});
   const redoRef = useRef<() => void>(() => {});
   const metadataRefreshInFlightRef = useRef(new Set<string>());
+  const definitionRefreshInFlightRef = useRef(new Set<string>());
 
   const userId = firebaseEnabled ? auth?.currentUser?.uid : null;
 
@@ -417,6 +492,43 @@ export function PuzzlePage() {
       }
     })();
   }, [data, key, userId, pauseMenuOpen]);
+
+  useEffect(() => {
+    if (!data) return;
+    const currentRevision = data.def.importRevision ?? 0;
+    if (currentRevision >= SUDOKUPAD_IMPORT_REVISION) return;
+
+    const source = (data.def.sourceId ?? key ?? "").trim();
+    if (!source) return;
+
+    const refreshKey = `${key}::${source}::defv${currentRevision}`;
+    if (definitionRefreshInFlightRef.current.has(refreshKey)) return;
+    definitionRefreshInFlightRef.current.add(refreshKey);
+
+    (async () => {
+      try {
+        const loaded = await loadFromSudokuPad(source);
+        const nextDef = loaded.def;
+        const migratedProgress = migrateProgressToDefinition(data, nextDef);
+        const next: PersistedPuzzle = {
+          ...data,
+          def: nextDef,
+          progress: migratedProgress,
+          // Undo/redo patches are tied to prior definition layout and become unsafe after migration.
+          undo: [],
+          redo: [],
+          updatedAt: hasMeaningfulProgress(data) ? data.updatedAt : Date.now(),
+        };
+        setData(next);
+        await upsertPuzzle(key, next);
+        if (userId) await pushPuzzle(userId, key, next);
+      } catch {
+        // Keep existing cached definition if refresh fails.
+      } finally {
+        definitionRefreshInFlightRef.current.delete(refreshKey);
+      }
+    })();
+  }, [data, key, userId]);
 
   async function persist(next: PersistedPuzzle) {
     setData(next);
