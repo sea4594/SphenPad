@@ -1039,8 +1039,8 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
         if (path.length < 2) return null;
         return {
           wayPoints: path.map((rc) => ({ x: rc.c + 0.5, y: rc.r + 0.5 })),
-          color: normalizeColorToken(item?.color ?? "#9fd9ff"),
-          thickness: typeof item?.thickness === "number" ? item.thickness : 10,
+          color: normalizeColorToken(item?.color ?? "#aeb8c8"),
+          thickness: typeof item?.thickness === "number" ? item.thickness : 8,
           target: "overlay",
         };
       })
@@ -1054,12 +1054,12 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
         const first = path[0] as CellRC;
         return {
           center: { x: first.c + 0.5, y: first.r + 0.5 },
-          width: 0.68,
-          height: 0.68,
+          width: 0.72,
+          height: 0.72,
           rounded: true,
-          color: normalizeColorToken(item?.bulbColor ?? item?.color ?? "#c9ecff"),
-          borderColor: normalizeColorToken(item?.borderColor ?? "#6eaed6"),
-          borderThickness: 1.2,
+          color: normalizeColorToken(item?.bulbColor ?? "#ffffff"),
+          borderColor: normalizeColorToken(item?.borderColor ?? "#606975"),
+          borderThickness: 1.3,
         };
       })
       .filter(Boolean) as NonNullable<PuzzleCosmetics["underlays"]>;
@@ -1089,7 +1089,8 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
     const fillColor = normalizeColorToken(item?.backgroundColor ?? item?.c2 ?? item?.fill);
     const noVisibleStroke = !borderColor;
     const isRoundedTextMarker = textStr.length > 0 && rounded && noVisibleStroke;
-    const suppressShape = isTinyTextMarker || (isRoundedTextMarker && !fillColor);
+    const tinyMarkerShouldKeepShape = isTinyTextMarker && rounded && (Boolean(fillColor) || Boolean(borderColor));
+    const suppressShape = (!tinyMarkerShouldKeepShape && isTinyTextMarker) || (isRoundedTextMarker && !fillColor);
 
     return {
       center: ct,
@@ -1215,8 +1216,10 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
 
   // Between lines are represented like thermos but with line-only semantics.
   if (Array.isArray(scl?.betweenline)) {
-    const betweenAsLines = scl.betweenline
-      .flatMap((item: any) => (Array.isArray(item?.lines) ? item.lines.map((line: any) => ({ cells: line, color: item?.color })) : [item]))
+    const betweenEntries = scl.betweenline
+      .flatMap((item: any) => (Array.isArray(item?.lines) ? item.lines.map((line: any) => ({ ...item, cells: line })) : [item]));
+
+    const betweenAsLines = betweenEntries
       .map((item: any) => {
         const path = parseCellRefs(item?.cells ?? item?.ce ?? item?.line ?? item?.lines ?? item);
         if (path.length < 2) return null;
@@ -1229,6 +1232,24 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
       })
       .filter(Boolean) as NonNullable<PuzzleCosmetics["lines"]>;
     if (betweenAsLines.length) cosmetics.lines = [...(cosmetics.lines ?? []), ...betweenAsLines];
+
+    const betweenEndpointCircles = betweenEntries
+      .flatMap((item: any) => {
+        const path = parseCellRefs(item?.cells ?? item?.ce ?? item?.line ?? item?.lines ?? item);
+        if (path.length < 2) return [];
+        const start = path[0] as CellRC;
+        const end = path[path.length - 1] as CellRC;
+        return [start, end].map((rc) => ({
+          center: { x: rc.c + 0.5, y: rc.r + 0.5 },
+          width: 0.62,
+          height: 0.62,
+          rounded: true,
+          color: normalizeColorToken(item?.endFillColor ?? "#ffffff"),
+          borderColor: normalizeColorToken(item?.endBorderColor ?? "#606975"),
+          borderThickness: 1.3,
+        }));
+      }) as NonNullable<PuzzleCosmetics["underlays"]>;
+    if (betweenEndpointCircles.length) cosmetics.underlays = [...(cosmetics.underlays ?? []), ...betweenEndpointCircles];
   }
 
   if (Array.isArray(scl?.thermos)) cosmetics.thermolines = extractPathConstraint(scl.thermos, "#ff6b6b") as any;

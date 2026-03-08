@@ -43,6 +43,16 @@ function segKeyWithKind(seg: { a: CellRC; b: CellRC; edgeTrack?: EdgeTrack }, ki
   return `${lineKindNamespace(kind)}:${segKey(seg.a, seg.b)}`;
 }
 
+function defaultSubgridForSize(n: number): { r: number; c: number } {
+  if (n === 6) return { r: 2, c: 3 };
+  if (n === 8) return { r: 2, c: 4 };
+  if (n === 10) return { r: 2, c: 5 };
+  if (n === 12) return { r: 3, c: 4 };
+  const s = Math.sqrt(n);
+  if (Number.isInteger(s)) return { r: s, c: s };
+  return { r: 1, c: 1 };
+}
+
 export function GridCanvas(props: {
   def: PuzzleDefinition;
   progress: PuzzleProgress;
@@ -390,7 +400,7 @@ export function GridCanvas(props: {
       ctx.restore();
     };
 
-    const subgrid = def.cosmetics.subgrid ?? { r: 1, c: 1 };
+    const subgrid = def.cosmetics.subgrid ?? defaultSubgridForSize(n);
 
     const drawGridLines = () => {
       if (def.cosmetics.gridVisible === false) return;
@@ -521,7 +531,7 @@ export function GridCanvas(props: {
             ctx.fillStyle = item.textColor ?? "#111111";
           }
 
-          const isTightNumberLabel = /^\d{2,}$/.test(text);
+          const isTightNumberLabel = /^\d{2,}$/.test(text) && !onOrOutsideGridBorder;
           if (isTightNumberLabel) {
             const chars = Array.from(text);
             const widths = chars.map((ch) => ctx.measureText(ch).width);
@@ -626,20 +636,19 @@ export function GridCanvas(props: {
       ctx.strokeStyle = "#000000";
       ctx.lineWidth = 1.25;
       ctx.setLineDash([5, 3]);
-      const hasMatchingCornerLabel = (rc: CellRC, sum: string) => {
+      const hasMatchingCornerLabel = (cageCells: CellRC[], sum: string) => {
         const labels = [...(def.cosmetics.overlays ?? []), ...(def.cosmetics.underlays ?? [])];
+        const expected = String(sum).trim();
+        const cageSet = new Set(cageCells.map((cell) => `${cell.r},${cell.c}`));
         return labels.some((item) => {
           const txt = item.text == null ? "" : String(item.text).trim();
-          if (!txt || txt !== sum) return false;
+          if (!txt || txt !== expected) return false;
           const cx = item?.center?.x;
           const cy = item?.center?.y;
           if (!Number.isFinite(cx) || !Number.isFinite(cy)) return false;
           const cellC = Math.floor(Number(cx));
           const cellR = Math.floor(Number(cy));
-          if (cellR !== rc.r || cellC !== rc.c) return false;
-          const fx = Number(cx) - cellC;
-          const fy = Number(cy) - cellR;
-          return fx <= 0.46 && fy <= 0.46;
+          return cageSet.has(`${cellR},${cellC}`);
         });
       };
       for (const cage of def.cosmetics.cages) {
@@ -688,7 +697,7 @@ export function GridCanvas(props: {
         }
         if (cage.sum) {
           const first = cage.cells[0];
-          if (!hasMatchingCornerLabel(first, cage.sum)) {
+          if (!hasMatchingCornerLabel(cage.cells, cage.sum)) {
             ctx.fillStyle = "#111111";
             ctx.font = `12px ${gridTextFont}, ${emojiTextFont}`;
             ctx.fillText(cage.sum, cellX(first.c) + 6, cellY(first.r) + 14);
@@ -765,11 +774,19 @@ export function GridCanvas(props: {
       drawLayer(overlays as NonNullable<PuzzleDefinition["cosmetics"]["underlays"]>);
     };
 
+    const drawRegularOverlays = (opts?: { drawShapes?: boolean; drawText?: boolean }) => {
+      if (!def.cosmetics.overlays?.length) return;
+      const overlays = def.cosmetics.overlays.filter((item) => !isMarkerOverlay(item));
+      if (!overlays.length) return;
+      drawLayer(overlays as NonNullable<PuzzleDefinition["cosmetics"]["underlays"]>, opts);
+    };
+
     const drawTopPuzzleFeatures = () => {
       if (def.cosmetics.underlays?.length) drawLayer(def.cosmetics.underlays, { drawShapes: false, drawText: true });
       drawCages();
-      drawOverlays("regular");
+      drawRegularOverlays({ drawShapes: true, drawText: false });
       drawConstraintLines("over");
+      drawRegularOverlays({ drawShapes: false, drawText: true });
       drawArrows();
     };
 
