@@ -802,6 +802,9 @@ function normalizeLayerCosmeticsToGrid(
   rows: number,
   cols: number,
 ): PuzzleCosmetics {
+  const isNearInteger = (v: number) => Math.abs(v - Math.round(v)) <= 0.03;
+  const isNearHalf = (v: number) => Math.abs(v - (Math.floor(v) + 0.5)) <= 0.03;
+
   const normalizeLayerArray = (
     items: PuzzleCosmetics["underlays"] | PuzzleCosmetics["overlays"] | undefined,
   ) => {
@@ -856,6 +859,23 @@ function normalizeLayerCosmeticsToGrid(
           oversizedByOneCell &&
           isVeryLightColorToken(item.borderColor);
         if (whiteHaloFrame) return null;
+
+        // Some compact SudokuPad exports encode white between-cell markers as
+        // tiny filled rounded circles without a stroke. Add a default outline
+        // only for textless boundary markers so in-cell text circles (e.g. V/XV)
+        // keep their intended no-outline appearance.
+        const isTinyRounded = item.rounded && width > 0 && height > 0 && Math.max(width, height) <= 0.58;
+        const isVeryLightFill = isVeryLightColorToken(item.color);
+        const boundaryMarkerCenter =
+          (isNearInteger(cx) && isNearHalf(cy)) ||
+          (isNearHalf(cx) && isNearInteger(cy));
+        if (isTinyRounded && !hasText && !hasBorder && isVeryLightFill && boundaryMarkerCenter) {
+          return {
+            ...item,
+            borderColor: "#1b1b1b",
+            borderThickness: 1.3,
+          };
+        }
 
         return item;
       })
