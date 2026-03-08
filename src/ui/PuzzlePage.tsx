@@ -17,6 +17,7 @@ import {
   IconExit,
   IconPause,
   IconPlay,
+  IconCopyLink,
   IconReload,
   IconRedo,
   IconSelectMode,
@@ -647,7 +648,13 @@ export function PuzzlePage() {
       const loaded = await loadFromSudokuPad(source);
       const freshKey = loaded.key;
       const freshDef = loaded.def;
-      const freshProgress = makeInitialProgress(freshDef);
+      const baseFresh = makeInitialProgress(freshDef);
+      const freshProgress: PuzzleProgress = {
+        ...baseFresh,
+        startedAt: Date.now(),
+        status: "in_progress",
+        paused: false,
+      };
       const freshData: PersistedPuzzle = {
         def: freshDef,
         progress: freshProgress,
@@ -676,6 +683,19 @@ export function PuzzlePage() {
       alert(`Failed to reload puzzle: ${msg}`);
     } finally {
       setReloadingPuzzle(false);
+    }
+  }
+
+  async function onCopySudokuPadLinkClick() {
+    if (!data) return;
+    const source = (data.def.sourceId ?? key).trim();
+    if (!source) return;
+    const url = /^https?:\/\//i.test(source) ? source : `https://sudokupad.app/${source}`;
+    if (!navigator?.clipboard?.writeText) return;
+    try {
+      await navigator.clipboard.writeText(url);
+    } catch {
+      // Intentionally no-op: copy action should not trigger other behavior.
     }
   }
 
@@ -1186,6 +1206,9 @@ export function PuzzlePage() {
             <button className="btn" onClick={onReloadPuzzleClick} title="Reload puzzle from SudokuPad" disabled={reloadingPuzzle}>
               <IconReload />
             </button>
+            <button className="btn" onClick={onCopySudokuPadLinkClick} title="Copy SudokuPad link">
+              <IconCopyLink />
+            </button>
             <button className="btn" onClick={() => setSettingsOpen(true)} title="Settings">
               <IconSettings />
             </button>
@@ -1207,6 +1230,9 @@ export function PuzzlePage() {
                   </button>
                   <button className="btn" onClick={onReloadPuzzleClick} title="Reload puzzle from SudokuPad" disabled={reloadingPuzzle}>
                     <IconReload />
+                  </button>
+                  <button className="btn" onClick={onCopySudokuPadLinkClick} title="Copy SudokuPad link">
+                    <IconCopyLink />
                   </button>
                   <button className="btn" onClick={() => setSettingsOpen(true)} title="Settings">
                     <IconSettings />

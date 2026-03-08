@@ -6,11 +6,22 @@ export const IconPause = () => (
 		<rect x="11.2" y="4" width="3.8" height="12" rx="1.1" fill="currentColor" />
 	</svg>
 );
-export const IconPlay = () => <span style={{ fontSize: 18 }}>▶</span>;
+export const IconPlay = () => (
+	<svg width="18" height="18" viewBox="0 0 20 20" aria-hidden>
+		<path d="M6.6 4.7a1 1 0 0 1 1.52-.85l7.44 5.3a1 1 0 0 1 0 1.7l-7.44 5.3a1 1 0 0 1-1.52-.84V4.7Z" fill="currentColor" />
+	</svg>
+);
 export const IconReload = () => (
 	<svg width="18" height="18" viewBox="0 0 20 20" aria-hidden>
-		<path d="M16.4 10a6.4 6.4 0 1 1-2.2-4.8" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
-		<path d="M12.8 3.2h3.8V7" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+		<path d="M16.2 10A6.2 6.2 0 1 1 10 3.8" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+		<path d="M10.4 2.9h5v5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+		<path d="M15.4 2.9 12.4 5.9" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+	</svg>
+);
+export const IconCopyLink = () => (
+	<svg width="18" height="18" viewBox="0 0 20 20" aria-hidden>
+		<path d="M8.2 6.4h7.4a2 2 0 0 1 2 2v7.4a2 2 0 0 1-2 2H8.2a2 2 0 0 1-2-2V8.4a2 2 0 0 1 2-2Z" fill="none" stroke="currentColor" strokeWidth="1.6" />
+		<path d="M4.4 13.6H3.8a1.8 1.8 0 0 1-1.8-1.8V3.8A1.8 1.8 0 0 1 3.8 2h8a1.8 1.8 0 0 1 1.8 1.8v.6" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
 	</svg>
 );
 export const IconExit = () => (
