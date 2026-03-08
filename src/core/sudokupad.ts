@@ -785,8 +785,7 @@ function isVeryLightColorToken(token: unknown): boolean {
   if (s === "#fff" || s === "#ffff" || s === "#ffffff" || s === "#ffffffff") return true;
   const m = s.match(/^#([0-9a-f]{6}|[0-9a-f]{8})$/i);
   if (!m) return false;
-  const hex = m[1];
-  const rgb = hex.slice(0, 6);
+  const rgb = m[1].slice(0, 6);
   const r = Number.parseInt(rgb.slice(0, 2), 16);
   const g = Number.parseInt(rgb.slice(2, 4), 16);
   const b = Number.parseInt(rgb.slice(4, 6), 16);
@@ -824,8 +823,7 @@ function normalizeLayerCosmeticsToGrid(
         const bottom = cy + halfH;
         const fullyOutside = right <= 0 || left >= cols || bottom <= 0 || top >= rows;
 
-        // Compact exports sometimes include tiny anti-alias helpers in far corners.
-        // They are non-semantic shape crumbs and should not render as triangles.
+        // Ignore tiny anti-alias crumbs fully outside the puzzle bounds.
         const outsideBothAxes = (cx < 0 || cx > cols) && (cy < 0 || cy > rows);
         const tinyCornerArtifact =
           !hasText &&
@@ -835,10 +833,13 @@ function normalizeLayerCosmeticsToGrid(
           outsideBothAxes;
         if (tinyCornerArtifact) return null;
 
-        // Some puzzles ship an additional white border-only frame slightly larger than the grid.
-        // Keeping this frame creates an unintended white halo outside the board.
+        // Drop oversized border-only light frames that create white halos.
         const centeredOnGrid = Math.abs(cx - cols / 2) <= 0.25 && Math.abs(cy - rows / 2) <= 0.25;
-        const oversizedByOneCell = width >= cols + 0.75 && width <= cols + 1.25 && height >= rows + 0.75 && height <= rows + 1.25;
+        const oversizedByOneCell =
+          width >= cols + 0.75 &&
+          width <= cols + 1.25 &&
+          height >= rows + 0.75 &&
+          height <= rows + 1.25;
         const whiteHaloFrame =
           !hasText &&
           !hasFill &&
