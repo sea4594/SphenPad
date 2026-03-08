@@ -779,6 +779,20 @@ function inferredRulesFromCosmetics(cosmetics: PuzzleCosmetics): string {
   return lines.join("\n\n");
 }
 
+function isVeryLightColorToken(token: unknown): boolean {
+  if (typeof token !== "string") return false;
+  const s = token.trim().toLowerCase();
+  if (s === "#fff" || s === "#ffff" || s === "#ffffff" || s === "#ffffffff") return true;
+  const m = s.match(/^#([0-9a-f]{6}|[0-9a-f]{8})$/i);
+  if (!m) return false;
+  const hex = m[1];
+  const rgb = hex.slice(0, 6);
+  const r = Number.parseInt(rgb.slice(0, 2), 16);
+  const g = Number.parseInt(rgb.slice(2, 4), 16);
+  const b = Number.parseInt(rgb.slice(4, 6), 16);
+  return r >= 245 && g >= 245 && b >= 245;
+}
+
 function normalizeLayerCosmeticsToGrid(
   cosmetics: PuzzleCosmetics,
   rows: number,
@@ -808,38 +822,31 @@ function normalizeLayerCosmeticsToGrid(
         const left = cx - halfW;
         const top = cy - halfH;
         const bottom = cy + halfH;
+        const fullyOutside = right <= 0 || left >= cols || bottom <= 0 || top >= rows;
 
-        // Compact SudokuPad exports often include tiny anti-alias fragments at the board perimeter.
-        // When they sit fully outside the grid and carry no text semantics, ignore them.
-        const tinyShapeOnly =
+        // Compact exports sometimes include tiny anti-alias helpers in far corners.
+        // They are non-semantic shape crumbs and should not render as triangles.
+        const outsideBothAxes = (cx < 0 || cx > cols) && (cy < 0 || cy > rows);
+        const tinyCornerArtifact =
           !hasText &&
           (hasFill || hasBorder) &&
-          Math.max(width, height) <= 0.25;
-        const fullyOutside = right <= 0 || left >= cols || bottom <= 0 || top >= rows;
-        if (tinyShapeOnly && fullyOutside) return null;
+          Math.max(width, height) <= 0.22 &&
+          fullyOutside &&
+          outsideBothAxes;
+        if (tinyCornerArtifact) return null;
 
-        // Border-only frames that slightly exceed puzzle size are usually decorative bevels.
-        // Clamp them to the board extents so they do not leak outside the playable area.
-        const nearAxisAligned = Math.abs((item.angle ?? 0) % 180) <= 0.001;
-        const centeredOnGrid = Math.abs(cx - cols / 2) <= 0.35 && Math.abs(cy - rows / 2) <= 0.35;
-        const looksLikeOuterFrame =
+        // Some puzzles ship an additional white border-only frame slightly larger than the grid.
+        // Keeping this frame creates an unintended white halo outside the board.
+        const centeredOnGrid = Math.abs(cx - cols / 2) <= 0.25 && Math.abs(cy - rows / 2) <= 0.25;
+        const oversizedByOneCell = width >= cols + 0.75 && width <= cols + 1.25 && height >= rows + 0.75 && height <= rows + 1.25;
+        const whiteHaloFrame =
           !hasText &&
           !hasFill &&
           hasBorder &&
-          nearAxisAligned &&
           centeredOnGrid &&
-          width >= cols &&
-          height >= rows &&
-          width <= cols + 1.5 &&
-          height <= rows + 1.5;
-
-        if (looksLikeOuterFrame) {
-          return {
-            ...item,
-            width: Math.min(width, cols),
-            height: Math.min(height, rows),
-          };
-        }
+          oversizedByOneCell &&
+          isVeryLightColorToken(item.borderColor);
+        if (whiteHaloFrame) return null;
 
         return item;
       })
