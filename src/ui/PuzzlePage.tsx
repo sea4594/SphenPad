@@ -112,6 +112,41 @@ function hasIncompleteMeta(p: PersistedPuzzle): boolean {
   return !title || !author || !rules || /auto-generated because this puzzle has no rules text/i.test(rules);
 }
 
+function normalizePersistedDefinition(p: PersistedPuzzle): PersistedPuzzle {
+  const overlays = p.def.cosmetics.overlays ?? [];
+  let changed = false;
+  const nextOverlays = overlays.map((item) => {
+    const text = item.text == null ? "" : String(item.text).trim();
+    const width = typeof item.width === "number" ? item.width : NaN;
+    const height = typeof item.height === "number" ? item.height : NaN;
+    const tinyTextAnchor =
+      text.length > 0 &&
+      Number.isFinite(width) &&
+      Number.isFinite(height) &&
+      width <= 0.35 &&
+      height <= 0.35;
+    const currentSize = typeof item.textSize === "number" ? item.textSize : undefined;
+    if (!tinyTextAnchor || (currentSize != null && currentSize >= 9)) return item;
+
+    changed = true;
+    const minSpan = Math.min(width, height);
+    const inferred = Math.max(9, Math.min(14, minSpan * 56 * 2.0));
+    return { ...item, textSize: inferred };
+  });
+
+  if (!changed) return p;
+  return {
+    ...p,
+    def: {
+      ...p.def,
+      cosmetics: {
+        ...p.def.cosmetics,
+        overlays: nextOverlays,
+      },
+    },
+  };
+}
+
 const highlightPalettePages = [
   ["#d9d9d9", "#9b9b9b", "#4f4f4f", "#57d38c", "#ff8fc3", "#ffae57", "#ff5f57", "#ffe066", "#63a6ff"],
   ["#000000", "#ffa0a0", "#ffdf61", "#feffaf", "#b0ffb0", "#61d060", "#d0d0ff", "#8180f0", "#ff08ff"],
@@ -193,8 +228,8 @@ export function PuzzlePage() {
       if (userId) {
         const cloud = await pullPuzzle(userId, key);
         if (cloud) {
-          const normalizedCloud = { ...cloud, progress: normalizeProgress(cloud.progress) };
-          const normalizedLocal = local ? { ...local, progress: normalizeProgress(local.progress) } : null;
+          const normalizedCloud = normalizePersistedDefinition({ ...cloud, progress: normalizeProgress(cloud.progress) });
+          const normalizedLocal = local ? normalizePersistedDefinition({ ...local, progress: normalizeProgress(local.progress) }) : null;
 
           const localIsNewer = Boolean(normalizedLocal && normalizedLocal.updatedAt >= normalizedCloud.updatedAt);
           const cloudMetaIncomplete = hasIncompleteMeta(normalizedCloud);
@@ -229,9 +264,10 @@ export function PuzzlePage() {
         nav("/");
         return;
       }
-      const normalized = { ...local, progress: normalizeProgress(local.progress) };
+      const normalized = normalizePersistedDefinition({ ...local, progress: normalizeProgress(local.progress) });
       setData(normalized);
       setPauseMenuOpen(Boolean(normalized.progress.paused));
+      await upsertPuzzle(key, normalized);
     })();
   }, [key, nav, userId]);
 
