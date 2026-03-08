@@ -42,6 +42,7 @@ export type PuzzleMeta = {
 };
 
 export type PuzzleCosmetics = {
+  sourceCellSize?: number;
   subgrid?: { r: number; c: number };
   backgroundImageUrl?: string;
   cages?: Array<{

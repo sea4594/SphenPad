@@ -982,6 +982,8 @@ function extractGivens(scl: any): Array<{ rc: CellRC; v: string }> {
 
 function extractCosmetics(scl: any): PuzzleCosmetics {
   const cosmetics: PuzzleCosmetics = {};
+  const sourceCellSize = Number(scl?.cellSize);
+  cosmetics.sourceCellSize = Number.isFinite(sourceCellSize) && sourceCellSize > 0 ? sourceCellSize : 64;
 
   // background image / underlay aliases
   cosmetics.backgroundImageUrl =

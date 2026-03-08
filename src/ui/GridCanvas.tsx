@@ -71,6 +71,8 @@ export function GridCanvas(props: {
 
   const rows = Math.max(1, Number(def.rows ?? progress.cells.length ?? def.size));
   const cols = Math.max(1, Number(def.cols ?? progress.cells[0]?.length ?? def.size));
+  const sourceCellSize = Number(def.cosmetics.sourceCellSize);
+  const cosmeticUnit = Number.isFinite(sourceCellSize) && sourceCellSize > 0 ? sourceCellSize : 56;
   const [cellPx, setCellPx] = useState(56);
   const [bgImage, setBgImage] = useState<HTMLImageElement | null>(null);
   const [linePreview, setLinePreview] = useState<{ segments: LineSegmentDraft[]; kind: LineKindResolved } | null>(null);
@@ -109,7 +111,7 @@ export function GridCanvas(props: {
       const text = item?.text == null ? "" : String(item.text);
       if ((w <= 0 && h <= 0) && !text.trim().length) return;
       const textSize = Number.isFinite(item?.textSize) ? Number(item.textSize) : 16;
-      const textHalfHeight = Math.max(0.42, (textSize / 56) * 0.98);
+      const textHalfHeight = Math.max(0.42, (textSize / cosmeticUnit) * 0.98);
       const textHalfWidth = Math.max(0.5, Math.min(5.2, (Math.max(1, text.length) * textSize) / 108));
       if (w <= 0 && h <= 0) {
         includePoint(cx - textHalfWidth, cy - textHalfHeight);
@@ -124,7 +126,7 @@ export function GridCanvas(props: {
     for (const item of def.cosmetics.underlays ?? []) includeLayer(item);
     for (const ln of def.cosmetics.lines ?? []) {
       for (const p of ln.wayPoints) includePoint(p.x, p.y);
-      const strokePad = Math.max(0.12, ((ln.thickness ?? 6) / 56) * 0.7);
+      const strokePad = Math.max(0.12, ((ln.thickness ?? 6) / cosmeticUnit) * 0.7);
       for (const p of ln.wayPoints) {
         includePoint(p.x - strokePad, p.y - strokePad);
         includePoint(p.x + strokePad, p.y + strokePad);
@@ -132,7 +134,7 @@ export function GridCanvas(props: {
     }
 
     return { minX, minY, maxX, maxY };
-  }, [cols, def.cosmetics.lines, def.cosmetics.overlays, def.cosmetics.underlays, rows]);
+  }, [cols, cosmeticUnit, def.cosmetics.lines, def.cosmetics.overlays, def.cosmetics.underlays, rows]);
 
   const outsideLeft = Math.max(0, -worldBounds.minX);
   const outsideTop = Math.max(0, -worldBounds.minY);
@@ -526,7 +528,7 @@ export function GridCanvas(props: {
             ctx.translate(-cx, -cy);
           }
           ctx.strokeStyle = item.borderColor;
-          ctx.lineWidth = (item.borderThickness ?? 1.4) * (cellPx / 56);
+          ctx.lineWidth = (item.borderThickness ?? 1.4) * (cellPx / cosmeticUnit);
           if (item.rounded) {
             const nearlyCircle = Math.abs(rw - rh) <= Math.max(1, cellPx * 0.02);
             if (nearlyCircle) {
@@ -553,7 +555,7 @@ export function GridCanvas(props: {
             ctx.translate(-cx, -cy);
           }
           ctx.fillStyle = item.textColor ?? "#111111";
-          const pxRaw = (item.textSize ?? 16) * (cellPx / 56);
+          const pxRaw = (item.textSize ?? 16) * (cellPx / cosmeticUnit);
           const tinyAnchorText =
             typeof item.width === "number" &&
             typeof item.height === "number" &&
@@ -620,7 +622,7 @@ export function GridCanvas(props: {
 
         const hasSvgPath = typeof ln.svgPathData === "string" && ln.svgPathData.length > 0;
         if (hasSvgPath) {
-          const units = Number(ln.svgUnitsPerCell) || 56;
+          const units = Number(ln.svgUnitsPerCell) || cosmeticUnit;
           const path = new Path2D(ln.svgPathData as string);
           ctx.save();
           ctx.globalAlpha *= lineOpacity;
@@ -661,7 +663,7 @@ export function GridCanvas(props: {
           const hasStroke = Boolean(ln.color) && (ln.thickness ?? 6) > 0;
           if (hasStroke) {
             ctx.strokeStyle = ln.color as string;
-            ctx.lineWidth = (ln.thickness ?? 6) * (cellPx / 56);
+            ctx.lineWidth = (ln.thickness ?? 6) * (cellPx / cosmeticUnit);
             ctx.lineCap = ln.lineCap ?? "round";
             ctx.lineJoin = ln.lineJoin ?? "round";
             ctx.stroke();
@@ -705,7 +707,7 @@ export function GridCanvas(props: {
       for (const cage of def.cosmetics.cages) {
         const cageOpacity = Number.isFinite(cage.opacity) ? Math.max(0, Math.min(1, Number(cage.opacity))) : 1;
         const cageStroke = cage.color ?? "#000000";
-        const cageLineWidth = (cage.thickness ?? 1.25) * (cellPx / 56);
+        const cageLineWidth = (cage.thickness ?? 1.25) * (cellPx / cosmeticUnit);
         const cageDash = cage.dashArray?.length ? cage.dashArray : [5, 3];
         const set = new Set(cage.cells.map((rc) => `${rc.r},${rc.c}`));
         for (const rc of cage.cells) {
@@ -771,9 +773,9 @@ export function GridCanvas(props: {
       if (!def.cosmetics.arrows) return;
       for (const a of def.cosmetics.arrows) {
         const stroke = a.color ?? "#59606b";
-        const lineW = (a.thickness ?? 4.2) * (cellPx / 56);
+        const lineW = (a.thickness ?? 4.2) * (cellPx / cosmeticUnit);
         const bulbRadius = Math.max(8, cellPx * 0.2);
-        const bulbStrokeWidth = (a.bulbStrokeThickness ?? 1.6) * (cellPx / 56);
+        const bulbStrokeWidth = (a.bulbStrokeThickness ?? 1.6) * (cellPx / cosmeticUnit);
 
         ctx.strokeStyle = stroke;
         ctx.lineWidth = lineW;
