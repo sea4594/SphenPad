@@ -1133,7 +1133,7 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
     const height = parseFiniteNumberToken(rawHeight);
     const rounded = Boolean(item?.rounded ?? item?.r);
     const text = item?.text ?? item?.te;
-    const textStr = typeof text === "string" ? text.trim() : "";
+    const textStr = text == null ? "" : String(text).trim();
     const explicitTextSize = parseFiniteNumberToken(item?.textSize ?? item?.fontSize ?? item?.fs);
     const minSpan = Math.min(
       Number.isFinite(width) ? Number(width) : Number.POSITIVE_INFINITY,
@@ -1141,7 +1141,7 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
     );
     const inferredTinyTextSize =
       explicitTextSize == null && text != null && Number.isFinite(minSpan) && minSpan <= 0.35
-        ? Math.max(6, Math.min(18, minSpan * 56 * 0.95))
+        ? Math.max(9, Math.min(14, minSpan * 56 * 2.0))
         : undefined;
     const isTinyTextMarker =
       textStr.length === 1 &&
