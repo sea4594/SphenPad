@@ -13,9 +13,9 @@ export const IconPlay = () => (
 );
 export const IconReload = () => (
 	<svg width="18" height="18" viewBox="0 0 20 20" aria-hidden>
-		<path d="M16.2 10A6.2 6.2 0 1 1 10 3.8" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-		<path d="M10.4 2.9h5v5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-		<path d="M15.4 2.9 12.4 5.9" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+		<path d="M15.6 9.8a5.6 5.6 0 1 1-2-4.3" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+		<path d="M13.6 2.8h3.6v3.6" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+		<path d="M17.2 2.8 14 6" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
 	</svg>
 );
 export const IconCopyLink = () => (

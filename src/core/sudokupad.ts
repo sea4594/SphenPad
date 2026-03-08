@@ -1232,6 +1232,7 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
       height <= 0.42;
 
     const hasExplicitBorderColor = item?.borderColor != null || item?.outlineC != null || item?.c1 != null;
+    const hasExplicitFillColor = item?.backgroundColor != null || item?.fill != null || item?.baseC != null;
     // In compact SudokuPad payloads, '#0' in stroke-like keys frequently means no visible stroke.
     const rawStroke = item?.borderColor ?? item?.outlineC ?? item?.c1 ?? item?.stroke;
     const strokeToken = normalizeColorToken(rawStroke);
@@ -1245,10 +1246,24 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
     const strokeActsAsTextColor = isTinyRoundedTextMarker && !hasExplicitBorderColor && item?.stroke != null;
     const borderColor = strokeActsAsTextColor || isNoStrokeToken(rawStroke) ? undefined : strokeToken;
     const fillColor = normalizeColorToken(item?.backgroundColor ?? item?.c2 ?? item?.fill);
+    const isSlenderTextAnchor =
+      textStr.length > 0 &&
+      Number.isFinite(width) &&
+      Number.isFinite(height) &&
+      Number(Math.min(width as number, height as number)) <= 0.2 &&
+      Number(Math.max(width as number, height as number)) >= 0.45;
+    const shouldTreatAsTextOnly =
+      isSlenderTextAnchor &&
+      !hasExplicitFillColor &&
+      !hasExplicitBorderColor &&
+      item?.stroke == null;
     const noVisibleStroke = !borderColor;
     const isRoundedTextMarker = textStr.length > 0 && rounded && noVisibleStroke;
     const tinyMarkerShouldKeepShape = isTinyTextMarker && rounded && (Boolean(fillColor) || Boolean(borderColor));
-    const suppressShape = (!tinyMarkerShouldKeepShape && isTinyTextMarker) || (isRoundedTextMarker && !fillColor);
+    const suppressShape =
+      shouldTreatAsTextOnly ||
+      (!tinyMarkerShouldKeepShape && isTinyTextMarker) ||
+      (isRoundedTextMarker && !fillColor);
 
     return {
       center: ct,
