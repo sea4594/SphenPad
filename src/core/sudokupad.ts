@@ -70,7 +70,12 @@ async function fetchPuzzlePayloadById(sourceId: string): Promise<string> {
         continue;
       }
       const text = await res.text();
-      if (looksLikePuzzlePayload(text)) return text;
+      if (looksLikePuzzlePayload(text)) {
+        // Some proxy responses can truncate payloads; only accept parseable candidates.
+        const candidateRaw = tryParseJson(text) ?? text;
+        const candidateScl = coerceToScl(candidateRaw);
+        if (candidateScl) return text;
+      }
       lastErr = new Error("Unexpected non-puzzle payload from endpoint");
     } catch (err) {
       lastErr = err;
@@ -292,6 +297,21 @@ function normalizeColorToken(v: any): string | undefined {
   }
 
   return s;
+}
+
+function parseOpacityToken(v: unknown): number | undefined {
+  const n = typeof v === "number" ? v : typeof v === "string" ? Number(v.trim()) : NaN;
+  if (!Number.isFinite(n)) return undefined;
+  return Math.max(0, Math.min(1, n));
+}
+
+function categorizeTarget(raw: unknown): "under" | "over" | undefined {
+  if (typeof raw !== "string") return undefined;
+  const t = raw.trim().toLowerCase();
+  if (!t) return undefined;
+  if (/(^|[^a-z])(over|overlay|front|foreground|above|top)([^a-z]|$)/.test(t)) return "over";
+  if (/(^|[^a-z])(under|underlay|back|background|behind|below|bottom)([^a-z]|$)/.test(t)) return "under";
+  return undefined;
 }
 
 function parseRcString(value: any): CellRC[] {
@@ -999,6 +1019,7 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
           lineCap,
           lineJoin,
           dashArray: dashArray?.length ? dashArray : undefined,
+          opacity: parseOpacityToken(ln?.opacity ?? ln?.alpha),
         };
       })
       .filter(Boolean) as any;
@@ -1086,16 +1107,14 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
           : undefined,
       angle: typeof item?.angle === "number" ? item.angle : undefined,
       target: typeof item?.target === "string" ? item.target : undefined,
+      opacity: parseOpacityToken(item?.opacity ?? item?.alpha),
     };
   };
 
   const overlaysSrc = Array.isArray(scl?.overlays) ? scl.overlays : [];
   if (overlaysSrc.length) {
     const parsed = overlaysSrc.map(parseLayerItem).filter(Boolean) as Array<Record<string, unknown>>;
-    const under = parsed.filter((item) => {
-      const target = String(item.target ?? "").toLowerCase();
-      return target.includes("under") || target.includes("back");
-    });
+    const under = parsed.filter((item) => categorizeTarget(item.target) === "under");
     const over = parsed.filter((item) => !under.includes(item));
     if (over.length) cosmetics.overlays = over as any;
     if (under.length) cosmetics.underlays = [...(cosmetics.underlays ?? []), ...(under as any)];
@@ -1104,10 +1123,7 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
   const underlaysSrc = Array.isArray(scl?.underlays) ? scl.underlays : [];
   if (underlaysSrc.length) {
     const parsed = underlaysSrc.map(parseLayerItem).filter(Boolean) as Array<Record<string, unknown>>;
-    const over = parsed.filter((item) => {
-      const target = String(item.target ?? "").toLowerCase();
-      return target.includes("over") || target.includes("front");
-    });
+    const over = parsed.filter((item) => categorizeTarget(item.target) === "over");
     const under = parsed.filter((item) => !over.includes(item));
     if (under.length) cosmetics.underlays = [...(cosmetics.underlays ?? []), ...(under as any)];
     if (over.length) cosmetics.overlays = [...(cosmetics.overlays ?? []), ...(over as any)];

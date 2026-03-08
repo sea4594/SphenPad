@@ -59,6 +59,7 @@ export type PuzzleCosmetics = {
     lineCap?: CanvasLineCap;
     lineJoin?: CanvasLineJoin;
     dashArray?: number[];
+    opacity?: number;
   }>;
   underlays?: Array<{
     center: { x: number; y: number };
@@ -72,6 +73,7 @@ export type PuzzleCosmetics = {
     textColor?: string;
     textSize?: number;
     angle?: number;
+    opacity?: number;
   }>;
   overlays?: Array<{
     center: { x: number; y: number };
@@ -85,6 +87,7 @@ export type PuzzleCosmetics = {
     textColor?: string;
     textSize?: number;
     angle?: number;
+    opacity?: number;
   }>;
   
   // Line constraints

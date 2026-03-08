@@ -426,9 +426,11 @@ export function GridCanvas(props: {
         const cx = worldX(item.center.x);
         const cy = worldY(item.center.y);
         const angleRad = (Number(item.angle) || 0) * (Math.PI / 180);
+        const itemOpacity = Number.isFinite(item.opacity) ? Math.max(0, Math.min(1, Number(item.opacity))) : 1;
 
         if (drawShapes && item.color) {
           ctx.save();
+          ctx.globalAlpha *= itemOpacity;
           if (angleRad) {
             ctx.translate(cx, cy);
             ctx.rotate(angleRad);
@@ -454,6 +456,7 @@ export function GridCanvas(props: {
 
         if (drawShapes && item.borderColor) {
           ctx.save();
+          ctx.globalAlpha *= itemOpacity;
           if (angleRad) {
             ctx.translate(cx, cy);
             ctx.rotate(angleRad);
@@ -480,6 +483,7 @@ export function GridCanvas(props: {
 
         if (drawText && item.text != null && String(item.text).length) {
           ctx.save();
+          ctx.globalAlpha *= itemOpacity;
           if (angleRad) {
             ctx.translate(cx, cy);
             ctx.rotate(angleRad);
@@ -540,17 +544,24 @@ export function GridCanvas(props: {
     const drawConstraintLines = (layer: "under" | "over") => {
       if (!def.cosmetics.lines) return;
       const puzzleLineWidthScale = 0.9;
+      const classifyTarget = (target: string | undefined): "under" | "over" => {
+        const t = (target ?? "overlay").toLowerCase();
+        if (/(^|[^a-z])(under|underlay|back|background|behind|below|bottom)([^a-z]|$)/.test(t)) return "under";
+        if (/(^|[^a-z])(over|overlay|front|foreground|above|top)([^a-z]|$)/.test(t)) return "over";
+        return "over";
+      };
       for (const ln of def.cosmetics.lines) {
         if (ln.wayPoints.length < 2) continue;
-        const target = (ln.target ?? "overlay").toLowerCase();
-        const isUnder = target.includes("under") || target.includes("back");
+        const isUnder = classifyTarget(ln.target) === "under";
         if (layer === "under" ? !isUnder : isUnder) continue;
+        const lineOpacity = Number.isFinite(ln.opacity) ? Math.max(0, Math.min(1, Number(ln.opacity))) : 1;
 
         const hasSvgPath = typeof ln.svgPathData === "string" && ln.svgPathData.length > 0;
         if (hasSvgPath) {
           const units = Number(ln.svgUnitsPerCell) || 56;
           const path = new Path2D(ln.svgPathData as string);
           ctx.save();
+          ctx.globalAlpha *= lineOpacity;
           ctx.translate(originX, originY);
           ctx.scale(cellPx / units, cellPx / units);
           if (ln.dashArray?.length) ctx.setLineDash(ln.dashArray);
@@ -569,6 +580,7 @@ export function GridCanvas(props: {
           ctx.restore();
         } else {
           ctx.save();
+          ctx.globalAlpha *= lineOpacity;
           if (ln.dashArray?.length) ctx.setLineDash(ln.dashArray);
           ctx.beginPath();
           ln.wayPoints.forEach((p, i) => {
