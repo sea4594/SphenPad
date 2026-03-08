@@ -142,6 +142,8 @@ export type PuzzleDefinition = {
   id: string;
   sourceId: string;
   size: number;
+  rows: number;
+  cols: number;
   meta: PuzzleMeta;
   givens: Array<{ rc: CellRC; v: string }>;
   cosmetics: PuzzleCosmetics;

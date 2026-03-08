@@ -67,7 +67,8 @@ export function GridCanvas(props: {
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const dragRef = useRef<DragState | null>(null);
 
-  const n = def.size;
+  const rows = Math.max(1, Number(def.rows ?? progress.cells.length ?? def.size));
+  const cols = Math.max(1, Number(def.cols ?? progress.cells[0]?.length ?? def.size));
   const [cellPx, setCellPx] = useState(56);
   const [bgImage, setBgImage] = useState<HTMLImageElement | null>(null);
   const [linePreview, setLinePreview] = useState<{ segments: LineSegmentDraft[]; kind: LineKindResolved } | null>(null);
@@ -76,8 +77,8 @@ export function GridCanvas(props: {
   const worldBounds = useMemo(() => {
     let minX = 0;
     let minY = 0;
-    let maxX = n;
-    let maxY = n;
+    let maxX = cols;
+    let maxY = rows;
 
     const includePoint = (x?: number, y?: number) => {
       if (!Number.isFinite(x) || !Number.isFinite(y)) return;
@@ -123,17 +124,17 @@ export function GridCanvas(props: {
     }
 
     return { minX, minY, maxX, maxY };
-  }, [def.cosmetics.lines, def.cosmetics.overlays, def.cosmetics.underlays, n]);
+  }, [cols, def.cosmetics.lines, def.cosmetics.overlays, def.cosmetics.underlays, rows]);
 
   const outsideLeft = Math.max(0, -worldBounds.minX);
   const outsideTop = Math.max(0, -worldBounds.minY);
-  const outsideRight = Math.max(0, worldBounds.maxX - n);
-  const outsideBottom = Math.max(0, worldBounds.maxY - n);
+  const outsideRight = Math.max(0, worldBounds.maxX - cols);
+  const outsideBottom = Math.max(0, worldBounds.maxY - rows);
 
   const originX = pad + outsideLeft * cellPx;
   const originY = pad + outsideTop * cellPx;
-  const boardW = cellPx * (n + outsideLeft + outsideRight);
-  const boardH = cellPx * (n + outsideTop + outsideBottom);
+  const boardW = cellPx * (cols + outsideLeft + outsideRight);
+  const boardH = cellPx * (rows + outsideTop + outsideBottom);
   const widthPx = Math.max(1, Math.ceil(pad * 2 + boardW));
   const heightPx = Math.max(1, Math.ceil(pad * 2 + boardH));
 
@@ -145,13 +146,13 @@ export function GridCanvas(props: {
   const dotOffset = useMemo(() => {
     const dots = def.cosmetics.dots ?? [];
     const maxCoord = dots.reduce((acc, d) => Math.max(acc, d.a.r, d.a.c, d.b.r, d.b.c), -Infinity);
-    return maxCoord >= n ? 1 : 0;
-  }, [def.cosmetics.dots, n]);
+    return maxCoord >= Math.max(rows, cols) ? 1 : 0;
+  }, [cols, def.cosmetics.dots, rows]);
 
   const highlightRotationRad = (20 * Math.PI) / 180;
   const highlightAlpha = 0.82;
   const gridTextFont = '"Lato", "Noto Sans", "Segoe UI", ui-sans-serif, sans-serif';
-  const emojiTextFont = '"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", "Twemoji Mozilla", "Lato", "Noto Sans", sans-serif';
+  const emojiTextFont = '"Twemoji Mozilla", "Noto Color Emoji", "Apple Color Emoji", "Segoe UI Emoji", emoji, sans-serif';
 
   const centerLineKeys = useMemo(() => {
     const keys = new Set<string>();
@@ -172,8 +173,8 @@ export function GridCanvas(props: {
   }, [progress.lines]);
 
   const inBounds = useCallback((r: number, c: number) => {
-    return r >= 0 && c >= 0 && r < n && c < n;
-  }, [n]);
+    return r >= 0 && c >= 0 && r < rows && c < cols;
+  }, [cols, rows]);
 
   const normalizeDotRc = useCallback((rc: CellRC): CellRC | null => {
     const shifted = dotOffset ? { r: rc.r - dotOffset, c: rc.c - dotOffset } : rc;
@@ -235,8 +236,8 @@ export function GridCanvas(props: {
 
       const sideMargin = 8;
       const topBottomPad = 8;
-      const spanX = n + outsideLeft + outsideRight;
-      const spanY = n + outsideTop + outsideBottom;
+      const spanX = cols + outsideLeft + outsideRight;
+      const spanY = rows + outsideTop + outsideBottom;
       const padFactor = 0.68;
       const byWidth = (Math.max(240, width - sideMargin * 2)) / (spanX + padFactor);
       const byHeight = (Math.max(220, height - topBottomPad * 2)) / (spanY + padFactor);
@@ -259,7 +260,7 @@ export function GridCanvas(props: {
       window.removeEventListener("orientationchange", update);
       window.removeEventListener("resize", update);
     };
-  }, [n, outsideBottom, outsideLeft, outsideRight, outsideTop]);
+  }, [cols, outsideBottom, outsideLeft, outsideRight, outsideTop, rows]);
 
   useEffect(() => {
     if (!def.cosmetics.backgroundImageUrl) {
@@ -289,7 +290,7 @@ export function GridCanvas(props: {
 
     if (bgImage) {
       ctx.globalAlpha = 0.3;
-      ctx.drawImage(bgImage, cellX(0), cellY(0), cellPx * n, cellPx * n);
+      ctx.drawImage(bgImage, cellX(0), cellY(0), cellPx * cols, cellPx * rows);
       ctx.globalAlpha = 1;
     }
 
@@ -298,7 +299,7 @@ export function GridCanvas(props: {
 
     // Keep the full Sudoku grid area pure white regardless of global theme.
     ctx.fillStyle = "#ffffff";
-    ctx.fillRect(cellX(0), cellY(0), cellPx * n, cellPx * n);
+    ctx.fillRect(cellX(0), cellY(0), cellPx * cols, cellPx * rows);
 
     const drawCellHighlights = (r: number, c: number, colors: string[], alpha = highlightAlpha) => {
       if (!colors.length) return;
@@ -373,22 +374,25 @@ export function GridCanvas(props: {
       ctx.restore();
     };
 
-    const subgrid = def.cosmetics.subgrid ?? defaultSubgridForSize(n);
+    const inferredSubgrid = rows === cols ? defaultSubgridForSize(rows) : { r: rows + 1, c: cols + 1 };
+    const subgrid = def.cosmetics.subgrid ?? inferredSubgrid;
 
     const drawGridLines = () => {
       if (def.cosmetics.gridVisible === false) return;
-      for (let i = 0; i <= n; i++) {
+      for (let i = 0; i <= rows; i++) {
         ctx.lineWidth = i % subgrid.r === 0 ? 2.2 : 1;
         ctx.strokeStyle = "#000000";
         ctx.beginPath();
         ctx.moveTo(cellX(0), cellY(i));
-        ctx.lineTo(cellX(n), cellY(i));
+        ctx.lineTo(cellX(cols), cellY(i));
         ctx.stroke();
+      }
 
+      for (let i = 0; i <= cols; i++) {
         ctx.lineWidth = i % subgrid.c === 0 ? 2.2 : 1;
         ctx.beginPath();
         ctx.moveTo(cellX(i), cellY(0));
-        ctx.lineTo(cellX(i), cellY(n));
+        ctx.lineTo(cellX(i), cellY(rows));
         ctx.stroke();
       }
     };
@@ -492,13 +496,13 @@ export function GridCanvas(props: {
           const ty = worldY(item.center.y);
           const onOrOutsideGridBorder =
             item.center.x <= 0.02 ||
-            item.center.x >= n - 0.02 ||
+            item.center.x >= cols - 0.02 ||
             item.center.y <= 0.02 ||
-            item.center.y >= n - 0.02 ||
+            item.center.y >= rows - 0.02 ||
             item.center.x < 0 ||
-            item.center.x > n ||
+            item.center.x > cols ||
             item.center.y < 0 ||
-            item.center.y > n;
+            item.center.y > rows;
 
           if (onOrOutsideGridBorder) {
             const metrics = ctx.measureText(text);
@@ -599,6 +603,13 @@ export function GridCanvas(props: {
     };
 
     const underlayItems = def.cosmetics.underlays ?? [];
+    const coreBounds = (() => {
+      const regionCells = (def.cosmetics.irregularRegions ?? []).flatMap((region) => region.cells ?? []);
+      if (!regionCells.length) return { rows, cols };
+      const coreRows = Math.max(...regionCells.map((rc) => rc.r)) + 1;
+      const coreCols = Math.max(...regionCells.map((rc) => rc.c)) + 1;
+      return { rows: Math.min(rows, coreRows), cols: Math.min(cols, coreCols) };
+    })();
     const isEdgeArtworkUnderlay = (item: LayerItem) => {
       const hasShape =
         item.color != null ||
@@ -614,7 +625,7 @@ export function GridCanvas(props: {
       const y0 = item.center.y - h / 2;
       const y1 = item.center.y + h / 2;
       const eps = 0.01;
-      return x0 < -eps || y0 < -eps || x1 > n + eps || y1 > n + eps;
+      return x0 < -eps || y0 < -eps || x1 > coreBounds.cols + eps || y1 > coreBounds.rows + eps;
     };
     const underlaysBelowGrid = underlayItems.filter((item) => !isEdgeArtworkUnderlay(item));
     const underlaysAboveGrid = underlayItems.filter((item) => isEdgeArtworkUnderlay(item));
@@ -624,8 +635,8 @@ export function GridCanvas(props: {
     if (underlaysBelowGrid.length) drawLayer(underlaysBelowGrid, { drawShapes: true, drawText: false });
 
     // Highlights sit above puzzle artwork but below grid/features and values.
-    for (let r = 0; r < n; r++) {
-      for (let c = 0; c < n; c++) {
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
         const colors = progress.cells[r][c].highlights ?? [];
         drawCellHighlights(r, c, colors);
       }
@@ -963,7 +974,7 @@ export function GridCanvas(props: {
       }
     };
 
-    const lit = Array.from({ length: n }, () => Array.from({ length: n }, () => false));
+    const lit = Array.from({ length: rows }, () => Array.from({ length: cols }, () => false));
     const cageLabelCells = new Set<string>();
     for (const cage of def.cosmetics.cages ?? []) {
       if (!cage.sum || !cage.cells?.length) continue;
@@ -982,8 +993,8 @@ export function GridCanvas(props: {
       const solution = def.cosmetics.solution;
       const isCorrect = (rc: CellRC) => {
         if (!inBounds(rc.r, rc.c)) return false;
-        if (solution && solution.length >= n * n) {
-          const idx = rc.r * n + rc.c;
+        if (solution && solution.length >= rows * cols) {
+          const idx = rc.r * cols + rc.c;
           return (progress.cells[rc.r][rc.c].value ?? "") === solution[idx];
         }
         const given = progress.cells[rc.r][rc.c].given;
@@ -1000,8 +1011,8 @@ export function GridCanvas(props: {
       }
     }
 
-    for (let r = 0; r < n; r++) {
-      for (let c = 0; c < n; c++) {
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
         const cell = progress.cells[r][c];
         const x0 = cellX(c);
         const y0 = cellY(r);
@@ -1051,16 +1062,16 @@ export function GridCanvas(props: {
 
     if (fogDefined) {
       ctx.fillStyle = "#c8cdd3";
-      for (let r = 0; r < n; r++) {
-        for (let c = 0; c < n; c++) {
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
           if (lit[r][c]) continue;
           ctx.fillRect(cellX(c), cellY(r), cellPx, cellPx);
         }
       }
 
       // Keep user highlights visible under fog, slightly darkened.
-      for (let r = 0; r < n; r++) {
-        for (let c = 0; c < n; c++) {
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
           const colors = progress.cells[r][c].highlights ?? [];
           if (!colors.length) continue;
           const display = lit[r][c] ? colors : colors.map((col) => darkenColor(col, 0.3));
@@ -1071,8 +1082,8 @@ export function GridCanvas(props: {
       // Keep puzzle feature layers above highlights under fog, but only in lit cells.
       ctx.save();
       ctx.beginPath();
-      for (let r = 0; r < n; r++) {
-        for (let c = 0; c < n; c++) {
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
           if (!lit[r][c]) continue;
           ctx.rect(cellX(c), cellY(r), cellPx, cellPx);
         }
@@ -1083,25 +1094,27 @@ export function GridCanvas(props: {
 
       // Keep grid visible on top of fog when enabled.
       if (def.cosmetics.gridVisible !== false) {
-        for (let i = 0; i <= n; i++) {
+        for (let i = 0; i <= rows; i++) {
           ctx.lineWidth = i % subgrid.r === 0 ? 2.5 : 1;
           ctx.strokeStyle = "#000000";
           ctx.beginPath();
           ctx.moveTo(cellX(0), cellY(i));
-          ctx.lineTo(cellX(n), cellY(i));
+          ctx.lineTo(cellX(cols), cellY(i));
           ctx.stroke();
+        }
 
+        for (let i = 0; i <= cols; i++) {
           ctx.lineWidth = i % subgrid.c === 0 ? 2.5 : 1;
           ctx.beginPath();
           ctx.moveTo(cellX(i), cellY(0));
-          ctx.lineTo(cellX(i), cellY(n));
+          ctx.lineTo(cellX(i), cellY(rows));
           ctx.stroke();
         }
       }
 
       // Keep user-entered values visible under fog; hide unrevealed givens.
-      for (let r = 0; r < n; r++) {
-        for (let c = 0; c < n; c++) {
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
           const cell = progress.cells[r][c];
           const x0 = cellX(c);
           const y0 = cellY(r);
@@ -1144,8 +1157,8 @@ export function GridCanvas(props: {
     if (fogDefined) {
       ctx.save();
       ctx.beginPath();
-      for (let r = 0; r < n; r++) {
-        for (let c = 0; c < n; c++) {
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
           if (!lit[r][c]) continue;
           ctx.rect(cellX(c), cellY(r), cellPx, cellPx);
         }
@@ -1170,11 +1183,12 @@ export function GridCanvas(props: {
     heightPx,
     highlightRotationRad,
     linePreview,
-    n,
+    cols,
     originX,
     originY,
     pad,
     progress,
+    rows,
     cellX,
     cellY,
     inBounds,
@@ -1269,7 +1283,7 @@ export function GridCanvas(props: {
     if (!gp) return null;
     const c = Math.round(gp.gx);
     const r = Math.round(gp.gy);
-    if (r < 0 || c < 0 || r > n || c > n) return null;
+    if (r < 0 || c < 0 || r > rows || c > cols) return null;
     const d = Math.hypot(gp.gx - c, gp.gy - r);
     if (d > radius) return null;
     return { r, c };
@@ -1284,11 +1298,11 @@ export function GridCanvas(props: {
 
     if (Math.abs(dx) >= Math.abs(dy)) {
       const next = { r: node.r, c: node.c + (dx < 0 ? -1 : 1) };
-      if (next.c >= 0 && next.c <= n) return next;
+      if (next.c >= 0 && next.c <= cols) return next;
     }
 
     const next = { r: node.r + (dy < 0 ? -1 : 1), c: node.c };
-    if (next.r >= 0 && next.r <= n) return next;
+    if (next.r >= 0 && next.r <= rows) return next;
     return null;
   }
 
@@ -1404,7 +1418,7 @@ export function GridCanvas(props: {
         ? (() => {
             const next = nearestCornerNode(e.clientX, e.clientY, 0.42);
             if (!next || (next.r === drag.last.r && next.c === drag.last.c)) return [] as CellRC[];
-            return traceCellSteps(drag.last, next, { rows: n + 1, cols: n + 1 });
+            return traceCellSteps(drag.last, next, { rows: rows + 1, cols: cols + 1 });
           })()
         : centerHopsFromPointer(drag.last, e.clientX, e.clientY);
       if (!hops.length) return;

@@ -475,6 +475,59 @@ function centerFromCells(cells: CellRC[]): { x: number; y: number } | null {
   return { x: sx / cells.length, y: sy / cells.length };
 }
 
+function inferPuzzleShape(sclObj: any, givens: Array<{ rc: CellRC }>): { rows: number; cols: number } {
+  const explicitRows =
+    Number(sclObj?.rows) ||
+    Number(sclObj?.height) ||
+    Number(sclObj?.metadata?.rows) ||
+    Number(sclObj?.metadata?.height) ||
+    0;
+  const explicitCols =
+    Number(sclObj?.cols) ||
+    Number(sclObj?.columns) ||
+    Number(sclObj?.width) ||
+    Number(sclObj?.metadata?.cols) ||
+    Number(sclObj?.metadata?.columns) ||
+    Number(sclObj?.metadata?.width) ||
+    0;
+
+  const fromCellsRows = Array.isArray(sclObj?.cells) ? sclObj.cells.length : 0;
+  const fromCellsCols = Array.isArray(sclObj?.cells)
+    ? Math.max(0, ...sclObj.cells.map((row: unknown) => (Array.isArray(row) ? row.length : 0)))
+    : 0;
+
+  const fromGridRows = Array.isArray(sclObj?.grid) ? sclObj.grid.length : 0;
+  const fromGridCols = Array.isArray(sclObj?.grid)
+    ? Math.max(0, ...sclObj.grid.map((row: unknown) => (Array.isArray(row) ? row.length : 0)))
+    : 0;
+
+  const fromGivenRows = givens.length ? Math.max(...givens.map((g) => g.rc.r)) + 1 : 0;
+  const fromGivenCols = givens.length ? Math.max(...givens.map((g) => g.rc.c)) + 1 : 0;
+
+  const regionCells = Array.isArray(sclObj?.regions)
+    ? sclObj.regions.flatMap((r: any) => parseCellRefs(r))
+    : [];
+  const fromRegionRows = regionCells.length ? Math.max(...regionCells.map((rc: CellRC) => rc.r)) + 1 : 0;
+  const fromRegionCols = regionCells.length ? Math.max(...regionCells.map((rc: CellRC) => rc.c)) + 1 : 0;
+
+  const sizeLike =
+    Number(sclObj?.size) ||
+    Number(sclObj?.gridSize) ||
+    Number(sclObj?.n) ||
+    Number(sclObj?.metadata?.size) ||
+    Number(sclObj?.metadata?.gridSize) ||
+    Number(sclObj?.metadata?.n) ||
+    0;
+
+  const solution = typeof sclObj?.metadata?.solution === "string" ? sclObj.metadata.solution : "";
+  const solutionSquare = solution.length > 0 ? Math.sqrt(solution.length) : 0;
+  const squareFromSolution = Number.isInteger(solutionSquare) ? solutionSquare : 0;
+
+  const rows = Math.max(fromCellsRows, fromGridRows, fromGivenRows, fromRegionRows, explicitRows, sizeLike, squareFromSolution, 1);
+  const cols = Math.max(fromCellsCols, fromGridCols, fromGivenCols, fromRegionCols, explicitCols, sizeLike, squareFromSolution, 1);
+  return { rows, cols };
+}
+
 function spanFromCells(cells: CellRC[]): { width: number; height: number } | null {
   if (!cells.length) return null;
   const cols = cells.map((rc) => rc.c);
@@ -822,14 +875,31 @@ export async function loadFromSudokuPad(inputUrlOrId: string): Promise<{ key: st
   };
 
   const givens = extractGivens(sclObj);
-  const size = inferPuzzleSize(sclObj, givens);
-  const subgrid = detectStandardSubgrid(sclObj, size);
+  const shape = inferPuzzleShape(sclObj, givens);
+  const size = Math.max(shape.rows, shape.cols, inferPuzzleSize(sclObj, givens));
+  const subgrid = shape.rows === shape.cols ? detectStandardSubgrid(sclObj, size) : undefined;
+
+  if (cosmetics.gridVisible == null && Array.isArray(sclObj?.regions)) {
+    const regionCells = sclObj.regions.flatMap((region: any) => parseCellRefs(region));
+    if (regionCells.length) {
+      const regionRows = Math.max(...regionCells.map((rc: CellRC) => rc.r)) + 1;
+      const regionCols = Math.max(...regionCells.map((rc: CellRC) => rc.c)) + 1;
+      const hasDenseCustomArtwork =
+        (cosmetics.lines?.length ?? 0) > 0 ||
+        ((cosmetics.overlays?.length ?? 0) + (cosmetics.underlays?.length ?? 0)) >= 20;
+      if (hasDenseCustomArtwork && (regionRows < shape.rows || regionCols < shape.cols)) {
+        cosmetics.gridVisible = false;
+      }
+    }
+  }
 
   const key = normalizePuzzleKey(sourceId);
   const def: PuzzleDefinition = {
     id: key,
     sourceId,
     size,
+    rows: shape.rows,
+    cols: shape.cols,
     meta,
     givens,
     cosmetics: {

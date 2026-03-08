@@ -83,18 +83,19 @@ function toHistorySelection(entry: unknown): CellRC[] | null {
 }
 
 function isSolved(progress: PuzzleProgress, solution?: string): boolean {
-  const n = progress.cells.length;
-  if (solution && solution.length >= n * n) {
-    for (let r = 0; r < n; r++) {
-      for (let c = 0; c < n; c++) {
-        const idx = r * n + c;
+  const rows = progress.cells.length;
+  const cols = progress.cells[0]?.length ?? 0;
+  if (solution && solution.length >= rows * cols) {
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const idx = r * cols + c;
         if ((progress.cells[r][c].value ?? "") !== solution[idx]) return false;
       }
     }
     return true;
   }
-  for (let r = 0; r < n; r++) {
-    for (let c = 0; c < n; c++) {
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
       if (!progress.cells[r][c].value) return false;
     }
   }
@@ -113,6 +114,9 @@ function hasIncompleteMeta(p: PersistedPuzzle): boolean {
 }
 
 function normalizePersistedDefinition(p: PersistedPuzzle): PersistedPuzzle {
+  const rowsFromProgress = p.progress.cells.length;
+  const colsFromProgress = p.progress.cells[0]?.length ?? p.def.size;
+  const hasGridShape = p.def.rows === rowsFromProgress && p.def.cols === colsFromProgress;
   const overlays = p.def.cosmetics.overlays ?? [];
   let changed = false;
   const nextOverlays = overlays.map((item) => {
@@ -134,11 +138,13 @@ function normalizePersistedDefinition(p: PersistedPuzzle): PersistedPuzzle {
     return { ...item, textSize: inferred };
   });
 
-  if (!changed) return p;
+  if (!changed && hasGridShape) return p;
   return {
     ...p,
     def: {
       ...p.def,
+      rows: rowsFromProgress,
+      cols: colsFromProgress,
       cosmetics: {
         ...p.def.cosmetics,
         overlays: nextOverlays,
@@ -915,11 +921,12 @@ export function PuzzlePage() {
 
     const moveSelection = (dr: number, dc: number, extend: boolean) => {
       if (!data) return;
-      const n = data.progress.cells.length;
+      const rows = data.progress.cells.length;
+      const cols = data.progress.cells[0]?.length ?? 0;
       const anchor = data.progress.selection[data.progress.selection.length - 1] ?? { r: 0, c: 0 };
       const next = {
-        r: Math.max(0, Math.min(n - 1, anchor.r + dr)),
-        c: Math.max(0, Math.min(n - 1, anchor.c + dc)),
+        r: Math.max(0, Math.min(rows - 1, anchor.r + dr)),
+        c: Math.max(0, Math.min(cols - 1, anchor.c + dc)),
       };
       if (extend) {
         const set = selectionSet();
@@ -964,8 +971,9 @@ export function PuzzlePage() {
           setSelection([]);
           return;
         }
-        const n = data.progress.cells.length;
-        const all = Array.from({ length: n * n }, (_, i) => ({ r: Math.floor(i / n), c: i % n }));
+        const rows = data.progress.cells.length;
+        const cols = data.progress.cells[0]?.length ?? 0;
+        const all = Array.from({ length: rows * cols }, (_, i) => ({ r: Math.floor(i / cols), c: i % cols }));
         setSelection(all);
         return;
       }
@@ -973,11 +981,12 @@ export function PuzzlePage() {
       if (e.ctrlKey && !e.altKey && !e.metaKey && !e.shiftKey && k === "i") {
         if (!data) return;
         e.preventDefault();
-        const n = data.progress.cells.length;
+        const rows = data.progress.cells.length;
+        const cols = data.progress.cells[0]?.length ?? 0;
         const sel = selectionSet();
         const next: CellRC[] = [];
-        for (let r = 0; r < n; r++) {
-          for (let c = 0; c < n; c++) {
+        for (let r = 0; r < rows; r++) {
+          for (let c = 0; c < cols; c++) {
             if (!sel.has(`${r},${c}`)) next.push({ r, c });
           }
         }

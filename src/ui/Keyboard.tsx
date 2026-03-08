@@ -35,7 +35,9 @@ export function Keyboard(props: {
   const compact = Boolean(props.compact);
 
   if (kind === "numbers") {
-    const keys = digits(progress.alphabetMode, progress.cells.length).slice(0, 9);
+    const rows = progress.cells.length;
+    const cols = progress.cells[0]?.length ?? rows;
+    const keys = digits(progress.alphabetMode, Math.max(rows, cols)).slice(0, 9);
     const grid = (
       <Grid3x4 compact={compact}>
         {keys.map((k) => (
