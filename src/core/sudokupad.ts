@@ -1150,10 +1150,19 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
       width <= 0.42 &&
       height <= 0.42;
 
+    const hasExplicitBorderColor = item?.borderColor != null || item?.outlineC != null || item?.c1 != null;
     // In compact SudokuPad payloads, '#0' in stroke-like keys frequently means no visible stroke.
-    const rawStroke = item?.borderColor ?? item?.stroke ?? item?.c1;
+    const rawStroke = item?.borderColor ?? item?.outlineC ?? item?.c1 ?? item?.stroke;
     const strokeToken = normalizeColorToken(rawStroke);
-    const borderColor = isNoStrokeToken(rawStroke) ? undefined : strokeToken;
+    const isTinyRoundedTextMarker =
+      textStr.length > 0 &&
+      rounded &&
+      Number.isFinite(width) &&
+      Number.isFinite(height) &&
+      Number(width) <= 0.5 &&
+      Number(height) <= 0.5;
+    const strokeActsAsTextColor = isTinyRoundedTextMarker && !hasExplicitBorderColor && item?.stroke != null;
+    const borderColor = strokeActsAsTextColor || isNoStrokeToken(rawStroke) ? undefined : strokeToken;
     const fillColor = normalizeColorToken(item?.backgroundColor ?? item?.c2 ?? item?.fill);
     const noVisibleStroke = !borderColor;
     const isRoundedTextMarker = textStr.length > 0 && rounded && noVisibleStroke;
@@ -1169,7 +1178,7 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
       borderColor: suppressShape ? undefined : borderColor,
       borderThickness: parseFiniteNumberToken(item?.thickness ?? item?.th),
       text,
-      textColor: normalizeColorToken(item?.color ?? item?.textColor ?? item?.c),
+      textColor: normalizeColorToken(item?.color ?? item?.textColor ?? item?.c ?? (strokeActsAsTextColor ? item?.stroke : undefined)),
       textSize: explicitTextSize ?? inferredTinyTextSize,
       angle: parseFiniteNumberToken(item?.angle),
       target: typeof item?.target === "string" ? item.target : undefined,
@@ -1204,13 +1213,14 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
       const center = asPoint(item?.center ?? item?.ct) ?? centerFromCells(cells);
       if (!center) return null;
       const span = spanFromCells(cells);
+      const rawLegacyStroke = item?.borderColor ?? item?.outlineC ?? item?.c1 ?? item?.c;
       return {
         center,
         width: typeof item?.width === "number" ? item.width : span?.width,
         height: typeof item?.height === "number" ? item.height : span?.height,
         rounded: item?.rounded ?? item?.r ?? circleSrc.includes(item),
         color: normalizeColorToken(item?.backgroundColor ?? item?.baseC ?? item?.c2),
-        borderColor: normalizeColorToken(item?.borderColor ?? item?.outlineC ?? item?.c1 ?? item?.c),
+        borderColor: isNoStrokeToken(rawLegacyStroke) ? undefined : normalizeColorToken(rawLegacyStroke),
         borderThickness: typeof item?.thickness === "number" ? item.thickness : undefined,
         text: asValue(item?.value),
         textColor: normalizeColorToken(item?.textColor ?? item?.fontC ?? item?.color),
