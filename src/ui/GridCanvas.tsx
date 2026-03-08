@@ -710,27 +710,10 @@ export function GridCanvas(props: {
     };
 
     const underlayItems = def.cosmetics.underlays ?? [];
-    const isOutsideCornerMiter = (item: LayerItem) => {
-      const text = item.text == null ? "" : String(item.text).trim();
-      if (text.length > 0) return false;
-      const w = Number(item.width);
-      const h = Number(item.height);
-      if (!Number.isFinite(w) || !Number.isFinite(h)) return false;
-      if (Math.max(w, h) > 0.22) return false;
-      const angle = Math.abs(Number(item.angle ?? 0));
-      if (!(angle >= 1 && Math.abs((angle % 90) - 45) <= 1.5)) return false;
-      const cx = Number(item.center.x);
-      const cy = Number(item.center.y);
-      const outsideX = cx < 0 || cx > cols;
-      const outsideY = cy < 0 || cy > rows;
-      return outsideX && outsideY;
-    };
-    const deferredOutsideCornerMiters = underlayItems.filter(isOutsideCornerMiter);
-    const baseUnderlayItems = underlayItems.filter((item) => !isOutsideCornerMiter(item));
 
     // Draw underlay polygon/line art first.
     drawConstraintLines("under");
-    if (baseUnderlayItems.length) drawLayer(baseUnderlayItems, { drawShapes: true, drawText: true });
+    if (underlayItems.length) drawLayer(underlayItems, { drawShapes: true, drawText: true });
 
     // Highlights sit above puzzle artwork but below grid/features and values.
     for (let r = 0; r < rows; r++) {
@@ -930,9 +913,6 @@ export function GridCanvas(props: {
     // Grid below top puzzle artwork so features are not bisected by grid lines.
     drawGridLines();
     if (!fogDefined) drawTopPuzzleFeatures();
-    if (deferredOutsideCornerMiters.length) {
-      drawLayer(deferredOutsideCornerMiters, { drawShapes: true, drawText: true });
-    }
 
     const drawCenterStroke = (segments: LineSegmentDraft[], color: string, alpha = 1) => {
       ctx.save();

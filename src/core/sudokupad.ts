@@ -206,7 +206,10 @@ function normalizeCompactScl(input: any): any {
   if (!scl.regions && Array.isArray(scl.re)) scl.regions = scl.re;
   if (!scl.cellSize && Number.isFinite(Number(scl.cs))) scl.cellSize = Number(scl.cs);
   if (!scl.lines && Array.isArray(scl.l)) scl.lines = scl.l;
-  if (!scl.overlays && Array.isArray(scl.o)) scl.overlays = scl.o;
+  if (!scl.overlays && Array.isArray(scl.o)) {
+    scl.overlays = scl.o;
+    scl.__overlaysFromCompactAlias = true;
+  }
   if (!scl.underlays && Array.isArray(scl.u)) scl.underlays = scl.u;
   if (!scl.arrow && Array.isArray(scl.a)) scl.arrow = scl.a;
   if (!scl.dots && Array.isArray(scl.d)) scl.dots = scl.d;
@@ -827,12 +830,15 @@ function normalizeLayerCosmeticsToGrid(
 
         // Ignore tiny anti-alias crumbs fully outside the puzzle bounds.
         const outsideBothAxes = (cx < 0 || cx > cols) && (cy < 0 || cy > rows);
+        const angle = Math.abs(Number(item.angle ?? 0));
+        const isRotatedMarker = angle >= 1 && Math.abs((angle % 90) - 45) <= 1.5;
         const tinyCornerArtifact =
           !hasText &&
           (hasFill || hasBorder) &&
           Math.max(width, height) <= 0.22 &&
           fullyOutside &&
-          outsideBothAxes;
+          outsideBothAxes &&
+          !isRotatedMarker;
         if (tinyCornerArtifact) return null;
 
         // Drop oversized border-only light frames that create white halos.
@@ -1380,7 +1386,15 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
   const overlaysSrc = Array.isArray(scl?.overlays) ? scl.overlays : [];
   if (overlaysSrc.length) {
     const parsed = overlaysSrc.map(parseLayerItem).filter(Boolean) as Array<Record<string, unknown>>;
-    const under = parsed.filter((item) => categorizeTarget(item.target) === "under");
+    const overlaysFromCompactAlias = Boolean(scl?.__overlaysFromCompactAlias);
+    const under = parsed.filter((item) => {
+      const target = categorizeTarget(item.target);
+      if (target === "under") return true;
+      // Legacy compact `o` items without explicit target are frequently decorative
+      // underlay artwork, not top overlays.
+      if (overlaysFromCompactAlias && target == null) return true;
+      return false;
+    });
     const over = parsed.filter((item) => !under.includes(item));
     if (over.length) cosmetics.overlays = over as any;
     if (under.length) cosmetics.underlays = [...(cosmetics.underlays ?? []), ...(under as any)];
