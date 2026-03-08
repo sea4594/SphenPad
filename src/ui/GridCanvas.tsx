@@ -591,9 +591,30 @@ export function GridCanvas(props: {
       }
     };
 
+    const underlayItems = def.cosmetics.underlays ?? [];
+    const isEdgeArtworkUnderlay = (item: LayerItem) => {
+      const hasShape =
+        item.color != null ||
+        item.borderColor != null ||
+        Number.isFinite(item.width) ||
+        Number.isFinite(item.height);
+      if (!hasShape) return false;
+      const w = Number.isFinite(item.width) ? Number(item.width) : 0;
+      const h = Number.isFinite(item.height) ? Number(item.height) : 0;
+      if (w <= 0 && h <= 0) return false;
+      const x0 = item.center.x - w / 2;
+      const x1 = item.center.x + w / 2;
+      const y0 = item.center.y - h / 2;
+      const y1 = item.center.y + h / 2;
+      const eps = 0.01;
+      return x0 < -eps || y0 < -eps || x1 > n + eps || y1 > n + eps;
+    };
+    const underlaysBelowGrid = underlayItems.filter((item) => !isEdgeArtworkUnderlay(item));
+    const underlaysAboveGrid = underlayItems.filter((item) => isEdgeArtworkUnderlay(item));
+
     // Draw underlay polygon/line art first.
     drawConstraintLines("under");
-    if (def.cosmetics.underlays?.length) drawLayer(def.cosmetics.underlays, { drawShapes: true, drawText: false });
+    if (underlaysBelowGrid.length) drawLayer(underlaysBelowGrid, { drawShapes: true, drawText: false });
 
     // Highlights sit above puzzle artwork but below grid/features and values.
     for (let r = 0; r < n; r++) {
@@ -811,7 +832,8 @@ export function GridCanvas(props: {
     };
 
     const drawTopPuzzleFeatures = () => {
-      if (def.cosmetics.underlays?.length) drawLayer(def.cosmetics.underlays, { drawShapes: false, drawText: true });
+      if (underlaysAboveGrid.length) drawLayer(underlaysAboveGrid, { drawShapes: true, drawText: false });
+      if (underlayItems.length) drawLayer(underlayItems, { drawShapes: false, drawText: true });
       drawCages();
       drawRegularOverlays({ drawShapes: true, drawText: false });
       drawConstraintLines("over");
