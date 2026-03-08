@@ -651,10 +651,10 @@ export function PuzzlePage() {
 
   function applyHighlight(color: string) {
     if (!data) return;
-    const editable = data.progress.selection.filter((rc) => !data.progress.cells[rc.r][rc.c].given);
-    if (!editable.length) return;
-    const allHave = editable.every((rc) => (data.progress.cells[rc.r][rc.c].highlights ?? []).includes(color));
-    const patches = editable
+    const selected = data.progress.selection;
+    if (!selected.length) return;
+    const allHave = selected.every((rc) => (data.progress.cells[rc.r][rc.c].highlights ?? []).includes(color));
+    const patches = selected
       .map((rc) => {
         const cur = data.progress.cells[rc.r][rc.c].highlights ?? [];
         const nextSet = new Set(cur);
@@ -706,7 +706,7 @@ export function PuzzlePage() {
     }
 
     if (tool === "highlight") {
-      for (const rc of editable) {
+      for (const rc of sel) {
         const cur = progress.cells[rc.r][rc.c].highlights ?? [];
         if (cur.length) patches.push(patchAt(progress, ["cells", rc.r, rc.c, "highlights"], []));
       }
@@ -848,6 +848,18 @@ export function PuzzlePage() {
       c: "center",
       v: "highlight",
       b: "line",
+    };
+    const letterHotkeys: Record<string, string> = {
+      q: "a",
+      w: "b",
+      e: "c",
+      r: "d",
+      t: "e",
+      y: "f",
+      u: "g",
+      i: "h",
+      o: "i",
+      p: "k",
     };
 
     const normalizeDigit = (k: string): string | null => {
@@ -1019,6 +1031,24 @@ export function PuzzlePage() {
           return;
         }
         applyDigit(digit);
+        return;
+      }
+
+      if (!e.altKey && !e.ctrlKey && !e.metaKey && letterHotkeys[k]) {
+        e.preventDefault();
+        if (!data) return;
+        const sym = letterHotkeys[k] as string;
+        const tool = data.progress.activeTool;
+        if (tool === "center") {
+          applyDigit(sym, "center");
+          return;
+        }
+        if (tool === "corner") {
+          applyDigit(sym, "corner");
+          return;
+        }
+        // Value tool or non-entry tools default to big letters.
+        applyDigit(sym, "value");
       }
     };
 

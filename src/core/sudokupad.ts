@@ -235,7 +235,18 @@ function parseRcString(value: any): CellRC[] {
 }
 
 function parseCellRefs(value: any): CellRC[] {
-  if (Array.isArray(value)) return value.map(asRC).filter(Boolean) as CellRC[];
+  if (Array.isArray(value)) {
+    const out: CellRC[] = [];
+    for (const item of value) {
+      const direct = asRC(item);
+      if (direct) {
+        out.push(direct);
+        continue;
+      }
+      if (typeof item === "string") out.push(...parseRcString(item));
+    }
+    return out;
+  }
   if (typeof value === "string") return parseRcString(value);
   return [];
 }
@@ -737,6 +748,8 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
   // cages
   const cagesSrc = Array.isArray(scl?.cages)
     ? scl.cages
+    : Array.isArray(scl?.cage)
+      ? scl.cage
     : Array.isArray(scl?.killerCages)
       ? scl.killerCages
       : Array.isArray(scl?.killercage)
@@ -752,7 +765,7 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
         if (!cells.length) return null;
         return {
           cells,
-          sum: asValue(cg?.value ?? cg?.sum),
+          sum: asValue(cg?.value ?? cg?.sum ?? cg?.v),
           color: cg?.outlineC ?? cg?.color ?? undefined,
         };
       })
@@ -764,7 +777,8 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
   if (arrowsSrc.length) {
     cosmetics.arrows = arrowsSrc
       .map((a: any) => {
-        const cellPath = parseCellRefs(a?.cells ?? a?.ce);
+        const lineCells = Array.isArray(a?.lines) && Array.isArray(a.lines[0]) ? a.lines[0] : undefined;
+        const cellPath = parseCellRefs(a?.cells ?? a?.ce ?? lineCells);
         const wpPath = (a?.wayPoints ?? []).map(asPoint).filter(Boolean) as Array<{ x: number; y: number }>;
         const path = cellPath.length
           ? cellPath
@@ -871,6 +885,24 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
     if (thermoBulbs.length) cosmetics.underlays = [...(cosmetics.underlays ?? []), ...thermoBulbs];
   }
 
+  // f-puzzles style between lines
+  if (Array.isArray(scl?.betweenline)) {
+    const betweenAsLines = scl.betweenline
+      .flatMap((entry: any) => Array.isArray(entry?.lines) ? entry.lines : [])
+      .map((line: any) => {
+        const path = parseCellRefs(line);
+        if (path.length < 2) return null;
+        return {
+          wayPoints: path.map((rc) => ({ x: rc.c + 0.5, y: rc.r + 0.5 })),
+          color: "#000000",
+          thickness: 7,
+          target: "overlay",
+        };
+      })
+      .filter(Boolean) as NonNullable<PuzzleCosmetics["lines"]>;
+    if (betweenAsLines.length) cosmetics.lines = [...(cosmetics.lines ?? []), ...betweenAsLines];
+  }
+
   const parseLayerItem = (item: any) => {
     const ct = asPoint(item?.center ?? item?.ct);
     if (!ct) return null;
@@ -894,7 +926,7 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
     const fillColor = normalizeColorToken(item?.backgroundColor ?? item?.c2 ?? item?.fill);
     const noVisibleStroke = !borderColor;
     const isRoundedTextMarker = textStr.length > 0 && rounded && noVisibleStroke;
-    const suppressShape = isTinyTextMarker || isRoundedTextMarker;
+    const suppressShape = isTinyTextMarker || (isRoundedTextMarker && !fillColor);
 
     return {
       center: ct,

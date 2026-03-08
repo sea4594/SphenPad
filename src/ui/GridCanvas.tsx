@@ -89,16 +89,16 @@ export function GridCanvas(props: {
       // Text-only labels near/above grid edges need extra bounds so glyphs are not clipped.
       const text = item?.text == null ? "" : String(item.text);
       if ((w <= 0 && h <= 0) && !text.trim().length) return;
+      const textSize = Number.isFinite(item?.textSize) ? Number(item.textSize) : 16;
+      const textHalfHeight = Math.max(0.35, (textSize / 56) * 0.65);
+      const textHalfWidth = Math.max(0.45, Math.min(3.8, (Math.max(1, text.length) * textSize) / 150));
       if (w <= 0 && h <= 0) {
-        const textSize = Number.isFinite(item?.textSize) ? Number(item.textSize) : 16;
-        const approxHeightCells = Math.max(0.4, textSize / 56);
-        const approxWidthCells = Math.max(0.6, Math.min(3.5, (text.length || 1) * (textSize / 92)));
-        includePoint(cx - approxWidthCells / 2, cy - approxHeightCells / 2);
-        includePoint(cx + approxWidthCells / 2, cy + approxHeightCells / 2);
+        includePoint(cx - textHalfWidth, cy - textHalfHeight);
+        includePoint(cx + textHalfWidth, cy + textHalfHeight);
         return;
       }
-      includePoint(cx - w / 2, cy - h / 2);
-      includePoint(cx + w / 2, cy + h / 2);
+      includePoint(cx - Math.max(w / 2, text.trim().length ? textHalfWidth : 0), cy - Math.max(h / 2, text.trim().length ? textHalfHeight : 0));
+      includePoint(cx + Math.max(w / 2, text.trim().length ? textHalfWidth : 0), cy + Math.max(h / 2, text.trim().length ? textHalfHeight : 0));
     };
 
     for (const item of def.cosmetics.overlays ?? []) includeLayer(item);
@@ -490,8 +490,8 @@ export function GridCanvas(props: {
           const text = String(item.text);
           const hasEmoji = /\p{Extended_Pictographic}/u.test(text);
           ctx.font = hasEmoji
-            ? `${Math.max(10, px)}px "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", ui-sans-serif`
-            : `600 ${Math.max(10, px)}px ui-sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji"`;
+            ? `${Math.max(10, px)}px "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", "Lato", "Noto Sans", ui-sans-serif`
+            : `600 ${Math.max(10, px)}px "Lato", "Noto Sans", ui-sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji"`;
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";
           const tx = worldX(item.center.x);
@@ -521,7 +521,7 @@ export function GridCanvas(props: {
           if (isTightNumberLabel) {
             const chars = Array.from(text);
             const widths = chars.map((ch) => ctx.measureText(ch).width);
-            const kerning = Math.max(0.5, px * 0.08);
+            const kerning = Math.max(0.6, px * 0.22);
             const total = widths.reduce((a, b) => a + b, 0) - kerning * (chars.length - 1);
             let cursor = tx - total / 2;
             for (let i = 0; i < chars.length; i++) {
@@ -736,10 +736,9 @@ export function GridCanvas(props: {
       drawArrows();
     };
 
-    drawTopPuzzleFeatures();
-
-    // Grid borders stay above highlights.
+    // Grid below top puzzle artwork so features are not bisected by grid lines.
     drawGridLines();
+    drawTopPuzzleFeatures();
 
     const drawCenterStroke = (segments: LineSegmentDraft[], color: string, alpha = 1) => {
       ctx.save();
@@ -1223,6 +1222,9 @@ export function GridCanvas(props: {
     if (progress.linePaletteKind === "center") return "center";
     if (progress.linePaletteKind === "edge") return "edge";
 
+    const edgeDistance = Math.min(point.fx, 1 - point.fx, point.fy, 1 - point.fy);
+    if (edgeDistance <= 0.22) return "edge";
+
     const dCenter = Math.hypot(point.fx - 0.5, point.fy - 0.5);
     const dCorner = Math.min(
       Math.hypot(point.fx, point.fy),
@@ -1382,7 +1384,7 @@ export function GridCanvas(props: {
       const kind = drag.lineKind ?? "center";
       if (!drag.moved) {
         if (kind === "edge") {
-          const tappedEdge = pickEdgeByPointer(e.clientX, e.clientY, 0.4);
+          const tappedEdge = pickEdgeByPointer(e.clientX, e.clientY, 0.46);
           if (tappedEdge) {
             props.onLineTapEdge(tappedEdge.a, tappedEdge.b);
           } else {
