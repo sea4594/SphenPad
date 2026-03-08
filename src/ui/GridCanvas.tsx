@@ -503,6 +503,30 @@ export function GridCanvas(props: {
       const drawShapes = opts?.drawShapes ?? true;
       const drawText = opts?.drawText ?? true;
 
+      const isCornerJoinHelper = (item: NonNullable<PuzzleDefinition["cosmetics"]["underlays"]>[number]) => {
+        const text = item.text == null ? "" : String(item.text).trim();
+        if (text.length > 0) return false;
+        const w = Number(item.width);
+        const h = Number(item.height);
+        if (!Number.isFinite(w) || !Number.isFinite(h)) return false;
+        if (Math.max(w, h) > 0.26) return false;
+        const angle = Math.abs(Number(item.angle ?? 0));
+        const near45 = angle >= 1 && Math.abs((angle % 90) - 45) <= 1.5;
+        if (!near45) return false;
+        const cx = Number(item.center.x);
+        const cy = Number(item.center.y);
+        const nearOrOutsideBorder =
+          cx <= 0.6 ||
+          cy <= 0.6 ||
+          cx >= cols - 0.6 ||
+          cy >= rows - 0.6 ||
+          cx < 0 ||
+          cy < 0 ||
+          cx > cols ||
+          cy > rows;
+        return nearOrOutsideBorder;
+      };
+
       const drawShape = (item: NonNullable<PuzzleDefinition["cosmetics"]["underlays"]>[number], mode: "fill" | "stroke") => {
         const w = Number.isFinite(item.width) ? item.width! : 1;
         const h = Number.isFinite(item.height) ? item.height! : 1;
@@ -570,7 +594,15 @@ export function GridCanvas(props: {
       if (drawShapes) {
         // Preserve source item ordering (SudokuPad semantics): each shape paints
         // its own fill and stroke before moving to the next item.
-        for (const item of items) {
+        const cornerJoinItems = items.filter(isCornerJoinHelper);
+        const normalItems = items.filter((item) => !isCornerJoinHelper(item));
+        for (const item of normalItems) {
+          if (item.color) drawShape(item, "fill");
+          if (item.borderColor) drawShape(item, "stroke");
+        }
+        // Corner join helpers are miniature bevel masks/caps in many SudokuPad exports.
+        // Draw them last so they correctly miter strip endpoints.
+        for (const item of cornerJoinItems) {
           if (item.color) drawShape(item, "fill");
           if (item.borderColor) drawShape(item, "stroke");
         }
