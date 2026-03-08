@@ -66,12 +66,14 @@ export function GridCanvas(props: {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const dragRef = useRef<DragState | null>(null);
+  const twemojiCacheRef = useRef<Map<string, HTMLImageElement | "loading" | "error">>(new Map());
 
   const rows = Math.max(1, Number(def.rows ?? progress.cells.length ?? def.size));
   const cols = Math.max(1, Number(def.cols ?? progress.cells[0]?.length ?? def.size));
   const [cellPx, setCellPx] = useState(56);
   const [bgImage, setBgImage] = useState<HTMLImageElement | null>(null);
   const [linePreview, setLinePreview] = useState<{ segments: LineSegmentDraft[]; kind: LineKindResolved } | null>(null);
+  const [emojiRenderVersion, setEmojiRenderVersion] = useState(0);
 
   const pad = Math.max(14, Math.round(cellPx * 0.32));
   const worldBounds = useMemo(() => {
@@ -142,6 +144,51 @@ export function GridCanvas(props: {
   const worldY = useCallback((y: number) => originY + y * cellPx, [originY, cellPx]);
   const cellX = useCallback((c: number) => originX + c * cellPx, [originX, cellPx]);
   const cellY = useCallback((r: number) => originY + r * cellPx, [originY, cellPx]);
+
+  const twemojiCodepoint = useCallback((text: string): string | null => {
+    const value = text.trim();
+    if (!value) return null;
+    const cps: number[] = [];
+    for (const ch of Array.from(value)) {
+      const cp = ch.codePointAt(0);
+      if (cp == null) continue;
+      // Match Twemoji lookup behavior for most glyphs.
+      if (cp === 0xfe0f) continue;
+      cps.push(cp);
+    }
+    if (!cps.length) return null;
+    return cps.map((cp) => cp.toString(16)).join("-");
+  }, []);
+
+  const twemojiUrl = useCallback((text: string): string | null => {
+    const code = twemojiCodepoint(text);
+    if (!code) return null;
+    return `https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/svg/${code}.svg`;
+  }, [twemojiCodepoint]);
+
+  const getTwemojiImage = useCallback((text: string): HTMLImageElement | null => {
+    const key = twemojiCodepoint(text);
+    if (!key) return null;
+    const cached = twemojiCacheRef.current.get(key);
+    if (cached instanceof HTMLImageElement) return cached;
+    if (cached === "loading" || cached === "error") return null;
+
+    const url = twemojiUrl(text);
+    if (!url) return null;
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    twemojiCacheRef.current.set(key, "loading");
+    img.onload = () => {
+      twemojiCacheRef.current.set(key, img);
+      setEmojiRenderVersion((v) => v + 1);
+    };
+    img.onerror = () => {
+      twemojiCacheRef.current.set(key, "error");
+      setEmojiRenderVersion((v) => v + 1);
+    };
+    img.src = url;
+    return null;
+  }, [twemojiCodepoint, twemojiUrl]);
 
   const dotOffset = useMemo(() => {
     const dots = def.cosmetics.dots ?? [];
@@ -538,7 +585,11 @@ export function GridCanvas(props: {
           }
 
           const isTightNumberLabel = /^\d{2,}$/.test(text) && !onOrOutsideGridBorder;
-          if (isTightNumberLabel) {
+          const twemoji = hasEmoji ? getTwemojiImage(text) : null;
+          if (twemoji) {
+            const sz = Math.max(10, px);
+            ctx.drawImage(twemoji, tx - sz / 2, ty - sz / 2, sz, sz);
+          } else if (isTightNumberLabel) {
             const chars = Array.from(text);
             const widths = chars.map((ch) => ctx.measureText(ch).width);
             const kerning = Math.max(0.6, px * 0.22);
@@ -1202,6 +1253,8 @@ export function GridCanvas(props: {
     cellPx,
     def,
     dotOffset,
+    emojiRenderVersion,
+    getTwemojiImage,
     heightPx,
     highlightRotationRad,
     linePreview,
