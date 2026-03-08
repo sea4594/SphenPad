@@ -779,6 +779,80 @@ function inferredRulesFromCosmetics(cosmetics: PuzzleCosmetics): string {
   return lines.join("\n\n");
 }
 
+function normalizeLayerCosmeticsToGrid(
+  cosmetics: PuzzleCosmetics,
+  rows: number,
+  cols: number,
+): PuzzleCosmetics {
+  const normalizeLayerArray = (
+    items: PuzzleCosmetics["underlays"] | PuzzleCosmetics["overlays"] | undefined,
+  ) => {
+    if (!Array.isArray(items) || !items.length) return items;
+
+    return items
+      .map((item) => {
+        if (!item || !item.center) return null;
+        const text = item.text == null ? "" : String(item.text).trim();
+        const hasText = text.length > 0;
+        const hasFill = Boolean(item.color);
+        const hasBorder = Boolean(item.borderColor) && (item.borderThickness ?? 1.4) > 0;
+        const width = Number.isFinite(item.width) ? Number(item.width) : 0;
+        const height = Number.isFinite(item.height) ? Number(item.height) : 0;
+        const cx = Number(item.center.x);
+        const cy = Number(item.center.y);
+        if (!Number.isFinite(cx) || !Number.isFinite(cy)) return null;
+
+        const halfW = Math.max(0, width / 2);
+        const halfH = Math.max(0, height / 2);
+        const right = cx + halfW;
+        const left = cx - halfW;
+        const top = cy - halfH;
+        const bottom = cy + halfH;
+
+        // Compact SudokuPad exports often include tiny anti-alias fragments at the board perimeter.
+        // When they sit fully outside the grid and carry no text semantics, ignore them.
+        const tinyShapeOnly =
+          !hasText &&
+          (hasFill || hasBorder) &&
+          Math.max(width, height) <= 0.25;
+        const fullyOutside = right <= 0 || left >= cols || bottom <= 0 || top >= rows;
+        if (tinyShapeOnly && fullyOutside) return null;
+
+        // Border-only frames that slightly exceed puzzle size are usually decorative bevels.
+        // Clamp them to the board extents so they do not leak outside the playable area.
+        const nearAxisAligned = Math.abs((item.angle ?? 0) % 180) <= 0.001;
+        const centeredOnGrid = Math.abs(cx - cols / 2) <= 0.35 && Math.abs(cy - rows / 2) <= 0.35;
+        const looksLikeOuterFrame =
+          !hasText &&
+          !hasFill &&
+          hasBorder &&
+          nearAxisAligned &&
+          centeredOnGrid &&
+          width >= cols &&
+          height >= rows &&
+          width <= cols + 1.5 &&
+          height <= rows + 1.5;
+
+        if (looksLikeOuterFrame) {
+          return {
+            ...item,
+            width: Math.min(width, cols),
+            height: Math.min(height, rows),
+          };
+        }
+
+        return item;
+      })
+      .filter(Boolean) as typeof items;
+  };
+
+  return {
+    ...cosmetics,
+    underlays: normalizeLayerArray(cosmetics.underlays),
+    overlays: normalizeLayerArray(cosmetics.overlays),
+  };
+}
+
 export async function loadFromSudokuPad(inputUrlOrId: string): Promise<{ key: string; def: PuzzleDefinition; raw: any }> {
   const sourceDetails = parseSourceDetails(inputUrlOrId);
   const sourceIdRaw = sourceDetails.sourceId;
@@ -878,17 +952,18 @@ export async function loadFromSudokuPad(inputUrlOrId: string): Promise<{ key: st
   const shape = inferPuzzleShape(sclObj, givens);
   const size = Math.max(shape.rows, shape.cols, inferPuzzleSize(sclObj, givens));
   const subgrid = shape.rows === shape.cols ? detectStandardSubgrid(sclObj, size) : undefined;
+  const normalizedCosmetics = normalizeLayerCosmeticsToGrid(cosmetics, shape.rows, shape.cols);
 
-  if (cosmetics.gridVisible == null && Array.isArray(sclObj?.regions)) {
+  if (normalizedCosmetics.gridVisible == null && Array.isArray(sclObj?.regions)) {
     const regionCells = sclObj.regions.flatMap((region: any) => parseCellRefs(region));
     if (regionCells.length) {
       const regionRows = Math.max(...regionCells.map((rc: CellRC) => rc.r)) + 1;
       const regionCols = Math.max(...regionCells.map((rc: CellRC) => rc.c)) + 1;
       const hasDenseCustomArtwork =
-        (cosmetics.lines?.length ?? 0) > 0 ||
-        ((cosmetics.overlays?.length ?? 0) + (cosmetics.underlays?.length ?? 0)) >= 20;
+        (normalizedCosmetics.lines?.length ?? 0) > 0 ||
+        ((normalizedCosmetics.overlays?.length ?? 0) + (normalizedCosmetics.underlays?.length ?? 0)) >= 20;
       if (hasDenseCustomArtwork && (regionRows < shape.rows || regionCols < shape.cols)) {
-        cosmetics.gridVisible = false;
+        normalizedCosmetics.gridVisible = false;
       }
     }
   }
@@ -903,7 +978,7 @@ export async function loadFromSudokuPad(inputUrlOrId: string): Promise<{ key: st
     meta,
     givens,
     cosmetics: {
-      ...cosmetics,
+      ...normalizedCosmetics,
       ...(subgrid ? { subgrid } : {}),
     },
   };
