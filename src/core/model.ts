@@ -45,7 +45,15 @@ export type PuzzleCosmetics = {
   subgrid?: { r: number; c: number };
   backgroundImageUrl?: string;
   cages?: Array<{ cells: CellRC[]; sum?: string; color?: string }>;
-  arrows?: Array<{ bulb: CellRC; path: CellRC[] }>;
+  arrows?: Array<{
+    bulb: CellRC;
+    path: CellRC[];
+    color?: string;
+    thickness?: number;
+    bulbFill?: string;
+    bulbStroke?: string;
+    bulbStrokeThickness?: number;
+  }>;
   dots?: Array<{ a: CellRC; b: CellRC; kind: "black" | "white" }>;
   lines?: Array<{
     wayPoints: Array<{ x: number; y: number }>;

@@ -908,6 +908,42 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
     (typeof scl?.backgroundImage === "string" ? scl.backgroundImage : undefined) ??
     (typeof scl?.background?.image === "string" ? scl.background.image : undefined);
 
+  // Cell background colors from fpuz/scl grid cell objects.
+  const cellBackgrounds: NonNullable<PuzzleCosmetics["underlays"]> = [];
+  const colorGrids = [scl?.cells, scl?.grid].filter(Array.isArray);
+  for (const grid of colorGrids) {
+    for (let r = 0; r < grid.length; r++) {
+      const row = grid[r];
+      if (!Array.isArray(row)) continue;
+      for (let c = 0; c < row.length; c++) {
+        const cell = row[c];
+        if (!cell || typeof cell !== "object") continue;
+        const palette = [
+          ...(Array.isArray(cell?.cArray) ? cell.cArray : []),
+          cell?.c,
+          cell?.color,
+          cell?.backgroundColor,
+          cell?.bgColor,
+          cell?.fill,
+        ]
+          .map(normalizeColorToken)
+          .filter((v): v is string => Boolean(v));
+        if (!palette.length) continue;
+        const color = palette[0] as string;
+        if (color === "#000000" || color === "#0" || color.toLowerCase() === "transparent") continue;
+        cellBackgrounds.push({
+          center: { x: c + 0.5, y: r + 0.5 },
+          width: 1,
+          height: 1,
+          rounded: false,
+          color,
+          opacity: parseOpacityToken(cell?.alpha ?? cell?.opacity) ?? 1,
+        });
+      }
+    }
+  }
+  if (cellBackgrounds.length) cosmetics.underlays = [...(cosmetics.underlays ?? []), ...cellBackgrounds];
+
   // cages
   const cagesSrc = Array.isArray(scl?.cages)
     ? scl.cages
@@ -950,7 +986,15 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
           : wpPath.map((p) => ({ r: p.y, c: p.x }));
         if (path.length < 2) return null;
         const bulb = bulbCells[0] ?? path[0];
-        return { bulb, path };
+        return {
+          bulb,
+          path,
+          color: normalizeColorToken(a?.color ?? a?.lineColor ?? a?.c),
+          thickness: typeof (a?.thickness ?? a?.th) === "number" ? (a?.thickness ?? a?.th) : undefined,
+          bulbFill: normalizeColorToken(a?.bulbColor ?? a?.baseC ?? "#ffffff"),
+          bulbStroke: normalizeColorToken(a?.bulbBorderColor ?? a?.outlineC ?? a?.color ?? a?.lineColor ?? a?.c ?? "#222222"),
+          bulbStrokeThickness: typeof a?.bulbBorderThickness === "number" ? a.bulbBorderThickness : undefined,
+        };
       })
       .filter(Boolean) as any;
   }
