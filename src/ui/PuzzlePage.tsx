@@ -146,58 +146,6 @@ function edgeLikeTouchesSelection(
   return touchedCells.some((rc) => selected.has(rcKey(rc)));
 }
 
-function nodeEdgeKey(a: CellRC, b: CellRC): string {
-  const ak = `${a.r},${a.c}`;
-  const bk = `${b.r},${b.c}`;
-  return ak < bk ? `${ak}|${bk}` : `${bk}|${ak}`;
-}
-
-function selectedCellEdgeKeys(selected: CellRC[]): Set<string> {
-  const out = new Set<string>();
-  for (const rc of selected) {
-    const topA = { r: rc.r, c: rc.c };
-    const topB = { r: rc.r, c: rc.c + 1 };
-    const bottomA = { r: rc.r + 1, c: rc.c };
-    const bottomB = { r: rc.r + 1, c: rc.c + 1 };
-    const leftA = { r: rc.r, c: rc.c };
-    const leftB = { r: rc.r + 1, c: rc.c };
-    const rightA = { r: rc.r, c: rc.c + 1 };
-    const rightB = { r: rc.r + 1, c: rc.c + 1 };
-    out.add(nodeEdgeKey(topA, topB));
-    out.add(nodeEdgeKey(bottomA, bottomB));
-    out.add(nodeEdgeKey(leftA, leftB));
-    out.add(nodeEdgeKey(rightA, rightB));
-  }
-  return out;
-}
-
-function edgeSegmentToNodeEdgeKey(seg: { a: CellRC; b: CellRC }, rows: number, cols: number): string | null {
-  const a = seg.a;
-  const b = seg.b;
-  const dr = b.r - a.r;
-  const dc = b.c - a.c;
-  if (Math.abs(dr) + Math.abs(dc) !== 1) return null;
-
-  const aIsCell = a.r >= 0 && a.r < rows && a.c >= 0 && a.c < cols;
-  const bIsCell = b.r >= 0 && b.r < rows && b.c >= 0 && b.c < cols;
-
-  // Legacy/standard edge strokes: node-to-node along grid lines.
-  if (!aIsCell || !bIsCell) return nodeEdgeKey(a, b);
-
-  // Cell-pair edge strokes: convert to shared border node edge.
-  if (a.r === b.r) {
-    const borderC = Math.max(a.c, b.c);
-    const n1 = { r: a.r, c: borderC };
-    const n2 = { r: a.r + 1, c: borderC };
-    return nodeEdgeKey(n1, n2);
-  }
-
-  const borderR = Math.max(a.r, b.r);
-  const n1 = { r: borderR, c: a.c };
-  const n2 = { r: borderR, c: a.c + 1 };
-  return nodeEdgeKey(n1, n2);
-}
-
 function hasIncompleteMeta(p: PersistedPuzzle): boolean {
   const title = (p.def.meta?.title ?? "").trim();
   const author = (p.def.meta?.author ?? "").trim();
@@ -806,15 +754,12 @@ export function PuzzlePage() {
     const selectedSet = new Set(selected.map(rcKey));
     const rows = progress.cells.length;
     const cols = progress.cells[0]?.length ?? 0;
-    const edgeKeys = selectedCellEdgeKeys(selected);
     let changed = false;
     const nextLines: LineStroke[] = [];
     for (const stroke of progress.lines) {
       const nextSegments = stroke.segments.filter((seg) => {
         if (stroke.kind !== "edge") return !sharesSelectedCell(seg.a, seg.b, selectedSet);
-        const edgeKey = edgeSegmentToNodeEdgeKey(seg, rows, cols);
-        if (!edgeKey) return true;
-        return !edgeKeys.has(edgeKey);
+        return !edgeLikeTouchesSelection(seg.a, seg.b, selectedSet, rows, cols);
       });
       if (nextSegments.length !== stroke.segments.length) changed = true;
       if (nextSegments.length) nextLines.push({ ...stroke, segments: nextSegments });

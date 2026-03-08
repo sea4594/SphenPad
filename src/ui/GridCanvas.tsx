@@ -1445,19 +1445,28 @@ export function GridCanvas(props: {
     if (progress.linePaletteKind === "center") return "center";
     if (progress.linePaletteKind === "edge") return "edge";
 
-    const edgeDistance = Math.min(point.fx, 1 - point.fx, point.fy, 1 - point.fy);
-    if (edgeDistance <= 0.22) return "edge";
-
     const dCenter = Math.hypot(point.fx - 0.5, point.fy - 0.5);
+    const dEdgeCenter = Math.min(
+      Math.hypot(point.fx - 0.5, point.fy),
+      Math.hypot(point.fx - 0.5, 1 - point.fy),
+      Math.hypot(point.fx, point.fy - 0.5),
+      Math.hypot(1 - point.fx, point.fy - 0.5),
+    );
     const dCorner = Math.min(
       Math.hypot(point.fx, point.fy),
       Math.hypot(1 - point.fx, point.fy),
       Math.hypot(point.fx, 1 - point.fy),
       Math.hypot(1 - point.fx, 1 - point.fy),
     );
-    if (dCorner <= 0.31) return "edge";
-    if (dCenter <= 0.31) return "center";
-    return dCorner < dCenter ? "edge" : "center";
+
+    // In both-mode, keep a strong center zone to avoid accidental edge taps.
+    if (dCenter <= 0.27) return "center";
+    // Near the middle of an edge should favor edge marks.
+    if (dEdgeCenter <= 0.19) return "edge";
+    // Very near corners still favors edge intent.
+    if (dCorner <= 0.14) return "edge";
+
+    return dCenter <= dEdgeCenter ? "center" : "edge";
   }
 
   function onDown(e: React.PointerEvent) {
@@ -1617,9 +1626,8 @@ export function GridCanvas(props: {
     if (progress.activeTool === "line") {
       const kind = drag.lineKind ?? "center";
       if (!drag.moved) {
-        const tappedEdge = drag.edgeTapCandidate ?? pickEdgeByPointer(e.clientX, e.clientY, 0.47);
-        const shouldTapEdge = kind === "edge" || (progress.linePaletteKind === "both" && Boolean(tappedEdge));
-        if (shouldTapEdge) {
+        const tappedEdge = drag.edgeTapCandidate ?? pickEdgeByPointer(e.clientX, e.clientY, kind === "edge" ? 0.54 : 0.47);
+        if (kind === "edge") {
           if (tappedEdge) {
             props.onLineTapEdge(tappedEdge.a, tappedEdge.b);
           }
