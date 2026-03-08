@@ -644,10 +644,11 @@ export function GridCanvas(props: {
     const drawConstraintLines = (layer: "under" | "over") => {
       if (!def.cosmetics.lines) return;
       const classifyTarget = (target: string | undefined): "under" | "over" => {
-        const t = (target ?? "overlay").toLowerCase();
+        // SudokuPad-style default: line art sits under the grid unless explicitly set over.
+        const t = (target ?? "underlay").toLowerCase();
         if (/(^|[^a-z])(under|underlay|back|background|behind|below|bottom)([^a-z]|$)/.test(t)) return "under";
         if (/(^|[^a-z])(over|overlay|front|foreground|above|top)([^a-z]|$)/.test(t)) return "over";
-        return "over";
+        return "under";
       };
       for (const ln of def.cosmetics.lines) {
         if (ln.wayPoints.length < 2) continue;

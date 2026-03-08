@@ -1267,7 +1267,7 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
           wayPoints: path.map((rc) => ({ x: rc.c + 0.5, y: rc.r + 0.5 })),
           color: lineColor,
           thickness: parseFiniteNumberToken(item?.thickness ?? item?.th) ?? 10,
-          target: "overlay",
+          target: "underlay",
         };
       })
       .filter(Boolean) as NonNullable<PuzzleCosmetics["lines"]>;
@@ -1495,7 +1495,7 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
           wayPoints: path.map((rc) => ({ x: rc.c + 0.5, y: rc.r + 0.5 })),
           color: lineColor,
           thickness: parseFiniteNumberToken(item?.thickness ?? item?.th) ?? 10,
-          target: "overlay",
+          target: "underlay",
         };
       })
       .filter(Boolean) as NonNullable<PuzzleCosmetics["lines"]>;
