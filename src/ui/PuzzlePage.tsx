@@ -850,16 +850,16 @@ export function PuzzlePage() {
       b: "line",
     };
     const letterHotkeys: Record<string, string> = {
-      q: "a",
-      w: "b",
-      e: "c",
-      r: "d",
-      t: "e",
-      y: "f",
-      u: "g",
-      i: "h",
-      o: "i",
-      p: "k",
+      q: "A",
+      w: "B",
+      e: "C",
+      r: "D",
+      t: "E",
+      y: "F",
+      u: "G",
+      i: "H",
+      o: "I",
+      0: "0",
     };
 
     const normalizeDigit = (k: string): string | null => {
