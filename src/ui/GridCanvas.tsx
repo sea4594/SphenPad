@@ -152,7 +152,29 @@ export function GridCanvas(props: {
   const highlightRotationRad = (20 * Math.PI) / 180;
   const highlightAlpha = 0.82;
   const gridTextFont = '"Lato", "Noto Sans", "Segoe UI", ui-sans-serif, sans-serif';
-  const emojiTextFont = '"Twemoji Mozilla", "Noto Color Emoji", "Apple Color Emoji", "Segoe UI Emoji", emoji, sans-serif';
+  const emojiTextFont = useMemo(() => {
+    const candidates = [
+      "Noto Color Emoji",
+      "Apple Color Emoji",
+      "Segoe UI Emoji",
+      "Noto Emoji",
+      "EmojiOne Color",
+      "Twemoji Mozilla",
+    ];
+    const fallback = '"Noto Color Emoji", "Apple Color Emoji", "Segoe UI Emoji", emoji, sans-serif';
+    if (typeof document === "undefined" || !("fonts" in document)) return fallback;
+
+    const available = candidates.filter((name) => {
+      try {
+        return document.fonts.check(`16px "${name}"`);
+      } catch {
+        return false;
+      }
+    });
+
+    if (!available.length) return fallback;
+    return `${available.map((name) => `"${name}"`).join(", ")}, emoji, sans-serif`;
+  }, []);
 
   const centerLineKeys = useMemo(() => {
     const keys = new Set<string>();
@@ -853,8 +875,8 @@ export function GridCanvas(props: {
       if (underlaysAboveGrid.length) drawLayer(underlaysAboveGrid, { drawShapes: true, drawText: false });
       if (underlayItems.length) drawLayer(underlayItems, { drawShapes: false, drawText: true });
       drawCages();
-      drawRegularOverlays({ drawShapes: true, drawText: false });
       drawConstraintLines("over");
+      drawRegularOverlays({ drawShapes: true, drawText: false });
       drawRegularOverlays({ drawShapes: false, drawText: true });
       drawArrows();
     };
