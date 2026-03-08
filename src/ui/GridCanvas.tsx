@@ -841,9 +841,11 @@ export function GridCanvas(props: {
       drawArrows();
     };
 
+    const fogDefined = (def.cosmetics.fogLights?.length ?? 0) > 0 || (def.cosmetics.fogTriggerEffects?.length ?? 0) > 0;
+
     // Grid below top puzzle artwork so features are not bisected by grid lines.
     drawGridLines();
-    drawTopPuzzleFeatures();
+    if (!fogDefined) drawTopPuzzleFeatures();
 
     const drawCenterStroke = (segments: LineSegmentDraft[], color: string, alpha = 1) => {
       ctx.save();
@@ -962,7 +964,6 @@ export function GridCanvas(props: {
       cageLabelCells.add(`${first.r},${first.c}`);
     }
     const valueFontPx = Math.max(28, Math.min(42, Math.round(cellPx * 0.58)));
-    const fogDefined = (def.cosmetics.fogLights?.length ?? 0) > 0 || (def.cosmetics.fogTriggerEffects?.length ?? 0) > 0;
     if (fogDefined) {
       const addLight = (rc: CellRC) => {
         if (!inBounds(rc.r, rc.c)) return;

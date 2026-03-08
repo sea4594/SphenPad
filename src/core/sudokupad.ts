@@ -314,6 +314,12 @@ function categorizeTarget(raw: unknown): "under" | "over" | undefined {
   return undefined;
 }
 
+function isNoStrokeToken(v: unknown): boolean {
+  if (typeof v !== "string") return false;
+  const s = v.trim().replace(/^"+|"+$/g, "").toLowerCase();
+  return s === "#0" || s === "0" || s === "none" || s === "transparent";
+}
+
 function parseRcString(value: any): CellRC[] {
   if (typeof value !== "string") return [];
   const out: CellRC[] = [];
@@ -1128,8 +1134,9 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
       height <= 0.42;
 
     // In compact SudokuPad payloads, '#0' in stroke-like keys frequently means no visible stroke.
-    const strokeToken = normalizeColorToken(item?.borderColor ?? item?.stroke ?? item?.c1);
-    const borderColor = strokeToken === "#0" ? undefined : strokeToken;
+    const rawStroke = item?.borderColor ?? item?.stroke ?? item?.c1;
+    const strokeToken = normalizeColorToken(rawStroke);
+    const borderColor = isNoStrokeToken(rawStroke) ? undefined : strokeToken;
     const fillColor = normalizeColorToken(item?.backgroundColor ?? item?.c2 ?? item?.fill);
     const noVisibleStroke = !borderColor;
     const isRoundedTextMarker = textStr.length > 0 && rounded && noVisibleStroke;
