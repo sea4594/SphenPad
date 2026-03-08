@@ -218,7 +218,19 @@ function normalizeColorToken(v: any): string | undefined {
   s = s.replace(/^"+|"+$/g, "");
   if (s.startsWith("\\\"") && s.endsWith("\\\"")) s = s.slice(2, -2);
   s = s.replace(/^"+|"+$/g, "");
-  return s || undefined;
+  if (!s) return undefined;
+
+  const raw = s.startsWith("#") ? s.slice(1) : s;
+  if (/^[0-9a-f]+$/i.test(raw)) {
+    if (raw.length === 1) {
+      // Compact exports sometimes use #F / #0 style grayscale shorthand.
+      const ch = raw.toLowerCase();
+      return `#${ch}${ch}${ch}${ch}${ch}${ch}`;
+    }
+    if (raw.length === 3 || raw.length === 4 || raw.length === 6 || raw.length === 8) return `#${raw}`;
+  }
+
+  return s;
 }
 
 function parseRcString(value: any): CellRC[] {
@@ -560,7 +572,7 @@ function extractRulesText(value: unknown): string | undefined {
 }
 
 function buildCounterId(author: string, title: string): string | undefined {
-  const reCleanStr = /[^a-z0-9+_\-&!?.,:;\/\\'"()]+/ig;
+  const reCleanStr = /[^a-z0-9+_\-&!?.,:;/\\'"()]+/ig;
   const authorPart = author.replace(reCleanStr, "").toLowerCase();
   const titlePart = title.replace(reCleanStr, "").toLowerCase();
   if (!authorPart || !titlePart) return undefined;
@@ -854,13 +866,16 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
     cosmetics.arrows = arrowsSrc
       .map((a: any) => {
         const lineCells = Array.isArray(a?.lines) && Array.isArray(a.lines[0]) ? a.lines[0] : undefined;
-        const cellPath = parseCellRefs(a?.cells ?? a?.ce ?? lineCells);
+        const bulbCells = parseCellRefs(a?.cells ?? a?.ce);
+        const shaftCells = parseCellRefs(lineCells);
+        const cellPath = shaftCells.length ? shaftCells : bulbCells;
         const wpPath = (a?.wayPoints ?? []).map(asPoint).filter(Boolean) as Array<{ x: number; y: number }>;
         const path = cellPath.length
           ? cellPath
           : wpPath.map((p) => ({ r: p.y, c: p.x }));
         if (path.length < 2) return null;
-        return { bulb: path[0], path };
+        const bulb = bulbCells[0] ?? path[0];
+        return { bulb, path };
       })
       .filter(Boolean) as any;
   }
@@ -979,7 +994,7 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
       height <= 0.42;
 
     // In compact SudokuPad payloads, '#0' in stroke-like keys frequently means no visible stroke.
-    const strokeToken = normalizeColorToken(item?.borderColor ?? item?.stroke ?? item?.c ?? item?.c1);
+    const strokeToken = normalizeColorToken(item?.borderColor ?? item?.stroke ?? item?.c1);
     const borderColor = strokeToken === "#0" ? undefined : strokeToken;
     const fillColor = normalizeColorToken(item?.backgroundColor ?? item?.c2 ?? item?.fill);
     const noVisibleStroke = !borderColor;
@@ -995,23 +1010,38 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
       borderColor: suppressShape ? undefined : borderColor,
       borderThickness: typeof (item?.thickness ?? item?.th) === "number" ? (item?.thickness ?? item?.th) : undefined,
       text,
-      textColor: normalizeColorToken(item?.color ?? item?.textColor),
+      textColor: normalizeColorToken(item?.color ?? item?.textColor ?? item?.c),
       textSize:
         typeof (item?.textSize ?? item?.fontSize ?? item?.fs) === "number"
           ? (item?.textSize ?? item?.fontSize ?? item?.fs)
           : undefined,
       angle: typeof item?.angle === "number" ? item.angle : undefined,
+      target: typeof item?.target === "string" ? item.target : undefined,
     };
   };
 
   const overlaysSrc = Array.isArray(scl?.overlays) ? scl.overlays : [];
   if (overlaysSrc.length) {
-    cosmetics.overlays = overlaysSrc.map(parseLayerItem).filter(Boolean) as any;
+    const parsed = overlaysSrc.map(parseLayerItem).filter(Boolean) as Array<Record<string, unknown>>;
+    const under = parsed.filter((item) => {
+      const target = String(item.target ?? "").toLowerCase();
+      return target.includes("under") || target.includes("back");
+    });
+    const over = parsed.filter((item) => !under.includes(item));
+    if (over.length) cosmetics.overlays = over as any;
+    if (under.length) cosmetics.underlays = [...(cosmetics.underlays ?? []), ...(under as any)];
   }
 
   const underlaysSrc = Array.isArray(scl?.underlays) ? scl.underlays : [];
   if (underlaysSrc.length) {
-    cosmetics.underlays = underlaysSrc.map(parseLayerItem).filter(Boolean) as any;
+    const parsed = underlaysSrc.map(parseLayerItem).filter(Boolean) as Array<Record<string, unknown>>;
+    const over = parsed.filter((item) => {
+      const target = String(item.target ?? "").toLowerCase();
+      return target.includes("over") || target.includes("front");
+    });
+    const under = parsed.filter((item) => !over.includes(item));
+    if (under.length) cosmetics.underlays = [...(cosmetics.underlays ?? []), ...(under as any)];
+    if (over.length) cosmetics.overlays = [...(cosmetics.overlays ?? []), ...(over as any)];
   }
 
   // Legacy geometric clue primitives used by some older SudokuPad puzzles.
@@ -1103,7 +1133,7 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
     const betweenAsLines = scl.betweenline
       .flatMap((item: any) => (Array.isArray(item?.lines) ? item.lines.map((line: any) => ({ cells: line, color: item?.color })) : [item]))
       .map((item: any) => {
-        const path = parseCellRefs(item?.cells ?? item?.ce ?? item?.line ?? item);
+        const path = parseCellRefs(item?.cells ?? item?.ce ?? item?.line ?? item?.lines ?? item);
         if (path.length < 2) return null;
         return {
           wayPoints: path.map((rc) => ({ x: rc.c + 0.5, y: rc.r + 0.5 })),

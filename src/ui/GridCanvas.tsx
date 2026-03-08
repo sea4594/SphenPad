@@ -90,8 +90,8 @@ export function GridCanvas(props: {
       const text = item?.text == null ? "" : String(item.text);
       if ((w <= 0 && h <= 0) && !text.trim().length) return;
       const textSize = Number.isFinite(item?.textSize) ? Number(item.textSize) : 16;
-      const textHalfHeight = Math.max(0.35, (textSize / 56) * 0.65);
-      const textHalfWidth = Math.max(0.45, Math.min(3.8, (Math.max(1, text.length) * textSize) / 150));
+      const textHalfHeight = Math.max(0.42, (textSize / 56) * 0.98);
+      const textHalfWidth = Math.max(0.5, Math.min(5.2, (Math.max(1, text.length) * textSize) / 108));
       if (w <= 0 && h <= 0) {
         includePoint(cx - textHalfWidth, cy - textHalfHeight);
         includePoint(cx + textHalfWidth, cy + textHalfHeight);
@@ -105,6 +105,11 @@ export function GridCanvas(props: {
     for (const item of def.cosmetics.underlays ?? []) includeLayer(item);
     for (const ln of def.cosmetics.lines ?? []) {
       for (const p of ln.wayPoints) includePoint(p.x, p.y);
+      const strokePad = Math.max(0.12, ((ln.thickness ?? 6) / 56) * 0.7);
+      for (const p of ln.wayPoints) {
+        includePoint(p.x - strokePad, p.y - strokePad);
+        includePoint(p.x + strokePad, p.y + strokePad);
+      }
     }
 
     return { minX, minY, maxX, maxY };
@@ -135,6 +140,8 @@ export function GridCanvas(props: {
 
   const highlightRotationRad = (20 * Math.PI) / 180;
   const highlightAlpha = 0.82;
+  const gridTextFont = '"Lato", "Noto Sans", "Segoe UI", ui-sans-serif, sans-serif';
+  const emojiTextFont = '"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", "Twemoji Mozilla", "Lato", "Noto Sans", sans-serif';
 
   const centerLineKeys = useMemo(() => {
     const keys = new Set<string>();
@@ -482,8 +489,8 @@ export function GridCanvas(props: {
           const text = String(item.text);
           const hasEmoji = /\p{Extended_Pictographic}/u.test(text);
           ctx.font = hasEmoji
-            ? `${Math.max(10, px)}px "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", "Lato", "Noto Sans", ui-sans-serif`
-            : `600 ${Math.max(10, px)}px "Lato", "Noto Sans", ui-sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji"`;
+            ? `${Math.max(10, px)}px ${emojiTextFont}`
+            : `600 ${Math.max(10, px)}px ${gridTextFont}, ${emojiTextFont}`;
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";
           const tx = worldX(item.center.x);
@@ -585,9 +592,9 @@ export function GridCanvas(props: {
       }
     };
 
-    // Draw underlay polygon/line art first, then underlay labels/emoji above it.
+    // Draw underlay polygon/line art first.
     drawConstraintLines("under");
-    if (def.cosmetics.underlays?.length) drawLayer(def.cosmetics.underlays, { drawShapes: true, drawText: true });
+    if (def.cosmetics.underlays?.length) drawLayer(def.cosmetics.underlays, { drawShapes: true, drawText: false });
 
     // Highlights sit above puzzle artwork but below grid/features and values.
     for (let r = 0; r < n; r++) {
@@ -666,7 +673,7 @@ export function GridCanvas(props: {
           const first = cage.cells[0];
           if (!hasMatchingCornerLabel(first, cage.sum)) {
             ctx.fillStyle = "#111111";
-            ctx.font = "12px ui-sans-serif";
+            ctx.font = `12px ${gridTextFont}, ${emojiTextFont}`;
             ctx.fillText(cage.sum, cellX(first.c) + 6, cellY(first.r) + 14);
           }
         }
@@ -742,6 +749,7 @@ export function GridCanvas(props: {
     };
 
     const drawTopPuzzleFeatures = () => {
+      if (def.cosmetics.underlays?.length) drawLayer(def.cosmetics.underlays, { drawShapes: false, drawText: true });
       drawCages();
       drawOverlays("regular");
       drawConstraintLines("over");
@@ -907,13 +915,13 @@ export function GridCanvas(props: {
 
         if (cell.value) {
           ctx.fillStyle = cell.given ? "#111111" : "#123f9a";
-          ctx.font = cell.given ? `700 ${valueFontPx}px ui-sans-serif` : `650 ${valueFontPx}px ui-sans-serif`;
+          ctx.font = cell.given ? `700 ${valueFontPx}px ${gridTextFont}, ${emojiTextFont}` : `650 ${valueFontPx}px ${gridTextFont}, ${emojiTextFont}`;
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";
           ctx.fillText(cell.value, x0 + cellPx / 2, y0 + cellPx / 2 + 1);
         } else {
           ctx.fillStyle = "#1e2633";
-          ctx.font = "12px ui-sans-serif";
+          ctx.font = `12px ${gridTextFont}, ${emojiTextFont}`;
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";
 
@@ -932,7 +940,7 @@ export function GridCanvas(props: {
 
           const cand = new Set(cell.notes.candidates);
           if (cand.size) {
-            ctx.font = "10px ui-sans-serif";
+            ctx.font = `10px ${gridTextFont}, ${emojiTextFont}`;
             ctx.textAlign = "center";
             const sym = Array.from(cand).sort();
             for (const s of sym) {
@@ -1006,7 +1014,7 @@ export function GridCanvas(props: {
           if (cell.value) {
             if (cell.given && !lit[r][c]) continue;
             ctx.fillStyle = cell.given ? "#111111" : "#123f9a";
-            ctx.font = cell.given ? `700 ${valueFontPx}px ui-sans-serif` : `650 ${valueFontPx}px ui-sans-serif`;
+            ctx.font = cell.given ? `700 ${valueFontPx}px ${gridTextFont}, ${emojiTextFont}` : `650 ${valueFontPx}px ${gridTextFont}, ${emojiTextFont}`;
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
             ctx.fillText(cell.value, x0 + cellPx / 2, y0 + cellPx / 2 + 1);
@@ -1015,7 +1023,7 @@ export function GridCanvas(props: {
 
           if (cell.given) continue;
           ctx.fillStyle = "#1e2633";
-          ctx.font = "12px ui-sans-serif";
+          ctx.font = `12px ${gridTextFont}, ${emojiTextFont}`;
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";
 
@@ -1065,6 +1073,7 @@ export function GridCanvas(props: {
     def,
     dotOffset,
     heightPx,
+    highlightRotationRad,
     linePreview,
     n,
     originX,
@@ -1188,44 +1197,24 @@ export function GridCanvas(props: {
     return null;
   }
 
-  function pickEdgeByPointer(clientX: number, clientY: number, threshold = 0.38): { a: CellRC; b: CellRC } | null {
-    const gp = eventGridPoint(clientX, clientY);
-    if (!gp) return null;
+  function pickEdgeByPointer(clientX: number, clientY: number, threshold = 0.22): { a: CellRC; b: CellRC } | null {
+    const pt = eventPoint(clientX, clientY);
+    if (!pt) return null;
 
-    const distToSegment = (x: number, y: number, x1: number, y1: number, x2: number, y2: number) => {
-      const dx = x2 - x1;
-      const dy = y2 - y1;
-      const len2 = dx * dx + dy * dy;
-      if (len2 <= 0) return Math.hypot(x - x1, y - y1);
-      const tRaw = ((x - x1) * dx + (y - y1) * dy) / len2;
-      const t = Math.max(0, Math.min(1, tRaw));
-      const px = x1 + t * dx;
-      const py = y1 + t * dy;
-      return Math.hypot(x - px, y - py);
-    };
+    const candidates = [
+      { dist: pt.fy, a: { r: pt.r, c: pt.c }, b: { r: pt.r, c: pt.c + 1 } },
+      { dist: 1 - pt.fy, a: { r: pt.r + 1, c: pt.c }, b: { r: pt.r + 1, c: pt.c + 1 } },
+      { dist: pt.fx, a: { r: pt.r, c: pt.c }, b: { r: pt.r + 1, c: pt.c } },
+      { dist: 1 - pt.fx, a: { r: pt.r, c: pt.c + 1 }, b: { r: pt.r + 1, c: pt.c + 1 } },
+    ];
 
-    let best: { a: CellRC; b: CellRC; dist: number } | null = null;
-    // Horizontal edges between grid nodes.
-    for (let r = 0; r <= n; r++) {
-      for (let c = 0; c < n; c++) {
-        const d = distToSegment(gp.gx, gp.gy, c, r, c + 1, r);
-        if (d > threshold) continue;
-        const candidate = { a: { r, c }, b: { r, c: c + 1 }, dist: d };
-        if (!best || candidate.dist < best.dist) best = candidate;
-      }
+    let best = candidates[0] as { dist: number; a: CellRC; b: CellRC };
+    for (let i = 1; i < candidates.length; i++) {
+      const candidate = candidates[i] as { dist: number; a: CellRC; b: CellRC };
+      if (candidate.dist < best.dist) best = candidate;
     }
 
-    // Vertical edges between grid nodes.
-    for (let c = 0; c <= n; c++) {
-      for (let r = 0; r < n; r++) {
-        const d = distToSegment(gp.gx, gp.gy, c, r, c, r + 1);
-        if (d > threshold) continue;
-        const candidate = { a: { r, c }, b: { r: r + 1, c }, dist: d };
-        if (!best || candidate.dist < best.dist) best = candidate;
-      }
-    }
-
-    if (!best) return null;
+    if (best.dist > threshold) return null;
     return { a: best.a, b: best.b };
   }
 
@@ -1395,7 +1384,7 @@ export function GridCanvas(props: {
       const kind = drag.lineKind ?? "center";
       if (!drag.moved) {
         if (kind === "edge") {
-          const tappedEdge = pickEdgeByPointer(e.clientX, e.clientY, 0.46);
+          const tappedEdge = pickEdgeByPointer(e.clientX, e.clientY, 0.24);
           if (tappedEdge) {
             props.onLineTapEdge(tappedEdge.a, tappedEdge.b);
           } else {
