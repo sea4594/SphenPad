@@ -499,10 +499,10 @@ export function GridCanvas(props: {
     ) => {
       const drawShapes = opts?.drawShapes ?? true;
       const drawText = opts?.drawText ?? true;
-      for (const item of items) {
+
+      const drawShape = (item: NonNullable<PuzzleDefinition["cosmetics"]["underlays"]>[number], mode: "fill" | "stroke") => {
         const w = Number.isFinite(item.width) ? item.width! : 1;
         const h = Number.isFinite(item.height) ? item.height! : 1;
-
         const x = worldX(item.center.x - w / 2);
         const y = worldY(item.center.y - h / 2);
         const rw = w * cellPx;
@@ -511,18 +511,19 @@ export function GridCanvas(props: {
         const cy = worldY(item.center.y);
         const angleRad = (Number(item.angle) || 0) * (Math.PI / 180);
         const itemOpacity = Number.isFinite(item.opacity) ? Math.max(0, Math.min(1, Number(item.opacity))) : 1;
+        const nearlyCircle = Math.abs(rw - rh) <= Math.max(1, cellPx * 0.02);
 
-        if (drawShapes && item.color) {
-          ctx.save();
-          ctx.globalAlpha *= itemOpacity;
-          if (angleRad) {
-            ctx.translate(cx, cy);
-            ctx.rotate(angleRad);
-            ctx.translate(-cx, -cy);
-          }
-          ctx.fillStyle = item.color;
+        ctx.save();
+        ctx.globalAlpha *= itemOpacity;
+        if (angleRad) {
+          ctx.translate(cx, cy);
+          ctx.rotate(angleRad);
+          ctx.translate(-cx, -cy);
+        }
+
+        if (mode === "fill") {
+          ctx.fillStyle = item.color as string;
           if (item.rounded) {
-            const nearlyCircle = Math.abs(rw - rh) <= Math.max(1, cellPx * 0.02);
             if (nearlyCircle) {
               ctx.beginPath();
               ctx.ellipse(cx, cy, rw / 2, rh / 2, 0, 0, Math.PI * 2);
@@ -535,21 +536,10 @@ export function GridCanvas(props: {
           } else {
             ctx.fillRect(x, y, rw, rh);
           }
-          ctx.restore();
-        }
-
-        if (drawShapes && item.borderColor) {
-          ctx.save();
-          ctx.globalAlpha *= itemOpacity;
-          if (angleRad) {
-            ctx.translate(cx, cy);
-            ctx.rotate(angleRad);
-            ctx.translate(-cx, -cy);
-          }
-          ctx.strokeStyle = item.borderColor;
+        } else {
+          ctx.strokeStyle = item.borderColor as string;
           ctx.lineWidth = (item.borderThickness ?? 1.4) * (cellPx / cosmeticUnit);
           if (item.rounded) {
-            const nearlyCircle = Math.abs(rw - rh) <= Math.max(1, cellPx * 0.02);
             if (nearlyCircle) {
               ctx.beginPath();
               ctx.ellipse(cx, cy, rw / 2, rh / 2, 0, 0, Math.PI * 2);
@@ -562,10 +552,27 @@ export function GridCanvas(props: {
           } else {
             ctx.strokeRect(x, y, rw, rh);
           }
-          ctx.restore();
         }
+        ctx.restore();
+      };
 
+      if (drawShapes) {
+        for (const item of items) {
+          if (!item.color) continue;
+          drawShape(item, "fill");
+        }
+        for (const item of items) {
+          if (!item.borderColor) continue;
+          drawShape(item, "stroke");
+        }
+      }
+
+      for (const item of items) {
         if (drawText && item.text != null && String(item.text).length) {
+          const angleRad = (Number(item.angle) || 0) * (Math.PI / 180);
+          const itemOpacity = Number.isFinite(item.opacity) ? Math.max(0, Math.min(1, Number(item.opacity))) : 1;
+          const cx = worldX(item.center.x);
+          const cy = worldY(item.center.y);
           ctx.save();
           ctx.globalAlpha *= itemOpacity;
           if (angleRad) {
