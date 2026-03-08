@@ -6,9 +6,8 @@ const baseColors1 = ["#000000", "#ffa0a0", "#ffdf61", "#feffaf", "#b0ffb0", "#61
 const baseColors2 = ["#a8a8a8", "#ffd0d0", "#ffe9a7", "#fffbd6", "#d6ffd6", "#8bf2a9", "#d9f1ff", "#bdb7ff", "#ffb3ff"];
 const lineColors = ["#000000", "#ff4d4f", "#ff9f1a", "#ffd60a", "#34c759", "#00b894", "#32ade6", "#4f46e5", "#ff2d96"];
 
-function digits(alphabetMode: boolean, size: number) {
-  const n = Math.max(1, Math.min(16, size));
-  return Array.from({ length: n }, (_, i) =>
+function digits(alphabetMode: boolean) {
+  return Array.from({ length: 9 }, (_, i) =>
     alphabetMode ? String.fromCharCode(65 + i) : String(i + 1)
   );
 }
@@ -35,9 +34,7 @@ export function Keyboard(props: {
   const compact = Boolean(props.compact);
 
   if (kind === "numbers") {
-    const rows = progress.cells.length;
-    const cols = progress.cells[0]?.length ?? rows;
-    const keys = digits(progress.alphabetMode, Math.max(rows, cols)).slice(0, 9);
+    const keys = digits(progress.alphabetMode);
     const grid = (
       <Grid3x4 compact={compact}>
         {keys.map((k) => (

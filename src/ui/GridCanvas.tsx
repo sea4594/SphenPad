@@ -580,17 +580,6 @@ export function GridCanvas(props: {
             item.center.y < 0 ||
             item.center.y > rows;
 
-          if (onOrOutsideGridBorder) {
-            const metrics = ctx.measureText(text);
-            const wPad = 6;
-            const hPad = 2;
-            const bw = Math.ceil(metrics.width + wPad * 2);
-            const bh = Math.ceil(Math.max(px, 12) + hPad * 2);
-            ctx.fillStyle = "#ffffff";
-            ctx.fillRect(tx - bw / 2, ty - bh / 2, bw, bh);
-            ctx.fillStyle = item.textColor ?? "#111111";
-          }
-
           const isTightNumberLabel = /^\d{2,}$/.test(text) && !onOrOutsideGridBorder;
           const twemoji = hasEmoji ? getTwemojiImage(text) : null;
           if (twemoji) {
