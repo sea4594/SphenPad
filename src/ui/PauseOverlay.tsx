@@ -14,7 +14,7 @@ export function PauseOverlay(props: {
   const sudokuPadUrl = sourcePath ? `https://sudokupad.app/${encodeURI(sourcePath)}` : "";
   const onBackdropClick = () => {
     if (started) props.onResume();
-    else props.onStayPaused();
+    else props.onStart();
   };
 
   return (
