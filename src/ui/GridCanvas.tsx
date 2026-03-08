@@ -503,30 +503,6 @@ export function GridCanvas(props: {
       const drawShapes = opts?.drawShapes ?? true;
       const drawText = opts?.drawText ?? true;
 
-      const isCornerJoinHelper = (item: NonNullable<PuzzleDefinition["cosmetics"]["underlays"]>[number]) => {
-        const text = item.text == null ? "" : String(item.text).trim();
-        if (text.length > 0) return false;
-        const w = Number(item.width);
-        const h = Number(item.height);
-        if (!Number.isFinite(w) || !Number.isFinite(h)) return false;
-        if (Math.max(w, h) > 0.26) return false;
-        const angle = Math.abs(Number(item.angle ?? 0));
-        const near45 = angle >= 1 && Math.abs((angle % 90) - 45) <= 1.5;
-        if (!near45) return false;
-        const cx = Number(item.center.x);
-        const cy = Number(item.center.y);
-        const nearOrOutsideBorder =
-          cx <= 0.6 ||
-          cy <= 0.6 ||
-          cx >= cols - 0.6 ||
-          cy >= rows - 0.6 ||
-          cx < 0 ||
-          cy < 0 ||
-          cx > cols ||
-          cy > rows;
-        return nearOrOutsideBorder;
-      };
-
       const drawShape = (item: NonNullable<PuzzleDefinition["cosmetics"]["underlays"]>[number], mode: "fill" | "stroke") => {
         const w = Number.isFinite(item.width) ? item.width! : 1;
         const h = Number.isFinite(item.height) ? item.height! : 1;
@@ -594,15 +570,7 @@ export function GridCanvas(props: {
       if (drawShapes) {
         // Preserve source item ordering (SudokuPad semantics): each shape paints
         // its own fill and stroke before moving to the next item.
-        const cornerJoinItems = items.filter(isCornerJoinHelper);
-        const normalItems = items.filter((item) => !isCornerJoinHelper(item));
-        for (const item of normalItems) {
-          if (item.color) drawShape(item, "fill");
-          if (item.borderColor) drawShape(item, "stroke");
-        }
-        // Corner join helpers are miniature bevel masks/caps in many SudokuPad exports.
-        // Draw them last so they correctly miter strip endpoints.
-        for (const item of cornerJoinItems) {
+        for (const item of items) {
           if (item.color) drawShape(item, "fill");
           if (item.borderColor) drawShape(item, "stroke");
         }
@@ -742,10 +710,27 @@ export function GridCanvas(props: {
     };
 
     const underlayItems = def.cosmetics.underlays ?? [];
+    const isOutsideCornerMiter = (item: LayerItem) => {
+      const text = item.text == null ? "" : String(item.text).trim();
+      if (text.length > 0) return false;
+      const w = Number(item.width);
+      const h = Number(item.height);
+      if (!Number.isFinite(w) || !Number.isFinite(h)) return false;
+      if (Math.max(w, h) > 0.22) return false;
+      const angle = Math.abs(Number(item.angle ?? 0));
+      if (!(angle >= 1 && Math.abs((angle % 90) - 45) <= 1.5)) return false;
+      const cx = Number(item.center.x);
+      const cy = Number(item.center.y);
+      const outsideX = cx < 0 || cx > cols;
+      const outsideY = cy < 0 || cy > rows;
+      return outsideX && outsideY;
+    };
+    const deferredOutsideCornerMiters = underlayItems.filter(isOutsideCornerMiter);
+    const baseUnderlayItems = underlayItems.filter((item) => !isOutsideCornerMiter(item));
 
     // Draw underlay polygon/line art first.
     drawConstraintLines("under");
-    if (underlayItems.length) drawLayer(underlayItems, { drawShapes: true, drawText: true });
+    if (baseUnderlayItems.length) drawLayer(baseUnderlayItems, { drawShapes: true, drawText: true });
 
     // Highlights sit above puzzle artwork but below grid/features and values.
     for (let r = 0; r < rows; r++) {
@@ -945,6 +930,9 @@ export function GridCanvas(props: {
     // Grid below top puzzle artwork so features are not bisected by grid lines.
     drawGridLines();
     if (!fogDefined) drawTopPuzzleFeatures();
+    if (deferredOutsideCornerMiters.length) {
+      drawLayer(deferredOutsideCornerMiters, { drawShapes: true, drawText: true });
+    }
 
     const drawCenterStroke = (segments: LineSegmentDraft[], color: string, alpha = 1) => {
       ctx.save();
