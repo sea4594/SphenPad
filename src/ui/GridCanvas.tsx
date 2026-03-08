@@ -12,6 +12,7 @@ type DragState = {
   segments: LineSegmentDraft[];
   last: CellRC;
   moved: boolean;
+  edgeTapCandidate?: { a: CellRC; b: CellRC };
   lineKind?: LineKindResolved;
   lineAction?: "draw" | "erase";
   visited: Set<string>;
@@ -1067,7 +1068,11 @@ export function GridCanvas(props: {
       const first = cage.cells[0] as CellRC;
       cageLabelCells.add(`${first.r},${first.c}`);
     }
-    const valueFontPx = Math.max(28, Math.min(42, Math.round(cellPx * 0.58)));
+    const valueFontPx = Math.max(11, Math.min(42, Math.round(cellPx * 0.58)));
+    const noteFontPx = Math.max(6, Math.min(16, Math.round(cellPx * 0.22)));
+    const candidateFontPx = Math.max(5, Math.min(12, Math.round(cellPx * 0.18)));
+    const cornerInsetX = Math.max(2, Math.round(cellPx * 0.08));
+    const cornerBaseY = Math.max(7, Math.round(cellPx * 0.22));
     if (fogDefined) {
       const addLight = (rc: CellRC) => {
         if (!inBounds(rc.r, rc.c)) return;
@@ -1111,7 +1116,7 @@ export function GridCanvas(props: {
           ctx.fillText(cell.value, x0 + cellPx / 2, y0 + cellPx / 2 + 1);
         } else {
           ctx.fillStyle = "#1e2633";
-          ctx.font = `12px ${gridTextFont}, ${emojiTextFont}`;
+          ctx.font = `${noteFontPx}px ${gridTextFont}, ${emojiTextFont}`;
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";
 
@@ -1119,7 +1124,7 @@ export function GridCanvas(props: {
           if (corner.length) {
             const hasCageLabel = cageLabelCells.has(`${r},${c}`);
             ctx.textAlign = "left";
-            ctx.fillText(corner.join(""), x0 + 4, y0 + (hasCageLabel ? 24 : 12));
+            ctx.fillText(corner.join(""), x0 + cornerInsetX, y0 + (hasCageLabel ? cornerBaseY * 2 : cornerBaseY));
           }
 
           const center = [...cell.notes.center].sort();
@@ -1130,7 +1135,7 @@ export function GridCanvas(props: {
 
           const cand = new Set(cell.notes.candidates);
           if (cand.size) {
-            ctx.font = `10px ${gridTextFont}, ${emojiTextFont}`;
+            ctx.font = `${candidateFontPx}px ${gridTextFont}, ${emojiTextFont}`;
             ctx.textAlign = "center";
             const sym = Array.from(cand).sort();
             for (const s of sym) {
@@ -1217,14 +1222,14 @@ export function GridCanvas(props: {
 
           if (cell.given) continue;
           ctx.fillStyle = "#1e2633";
-          ctx.font = `12px ${gridTextFont}, ${emojiTextFont}`;
+          ctx.font = `${noteFontPx}px ${gridTextFont}, ${emojiTextFont}`;
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";
 
           const corner = [...cell.notes.corner].sort();
           if (corner.length) {
             ctx.textAlign = "left";
-            ctx.fillText(corner.join(""), x0 + 4, y0 + 12);
+            ctx.fillText(corner.join(""), x0 + cornerInsetX, y0 + cornerBaseY);
           }
 
           const center = [...cell.notes.center].sort();
@@ -1391,7 +1396,15 @@ export function GridCanvas(props: {
     return { r, c };
   }
 
-  function pickEdgeByPointer(clientX: number, clientY: number, threshold = 0.4): { a: CellRC; b: CellRC } | null {
+  function nearestCornerNodeLoose(clientX: number, clientY: number): CellRC | null {
+    const gp = eventGridPoint(clientX, clientY);
+    if (!gp) return null;
+    const c = Math.max(0, Math.min(cols, Math.round(gp.gx)));
+    const r = Math.max(0, Math.min(rows, Math.round(gp.gy)));
+    return { r, c };
+  }
+
+  function pickEdgeByPointer(clientX: number, clientY: number, threshold = 0.44): { a: CellRC; b: CellRC } | null {
     const gp = eventGridPoint(clientX, clientY);
     if (!gp) return null;
 
@@ -1455,9 +1468,20 @@ export function GridCanvas(props: {
     const rc = { r: pt.r, c: pt.c };
     if (progress.activeTool === "line") {
       const kind = resolveInitialLineKind(pt);
-      const start = kind === "edge" ? nearestCornerNode(e.clientX, e.clientY, 0.42) : nearestCellCenter(e.clientX, e.clientY) ?? rc;
+      const edgeTapCandidate = kind === "edge" ? pickEdgeByPointer(e.clientX, e.clientY, 0.47) ?? undefined : undefined;
+      const start = kind === "edge"
+        ? nearestCornerNode(e.clientX, e.clientY, 0.42) ?? nearestCornerNodeLoose(e.clientX, e.clientY)
+        : nearestCellCenter(e.clientX, e.clientY) ?? rc;
       if (!start) return;
-      dragRef.current = { path: [start], segments: [], last: start, moved: false, lineKind: kind, visited: new Set([rcKey(start)]) };
+      dragRef.current = {
+        path: [start],
+        segments: [],
+        last: start,
+        moved: false,
+        edgeTapCandidate,
+        lineKind: kind,
+        visited: new Set([rcKey(start)]),
+      };
       setLinePreview({ segments: [], kind });
       return;
     }
@@ -1593,7 +1617,7 @@ export function GridCanvas(props: {
     if (progress.activeTool === "line") {
       const kind = drag.lineKind ?? "center";
       if (!drag.moved) {
-        const tappedEdge = pickEdgeByPointer(e.clientX, e.clientY, 0.4);
+        const tappedEdge = drag.edgeTapCandidate ?? pickEdgeByPointer(e.clientX, e.clientY, 0.47);
         const shouldTapEdge = kind === "edge" || (progress.linePaletteKind === "both" && Boolean(tappedEdge));
         if (shouldTapEdge) {
           if (tappedEdge) {
