@@ -557,13 +557,11 @@ export function GridCanvas(props: {
       };
 
       if (drawShapes) {
+        // Preserve source item ordering (SudokuPad semantics): each shape paints
+        // its own fill and stroke before moving to the next item.
         for (const item of items) {
-          if (!item.color) continue;
-          drawShape(item, "fill");
-        }
-        for (const item of items) {
-          if (!item.borderColor) continue;
-          drawShape(item, "stroke");
+          if (item.color) drawShape(item, "fill");
+          if (item.borderColor) drawShape(item, "stroke");
         }
       }
 
