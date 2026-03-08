@@ -305,6 +305,11 @@ function parseOpacityToken(v: unknown): number | undefined {
   return Math.max(0, Math.min(1, n));
 }
 
+function parseFiniteNumberToken(v: unknown): number | undefined {
+  const n = typeof v === "number" ? v : typeof v === "string" ? Number(v.trim()) : NaN;
+  return Number.isFinite(n) ? n : undefined;
+}
+
 function categorizeTarget(raw: unknown): "under" | "over" | undefined {
   if (typeof raw !== "string") return undefined;
   const t = raw.trim().toLowerCase();
@@ -996,10 +1001,10 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
           bulb,
           path,
           color: normalizeColorToken(a?.color ?? a?.lineColor ?? a?.c),
-          thickness: typeof (a?.thickness ?? a?.th) === "number" ? (a?.thickness ?? a?.th) : undefined,
+          thickness: parseFiniteNumberToken(a?.thickness ?? a?.th),
           bulbFill: normalizeColorToken(a?.bulbColor ?? a?.baseC ?? "#ffffff"),
           bulbStroke: normalizeColorToken(a?.bulbBorderColor ?? a?.outlineC ?? a?.color ?? a?.lineColor ?? a?.c ?? "#222222"),
-          bulbStrokeThickness: typeof a?.bulbBorderThickness === "number" ? a.bulbBorderThickness : undefined,
+          bulbStrokeThickness: parseFiniteNumberToken(a?.bulbBorderThickness),
         };
       })
       .filter(Boolean) as any;
@@ -1064,7 +1069,7 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
           closePath: Boolean(ln?.closed ?? ln?.closePath ?? ln?.fill) || closedByShape,
           svgPathData,
           svgUnitsPerCell: Number(scl?.cellSize) || 64,
-          thickness: typeof (ln?.thickness ?? ln?.th) === "number" ? (ln?.thickness ?? ln?.th) : undefined,
+          thickness: parseFiniteNumberToken(ln?.thickness ?? ln?.th),
           target: typeof ln?.target === "string" ? ln.target : undefined,
           lineCap,
           lineJoin,
@@ -1083,14 +1088,16 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
       : []),
   ];
   if (thermometerLines.length) {
+    const defaultThermoColor = "#cfcfcf";
     const thermoAsLines = thermometerLines
       .map((item: any) => {
         const path = parseCellRefs(item?.cells ?? item?.ce ?? item?.line ?? item);
         if (path.length < 2) return null;
+        const lineColor = normalizeColorToken(item?.color ?? item?.lineColor ?? item?.c ?? item?.c1) ?? defaultThermoColor;
         return {
           wayPoints: path.map((rc) => ({ x: rc.c + 0.5, y: rc.r + 0.5 })),
-          color: normalizeColorToken(item?.color ?? "#aeb8c8"),
-          thickness: typeof item?.thickness === "number" ? item.thickness : 8,
+          color: lineColor,
+          thickness: parseFiniteNumberToken(item?.thickness ?? item?.th) ?? 10,
           target: "overlay",
         };
       })
@@ -1102,14 +1109,15 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
         const path = parseCellRefs(item?.cells ?? item?.ce ?? item?.line ?? item);
         if (!path.length) return null;
         const first = path[0] as CellRC;
+        const lineColor = normalizeColorToken(item?.color ?? item?.lineColor ?? item?.c ?? item?.c1) ?? defaultThermoColor;
         return {
           center: { x: first.c + 0.5, y: first.r + 0.5 },
           width: 0.72,
           height: 0.72,
           rounded: true,
-          color: normalizeColorToken(item?.bulbColor ?? "#ffffff"),
-          borderColor: normalizeColorToken(item?.borderColor ?? "#606975"),
-          borderThickness: 1.3,
+          color: normalizeColorToken(item?.bulbColor ?? item?.baseC) ?? lineColor,
+          borderColor: normalizeColorToken(item?.borderColor ?? item?.outlineC),
+          borderThickness: parseFiniteNumberToken(item?.borderThickness ?? item?.thickness ?? item?.th),
         };
       })
       .filter(Boolean) as NonNullable<PuzzleCosmetics["underlays"]>;
@@ -1121,15 +1129,12 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
     if (!ct) return null;
     const rawWidth = item?.width ?? item?.w;
     const rawHeight = item?.height ?? item?.h;
-    const width = typeof rawWidth === "number" ? rawWidth : undefined;
-    const height = typeof rawHeight === "number" ? rawHeight : undefined;
+    const width = parseFiniteNumberToken(rawWidth);
+    const height = parseFiniteNumberToken(rawHeight);
     const rounded = Boolean(item?.rounded ?? item?.r);
     const text = item?.text ?? item?.te;
     const textStr = typeof text === "string" ? text.trim() : "";
-    const explicitTextSize =
-      typeof (item?.textSize ?? item?.fontSize ?? item?.fs) === "number"
-        ? Number(item?.textSize ?? item?.fontSize ?? item?.fs)
-        : undefined;
+    const explicitTextSize = parseFiniteNumberToken(item?.textSize ?? item?.fontSize ?? item?.fs);
     const minSpan = Math.min(
       Number.isFinite(width) ? Number(width) : Number.POSITIVE_INFINITY,
       Number.isFinite(height) ? Number(height) : Number.POSITIVE_INFINITY,
@@ -1162,11 +1167,11 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
       rounded: suppressShape ? false : rounded,
       color: suppressShape ? undefined : fillColor,
       borderColor: suppressShape ? undefined : borderColor,
-      borderThickness: typeof (item?.thickness ?? item?.th) === "number" ? (item?.thickness ?? item?.th) : undefined,
+      borderThickness: parseFiniteNumberToken(item?.thickness ?? item?.th),
       text,
       textColor: normalizeColorToken(item?.color ?? item?.textColor ?? item?.c),
       textSize: explicitTextSize ?? inferredTinyTextSize,
-      angle: typeof item?.angle === "number" ? item.angle : undefined,
+      angle: parseFiniteNumberToken(item?.angle),
       target: typeof item?.target === "string" ? item.target : undefined,
       opacity: parseOpacityToken(item?.opacity ?? item?.alpha),
     };
@@ -1279,14 +1284,16 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
     const betweenEntries = scl.betweenline
       .flatMap((item: any) => (Array.isArray(item?.lines) ? item.lines.map((line: any) => ({ ...item, cells: line })) : [item]));
 
+    const defaultBetweenLineColor = "#cfcfcf";
     const betweenAsLines = betweenEntries
       .map((item: any) => {
         const path = parseCellRefs(item?.cells ?? item?.ce ?? item?.line ?? item?.lines ?? item);
         if (path.length < 2) return null;
+        const lineColor = normalizeColorToken(item?.color ?? item?.lineColor ?? item?.c ?? item?.c1) ?? defaultBetweenLineColor;
         return {
           wayPoints: path.map((rc) => ({ x: rc.c + 0.5, y: rc.r + 0.5 })),
-          color: normalizeColorToken(item?.color ?? "#9ba6bf"),
-          thickness: typeof item?.thickness === "number" ? item.thickness : 8,
+          color: lineColor,
+          thickness: parseFiniteNumberToken(item?.thickness ?? item?.th) ?? 10,
           target: "overlay",
         };
       })
@@ -1304,9 +1311,9 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
           width: 0.62,
           height: 0.62,
           rounded: true,
-          color: normalizeColorToken(item?.endFillColor ?? "#ffffff"),
-          borderColor: normalizeColorToken(item?.endBorderColor ?? "#606975"),
-          borderThickness: 1.3,
+          color: normalizeColorToken(item?.endFillColor ?? item?.baseC) ?? "#ffffff",
+          borderColor: normalizeColorToken(item?.endBorderColor ?? item?.outlineC) ?? "#9f9f9f",
+          borderThickness: parseFiniteNumberToken(item?.endBorderThickness ?? item?.borderThickness ?? item?.thickness ?? item?.th) ?? 1.8,
         }));
       }) as NonNullable<PuzzleCosmetics["underlays"]>;
     if (betweenEndpointCircles.length) cosmetics.underlays = [...(cosmetics.underlays ?? []), ...betweenEndpointCircles];

@@ -206,33 +206,6 @@ export function GridCanvas(props: {
     return `#${body}${a}`;
   }
 
-  function normalizeFeatureLineColor(color?: string): string {
-    if (!color) return "#000000";
-    const v = color.trim().toLowerCase();
-    const hex = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(v);
-    if (hex) {
-      const raw = hex[1] as string;
-      const full = raw.length === 3 ? raw.split("").map((c) => c + c).join("") : raw;
-      const r = parseInt(full.slice(0, 2), 16);
-      const g = parseInt(full.slice(2, 4), 16);
-      const b = parseInt(full.slice(4, 6), 16);
-      const luma = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
-      return luma < 0.5 ? "#000000" : color;
-    }
-
-    const rgb = /^rgba?\(([^)]+)\)$/.exec(v);
-    if (rgb) {
-      const parts = rgb[1].split(",").map((p) => Number(p.trim()));
-      if (parts.length >= 3) {
-        const [r, g, b] = parts;
-        const luma = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
-        return luma < 0.5 ? "#000000" : color;
-      }
-    }
-
-    return color;
-  }
-
   useEffect(() => {
     const el = wrapRef.current;
     if (!el) return;
@@ -553,7 +526,6 @@ export function GridCanvas(props: {
 
     const drawConstraintLines = (layer: "under" | "over") => {
       if (!def.cosmetics.lines) return;
-      const puzzleLineWidthScale = 0.9;
       const classifyTarget = (target: string | undefined): "under" | "over" => {
         const t = (target ?? "overlay").toLowerCase();
         if (/(^|[^a-z])(under|underlay|back|background|behind|below|bottom)([^a-z]|$)/.test(t)) return "under";
@@ -581,8 +553,8 @@ export function GridCanvas(props: {
           }
           const hasStroke = Boolean(ln.color) && (ln.thickness ?? 6) > 0;
           if (hasStroke) {
-            ctx.strokeStyle = normalizeFeatureLineColor(ln.color);
-            ctx.lineWidth = (ln.thickness ?? 6) * puzzleLineWidthScale;
+            ctx.strokeStyle = ln.color as string;
+            ctx.lineWidth = ln.thickness ?? 6;
             ctx.lineCap = ln.lineCap ?? "round";
             ctx.lineJoin = ln.lineJoin ?? "round";
             ctx.stroke(path);
@@ -608,8 +580,8 @@ export function GridCanvas(props: {
 
           const hasStroke = Boolean(ln.color) && (ln.thickness ?? 6) > 0;
           if (hasStroke) {
-            ctx.strokeStyle = normalizeFeatureLineColor(ln.color);
-            ctx.lineWidth = (ln.thickness ?? 6) * (cellPx / 56) * puzzleLineWidthScale;
+            ctx.strokeStyle = ln.color as string;
+            ctx.lineWidth = (ln.thickness ?? 6) * (cellPx / 56);
             ctx.lineCap = ln.lineCap ?? "round";
             ctx.lineJoin = ln.lineJoin ?? "round";
             ctx.stroke();
