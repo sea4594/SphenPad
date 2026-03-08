@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { z } from "zod";
-import { decompressFromBase64 } from "lz-string";
+import { decompressFromBase64, decompressFromEncodedURIComponent } from "lz-string";
 import { normalizePuzzleKey } from "./id";
 import type { PuzzleDefinition, CellRC, PuzzleCosmetics } from "./model";
 
@@ -94,6 +94,31 @@ function parseSourceId(input: string): string {
   }
 }
 
+function parseBoolish(v: unknown): boolean {
+  if (typeof v === "boolean") return v;
+  if (typeof v === "number") return v !== 0;
+  if (typeof v === "string") {
+    const s = v.trim().toLowerCase();
+    return s === "1" || s === "true" || s === "yes" || s === "y" || s === "on";
+  }
+  return false;
+}
+
+function parseSourceDetails(input: string): { sourceId: string; noGrid: boolean } {
+  const sourceId = parseSourceId(input);
+  try {
+    const u = new URL(input.trim());
+    const noGrid =
+      parseBoolish(u.searchParams.get("setting-nogrid")) ||
+      parseBoolish(u.searchParams.get("setting_nogrid")) ||
+      parseBoolish(u.searchParams.get("nogrid")) ||
+      parseBoolish(u.searchParams.get("noGrid"));
+    return { sourceId, noGrid };
+  } catch {
+    return { sourceId, noGrid: false };
+  }
+}
+
 function fixURIComponentish(s: string): string {
   // SudokuPad links sometimes embed percent-escapes inconsistently.
   try {
@@ -114,7 +139,7 @@ function tryParseLooseObjectLiteral(text: string): unknown | null {
     let src = text;
     src = src.replace(/#([0-9A-Fa-f]{1,8})/g, '"#$1"');
     src = src.replace(
-      /(stroke|color|lineColor|fill|fillColor|textColor|fontColor|c1|c2|c|backgroundColor|borderColor)\s*:\s*([A-Za-z0-9#]{3,12})(?=[,}\]])/g,
+      /(stroke|color|lineColor|fill|fillColor|textColor|fontColor|c1|c2|c|backgroundColor|borderColor)\s*:\s*([A-Za-z0-9#]{1,12})(?=[,}\]])/g,
       (_m, key, val) => {
         const low = String(val).toLowerCase();
         if (low === "true" || low === "false" || low === "null" || low === "undefined") {
@@ -130,6 +155,41 @@ function tryParseLooseObjectLiteral(text: string): unknown | null {
   }
 }
 
+function tryParseAnySclString(text: string | null | undefined): unknown | null {
+  if (typeof text !== "string" || !text.length) return null;
+  return tryParseJson(text) ?? tryParseLooseObjectLiteral(text) ?? tryParseJson(decompressedFromMaybeZipped(text));
+}
+
+function decodeCompressedPayloadVariants(payload: string): string[] {
+  const variants = new Set<string>();
+  const enqueue = (v: string | null | undefined) => {
+    if (typeof v !== "string") return;
+    const s = v.trim();
+    if (!s) return;
+    variants.add(s);
+  };
+
+  enqueue(payload);
+  enqueue(payload.replace(/ /g, "+"));
+  try {
+    const decoded = decodeURIComponent(payload);
+    enqueue(decoded);
+    enqueue(decoded.replace(/ /g, "+"));
+  } catch {
+    // keep other variants
+  }
+
+  const out: string[] = [];
+  for (const candidate of variants) {
+    out.push(candidate);
+    const viaBase64 = decompressFromBase64(candidate);
+    if (typeof viaBase64 === "string" && viaBase64.length) out.push(viaBase64);
+    const viaEncoded = decompressFromEncodedURIComponent(candidate);
+    if (typeof viaEncoded === "string" && viaEncoded.length) out.push(viaEncoded);
+  }
+  return out;
+}
+
 function normalizeCompactScl(input: any): any {
   if (!input || typeof input !== "object") return input;
   const scl = { ...input } as any;
@@ -137,6 +197,7 @@ function normalizeCompactScl(input: any): any {
   // Compact aliases used in older SudokuPad exports.
   if (!scl.cells && Array.isArray(scl.ce)) scl.cells = scl.ce;
   if (!scl.regions && Array.isArray(scl.re)) scl.regions = scl.re;
+  if (!scl.cellSize && Number.isFinite(Number(scl.cs))) scl.cellSize = Number(scl.cs);
   if (!scl.lines && Array.isArray(scl.l)) scl.lines = scl.l;
   if (!scl.overlays && Array.isArray(scl.o)) scl.overlays = scl.o;
   if (!scl.underlays && Array.isArray(scl.u)) scl.underlays = scl.u;
@@ -635,7 +696,8 @@ function inferredRulesFromCosmetics(cosmetics: PuzzleCosmetics): string {
 }
 
 export async function loadFromSudokuPad(inputUrlOrId: string): Promise<{ key: string; def: PuzzleDefinition; raw: any }> {
-  const sourceIdRaw = parseSourceId(inputUrlOrId);
+  const sourceDetails = parseSourceDetails(inputUrlOrId);
+  const sourceIdRaw = sourceDetails.sourceId;
   const sourceId = fixURIComponentish(sourceIdRaw);
 
   let payloadText: string | null = null;
@@ -656,6 +718,7 @@ export async function loadFromSudokuPad(inputUrlOrId: string): Promise<{ key: st
   const sclObj = coerceToScl(raw);
 
   const cosmetics = extractCosmetics(sclObj);
+  if (sourceDetails.noGrid) cosmetics.gridVisible = false;
   const inlineMeta = extractInlineMetadata(sclObj);
 
   const title = firstNonEmptyString(
@@ -762,19 +825,11 @@ function coerceToScl(raw: any): any {
 
     const m = s.match(/^(scl|ctc|fpuz|fpuzzles)([\s\S]+)$/);
     if (m) {
-      let b64 = m[2];
-      try {
-        b64 = decodeURIComponent(b64);
-      } catch {
-        // no-op
+      const variants = decodeCompressedPayloadVariants(m[2]);
+      for (const candidate of variants) {
+        const parsed = tryParseAnySclString(candidate);
+        if (parsed) return normalizeCompactScl(parsed);
       }
-      const decompressed = decompressFromBase64(b64);
-      const j = tryParseJson(decompressed);
-      if (j) return normalizeCompactScl(j);
-      const jLoose = tryParseLooseObjectLiteral(decompressed);
-      if (jLoose) return normalizeCompactScl(jLoose);
-      const j2 = tryParseJson(decompressedFromMaybeZipped(decompressed));
-      if (j2) return normalizeCompactScl(j2);
     }
 
     // If it's plain JSON text
@@ -913,23 +968,37 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
         const wayPointsRaw = (ln?.wayPoints ?? ln?.points ?? ln?.wp ?? [])
           .map(asPoint)
           .filter(Boolean) as Array<{ x: number; y: number }>;
-        const svgPathPoints = typeof ln?.d2 === "string"
-          ? parseSvgPathToWayPoints(ln.d2, Number(scl?.cellSize) || 64)
+        const svgPathData = typeof ln?.d2 === "string" ? ln.d2 : typeof ln?.d === "string" ? ln.d : undefined;
+        const svgPathPoints = typeof svgPathData === "string"
+          ? parseSvgPathToWayPoints(svgPathData, Number(scl?.cellSize) || 64)
           : [];
         const wayPoints = wayPointsRaw.length >= 2 ? wayPointsRaw : svgPathPoints;
         if (wayPoints.length < 2) return null;
         const strokeToken = normalizeColorToken(ln?.color ?? ln?.lineColor ?? ln?.stroke ?? ln?.c);
         const fillToken = normalizeColorToken(ln?.fill ?? ln?.backgroundColor ?? ln?.c2);
         const closedByShape = wayPoints.length > 2 && pointsAlmostEqual(wayPoints[0] as { x: number; y: number }, wayPoints[wayPoints.length - 1] as { x: number; y: number });
+        const rawDash = ln?.["stroke-dasharray"] ?? ln?.dashArray ?? ln?.dash;
+        const dashArray = Array.isArray(rawDash)
+          ? rawDash.map((n: unknown) => Number(n)).filter(Number.isFinite)
+          : typeof rawDash === "string"
+            ? rawDash.split(/[ ,]+/).map((n: string) => Number(n.trim())).filter(Number.isFinite)
+            : undefined;
+        const lineCapRaw = String(ln?.["stroke-linecap"] ?? ln?.lineCap ?? "").toLowerCase();
+        const lineJoinRaw = String(ln?.["stroke-linejoin"] ?? ln?.lineJoin ?? "").toLowerCase();
+        const lineCap = lineCapRaw === "round" || lineCapRaw === "square" || lineCapRaw === "butt" ? lineCapRaw : undefined;
+        const lineJoin = lineJoinRaw === "round" || lineJoinRaw === "bevel" || lineJoinRaw === "miter" ? lineJoinRaw : undefined;
         return {
           wayPoints,
           color: strokeToken === "#0" ? undefined : strokeToken,
           fillColor: fillToken === "#0" ? undefined : fillToken,
           closePath: Boolean(ln?.closed ?? ln?.closePath ?? ln?.fill) || closedByShape,
-          svgPathData: typeof ln?.d2 === "string" ? ln.d2 : undefined,
+          svgPathData,
           svgUnitsPerCell: Number(scl?.cellSize) || 64,
           thickness: typeof (ln?.thickness ?? ln?.th) === "number" ? (ln?.thickness ?? ln?.th) : undefined,
           target: typeof ln?.target === "string" ? ln.target : undefined,
+          lineCap,
+          lineJoin,
+          dashArray: dashArray?.length ? dashArray : undefined,
         };
       })
       .filter(Boolean) as any;
@@ -1282,6 +1351,15 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
   // Keep solution if present so fog can reveal based on correct entries.
   const solution = scl?.metadata?.solution;
   if (typeof solution === "string") cosmetics.solution = solution;
+
+  const noGridFromData =
+    parseBoolish(scl?.settings?.nogrid) ||
+    parseBoolish(scl?.settings?.noGrid) ||
+    parseBoolish(scl?.metadata?.settings?.nogrid) ||
+    parseBoolish(scl?.metadata?.settings?.noGrid) ||
+    parseBoolish(scl?.metadata?.nogrid) ||
+    parseBoolish(scl?.metadata?.noGrid);
+  if (noGridFromData) cosmetics.gridVisible = false;
 
   return cosmetics;
 }

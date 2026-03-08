@@ -393,6 +393,7 @@ export function GridCanvas(props: {
     const subgrid = def.cosmetics.subgrid ?? { r: 1, c: 1 };
 
     const drawGridLines = () => {
+      if (def.cosmetics.gridVisible === false) return;
       for (let i = 0; i <= n; i++) {
         ctx.lineWidth = i % subgrid.r === 0 ? 2.2 : 1;
         ctx.strokeStyle = "#000000";
@@ -552,6 +553,7 @@ export function GridCanvas(props: {
           ctx.save();
           ctx.translate(originX, originY);
           ctx.scale(cellPx / units, cellPx / units);
+          if (ln.dashArray?.length) ctx.setLineDash(ln.dashArray);
           if (ln.fillColor) {
             ctx.fillStyle = ln.fillColor;
             ctx.fill(path);
@@ -560,12 +562,14 @@ export function GridCanvas(props: {
           if (hasStroke) {
             ctx.strokeStyle = normalizeFeatureLineColor(ln.color);
             ctx.lineWidth = (ln.thickness ?? 6) * puzzleLineWidthScale;
-            ctx.lineCap = "round";
-            ctx.lineJoin = "round";
+            ctx.lineCap = ln.lineCap ?? "round";
+            ctx.lineJoin = ln.lineJoin ?? "round";
             ctx.stroke(path);
           }
           ctx.restore();
         } else {
+          ctx.save();
+          if (ln.dashArray?.length) ctx.setLineDash(ln.dashArray);
           ctx.beginPath();
           ln.wayPoints.forEach((p, i) => {
             const x = worldX(p.x);
@@ -584,10 +588,11 @@ export function GridCanvas(props: {
           if (hasStroke) {
             ctx.strokeStyle = normalizeFeatureLineColor(ln.color);
             ctx.lineWidth = (ln.thickness ?? 6) * (cellPx / 56) * puzzleLineWidthScale;
-            ctx.lineCap = "round";
-            ctx.lineJoin = "round";
+            ctx.lineCap = ln.lineCap ?? "round";
+            ctx.lineJoin = ln.lineJoin ?? "round";
             ctx.stroke();
           }
+          ctx.restore();
         }
       }
     };
@@ -988,20 +993,22 @@ export function GridCanvas(props: {
       drawTopPuzzleFeatures();
       ctx.restore();
 
-      // Keep grid visible on top of fog.
-      for (let i = 0; i <= n; i++) {
-        ctx.lineWidth = i % subgrid.r === 0 ? 2.5 : 1;
-        ctx.strokeStyle = "#000000";
-        ctx.beginPath();
-        ctx.moveTo(cellX(0), cellY(i));
-        ctx.lineTo(cellX(n), cellY(i));
-        ctx.stroke();
+      // Keep grid visible on top of fog when enabled.
+      if (def.cosmetics.gridVisible !== false) {
+        for (let i = 0; i <= n; i++) {
+          ctx.lineWidth = i % subgrid.r === 0 ? 2.5 : 1;
+          ctx.strokeStyle = "#000000";
+          ctx.beginPath();
+          ctx.moveTo(cellX(0), cellY(i));
+          ctx.lineTo(cellX(n), cellY(i));
+          ctx.stroke();
 
-        ctx.lineWidth = i % subgrid.c === 0 ? 2.5 : 1;
-        ctx.beginPath();
-        ctx.moveTo(cellX(i), cellY(0));
-        ctx.lineTo(cellX(i), cellY(n));
-        ctx.stroke();
+          ctx.lineWidth = i % subgrid.c === 0 ? 2.5 : 1;
+          ctx.beginPath();
+          ctx.moveTo(cellX(i), cellY(0));
+          ctx.lineTo(cellX(i), cellY(n));
+          ctx.stroke();
+        }
       }
 
       // Keep user-entered values visible under fog; hide unrevealed givens.

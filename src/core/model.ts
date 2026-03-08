@@ -56,6 +56,9 @@ export type PuzzleCosmetics = {
     closePath?: boolean;
     svgPathData?: string;
     svgUnitsPerCell?: number;
+    lineCap?: CanvasLineCap;
+    lineJoin?: CanvasLineJoin;
+    dashArray?: number[];
   }>;
   underlays?: Array<{
     center: { x: number; y: number };
@@ -112,6 +115,7 @@ export type PuzzleCosmetics = {
   fogLights?: CellRC[];
   fogTriggerEffects?: Array<{ triggerCells: CellRC[]; revealCells: CellRC[]; triggerMode?: string }>;
   solution?: string;
+  gridVisible?: boolean;
 };
 
 export type PuzzleDefinition = {
