@@ -1126,6 +1126,18 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
     const rounded = Boolean(item?.rounded ?? item?.r);
     const text = item?.text ?? item?.te;
     const textStr = typeof text === "string" ? text.trim() : "";
+    const explicitTextSize =
+      typeof (item?.textSize ?? item?.fontSize ?? item?.fs) === "number"
+        ? Number(item?.textSize ?? item?.fontSize ?? item?.fs)
+        : undefined;
+    const minSpan = Math.min(
+      Number.isFinite(width) ? Number(width) : Number.POSITIVE_INFINITY,
+      Number.isFinite(height) ? Number(height) : Number.POSITIVE_INFINITY,
+    );
+    const inferredTinyTextSize =
+      explicitTextSize == null && text != null && Number.isFinite(minSpan) && minSpan <= 0.35
+        ? Math.max(6, Math.min(18, minSpan * 56 * 0.95))
+        : undefined;
     const isTinyTextMarker =
       textStr.length === 1 &&
       typeof width === "number" &&
@@ -1153,10 +1165,7 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
       borderThickness: typeof (item?.thickness ?? item?.th) === "number" ? (item?.thickness ?? item?.th) : undefined,
       text,
       textColor: normalizeColorToken(item?.color ?? item?.textColor ?? item?.c),
-      textSize:
-        typeof (item?.textSize ?? item?.fontSize ?? item?.fs) === "number"
-          ? (item?.textSize ?? item?.fontSize ?? item?.fs)
-          : undefined,
+      textSize: explicitTextSize ?? inferredTinyTextSize,
       angle: typeof item?.angle === "number" ? item.angle : undefined,
       target: typeof item?.target === "string" ? item.target : undefined,
       opacity: parseOpacityToken(item?.opacity ?? item?.alpha),
