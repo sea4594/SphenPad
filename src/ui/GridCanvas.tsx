@@ -610,6 +610,22 @@ export function GridCanvas(props: {
       ctx.strokeStyle = "#000000";
       ctx.lineWidth = 1.25;
       ctx.setLineDash([5, 3]);
+      const hasMatchingCornerLabel = (rc: CellRC, sum: string) => {
+        const labels = [...(def.cosmetics.overlays ?? []), ...(def.cosmetics.underlays ?? [])];
+        return labels.some((item) => {
+          const txt = item.text == null ? "" : String(item.text).trim();
+          if (!txt || txt !== sum) return false;
+          const cx = item?.center?.x;
+          const cy = item?.center?.y;
+          if (!Number.isFinite(cx) || !Number.isFinite(cy)) return false;
+          const cellC = Math.floor(Number(cx));
+          const cellR = Math.floor(Number(cy));
+          if (cellR !== rc.r || cellC !== rc.c) return false;
+          const fx = Number(cx) - cellC;
+          const fy = Number(cy) - cellR;
+          return fx <= 0.46 && fy <= 0.46;
+        });
+      };
       for (const cage of def.cosmetics.cages) {
         const set = new Set(cage.cells.map((rc) => `${rc.r},${rc.c}`));
         const cageFill = cage.color ? darkenColor(cage.color, -0.05) : undefined;
@@ -656,9 +672,11 @@ export function GridCanvas(props: {
         }
         if (cage.sum) {
           const first = cage.cells[0];
-          ctx.fillStyle = "#111111";
-          ctx.font = "12px ui-sans-serif";
-          ctx.fillText(cage.sum, cellX(first.c) + 6, cellY(first.r) + 14);
+          if (!hasMatchingCornerLabel(first, cage.sum)) {
+            ctx.fillStyle = "#111111";
+            ctx.font = "12px ui-sans-serif";
+            ctx.fillText(cage.sum, cellX(first.c) + 6, cellY(first.r) + 14);
+          }
         }
       }
       ctx.setLineDash([]);
@@ -708,14 +726,16 @@ export function GridCanvas(props: {
     };
 
     const isMarkerOverlay = (item: LayerItem) => {
-      const noText = item.text == null || String(item.text).trim().length === 0;
+      const txt = item.text == null ? "" : String(item.text).trim();
+      const noText = txt.length === 0;
+      const singleMarkerChar = txt.length === 1 && /^[xv]$/i.test(txt);
       return (
         Boolean(item.rounded) &&
-        noText &&
+        (noText || singleMarkerChar) &&
         typeof item.width === "number" &&
         typeof item.height === "number" &&
-        item.width <= 0.45 &&
-        item.height <= 0.45
+        item.width <= 0.62 &&
+        item.height <= 0.62
       );
     };
 
@@ -1133,10 +1153,9 @@ export function GridCanvas(props: {
     for (let i = 0; i < 10; i++) {
       const dx = target.x - cur.c;
       const dy = target.y - cur.r;
-      if (Math.max(Math.abs(dx), Math.abs(dy)) < 0.43) break;
-
-      const stepC = Math.abs(dx) > 0.22 ? Math.sign(dx) : 0;
-      const stepR = Math.abs(dy) > 0.22 ? Math.sign(dy) : 0;
+      // Only advance after crossing into the adjacent center zone.
+      const stepC = dx >= 0.5 ? 1 : dx <= -0.5 ? -1 : 0;
+      const stepR = dy >= 0.5 ? 1 : dy <= -0.5 ? -1 : 0;
       if (!stepR && !stepC) break;
 
       const next = { r: cur.r + stepR, c: cur.c + stepC };

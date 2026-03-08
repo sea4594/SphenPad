@@ -405,6 +405,13 @@ function inferPuzzleSize(sclObj: any, givens: Array<{ rc: CellRC }>): number {
       )
     : 0;
 
+  const fromGrid = Array.isArray(sclObj?.grid)
+    ? Math.max(
+        sclObj.grid.length,
+        ...sclObj.grid.map((row: unknown) => (Array.isArray(row) ? row.length : 0))
+      )
+    : 0;
+
   const fromGivenCoords = givens.length
     ? Math.max(...givens.map((g) => Math.max(g.rc.r, g.rc.c))) + 1
     : 0;
@@ -418,7 +425,7 @@ function inferPuzzleSize(sclObj: any, givens: Array<{ rc: CellRC }>): number {
 
   const fromSolutionSquare = Number.isInteger(fromSolution) ? fromSolution : 0;
   // Avoid decorative/outside-grid cosmetics from inflating core grid size.
-  const inferred = Math.max(fromCells, fromGivenCoords, fromRegionCoords, fromSolutionSquare, explicitSize);
+  const inferred = Math.max(fromCells, fromGrid, fromGivenCoords, fromRegionCoords, fromSolutionSquare, explicitSize);
   return inferred > 0 ? inferred : 9;
 }
 
@@ -721,19 +728,28 @@ function decompressedFromMaybeZipped(s: string): string {
 
 function extractGivens(scl: any): Array<{ rc: CellRC; v: string }> {
   const out: Array<{ rc: CellRC; v: string }> = [];
-  const cells = scl?.cells;
-  if (!Array.isArray(cells)) return out;
-
-  for (let r = 0; r < cells.length; r++) {
-    const row = cells[r];
-    if (!Array.isArray(row)) continue;
-    for (let c = 0; c < row.length; c++) {
-      const cell = row[c];
-      const value = asValue(cell?.value ?? cell?.v ?? cell?.given ?? cell?.g);
-      if (value != null) out.push({ rc: { r, c }, v: value });
+  const grids = [scl?.cells, scl?.grid].filter(Array.isArray);
+  for (const cells of grids) {
+    for (let r = 0; r < cells.length; r++) {
+      const row = cells[r];
+      if (!Array.isArray(row)) continue;
+      for (let c = 0; c < row.length; c++) {
+        const cell = row[c];
+        const value =
+          asValue(cell?.value ?? cell?.v ?? cell?.given ?? cell?.g ?? cell?.digit ?? cell?.d) ??
+          (typeof cell === "string" && /^[1-9A-Za-z]$/.test(cell) ? cell : undefined) ??
+          (typeof cell === "number" && Number.isFinite(cell) && cell > 0 ? String(cell) : undefined);
+        if (value != null) out.push({ rc: { r, c }, v: value });
+      }
     }
   }
-  return out;
+  const seen = new Set<string>();
+  return out.filter((entry) => {
+    const key = `${entry.rc.r},${entry.rc.c}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 function extractCosmetics(scl: any): PuzzleCosmetics {
@@ -883,24 +899,6 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
       })
       .filter(Boolean) as NonNullable<PuzzleCosmetics["underlays"]>;
     if (thermoBulbs.length) cosmetics.underlays = [...(cosmetics.underlays ?? []), ...thermoBulbs];
-  }
-
-  // f-puzzles style between lines
-  if (Array.isArray(scl?.betweenline)) {
-    const betweenAsLines = scl.betweenline
-      .flatMap((entry: any) => Array.isArray(entry?.lines) ? entry.lines : [])
-      .map((line: any) => {
-        const path = parseCellRefs(line);
-        if (path.length < 2) return null;
-        return {
-          wayPoints: path.map((rc) => ({ x: rc.c + 0.5, y: rc.r + 0.5 })),
-          color: "#000000",
-          thickness: 7,
-          target: "overlay",
-        };
-      })
-      .filter(Boolean) as NonNullable<PuzzleCosmetics["lines"]>;
-    if (betweenAsLines.length) cosmetics.lines = [...(cosmetics.lines ?? []), ...betweenAsLines];
   }
 
   const parseLayerItem = (item: any) => {
