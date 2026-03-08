@@ -473,7 +473,14 @@ export function GridCanvas(props: {
             ctx.translate(-cx, -cy);
           }
           ctx.fillStyle = item.textColor ?? "#111111";
-          const px = (item.textSize ?? 16) * (cellPx / 56);
+          const pxRaw = (item.textSize ?? 16) * (cellPx / 56);
+          const tinyAnchorText =
+            typeof item.width === "number" &&
+            typeof item.height === "number" &&
+            item.width <= 0.35 &&
+            item.height <= 0.35 &&
+            String(item.text).trim().length <= 2;
+          const px = tinyAnchorText ? Math.max(pxRaw, 8.5) : pxRaw;
           const text = String(item.text);
           const hasEmoji = /\p{Extended_Pictographic}/u.test(text);
           ctx.font = hasEmoji
