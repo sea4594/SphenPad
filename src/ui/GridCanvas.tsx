@@ -672,36 +672,10 @@ export function GridCanvas(props: {
     };
 
     const underlayItems = def.cosmetics.underlays ?? [];
-    const coreBounds = (() => {
-      const regionCells = (def.cosmetics.irregularRegions ?? []).flatMap((region) => region.cells ?? []);
-      if (!regionCells.length) return { rows, cols };
-      const coreRows = Math.max(...regionCells.map((rc) => rc.r)) + 1;
-      const coreCols = Math.max(...regionCells.map((rc) => rc.c)) + 1;
-      return { rows: Math.min(rows, coreRows), cols: Math.min(cols, coreCols) };
-    })();
-    const isEdgeArtworkUnderlay = (item: LayerItem) => {
-      const hasShape =
-        item.color != null ||
-        item.borderColor != null ||
-        Number.isFinite(item.width) ||
-        Number.isFinite(item.height);
-      if (!hasShape) return false;
-      const w = Number.isFinite(item.width) ? Number(item.width) : 0;
-      const h = Number.isFinite(item.height) ? Number(item.height) : 0;
-      if (w <= 0 && h <= 0) return false;
-      const x0 = item.center.x - w / 2;
-      const x1 = item.center.x + w / 2;
-      const y0 = item.center.y - h / 2;
-      const y1 = item.center.y + h / 2;
-      const eps = 0.01;
-      return x0 < -eps || y0 < -eps || x1 > coreBounds.cols + eps || y1 > coreBounds.rows + eps;
-    };
-    const underlaysBelowGrid = underlayItems.filter((item) => !isEdgeArtworkUnderlay(item));
-    const underlaysAboveGrid = underlayItems.filter((item) => isEdgeArtworkUnderlay(item));
 
     // Draw underlay polygon/line art first.
     drawConstraintLines("under");
-    if (underlaysBelowGrid.length) drawLayer(underlaysBelowGrid, { drawShapes: true, drawText: false });
+    if (underlayItems.length) drawLayer(underlayItems, { drawShapes: true, drawText: true });
 
     // Highlights sit above puzzle artwork but below grid/features and values.
     for (let r = 0; r < rows; r++) {
@@ -919,8 +893,6 @@ export function GridCanvas(props: {
     };
 
     const drawTopPuzzleFeatures = () => {
-      if (underlaysAboveGrid.length) drawLayer(underlaysAboveGrid, { drawShapes: true, drawText: false });
-      if (underlayItems.length) drawLayer(underlayItems, { drawShapes: false, drawText: true });
       drawCages();
       drawConstraintLines("over");
       drawRegularOverlays({ drawShapes: true, drawText: false });
