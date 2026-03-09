@@ -1287,11 +1287,25 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
         const path = parseCellRefs(item?.cells ?? item?.ce ?? item?.line ?? item);
         if (path.length < 2) return null;
         const lineColor = normalizeColorToken(item?.color ?? item?.lineColor ?? item?.c ?? item?.c1) ?? defaultThermoColor;
+        const rawDash = item?.["stroke-dasharray"] ?? item?.dashArray ?? item?.dash;
+        const dashArray = Array.isArray(rawDash)
+          ? rawDash.map((n: unknown) => Number(n)).filter(Number.isFinite)
+          : typeof rawDash === "string"
+            ? rawDash.split(/[ ,]+/).map((n: string) => Number(n.trim())).filter(Number.isFinite)
+            : undefined;
+        const lineCapRaw = String(item?.["stroke-linecap"] ?? item?.lineCap ?? "").toLowerCase();
+        const lineJoinRaw = String(item?.["stroke-linejoin"] ?? item?.lineJoin ?? "").toLowerCase();
+        const lineCap = lineCapRaw === "round" || lineCapRaw === "square" || lineCapRaw === "butt" ? lineCapRaw : undefined;
+        const lineJoin = lineJoinRaw === "round" || lineJoinRaw === "bevel" || lineJoinRaw === "miter" ? lineJoinRaw : undefined;
         return {
           wayPoints: path.map((rc) => ({ x: rc.c + 0.5, y: rc.r + 0.5 })),
           color: lineColor,
           thickness: parseFiniteNumberToken(item?.thickness ?? item?.th) ?? 10,
-          target: "underlay",
+          target: typeof item?.target === "string" ? item.target : "underlay",
+          lineCap,
+          lineJoin,
+          dashArray: dashArray?.length ? dashArray : undefined,
+          opacity: parseOpacityToken(item?.opacity ?? item?.alpha),
         };
       })
       .filter(Boolean) as NonNullable<PuzzleCosmetics["lines"]>;
@@ -1524,11 +1538,25 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
         const path = parseCellRefs(item?.cells ?? item?.ce ?? item?.line ?? item?.lines ?? item);
         if (path.length < 2) return null;
         const lineColor = normalizeColorToken(item?.color ?? item?.lineColor ?? item?.c ?? item?.c1) ?? defaultBetweenLineColor;
+        const rawDash = item?.["stroke-dasharray"] ?? item?.dashArray ?? item?.dash;
+        const dashArray = Array.isArray(rawDash)
+          ? rawDash.map((n: unknown) => Number(n)).filter(Number.isFinite)
+          : typeof rawDash === "string"
+            ? rawDash.split(/[ ,]+/).map((n: string) => Number(n.trim())).filter(Number.isFinite)
+            : undefined;
+        const lineCapRaw = String(item?.["stroke-linecap"] ?? item?.lineCap ?? "").toLowerCase();
+        const lineJoinRaw = String(item?.["stroke-linejoin"] ?? item?.lineJoin ?? "").toLowerCase();
+        const lineCap = lineCapRaw === "round" || lineCapRaw === "square" || lineCapRaw === "butt" ? lineCapRaw : undefined;
+        const lineJoin = lineJoinRaw === "round" || lineJoinRaw === "bevel" || lineJoinRaw === "miter" ? lineJoinRaw : undefined;
         return {
           wayPoints: path.map((rc) => ({ x: rc.c + 0.5, y: rc.r + 0.5 })),
           color: lineColor,
           thickness: parseFiniteNumberToken(item?.thickness ?? item?.th) ?? 10,
-          target: "underlay",
+          target: typeof item?.target === "string" ? item.target : "underlay",
+          lineCap,
+          lineJoin,
+          dashArray: dashArray?.length ? dashArray : undefined,
+          opacity: parseOpacityToken(item?.opacity ?? item?.alpha),
         };
       })
       .filter(Boolean) as NonNullable<PuzzleCosmetics["lines"]>;
