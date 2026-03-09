@@ -1382,7 +1382,7 @@ export function GridCanvas(props: {
     if (!gp) return [];
 
     const target = { x: gp.gx - 0.5, y: gp.gy - 0.5 };
-    const diagonalAssistThreshold = Math.max(0, Math.min(0.49, opts?.diagonalAssistThreshold ?? 0.42));
+    const diagonalAssistThreshold = Math.max(0, Math.min(0.49, opts?.diagonalAssistThreshold ?? 0.22));
     const hops: CellRC[] = [];
     let cur = { ...last };
 
@@ -1581,7 +1581,7 @@ export function GridCanvas(props: {
             if (!next || (next.r === drag.last.r && next.c === drag.last.c)) return [] as CellRC[];
             return traceCellSteps(drag.last, next, { rows: rows + 1, cols: cols + 1 });
           })()
-        : centerHopsFromPointer(drag.last, e.clientX, e.clientY);
+        : centerHopsFromPointer(drag.last, e.clientX, e.clientY, { diagonalAssistThreshold: 0.18 });
       if (!hops.length) return;
 
       for (const hop of hops) {
