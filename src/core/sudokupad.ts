@@ -327,7 +327,7 @@ function categorizeTarget(raw: unknown): "under" | "over" | undefined {
 function isNoStrokeToken(v: unknown): boolean {
   if (typeof v !== "string") return false;
   const s = v.trim().replace(/^"+|"+$/g, "").toLowerCase();
-  return s === "#0" || s === "0" || s === "none" || s === "transparent";
+  return s === "none" || s === "transparent";
 }
 
 function parseRcString(value: any): CellRC[] {
@@ -1327,8 +1327,11 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
 
     const hasExplicitBorderColor = item?.borderColor != null || item?.outlineC != null || item?.c1 != null;
     const hasExplicitFillColor = item?.backgroundColor != null || item?.fill != null || item?.baseC != null;
-    // In compact SudokuPad payloads, '#0' in stroke-like keys frequently means no visible stroke.
-    const rawStroke = item?.borderColor ?? item?.outlineC ?? item?.c1 ?? item?.stroke;
+    // Keep explicit border channels (`borderColor`/`outlineC`/`c1`) authoritative.
+    // Compact exports commonly use `c1: #0` to mean a black outline.
+    const rawExplicitBorder = item?.borderColor ?? item?.outlineC ?? item?.c1;
+    const explicitBorderToken = normalizeColorToken(rawExplicitBorder);
+    const rawStroke = item?.stroke;
     const strokeToken = normalizeColorToken(rawStroke);
     const isTinyRoundedTextMarker =
       textStr.length > 0 &&
@@ -1341,7 +1344,9 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
       (Number.isFinite(width) && Number(width) <= 0.001) ||
       (Number.isFinite(height) && Number(height) <= 0.001);
     const strokeActsAsTextColor = isTinyRoundedTextMarker && !hasExplicitBorderColor && item?.stroke != null;
-    const borderColor = strokeActsAsTextColor || isNoStrokeToken(rawStroke) ? undefined : strokeToken;
+    const borderColor = strokeActsAsTextColor
+      ? undefined
+      : explicitBorderToken ?? (isNoStrokeToken(rawStroke) ? undefined : strokeToken);
     const fillColor = normalizeColorToken(item?.backgroundColor ?? item?.c2 ?? item?.fill);
     const isSlenderTextAnchor =
       textStr.length > 0 &&
@@ -1386,13 +1391,9 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
   const overlaysSrc = Array.isArray(scl?.overlays) ? scl.overlays : [];
   if (overlaysSrc.length) {
     const parsed = overlaysSrc.map(parseLayerItem).filter(Boolean) as Array<Record<string, unknown>>;
-    const overlaysFromCompactAlias = Boolean(scl?.__overlaysFromCompactAlias);
     const under = parsed.filter((item) => {
       const target = categorizeTarget(item.target);
       if (target === "under") return true;
-      // Legacy compact `o` items without explicit target are frequently decorative
-      // underlay artwork, not top overlays.
-      if (overlaysFromCompactAlias && target == null) return true;
       return false;
     });
     const over = parsed.filter((item) => !under.includes(item));
