@@ -1267,7 +1267,17 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
       (Number.isFinite(height) && Number(height) <= 0.001);
     const strokeActsAsTextColor = isTinyRoundedTextMarker && !hasExplicitBorderColor && item?.stroke != null;
     const borderColor = strokeActsAsTextColor || isNoStrokeToken(rawStroke) ? undefined : strokeToken;
-    const fillColor = normalizeColorToken(item?.backgroundColor ?? item?.c2 ?? item?.fill);
+    const hasShapeGeometry =
+      (Number.isFinite(width) && Number(width) > 0) ||
+      (Number.isFinite(height) && Number(height) > 0) ||
+      rounded;
+    const fillColor = normalizeColorToken(
+      item?.backgroundColor ??
+      item?.c2 ??
+      item?.fill ??
+      // In compact payloads, `c` is often the primary fill for shape markers.
+      ((!textStr.length && hasShapeGeometry) ? item?.c : undefined)
+    );
     const isSlenderTextAnchor =
       textStr.length > 0 &&
       Number.isFinite(width) &&
@@ -1311,15 +1321,7 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
   const overlaysSrc = Array.isArray(scl?.overlays) ? scl.overlays : [];
   if (overlaysSrc.length) {
     const parsed = overlaysSrc.map(parseLayerItem).filter(Boolean) as Array<Record<string, unknown>>;
-    const overlaysFromCompactAlias = Boolean(scl?.__overlaysFromCompactAlias);
-    const under = parsed.filter((item) => {
-      const target = categorizeTarget(item.target);
-      if (target === "under") return true;
-      // Legacy compact `o` items without explicit target are frequently decorative
-      // underlay artwork, not top overlays.
-      if (overlaysFromCompactAlias && target == null) return true;
-      return false;
-    });
+    const under = parsed.filter((item) => categorizeTarget(item.target) === "under");
     const over = parsed.filter((item) => !under.includes(item));
     if (over.length) cosmetics.overlays = over as any;
     if (under.length) cosmetics.underlays = [...(cosmetics.underlays ?? []), ...(under as any)];
