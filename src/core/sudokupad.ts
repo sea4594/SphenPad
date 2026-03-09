@@ -206,10 +206,7 @@ function normalizeCompactScl(input: any): any {
   if (!scl.regions && Array.isArray(scl.re)) scl.regions = scl.re;
   if (!scl.cellSize && Number.isFinite(Number(scl.cs))) scl.cellSize = Number(scl.cs);
   if (!scl.lines && Array.isArray(scl.l)) scl.lines = scl.l;
-  if (!scl.overlays && Array.isArray(scl.o)) {
-    scl.overlays = scl.o;
-    scl.__overlaysFromCompactAlias = true;
-  }
+  if (!scl.overlays && Array.isArray(scl.o)) scl.overlays = scl.o;
   if (!scl.underlays && Array.isArray(scl.u)) scl.underlays = scl.u;
   if (!scl.arrow && Array.isArray(scl.a)) scl.arrow = scl.a;
   if (!scl.dots && Array.isArray(scl.d)) scl.dots = scl.d;
@@ -895,20 +892,6 @@ export async function loadFromSudokuPad(inputUrlOrId: string): Promise<{ key: st
   const subgrid = shape.rows === shape.cols ? detectStandardSubgrid(sclObj, size) : undefined;
   const normalizedCosmetics = normalizeLayerCosmeticsToGrid(cosmetics, shape.rows, shape.cols);
 
-  if (normalizedCosmetics.gridVisible == null && Array.isArray(sclObj?.regions)) {
-    const regionCells = sclObj.regions.flatMap((region: any) => parseCellRefs(region));
-    if (regionCells.length) {
-      const regionRows = Math.max(...regionCells.map((rc: CellRC) => rc.r)) + 1;
-      const regionCols = Math.max(...regionCells.map((rc: CellRC) => rc.c)) + 1;
-      const hasDenseCustomArtwork =
-        (normalizedCosmetics.lines?.length ?? 0) > 0 ||
-        ((normalizedCosmetics.overlays?.length ?? 0) + (normalizedCosmetics.underlays?.length ?? 0)) >= 20;
-      if (hasDenseCustomArtwork && (regionRows < shape.rows || regionCols < shape.cols)) {
-        normalizedCosmetics.gridVisible = false;
-      }
-    }
-  }
-
   const key = normalizePuzzleKey(sourceId);
   const def: PuzzleDefinition = {
     id: key,
@@ -1235,38 +1218,12 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
     const text = item?.text ?? item?.te;
     const textStr = text == null ? "" : String(text).trim();
     const explicitTextSize = parseFiniteNumberToken(item?.textSize ?? item?.fontSize ?? item?.fs);
-    const minSpan = Math.min(
-      Number.isFinite(width) ? Number(width) : Number.POSITIVE_INFINITY,
-      Number.isFinite(height) ? Number(height) : Number.POSITIVE_INFINITY,
-    );
-    const inferredTinyTextSize =
-      explicitTextSize == null && text != null && Number.isFinite(minSpan) && minSpan <= 0.35
-        ? Math.max(9, Math.min(14, minSpan * 56 * 2.0))
-        : undefined;
-    const isTinyTextMarker =
-      textStr.length === 1 &&
-      typeof width === "number" &&
-      typeof height === "number" &&
-      width <= 0.42 &&
-      height <= 0.42;
 
     const hasExplicitBorderColor = item?.borderColor != null || item?.outlineC != null || item?.c1 != null;
-    const hasExplicitFillColor = item?.backgroundColor != null || item?.fill != null || item?.baseC != null;
     // In compact SudokuPad payloads, '#0' in stroke-like keys frequently means no visible stroke.
     const rawStroke = item?.borderColor ?? item?.outlineC ?? item?.c1 ?? item?.stroke;
     const strokeToken = normalizeColorToken(rawStroke);
-    const isTinyRoundedTextMarker =
-      textStr.length > 0 &&
-      rounded &&
-      Number.isFinite(width) &&
-      Number.isFinite(height) &&
-      Number(width) <= 0.5 &&
-      Number(height) <= 0.5;
-    const hasZeroSpan =
-      (Number.isFinite(width) && Number(width) <= 0.001) ||
-      (Number.isFinite(height) && Number(height) <= 0.001);
-    const strokeActsAsTextColor = isTinyRoundedTextMarker && !hasExplicitBorderColor && item?.stroke != null;
-    const borderColor = strokeActsAsTextColor || isNoStrokeToken(rawStroke) ? undefined : strokeToken;
+    const borderColor = isNoStrokeToken(rawStroke) ? undefined : strokeToken;
     const hasShapeGeometry =
       (Number.isFinite(width) && Number(width) > 0) ||
       (Number.isFinite(height) && Number(height) > 0) ||
@@ -1278,40 +1235,22 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
       // In compact payloads, `c` is often the primary fill for shape markers.
       ((!textStr.length && hasShapeGeometry) ? item?.c : undefined)
     );
-    const isSlenderTextAnchor =
-      textStr.length > 0 &&
-      Number.isFinite(width) &&
-      Number.isFinite(height) &&
-      Number(Math.min(width as number, height as number)) <= 0.2 &&
-      Number(Math.max(width as number, height as number)) >= 0.45;
-    const shouldTreatAsTextOnly =
-      hasZeroSpan ||
-      isSlenderTextAnchor &&
-      !hasExplicitFillColor;
-    const noVisibleStroke = !borderColor;
-    const isRoundedTextMarker = textStr.length > 0 && rounded && noVisibleStroke;
-    const tinyMarkerShouldKeepShape = isTinyTextMarker && rounded && (Boolean(fillColor) || Boolean(borderColor));
-    const suppressShape =
-      shouldTreatAsTextOnly ||
-      (!tinyMarkerShouldKeepShape && isTinyTextMarker) ||
-      (isRoundedTextMarker && !fillColor);
 
     return {
       center: ct,
       width,
       height,
-      rounded: suppressShape ? false : rounded,
-      color: suppressShape ? undefined : fillColor,
-      borderColor: suppressShape ? undefined : borderColor,
+      rounded,
+      color: fillColor,
+      borderColor,
       borderThickness: parseFiniteNumberToken(item?.thickness ?? item?.th),
       text,
       textColor: normalizeColorToken(
         item?.color ??
         item?.textColor ??
-        item?.c ??
-        (strokeActsAsTextColor || shouldTreatAsTextOnly ? item?.stroke : undefined)
+        item?.c
       ),
-      textSize: explicitTextSize ?? inferredTinyTextSize,
+      textSize: explicitTextSize,
       angle: parseFiniteNumberToken(item?.angle),
       target: typeof item?.target === "string" ? item.target : undefined,
       opacity: parseOpacityToken(item?.opacity ?? item?.alpha),
