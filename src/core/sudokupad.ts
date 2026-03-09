@@ -802,8 +802,24 @@ function normalizeLayerCosmeticsToGrid(
   rows: number,
   cols: number,
 ): PuzzleCosmetics {
-  const isNearInteger = (v: number) => Math.abs(v - Math.round(v)) <= 0.03;
-  const isNearHalf = (v: number) => Math.abs(v - (Math.floor(v) + 0.5)) <= 0.03;
+  const isNearInteger = (v: number) => Math.abs(v - Math.round(v)) <= 0.08;
+  const isNearHalf = (v: number) => Math.abs(v - (Math.floor(v) + 0.5)) <= 0.08;
+  const isBoundaryWhiteMarker = (item: NonNullable<PuzzleCosmetics["underlays"]>[number]) => {
+    const text = item.text == null ? "" : String(item.text).trim();
+    const hasText = text.length > 0;
+    const hasBorder = Boolean(item.borderColor) && (item.borderThickness ?? 1.4) > 0;
+    const width = Number.isFinite(item.width) ? Number(item.width) : 0;
+    const height = Number.isFinite(item.height) ? Number(item.height) : 0;
+    const cx = Number(item.center?.x);
+    const cy = Number(item.center?.y);
+    if (!Number.isFinite(cx) || !Number.isFinite(cy)) return false;
+    const isTinyRounded = Boolean(item.rounded) && width > 0 && height > 0 && Math.max(width, height) <= 0.58;
+    const isVeryLightFill = isVeryLightColorToken(item.color);
+    const boundaryMarkerCenter =
+      (isNearInteger(cx) && isNearHalf(cy)) ||
+      (isNearHalf(cx) && isNearInteger(cy));
+    return isTinyRounded && !hasText && isVeryLightFill && boundaryMarkerCenter && !hasBorder;
+  };
 
   const normalizeLayerArray = (
     items: PuzzleCosmetics["underlays"] | PuzzleCosmetics["overlays"] | undefined,
@@ -864,12 +880,7 @@ function normalizeLayerCosmeticsToGrid(
         // tiny filled rounded circles without a stroke. Add a default outline
         // only for textless boundary markers so in-cell text circles (e.g. V/XV)
         // keep their intended no-outline appearance.
-        const isTinyRounded = item.rounded && width > 0 && height > 0 && Math.max(width, height) <= 0.58;
-        const isVeryLightFill = isVeryLightColorToken(item.color);
-        const boundaryMarkerCenter =
-          (isNearInteger(cx) && isNearHalf(cy)) ||
-          (isNearHalf(cx) && isNearInteger(cy));
-        if (isTinyRounded && !hasText && !hasBorder && isVeryLightFill && boundaryMarkerCenter) {
+        if (isBoundaryWhiteMarker(item)) {
           return {
             ...item,
             borderColor: "#1b1b1b",
@@ -882,10 +893,20 @@ function normalizeLayerCosmeticsToGrid(
       .filter(Boolean) as typeof items;
   };
 
+  const normalizedUnderlays = normalizeLayerArray(cosmetics.underlays);
+  const normalizedOverlays = normalizeLayerArray(cosmetics.overlays);
+
+  const under = Array.isArray(normalizedUnderlays) ? normalizedUnderlays : [];
+  const over = Array.isArray(normalizedOverlays) ? normalizedOverlays : [];
+
+  // Keep white boundary markers above grid/cages by default.
+  const promoteToOver = under.filter(isBoundaryWhiteMarker);
+  const keepUnder = under.filter((item) => !isBoundaryWhiteMarker(item));
+
   return {
     ...cosmetics,
-    underlays: normalizeLayerArray(cosmetics.underlays),
-    overlays: normalizeLayerArray(cosmetics.overlays),
+    underlays: keepUnder.length ? keepUnder : undefined,
+    overlays: [...over, ...promoteToOver],
   };
 }
 
