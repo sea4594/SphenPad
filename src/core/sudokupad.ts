@@ -1567,7 +1567,10 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
   const evenSrc = Array.isArray(scl?.even) ? scl.even : [];
   const parityOverlays = [...oddSrc.map((v: any) => ({ ...v, __kind: "odd" })), ...evenSrc.map((v: any) => ({ ...v, __kind: "even" }))]
     .map((item: any) => {
-      const rc = asRC(item?.cell ?? item?.rc ?? item?.ce);
+      const rc =
+        asRC(item?.cell ?? item?.rc ?? item?.ce) ??
+        parseCellRefs(item?.cell ?? item?.rc ?? item?.ce)[0] ??
+        null;
       const center = rc ? { x: rc.c + 0.5, y: rc.r + 0.5 } : asPoint(item?.center ?? item?.ct);
       if (!center) return null;
       const isOdd = item.__kind === "odd";
