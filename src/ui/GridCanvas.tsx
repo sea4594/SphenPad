@@ -1376,13 +1376,14 @@ export function GridCanvas(props: {
     last: CellRC,
     clientX: number,
     clientY: number,
-    opts?: { diagonalAssistThreshold?: number }
+    opts?: { diagonalAssistThreshold?: number; diagonalAssistMinRatio?: number }
   ): CellRC[] {
     const gp = eventGridPoint(clientX, clientY);
     if (!gp) return [];
 
     const target = { x: gp.gx - 0.5, y: gp.gy - 0.5 };
     const diagonalAssistThreshold = Math.max(0, Math.min(0.49, opts?.diagonalAssistThreshold ?? 0.22));
+    const diagonalAssistMinRatio = Math.max(0, Math.min(1, opts?.diagonalAssistMinRatio ?? 0));
     const hops: CellRC[] = [];
     let cur = { ...last };
 
@@ -1391,14 +1392,19 @@ export function GridCanvas(props: {
       const dy = target.y - cur.r;
       const absDx = Math.abs(dx);
       const absDy = Math.abs(dy);
+      const primaryDelta = Math.max(absDx, absDy);
+      const secondaryDelta = Math.min(absDx, absDy);
       const stepCX = dx > 0 ? 1 : dx < 0 ? -1 : 0;
       const stepRY = dy > 0 ? 1 : dy < 0 ? -1 : 0;
       let stepC = absDx >= 0.5 ? stepCX : 0;
       let stepR = absDy >= 0.5 ? stepRY : 0;
+      const diagonalIntent =
+        secondaryDelta >= diagonalAssistThreshold &&
+        (primaryDelta <= 1e-9 || (secondaryDelta / primaryDelta) >= diagonalAssistMinRatio);
 
       // Widen diagonal routing corridor so near-corner drags prefer diagonal hops.
-      if (!stepC && stepR && stepCX && absDx >= diagonalAssistThreshold) stepC = stepCX;
-      if (!stepR && stepC && stepRY && absDy >= diagonalAssistThreshold) stepR = stepRY;
+      if (!stepC && stepR && stepCX && diagonalIntent) stepC = stepCX;
+      if (!stepR && stepC && stepRY && diagonalIntent) stepR = stepRY;
 
       if (!stepR && !stepC) break;
 
@@ -1581,7 +1587,10 @@ export function GridCanvas(props: {
             if (!next || (next.r === drag.last.r && next.c === drag.last.c)) return [] as CellRC[];
             return traceCellSteps(drag.last, next, { rows: rows + 1, cols: cols + 1 });
           })()
-        : centerHopsFromPointer(drag.last, e.clientX, e.clientY, { diagonalAssistThreshold: 0.18 });
+        : centerHopsFromPointer(drag.last, e.clientX, e.clientY, {
+            diagonalAssistThreshold: 0.28,
+            diagonalAssistMinRatio: 0.58,
+          });
       if (!hops.length) return;
 
       for (const hop of hops) {
