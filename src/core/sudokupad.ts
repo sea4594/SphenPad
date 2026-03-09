@@ -16,7 +16,7 @@ const COUNTER_API_BASE = "https://api.sudokupad.com/counter";
 const COUNTER_PROXY_A = "https://api.codetabs.com/v1/proxy/?quest=https://api.sudokupad.com/counter";
 const COUNTER_PROXY_B = "https://api.allorigins.win/raw?url=https://api.sudokupad.com/counter";
 
-export const SUDOKUPAD_IMPORT_REVISION = 4;
+export const SUDOKUPAD_IMPORT_REVISION = 5;
 
 function timeout(ms: number) {
   return new Promise<never>((_, rej) => setTimeout(() => rej(new Error("Timeout")), ms));
@@ -784,130 +784,14 @@ function inferredRulesFromCosmetics(cosmetics: PuzzleCosmetics): string {
   return lines.join("\n\n");
 }
 
-function isVeryLightColorToken(token: unknown): boolean {
-  if (typeof token !== "string") return false;
-  const s = token.trim().toLowerCase();
-  if (s === "#fff" || s === "#ffff" || s === "#ffffff" || s === "#ffffffff") return true;
-  const m = s.match(/^#([0-9a-f]{6}|[0-9a-f]{8})$/i);
-  if (!m) return false;
-  const rgb = m[1].slice(0, 6);
-  const r = Number.parseInt(rgb.slice(0, 2), 16);
-  const g = Number.parseInt(rgb.slice(2, 4), 16);
-  const b = Number.parseInt(rgb.slice(4, 6), 16);
-  return r >= 245 && g >= 245 && b >= 245;
-}
-
 function normalizeLayerCosmeticsToGrid(
   cosmetics: PuzzleCosmetics,
   rows: number,
   cols: number,
 ): PuzzleCosmetics {
-  const isNearInteger = (v: number) => Math.abs(v - Math.round(v)) <= 0.08;
-  const isNearHalf = (v: number) => Math.abs(v - (Math.floor(v) + 0.5)) <= 0.08;
-  const isBoundaryWhiteMarker = (item: NonNullable<PuzzleCosmetics["underlays"]>[number]) => {
-    const text = item.text == null ? "" : String(item.text).trim();
-    const hasText = text.length > 0;
-    const hasBorder = Boolean(item.borderColor) && (item.borderThickness ?? 1.4) > 0;
-    const width = Number.isFinite(item.width) ? Number(item.width) : 0;
-    const height = Number.isFinite(item.height) ? Number(item.height) : 0;
-    const cx = Number(item.center?.x);
-    const cy = Number(item.center?.y);
-    if (!Number.isFinite(cx) || !Number.isFinite(cy)) return false;
-    const isTinyRounded = Boolean(item.rounded) && width > 0 && height > 0 && Math.max(width, height) <= 0.58;
-    const isVeryLightFill = isVeryLightColorToken(item.color);
-    const boundaryMarkerCenter =
-      (isNearInteger(cx) && isNearHalf(cy)) ||
-      (isNearHalf(cx) && isNearInteger(cy));
-    return isTinyRounded && !hasText && isVeryLightFill && boundaryMarkerCenter && !hasBorder;
-  };
-
-  const normalizeLayerArray = (
-    items: PuzzleCosmetics["underlays"] | PuzzleCosmetics["overlays"] | undefined,
-  ) => {
-    if (!Array.isArray(items) || !items.length) return items;
-
-    return items
-      .map((item) => {
-        if (!item || !item.center) return null;
-        const text = item.text == null ? "" : String(item.text).trim();
-        const hasText = text.length > 0;
-        const hasFill = Boolean(item.color);
-        const hasBorder = Boolean(item.borderColor) && (item.borderThickness ?? 1.4) > 0;
-        const width = Number.isFinite(item.width) ? Number(item.width) : 0;
-        const height = Number.isFinite(item.height) ? Number(item.height) : 0;
-        const cx = Number(item.center.x);
-        const cy = Number(item.center.y);
-        if (!Number.isFinite(cx) || !Number.isFinite(cy)) return null;
-
-        const halfW = Math.max(0, width / 2);
-        const halfH = Math.max(0, height / 2);
-        const right = cx + halfW;
-        const left = cx - halfW;
-        const top = cy - halfH;
-        const bottom = cy + halfH;
-        const fullyOutside = right <= 0 || left >= cols || bottom <= 0 || top >= rows;
-
-        // Ignore tiny anti-alias crumbs fully outside the puzzle bounds.
-        const outsideBothAxes = (cx < 0 || cx > cols) && (cy < 0 || cy > rows);
-        const angle = Math.abs(Number(item.angle ?? 0));
-        const isRotatedMarker = angle >= 1 && Math.abs((angle % 90) - 45) <= 1.5;
-        const tinyCornerArtifact =
-          !hasText &&
-          (hasFill || hasBorder) &&
-          Math.max(width, height) <= 0.22 &&
-          fullyOutside &&
-          outsideBothAxes &&
-          !isRotatedMarker;
-        if (tinyCornerArtifact) return null;
-
-        // Drop oversized border-only light frames that create white halos.
-        const centeredOnGrid = Math.abs(cx - cols / 2) <= 0.25 && Math.abs(cy - rows / 2) <= 0.25;
-        const oversizedByOneCell =
-          width >= cols + 0.75 &&
-          width <= cols + 1.25 &&
-          height >= rows + 0.75 &&
-          height <= rows + 1.25;
-        const whiteHaloFrame =
-          !hasText &&
-          !hasFill &&
-          hasBorder &&
-          centeredOnGrid &&
-          oversizedByOneCell &&
-          isVeryLightColorToken(item.borderColor);
-        if (whiteHaloFrame) return null;
-
-        // Some compact SudokuPad exports encode white between-cell markers as
-        // tiny filled rounded circles without a stroke. Add a default outline
-        // only for textless boundary markers so in-cell text circles (e.g. V/XV)
-        // keep their intended no-outline appearance.
-        if (isBoundaryWhiteMarker(item)) {
-          return {
-            ...item,
-            borderColor: "#1b1b1b",
-            borderThickness: 1.3,
-          };
-        }
-
-        return item;
-      })
-      .filter(Boolean) as typeof items;
-  };
-
-  const normalizedUnderlays = normalizeLayerArray(cosmetics.underlays);
-  const normalizedOverlays = normalizeLayerArray(cosmetics.overlays);
-
-  const under = Array.isArray(normalizedUnderlays) ? normalizedUnderlays : [];
-  const over = Array.isArray(normalizedOverlays) ? normalizedOverlays : [];
-
-  // Keep white boundary markers above grid/cages by default.
-  const promoteToOver = under.filter(isBoundaryWhiteMarker);
-  const keepUnder = under.filter((item) => !isBoundaryWhiteMarker(item));
-
-  return {
-    ...cosmetics,
-    underlays: keepUnder.length ? keepUnder : undefined,
-    overlays: [...over, ...promoteToOver],
-  };
+  void rows;
+  void cols;
+  return cosmetics;
 }
 
 export async function loadFromSudokuPad(inputUrlOrId: string): Promise<{ key: string; def: PuzzleDefinition; raw: any }> {
