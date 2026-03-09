@@ -6,6 +6,7 @@ type LineKindStored = LineKindResolved | "both";
 type EdgeTrack = "top" | "bottom" | "left" | "right";
 type LineSegmentDraft = { a: CellRC; b: CellRC; edgeTrack?: EdgeTrack };
 type LayerItem = NonNullable<PuzzleDefinition["cosmetics"]["underlays"]>[number];
+const LINE_NODE_RADIUS = 0.5;
 
 type DragState = {
   path: CellRC[];
@@ -163,38 +164,43 @@ export function GridCanvas(props: {
   const cellX = useCallback((c: number) => originX + c * cellPx, [originX, cellPx]);
   const cellY = useCallback((r: number) => originY + r * cellPx, [originY, cellPx]);
 
-  const twemojiCodepoint = useCallback((text: string): string | null => {
+  const twemojiCodepointVariants = useCallback((text: string): string[] => {
     const value = text.trim();
-    if (!value) return null;
-    const cps: number[] = [];
+    if (!value) return [];
+    const cpsFull: number[] = [];
     for (const ch of Array.from(value)) {
       const cp = ch.codePointAt(0);
       if (cp == null) continue;
-      // Match Twemoji lookup behavior for most glyphs.
-      if (cp === 0xfe0f) continue;
-      cps.push(cp);
+      cpsFull.push(cp);
     }
-    if (!cps.length) return null;
-    return cps.map((cp) => cp.toString(16)).join("-");
+    if (!cpsFull.length) return [];
+
+    const toCode = (arr: number[]) => arr.map((cp) => cp.toString(16)).join("-");
+    const cpsNoVs16 = cpsFull.filter((cp) => cp !== 0xfe0f);
+    const variants = [toCode(cpsFull), toCode(cpsNoVs16)].filter((s) => s.length > 0);
+    return Array.from(new Set(variants));
   }, []);
 
-  const twemojiUrl = useCallback((text: string): string | null => {
-    const code = twemojiCodepoint(text);
-    if (!code) return null;
-    return `https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/svg/${code}.svg`;
-  }, [twemojiCodepoint]);
+  const twemojiVariantKey = useCallback((text: string): string | null => {
+    const variants = twemojiCodepointVariants(text);
+    if (!variants.length) return null;
+    return variants.join("|");
+  }, [twemojiCodepointVariants]);
 
   const getTwemojiImage = useCallback((text: string): HTMLImageElement | null => {
-    const key = twemojiCodepoint(text);
+    const key = twemojiVariantKey(text);
     if (!key) return null;
     const cached = twemojiCacheRef.current.get(key);
     if (cached instanceof HTMLImageElement) return cached;
     if (cached === "loading" || cached === "error") return null;
 
-    const primaryUrl = twemojiUrl(text);
-    if (!primaryUrl) return null;
-    const fallbackUrl = `https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/svg/${key}.svg`;
-    const urls = [primaryUrl, fallbackUrl];
+    const codeVariants = twemojiCodepointVariants(text);
+    if (!codeVariants.length) return null;
+    const cdnBases = [
+      "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/svg",
+      "https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/svg",
+    ];
+    const urls = codeVariants.flatMap((code) => cdnBases.map((base) => `${base}/${code}.svg`));
     let idx = 0;
     const img = new Image();
     img.crossOrigin = "anonymous";
@@ -214,7 +220,7 @@ export function GridCanvas(props: {
     };
     img.src = urls[0] as string;
     return null;
-  }, [twemojiCodepoint, twemojiUrl]);
+  }, [twemojiCodepointVariants, twemojiVariantKey]);
 
   const dotOffset = useMemo(() => {
     const dots = def.cosmetics.dots ?? [];
@@ -1417,7 +1423,7 @@ export function GridCanvas(props: {
     const end = eventGridPoint(toClientX, toClientY);
     if (!start || !end) return [];
 
-    const hotZoneRadius = Math.max(0.2, Math.min(0.5, opts?.hotZoneRadius ?? 0.5));
+    const hotZoneRadius = Math.max(0.2, Math.min(LINE_NODE_RADIUS, opts?.hotZoneRadius ?? LINE_NODE_RADIUS));
     const samplesPerCell = Math.max(8, Math.min(40, opts?.samplesPerCell ?? 24));
     const maxHops = Math.max(1, Math.min(20, opts?.maxHops ?? 12));
 
@@ -1473,7 +1479,7 @@ export function GridCanvas(props: {
     const end = eventGridPoint(toClientX, toClientY);
     if (!start || !end) return [];
 
-    const hotZoneRadius = Math.max(0.2, Math.min(0.5, opts?.hotZoneRadius ?? 0.5));
+    const hotZoneRadius = Math.max(0.2, Math.min(LINE_NODE_RADIUS, opts?.hotZoneRadius ?? LINE_NODE_RADIUS));
     const samplesPerCell = Math.max(8, Math.min(40, opts?.samplesPerCell ?? 24));
     const maxHops = Math.max(1, Math.min(20, opts?.maxHops ?? 12));
 
@@ -1611,7 +1617,7 @@ export function GridCanvas(props: {
       const kind = resolveInitialLineKind(pt);
       const edgeTapCandidate = kind === "edge" ? pickEdgeByPointer(e.clientX, e.clientY, 0.47) ?? undefined : undefined;
       const start = kind === "edge"
-        ? nearestCornerNode(e.clientX, e.clientY, 0.42) ?? nearestCornerNodeLoose(e.clientX, e.clientY)
+        ? nearestCornerNode(e.clientX, e.clientY, LINE_NODE_RADIUS) ?? nearestCornerNodeLoose(e.clientX, e.clientY)
         : nearestCellCenter(e.clientX, e.clientY) ?? rc;
       if (!start) return;
       dragRef.current = {
@@ -1689,7 +1695,7 @@ export function GridCanvas(props: {
             drag.lastClientY ?? e.clientY,
             e.clientX,
             e.clientY,
-            { hotZoneRadius: 0.5, samplesPerCell: 24, maxHops: 12 }
+            { hotZoneRadius: LINE_NODE_RADIUS, samplesPerCell: 24, maxHops: 12 }
           )
         : centerLineHopsFromPointer(
             drag.last,
@@ -1697,7 +1703,7 @@ export function GridCanvas(props: {
             drag.lastClientY ?? e.clientY,
             e.clientX,
             e.clientY,
-            { hotZoneRadius: 0.5, samplesPerCell: 24, maxHops: 12 }
+            { hotZoneRadius: LINE_NODE_RADIUS, samplesPerCell: 24, maxHops: 12 }
           );
       drag.lastClientX = e.clientX;
       drag.lastClientY = e.clientY;
