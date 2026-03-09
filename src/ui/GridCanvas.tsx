@@ -1350,30 +1350,6 @@ export function GridCanvas(props: {
     return { r, c };
   }
 
-  function traceCellSteps(from: CellRC, to: CellRC, boundsInclusive: { rows: number; cols: number }) {
-    const dr = to.r - from.r;
-    const dc = to.c - from.c;
-    const steps = Math.max(Math.abs(dr), Math.abs(dc));
-    if (steps <= 0) return [] as CellRC[];
-
-    const out: CellRC[] = [];
-    let prev = from;
-    for (let i = 1; i <= steps; i++) {
-      const r = Math.round(from.r + (dr * i) / steps);
-      const c = Math.round(from.c + (dc * i) / steps);
-      const bounded =
-        r >= 0 &&
-        c >= 0 &&
-        r < boundsInclusive.rows &&
-        c < boundsInclusive.cols;
-      if (!bounded) continue;
-      if (r === prev.r && c === prev.c) continue;
-      prev = { r, c };
-      out.push(prev);
-    }
-    return out;
-  }
-
   function centerHopsFromPointer(
     last: CellRC,
     clientX: number,
@@ -1432,7 +1408,7 @@ export function GridCanvas(props: {
     const end = eventGridPoint(toClientX, toClientY);
     if (!start || !end) return [];
 
-    const hotZoneRadius = Math.max(0.2, Math.min(0.49, opts?.hotZoneRadius ?? 0.39));
+    const hotZoneRadius = Math.max(0.2, Math.min(0.5, opts?.hotZoneRadius ?? 0.5));
     const samplesPerCell = Math.max(8, Math.min(40, opts?.samplesPerCell ?? 24));
     const maxHops = Math.max(1, Math.min(20, opts?.maxHops ?? 12));
 
@@ -1464,6 +1440,62 @@ export function GridCanvas(props: {
             bestDist = dist;
             best = { r: nr, c: nc };
           }
+        }
+      }
+
+      if (!best) continue;
+      if (best.r === cur.r && best.c === cur.c) continue;
+      hops.push(best);
+      cur = best;
+    }
+
+    return hops;
+  }
+
+  function edgeLineHopsFromPointer(
+    last: CellRC,
+    fromClientX: number,
+    fromClientY: number,
+    toClientX: number,
+    toClientY: number,
+    opts?: { hotZoneRadius?: number; samplesPerCell?: number; maxHops?: number }
+  ): CellRC[] {
+    const start = eventGridPoint(fromClientX, fromClientY) ?? eventGridPoint(toClientX, toClientY);
+    const end = eventGridPoint(toClientX, toClientY);
+    if (!start || !end) return [];
+
+    const hotZoneRadius = Math.max(0.2, Math.min(0.5, opts?.hotZoneRadius ?? 0.5));
+    const samplesPerCell = Math.max(8, Math.min(40, opts?.samplesPerCell ?? 24));
+    const maxHops = Math.max(1, Math.min(20, opts?.maxHops ?? 12));
+
+    const dx = end.gx - start.gx;
+    const dy = end.gy - start.gy;
+    const samples = Math.max(1, Math.ceil(Math.max(Math.abs(dx), Math.abs(dy)) * samplesPerCell));
+
+    const inCornerBounds = (r: number, c: number) => r >= 0 && c >= 0 && r <= rows && c <= cols;
+    const hops: CellRC[] = [];
+    let cur = { ...last };
+
+    for (let i = 1; i <= samples && hops.length < maxHops; i++) {
+      const t = i / samples;
+      const px = start.gx + dx * t;
+      const py = start.gy + dy * t;
+
+      let best: CellRC | null = null;
+      let bestDist = Number.POSITIVE_INFINITY;
+      const candidates = [
+        { r: cur.r - 1, c: cur.c },
+        { r: cur.r + 1, c: cur.c },
+        { r: cur.r, c: cur.c - 1 },
+        { r: cur.r, c: cur.c + 1 },
+      ];
+
+      for (const cand of candidates) {
+        if (!inCornerBounds(cand.r, cand.c)) continue;
+        const dist = Math.hypot(px - cand.c, py - cand.r);
+        if (dist <= hotZoneRadius && dist < bestDist) {
+          bestDist = dist;
+          best = { r: cand.r, c: cand.c };
         }
       }
 
@@ -1642,18 +1674,21 @@ export function GridCanvas(props: {
       const kind = drag.lineKind ?? "center";
       const prevCell = drag.path[drag.path.length - 2] ?? null;
       const hops = kind === "edge"
-        ? (() => {
-            const next = nearestCornerNode(e.clientX, e.clientY, 0.42);
-            if (!next || (next.r === drag.last.r && next.c === drag.last.c)) return [] as CellRC[];
-            return traceCellSteps(drag.last, next, { rows: rows + 1, cols: cols + 1 });
-          })()
+        ? edgeLineHopsFromPointer(
+            drag.last,
+            drag.lastClientX ?? e.clientX,
+            drag.lastClientY ?? e.clientY,
+            e.clientX,
+            e.clientY,
+            { hotZoneRadius: 0.5, samplesPerCell: 24, maxHops: 12 }
+          )
         : centerLineHopsFromPointer(
             drag.last,
             drag.lastClientX ?? e.clientX,
             drag.lastClientY ?? e.clientY,
             e.clientX,
             e.clientY,
-            { hotZoneRadius: 0.39, samplesPerCell: 24, maxHops: 12 }
+            { hotZoneRadius: 0.5, samplesPerCell: 24, maxHops: 12 }
           );
       drag.lastClientX = e.clientX;
       drag.lastClientY = e.clientY;
