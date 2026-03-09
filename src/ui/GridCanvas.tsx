@@ -12,6 +12,8 @@ type DragState = {
   segments: LineSegmentDraft[];
   last: CellRC;
   moved: boolean;
+  lastClientX?: number;
+  lastClientY?: number;
   edgeTapCandidate?: { a: CellRC; b: CellRC };
   lineKind?: LineKindResolved;
   lineAction?: "draw" | "erase";
@@ -1418,6 +1420,62 @@ export function GridCanvas(props: {
     return hops;
   }
 
+  function centerLineHopsFromPointer(
+    last: CellRC,
+    fromClientX: number,
+    fromClientY: number,
+    toClientX: number,
+    toClientY: number,
+    opts?: { hotZoneRadius?: number; samplesPerCell?: number; maxHops?: number }
+  ): CellRC[] {
+    const start = eventGridPoint(fromClientX, fromClientY) ?? eventGridPoint(toClientX, toClientY);
+    const end = eventGridPoint(toClientX, toClientY);
+    if (!start || !end) return [];
+
+    const hotZoneRadius = Math.max(0.2, Math.min(0.49, opts?.hotZoneRadius ?? 0.39));
+    const samplesPerCell = Math.max(8, Math.min(40, opts?.samplesPerCell ?? 24));
+    const maxHops = Math.max(1, Math.min(20, opts?.maxHops ?? 12));
+
+    const dx = end.gx - start.gx;
+    const dy = end.gy - start.gy;
+    const samples = Math.max(1, Math.ceil(Math.max(Math.abs(dx), Math.abs(dy)) * samplesPerCell));
+
+    const hops: CellRC[] = [];
+    let cur = { ...last };
+
+    for (let i = 1; i <= samples && hops.length < maxHops; i++) {
+      const t = i / samples;
+      const px = start.gx + dx * t;
+      const py = start.gy + dy * t;
+
+      let best: CellRC | null = null;
+      let bestDist = Number.POSITIVE_INFINITY;
+
+      for (let dr = -1; dr <= 1; dr++) {
+        for (let dc = -1; dc <= 1; dc++) {
+          if (!dr && !dc) continue;
+          const nr = cur.r + dr;
+          const nc = cur.c + dc;
+          if (!inBounds(nr, nc)) continue;
+          const cx = nc + 0.5;
+          const cy = nr + 0.5;
+          const dist = Math.hypot(px - cx, py - cy);
+          if (dist <= hotZoneRadius && dist < bestDist) {
+            bestDist = dist;
+            best = { r: nr, c: nc };
+          }
+        }
+      }
+
+      if (!best) continue;
+      if (best.r === cur.r && best.c === cur.c) continue;
+      hops.push(best);
+      cur = best;
+    }
+
+    return hops;
+  }
+
   function nearestCornerNode(clientX: number, clientY: number, radius = 0.34): CellRC | null {
     const gp = eventGridPoint(clientX, clientY);
     if (!gp) return null;
@@ -1520,6 +1578,8 @@ export function GridCanvas(props: {
         segments: [],
         last: start,
         moved: false,
+        lastClientX: e.clientX,
+        lastClientY: e.clientY,
         edgeTapCandidate,
         lineKind: kind,
         visited: new Set([rcKey(start)]),
@@ -1587,10 +1647,16 @@ export function GridCanvas(props: {
             if (!next || (next.r === drag.last.r && next.c === drag.last.c)) return [] as CellRC[];
             return traceCellSteps(drag.last, next, { rows: rows + 1, cols: cols + 1 });
           })()
-        : centerHopsFromPointer(drag.last, e.clientX, e.clientY, {
-            diagonalAssistThreshold: 0.28,
-            diagonalAssistMinRatio: 0.58,
-          });
+        : centerLineHopsFromPointer(
+            drag.last,
+            drag.lastClientX ?? e.clientX,
+            drag.lastClientY ?? e.clientY,
+            e.clientX,
+            e.clientY,
+            { hotZoneRadius: 0.39, samplesPerCell: 24, maxHops: 12 }
+          );
+      drag.lastClientX = e.clientX;
+      drag.lastClientY = e.clientY;
       if (!hops.length) return;
 
       for (const hop of hops) {
