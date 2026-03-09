@@ -703,8 +703,6 @@ export function PuzzlePage() {
     persist({
       ...data,
       progress: nextProgress,
-      undo: [],
-      redo: [],
       updatedAt: Date.now(),
     });
     setRestartPromptOpen(false);

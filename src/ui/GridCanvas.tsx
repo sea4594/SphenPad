@@ -44,16 +44,6 @@ function segKeyWithKind(seg: { a: CellRC; b: CellRC; edgeTrack?: EdgeTrack }, ki
   return `${lineKindNamespace(kind)}:${segKey(seg.a, seg.b)}`;
 }
 
-function defaultSubgridForSize(n: number): { r: number; c: number } {
-  if (n === 6) return { r: 2, c: 3 };
-  if (n === 8) return { r: 2, c: 4 };
-  if (n === 10) return { r: 2, c: 5 };
-  if (n === 12) return { r: 3, c: 4 };
-  const s = Math.sqrt(n);
-  if (Number.isInteger(s)) return { r: s, c: s };
-  return { r: 1, c: 1 };
-}
-
 export function GridCanvas(props: {
   def: PuzzleDefinition;
   progress: PuzzleProgress;
@@ -470,8 +460,52 @@ export function GridCanvas(props: {
       ctx.restore();
     };
 
-    const inferredSubgrid = rows === cols ? defaultSubgridForSize(rows) : { r: rows + 1, c: cols + 1 };
-    const subgrid = def.cosmetics.subgrid ?? inferredSubgrid;
+    const regionByCell = new Map<string, number>();
+    const importedRegions = def.cosmetics.irregularRegions ?? [];
+    importedRegions.forEach((region, idx) => {
+      for (const rc of region.cells) {
+        if (!inBounds(rc.r, rc.c)) continue;
+        regionByCell.set(`${rc.r},${rc.c}`, idx);
+      }
+    });
+    const hasImportedRegionBoundaries = regionByCell.size > 0;
+    const subgrid = def.cosmetics.subgrid;
+
+    const drawRegionBoundaries = (thickGridLine: number) => {
+      if (!hasImportedRegionBoundaries) return;
+      ctx.lineWidth = thickGridLine;
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const id = regionByCell.get(`${r},${c}`);
+          if (id == null) continue;
+
+          if (r === 0 || regionByCell.get(`${r - 1},${c}`) !== id) {
+            ctx.beginPath();
+            ctx.moveTo(cellX(c), cellY(r));
+            ctx.lineTo(cellX(c + 1), cellY(r));
+            ctx.stroke();
+          }
+          if (c === 0 || regionByCell.get(`${r},${c - 1}`) !== id) {
+            ctx.beginPath();
+            ctx.moveTo(cellX(c), cellY(r));
+            ctx.lineTo(cellX(c), cellY(r + 1));
+            ctx.stroke();
+          }
+          if (r === rows - 1) {
+            ctx.beginPath();
+            ctx.moveTo(cellX(c), cellY(r + 1));
+            ctx.lineTo(cellX(c + 1), cellY(r + 1));
+            ctx.stroke();
+          }
+          if (c === cols - 1) {
+            ctx.beginPath();
+            ctx.moveTo(cellX(c + 1), cellY(r));
+            ctx.lineTo(cellX(c + 1), cellY(r + 1));
+            ctx.stroke();
+          }
+        }
+      }
+    };
 
     const drawGridLines = () => {
       if (def.cosmetics.gridVisible === false) return;
@@ -480,7 +514,7 @@ export function GridCanvas(props: {
       const thickGridLine = Math.max(1.8, 2.2 * unitScale);
       ctx.strokeStyle = "#000000";
       for (let i = 0; i <= rows; i++) {
-        ctx.lineWidth = i % subgrid.r === 0 ? thickGridLine : thinGridLine;
+        ctx.lineWidth = thinGridLine;
         ctx.beginPath();
         ctx.moveTo(cellX(0), cellY(i));
         ctx.lineTo(cellX(cols), cellY(i));
@@ -488,11 +522,33 @@ export function GridCanvas(props: {
       }
 
       for (let i = 0; i <= cols; i++) {
-        ctx.lineWidth = i % subgrid.c === 0 ? thickGridLine : thinGridLine;
+        ctx.lineWidth = thinGridLine;
         ctx.beginPath();
         ctx.moveTo(cellX(i), cellY(0));
         ctx.lineTo(cellX(i), cellY(rows));
         ctx.stroke();
+      }
+
+      if (hasImportedRegionBoundaries) {
+        drawRegionBoundaries(thickGridLine);
+      } else if (subgrid) {
+        for (let i = 0; i <= rows; i++) {
+          if (i % subgrid.r !== 0) continue;
+          ctx.lineWidth = thickGridLine;
+          ctx.beginPath();
+          ctx.moveTo(cellX(0), cellY(i));
+          ctx.lineTo(cellX(cols), cellY(i));
+          ctx.stroke();
+        }
+
+        for (let i = 0; i <= cols; i++) {
+          if (i % subgrid.c !== 0) continue;
+          ctx.lineWidth = thickGridLine;
+          ctx.beginPath();
+          ctx.moveTo(cellX(i), cellY(0));
+          ctx.lineTo(cellX(i), cellY(rows));
+          ctx.stroke();
+        }
       }
     };
 
@@ -1173,25 +1229,7 @@ export function GridCanvas(props: {
 
       // Keep grid visible on top of fog when enabled.
       if (def.cosmetics.gridVisible !== false) {
-        const unitScale = cellPx / cosmeticUnit;
-        const thinGridLine = Math.max(0.9, 1.0 * unitScale);
-        const thickGridLine = Math.max(1.9, 2.5 * unitScale);
-        ctx.strokeStyle = "#000000";
-        for (let i = 0; i <= rows; i++) {
-          ctx.lineWidth = i % subgrid.r === 0 ? thickGridLine : thinGridLine;
-          ctx.beginPath();
-          ctx.moveTo(cellX(0), cellY(i));
-          ctx.lineTo(cellX(cols), cellY(i));
-          ctx.stroke();
-        }
-
-        for (let i = 0; i <= cols; i++) {
-          ctx.lineWidth = i % subgrid.c === 0 ? thickGridLine : thinGridLine;
-          ctx.beginPath();
-          ctx.moveTo(cellX(i), cellY(0));
-          ctx.lineTo(cellX(i), cellY(rows));
-          ctx.stroke();
-        }
+        drawGridLines();
       }
 
       // Keep user-entered values visible under fog; hide unrevealed givens.
@@ -1344,7 +1382,7 @@ export function GridCanvas(props: {
     if (!gp) return [];
 
     const target = { x: gp.gx - 0.5, y: gp.gy - 0.5 };
-    const diagonalAssistThreshold = Math.max(0, Math.min(0.49, opts?.diagonalAssistThreshold ?? 0.5));
+    const diagonalAssistThreshold = Math.max(0, Math.min(0.49, opts?.diagonalAssistThreshold ?? 0.42));
     const hops: CellRC[] = [];
     let cur = { ...last };
 
