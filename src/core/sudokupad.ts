@@ -1166,14 +1166,16 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
         const bulbCells = parseCellRefs(a?.cells ?? a?.ce);
         const shaftCells = parseCellRefs(lineCells);
         const cellPath = shaftCells.length ? shaftCells : bulbCells;
-        const wpPath = (a?.wayPoints ?? []).map(asPoint).filter(Boolean) as Array<{ x: number; y: number }>;
+        const wpPath = (a?.wayPoints ?? a?.wp ?? a?.points ?? [])
+          .map(asPoint)
+          .filter(Boolean) as Array<{ x: number; y: number }>;
         if (cellPath.length < 2 && wpPath.length < 2) return null;
         const bulb = bulbCells[0];
         return {
           bulb,
           path: cellPath.length ? cellPath : undefined,
           wayPoints: wpPath.length ? wpPath : undefined,
-          headLength: parseFiniteNumberToken(a?.headLength),
+          headLength: parseFiniteNumberToken(a?.headLength ?? a?.hl),
           color: normalizeColorToken(a?.color ?? a?.lineColor ?? a?.c),
           thickness: parseFiniteNumberToken(a?.thickness ?? a?.th),
           bulbFill: normalizeColorToken(a?.bulbColor ?? a?.baseC ?? "#ffffff"),
@@ -1217,13 +1219,21 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
         const wayPointsRaw = (ln?.wayPoints ?? ln?.points ?? ln?.wp ?? [])
           .map(asPoint)
           .filter(Boolean) as Array<{ x: number; y: number }>;
+        const lineCellRefs = Array.isArray(ln?.lines)
+          ? parseCellRefs(Array.isArray(ln.lines[0]) ? ln.lines[0] : ln.lines)
+          : parseCellRefs(ln?.cells ?? ln?.ce);
+        const lineRefPoints = lineCellRefs.map((rc) => ({ x: rc.c + 0.5, y: rc.r + 0.5 }));
         const svgPathData = typeof ln?.d2 === "string" ? ln.d2 : typeof ln?.d === "string" ? ln.d : undefined;
         const svgPathPoints = typeof svgPathData === "string"
           ? parseSvgPathToWayPoints(svgPathData, Number(scl?.cellSize) || 64)
           : [];
-        const wayPoints = wayPointsRaw.length >= 2 ? wayPointsRaw : svgPathPoints;
+        const wayPoints = wayPointsRaw.length >= 2
+          ? wayPointsRaw
+          : lineRefPoints.length >= 2
+            ? lineRefPoints
+            : svgPathPoints;
         if (wayPoints.length < 2) return null;
-        const strokeToken = normalizeColorToken(ln?.color ?? ln?.lineColor ?? ln?.stroke ?? ln?.c);
+        const strokeToken = normalizeColorToken(ln?.color ?? ln?.lineColor ?? ln?.stroke ?? ln?.outlineC ?? ln?.c);
         const fillToken = normalizeColorToken(ln?.fill ?? ln?.backgroundColor ?? ln?.c2);
         const closedByShape = wayPoints.length > 2 && pointsAlmostEqual(wayPoints[0] as { x: number; y: number }, wayPoints[wayPoints.length - 1] as { x: number; y: number });
         const rawDash = ln?.["stroke-dasharray"] ?? ln?.dashArray ?? ln?.dash;
@@ -1236,14 +1246,17 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
         const lineJoinRaw = String(ln?.["stroke-linejoin"] ?? ln?.lineJoin ?? "").toLowerCase();
         const lineCap = lineCapRaw === "round" || lineCapRaw === "square" || lineCapRaw === "butt" ? lineCapRaw : undefined;
         const lineJoin = lineJoinRaw === "round" || lineJoinRaw === "bevel" || lineJoinRaw === "miter" ? lineJoinRaw : undefined;
+        const thicknessToken = parseFiniteNumberToken(ln?.thickness ?? ln?.th);
+        const widthUnits = parseFiniteNumberToken(ln?.width);
+        const sourceUnitsPerCell = Number(scl?.cellSize) || 64;
         return {
           wayPoints,
           color: strokeToken === "#0" ? undefined : strokeToken,
           fillColor: fillToken === "#0" ? undefined : fillToken,
           closePath: Boolean(ln?.closed ?? ln?.closePath ?? ln?.fill) || closedByShape,
           svgPathData,
-          svgUnitsPerCell: Number(scl?.cellSize) || 64,
-          thickness: parseFiniteNumberToken(ln?.thickness ?? ln?.th),
+          svgUnitsPerCell: sourceUnitsPerCell,
+          thickness: thicknessToken ?? (widthUnits != null ? widthUnits * sourceUnitsPerCell : undefined),
           target: typeof ln?.target === "string" ? ln.target : undefined,
           lineCap,
           lineJoin,
