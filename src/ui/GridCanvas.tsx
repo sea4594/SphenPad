@@ -181,7 +181,7 @@ export function GridCanvas(props: {
   const twemojiUrl = useCallback((text: string): string | null => {
     const code = twemojiCodepoint(text);
     if (!code) return null;
-    return `https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/svg/${code}.svg`;
+    return `https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/svg/${code}.svg`;
   }, [twemojiCodepoint]);
 
   const getTwemojiImage = useCallback((text: string): HTMLImageElement | null => {
@@ -191,8 +191,11 @@ export function GridCanvas(props: {
     if (cached instanceof HTMLImageElement) return cached;
     if (cached === "loading" || cached === "error") return null;
 
-    const url = twemojiUrl(text);
-    if (!url) return null;
+    const primaryUrl = twemojiUrl(text);
+    if (!primaryUrl) return null;
+    const fallbackUrl = `https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/svg/${key}.svg`;
+    const urls = [primaryUrl, fallbackUrl];
+    let idx = 0;
     const img = new Image();
     img.crossOrigin = "anonymous";
     twemojiCacheRef.current.set(key, "loading");
@@ -201,10 +204,15 @@ export function GridCanvas(props: {
       setEmojiRenderVersion((v) => v + 1);
     };
     img.onerror = () => {
+      idx += 1;
+      if (idx < urls.length) {
+        img.src = urls[idx] as string;
+        return;
+      }
       twemojiCacheRef.current.set(key, "error");
       setEmojiRenderVersion((v) => v + 1);
     };
-    img.src = url;
+    img.src = urls[0] as string;
     return null;
   }, [twemojiCodepoint, twemojiUrl]);
 
@@ -701,16 +709,17 @@ export function GridCanvas(props: {
 
     const drawConstraintLines = (layer: "under" | "over") => {
       if (!def.cosmetics.lines) return;
-      const classifyTarget = (target: string | undefined): "under" | "over" => {
-        // SudokuPad-style default: line art sits under the grid unless explicitly set over.
-        const t = (target ?? "underlay").toLowerCase();
+      const classifyLineTarget = (ln: NonNullable<PuzzleDefinition["cosmetics"]["lines"]>[number]): "under" | "over" => {
+        const t = (ln.target ?? "").toLowerCase();
         if (/(^|[^a-z])(under|underlay|back|background|behind|below|bottom)([^a-z]|$)/.test(t)) return "under";
         if (/(^|[^a-z])(over|overlay|front|foreground|above|top)([^a-z]|$)/.test(t)) return "over";
-        return "under";
+        // Un-targeted filled paths are typically background shapes, while
+        // un-targeted strokes are usually clue lines drawn above those shapes.
+        return ln.fillColor ? "under" : "over";
       };
       for (const ln of def.cosmetics.lines) {
         if (ln.wayPoints.length < 2) continue;
-        const isUnder = classifyTarget(ln.target) === "under";
+        const isUnder = classifyLineTarget(ln) === "under";
         if (layer === "under" ? !isUnder : isUnder) continue;
         const lineOpacity = Number.isFinite(ln.opacity) ? Math.max(0, Math.min(1, Number(ln.opacity))) : 1;
 
