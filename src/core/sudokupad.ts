@@ -1167,14 +1167,13 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
         const shaftCells = parseCellRefs(lineCells);
         const cellPath = shaftCells.length ? shaftCells : bulbCells;
         const wpPath = (a?.wayPoints ?? []).map(asPoint).filter(Boolean) as Array<{ x: number; y: number }>;
-        const path = cellPath.length
-          ? cellPath
-          : wpPath.map((p) => ({ r: p.y, c: p.x }));
-        if (path.length < 2) return null;
-        const bulb = bulbCells[0] ?? path[0];
+        if (cellPath.length < 2 && wpPath.length < 2) return null;
+        const bulb = bulbCells[0];
         return {
           bulb,
-          path,
+          path: cellPath.length ? cellPath : undefined,
+          wayPoints: wpPath.length ? wpPath : undefined,
+          headLength: parseFiniteNumberToken(a?.headLength),
           color: normalizeColorToken(a?.color ?? a?.lineColor ?? a?.c),
           thickness: parseFiniteNumberToken(a?.thickness ?? a?.th),
           bulbFill: normalizeColorToken(a?.bulbColor ?? a?.baseC ?? "#ffffff"),

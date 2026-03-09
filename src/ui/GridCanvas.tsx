@@ -812,40 +812,57 @@ export function GridCanvas(props: {
         const lineW = (a.thickness ?? 4.2) * (cellPx / cosmeticUnit);
         const bulbRadius = Math.max(8, cellPx * 0.2);
         const bulbStrokeWidth = (a.bulbStrokeThickness ?? 1.6) * (cellPx / cosmeticUnit);
+        const waypointPath = Array.isArray(a.wayPoints) && a.wayPoints.length >= 2
+          ? a.wayPoints
+          : null;
 
         ctx.strokeStyle = stroke;
         ctx.lineWidth = lineW;
         ctx.lineCap = "round";
         ctx.lineJoin = "round";
         ctx.beginPath();
-        a.path.forEach((rc, i) => {
-          const x = cellX(rc.c) + cellPx / 2;
-          const y = cellY(rc.r) + cellPx / 2;
-          if (i === 0) {
-            if (a.path.length > 1) {
-              const n0 = a.path[1] as CellRC;
-              const nx = cellX(n0.c) + cellPx / 2;
-              const ny = cellY(n0.r) + cellPx / 2;
-              const vx = nx - x;
-              const vy = ny - y;
-              const vl = Math.hypot(vx, vy) || 1;
-              ctx.moveTo(x + (vx / vl) * bulbRadius * 0.92, y + (vy / vl) * bulbRadius * 0.92);
+        if (waypointPath) {
+          waypointPath.forEach((p, i) => {
+            const x = worldX(p.x);
+            const y = worldY(p.y);
+            if (i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+          });
+        } else {
+          const cellPath = Array.isArray(a.path) ? a.path : [];
+          cellPath.forEach((rc, i) => {
+            const x = cellX(rc.c) + cellPx / 2;
+            const y = cellY(rc.r) + cellPx / 2;
+            if (i === 0) {
+              if (cellPath.length > 1 && a.bulb) {
+                const n0 = cellPath[1] as CellRC;
+                const nx = cellX(n0.c) + cellPx / 2;
+                const ny = cellY(n0.r) + cellPx / 2;
+                const vx = nx - x;
+                const vy = ny - y;
+                const vl = Math.hypot(vx, vy) || 1;
+                ctx.moveTo(x + (vx / vl) * bulbRadius * 0.92, y + (vy / vl) * bulbRadius * 0.92);
+              } else {
+                ctx.moveTo(x, y);
+              }
             } else {
-              ctx.moveTo(x, y);
+              ctx.lineTo(x, y);
             }
-          } else {
-            ctx.lineTo(x, y);
-          }
-        });
+          });
+        }
         ctx.stroke();
 
-        if (a.path.length >= 2) {
-          const end = a.path[a.path.length - 1] as CellRC;
-          const prev = a.path[a.path.length - 2] as CellRC;
-          const ex = cellX(end.c) + cellPx / 2;
-          const ey = cellY(end.r) + cellPx / 2;
-          const px = cellX(prev.c) + cellPx / 2;
-          const py = cellY(prev.r) + cellPx / 2;
+        const pathPoints = waypointPath
+          ? waypointPath.map((p) => ({ x: worldX(p.x), y: worldY(p.y) }))
+          : (Array.isArray(a.path) ? a.path : []).map((rc) => ({ x: cellX(rc.c) + cellPx / 2, y: cellY(rc.r) + cellPx / 2 }));
+
+        if (pathPoints.length >= 2) {
+          const end = pathPoints[pathPoints.length - 1] as { x: number; y: number };
+          const prev = pathPoints[pathPoints.length - 2] as { x: number; y: number };
+          const ex = end.x;
+          const ey = end.y;
+          const px = prev.x;
+          const py = prev.y;
           const vx = ex - px;
           const vy = ey - py;
           const vl = Math.hypot(vx, vy) || 1;
@@ -853,7 +870,7 @@ export function GridCanvas(props: {
           const uy = vy / vl;
           const nx = -uy;
           const ny = ux;
-          const headLen = Math.max(8, cellPx * 0.23);
+          const headLen = Number.isFinite(a.headLength) ? Math.max(6, Number(a.headLength) * cellPx) : Math.max(8, cellPx * 0.23);
           const headWidth = Math.max(6, cellPx * 0.15);
           const bx = ex - ux * headLen;
           const by = ey - uy * headLen;
@@ -866,14 +883,16 @@ export function GridCanvas(props: {
           ctx.fill();
         }
 
-        const b = a.bulb;
-        ctx.fillStyle = a.bulbFill ?? "#ffffff";
-        ctx.beginPath();
-        ctx.arc(cellX(b.c) + cellPx / 2, cellY(b.r) + cellPx / 2, bulbRadius, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.strokeStyle = a.bulbStroke ?? "#222222";
-        ctx.lineWidth = bulbStrokeWidth;
-        ctx.stroke();
+        if (a.bulb) {
+          const b = a.bulb;
+          ctx.fillStyle = a.bulbFill ?? "#ffffff";
+          ctx.beginPath();
+          ctx.arc(cellX(b.c) + cellPx / 2, cellY(b.r) + cellPx / 2, bulbRadius, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = a.bulbStroke ?? "#222222";
+          ctx.lineWidth = bulbStrokeWidth;
+          ctx.stroke();
+        }
       }
     };
 

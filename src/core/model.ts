@@ -56,8 +56,10 @@ export type PuzzleCosmetics = {
     opacity?: number;
   }>;
   arrows?: Array<{
-    bulb: CellRC;
-    path: CellRC[];
+    bulb?: CellRC;
+    path?: CellRC[];
+    wayPoints?: Array<{ x: number; y: number }>;
+    headLength?: number;
     color?: string;
     thickness?: number;
     bulbFill?: string;
