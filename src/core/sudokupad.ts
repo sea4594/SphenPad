@@ -1077,8 +1077,8 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
   const sourceCellSize = Number(scl?.cellSize);
   cosmetics.sourceCellSize = Number.isFinite(sourceCellSize) && sourceCellSize > 0 ? sourceCellSize : 64;
   const sourceUnitsPerCell = Number.isFinite(sourceCellSize) && sourceCellSize > 0 ? sourceCellSize : 64;
-  const defaultThermoThickness = sourceUnitsPerCell * 0.22;
-  const defaultBetweenLineThickness = sourceUnitsPerCell * 0.12;
+  const defaultThermoThickness = sourceUnitsPerCell * 0.26;
+  const defaultBetweenLineThickness = sourceUnitsPerCell * 0.10;
 
   // background image / underlay aliases
   cosmetics.backgroundImageUrl =
