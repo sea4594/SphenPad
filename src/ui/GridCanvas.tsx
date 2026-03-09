@@ -7,6 +7,7 @@ type EdgeTrack = "top" | "bottom" | "left" | "right";
 type LineSegmentDraft = { a: CellRC; b: CellRC; edgeTrack?: EdgeTrack };
 type LayerItem = NonNullable<PuzzleDefinition["cosmetics"]["underlays"]>[number];
 const LINE_NODE_RADIUS = 0.5;
+const LINE_NODE_EPSILON = 1e-6;
 
 type DragState = {
   path: CellRC[];
@@ -1451,7 +1452,7 @@ export function GridCanvas(props: {
           const cx = nc + 0.5;
           const cy = nr + 0.5;
           const dist = Math.hypot(px - cx, py - cy);
-          if (dist <= hotZoneRadius && dist < bestDist) {
+          if (dist <= hotZoneRadius + LINE_NODE_EPSILON && dist < bestDist) {
             bestDist = dist;
             best = { r: nr, c: nc };
           }
@@ -1508,7 +1509,7 @@ export function GridCanvas(props: {
       for (const cand of candidates) {
         if (!inCornerBounds(cand.r, cand.c)) continue;
         const dist = Math.hypot(px - cand.c, py - cand.r);
-        if (dist <= hotZoneRadius && dist < bestDist) {
+        if (dist <= hotZoneRadius + LINE_NODE_EPSILON && dist < bestDist) {
           bestDist = dist;
           best = { r: cand.r, c: cand.c };
         }
@@ -1695,7 +1696,7 @@ export function GridCanvas(props: {
             drag.lastClientY ?? e.clientY,
             e.clientX,
             e.clientY,
-            { hotZoneRadius: LINE_NODE_RADIUS, samplesPerCell: 24, maxHops: 12 }
+            { hotZoneRadius: LINE_NODE_RADIUS, samplesPerCell: 40, maxHops: 12 }
           )
         : centerLineHopsFromPointer(
             drag.last,
