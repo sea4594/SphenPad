@@ -1076,6 +1076,9 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
   const cosmetics: PuzzleCosmetics = {};
   const sourceCellSize = Number(scl?.cellSize);
   cosmetics.sourceCellSize = Number.isFinite(sourceCellSize) && sourceCellSize > 0 ? sourceCellSize : 64;
+  const sourceUnitsPerCell = Number.isFinite(sourceCellSize) && sourceCellSize > 0 ? sourceCellSize : 64;
+  const defaultThermoThickness = sourceUnitsPerCell * 0.22;
+  const defaultBetweenLineThickness = sourceUnitsPerCell * 0.12;
 
   // background image / underlay aliases
   cosmetics.backgroundImageUrl =
@@ -1300,8 +1303,8 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
         return {
           wayPoints: path.map((rc) => ({ x: rc.c + 0.5, y: rc.r + 0.5 })),
           color: lineColor,
-          thickness: parseFiniteNumberToken(item?.thickness ?? item?.th) ?? 10,
-          target: typeof item?.target === "string" ? item.target : "overlay",
+          thickness: parseFiniteNumberToken(item?.thickness ?? item?.th) ?? defaultThermoThickness,
+          target: typeof item?.target === "string" ? item.target : "underlay",
           lineCap,
           lineJoin,
           dashArray: dashArray?.length ? dashArray : undefined,
@@ -1317,7 +1320,6 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
         if (!path.length) return null;
         const first = path[0] as CellRC;
         const lineColor = normalizeColorToken(item?.color ?? item?.lineColor ?? item?.c ?? item?.c1) ?? defaultThermoColor;
-        const target = categorizeTarget(item?.target) ?? "over";
         return {
           center: { x: first.c + 0.5, y: first.r + 0.5 },
           width: 0.72,
@@ -1326,16 +1328,10 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
           color: normalizeColorToken(item?.bulbColor ?? item?.baseC) ?? lineColor,
           borderColor: normalizeColorToken(item?.borderColor ?? item?.outlineC),
           borderThickness: parseFiniteNumberToken(item?.borderThickness ?? item?.thickness ?? item?.th),
-          __target: target,
         };
       })
-      .filter(Boolean) as Array<NonNullable<PuzzleCosmetics["underlays"]>[number] & { __target?: "under" | "over" }>;
-    if (thermoBulbs.length) {
-      const under = thermoBulbs.filter((item) => item.__target === "under");
-      const over = thermoBulbs.filter((item) => item.__target !== "under");
-      if (under.length) cosmetics.underlays = [...(cosmetics.underlays ?? []), ...(under as any)];
-      if (over.length) cosmetics.overlays = [...(cosmetics.overlays ?? []), ...(over as any)];
-    }
+      .filter(Boolean) as NonNullable<PuzzleCosmetics["underlays"]>;
+    if (thermoBulbs.length) cosmetics.underlays = [...(cosmetics.underlays ?? []), ...thermoBulbs];
   }
 
   const parseLayerItem = (item: any) => {
@@ -1558,8 +1554,8 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
         return {
           wayPoints: path.map((rc) => ({ x: rc.c + 0.5, y: rc.r + 0.5 })),
           color: lineColor,
-          thickness: parseFiniteNumberToken(item?.thickness ?? item?.th) ?? 10,
-          target: typeof item?.target === "string" ? item.target : "overlay",
+          thickness: parseFiniteNumberToken(item?.thickness ?? item?.th) ?? defaultBetweenLineThickness,
+          target: typeof item?.target === "string" ? item.target : "underlay",
           lineCap,
           lineJoin,
           dashArray: dashArray?.length ? dashArray : undefined,
@@ -1575,7 +1571,6 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
         if (path.length < 2) return [];
         const start = path[0] as CellRC;
         const end = path[path.length - 1] as CellRC;
-        const target = categorizeTarget(item?.target) ?? "over";
         return [start, end].map((rc) => ({
           center: { x: rc.c + 0.5, y: rc.r + 0.5 },
           width: 0.62,
@@ -1584,15 +1579,9 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
           color: normalizeColorToken(item?.endFillColor ?? item?.baseC) ?? "#ffffff",
           borderColor: normalizeColorToken(item?.endBorderColor ?? item?.outlineC) ?? "#9f9f9f",
           borderThickness: parseFiniteNumberToken(item?.endBorderThickness ?? item?.borderThickness ?? item?.thickness ?? item?.th) ?? 1.8,
-          __target: target,
         }));
-      }) as Array<NonNullable<PuzzleCosmetics["underlays"]>[number] & { __target?: "under" | "over" }>;
-    if (betweenEndpointCircles.length) {
-      const under = betweenEndpointCircles.filter((item) => item.__target === "under");
-      const over = betweenEndpointCircles.filter((item) => item.__target !== "under");
-      if (under.length) cosmetics.underlays = [...(cosmetics.underlays ?? []), ...(under as any)];
-      if (over.length) cosmetics.overlays = [...(cosmetics.overlays ?? []), ...(over as any)];
-    }
+      }) as NonNullable<PuzzleCosmetics["underlays"]>;
+    if (betweenEndpointCircles.length) cosmetics.underlays = [...(cosmetics.underlays ?? []), ...betweenEndpointCircles];
   }
 
   if (Array.isArray(scl?.thermos)) cosmetics.thermolines = extractPathConstraint(scl.thermos, "#ff6b6b") as any;
