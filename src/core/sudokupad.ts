@@ -16,7 +16,7 @@ const COUNTER_API_BASE = "https://api.sudokupad.com/counter";
 const COUNTER_PROXY_A = "https://api.codetabs.com/v1/proxy/?quest=https://api.sudokupad.com/counter";
 const COUNTER_PROXY_B = "https://api.allorigins.win/raw?url=https://api.sudokupad.com/counter";
 
-export const SUDOKUPAD_IMPORT_REVISION = 5;
+export const SUDOKUPAD_IMPORT_REVISION = 6;
 
 function timeout(ms: number) {
   return new Promise<never>((_, rej) => setTimeout(() => rej(new Error("Timeout")), ms));
@@ -206,7 +206,10 @@ function normalizeCompactScl(input: any): any {
   if (!scl.regions && Array.isArray(scl.re)) scl.regions = scl.re;
   if (!scl.cellSize && Number.isFinite(Number(scl.cs))) scl.cellSize = Number(scl.cs);
   if (!scl.lines && Array.isArray(scl.l)) scl.lines = scl.l;
-  if (!scl.overlays && Array.isArray(scl.o)) scl.overlays = scl.o;
+  if (!scl.overlays && Array.isArray(scl.o)) {
+    scl.overlays = scl.o;
+    scl.__overlaysFromCompactAlias = true;
+  }
   if (!scl.underlays && Array.isArray(scl.u)) scl.underlays = scl.u;
   if (!scl.arrow && Array.isArray(scl.a)) scl.arrow = scl.a;
   if (!scl.dots && Array.isArray(scl.d)) scl.dots = scl.d;
@@ -781,14 +784,89 @@ function inferredRulesFromCosmetics(cosmetics: PuzzleCosmetics): string {
   return lines.join("\n\n");
 }
 
+function isVeryLightColorToken(token: unknown): boolean {
+  if (typeof token !== "string") return false;
+  const s = token.trim().toLowerCase();
+  if (s === "#fff" || s === "#ffff" || s === "#ffffff" || s === "#ffffffff") return true;
+  const m = s.match(/^#([0-9a-f]{6}|[0-9a-f]{8})$/i);
+  if (!m) return false;
+  const rgb = m[1].slice(0, 6);
+  const r = Number.parseInt(rgb.slice(0, 2), 16);
+  const g = Number.parseInt(rgb.slice(2, 4), 16);
+  const b = Number.parseInt(rgb.slice(4, 6), 16);
+  return r >= 245 && g >= 245 && b >= 245;
+}
+
 function normalizeLayerCosmeticsToGrid(
   cosmetics: PuzzleCosmetics,
   rows: number,
   cols: number,
 ): PuzzleCosmetics {
-  void rows;
-  void cols;
-  return cosmetics;
+  const normalizeLayerArray = (
+    items: PuzzleCosmetics["underlays"] | PuzzleCosmetics["overlays"] | undefined,
+  ) => {
+    if (!Array.isArray(items) || !items.length) return items;
+
+    return items
+      .map((item) => {
+        if (!item || !item.center) return null;
+        const text = item.text == null ? "" : String(item.text).trim();
+        const hasText = text.length > 0;
+        const hasFill = Boolean(item.color);
+        const hasBorder = Boolean(item.borderColor) && (item.borderThickness ?? 1.4) > 0;
+        const width = Number.isFinite(item.width) ? Number(item.width) : 0;
+        const height = Number.isFinite(item.height) ? Number(item.height) : 0;
+        const cx = Number(item.center.x);
+        const cy = Number(item.center.y);
+        if (!Number.isFinite(cx) || !Number.isFinite(cy)) return null;
+
+        const halfW = Math.max(0, width / 2);
+        const halfH = Math.max(0, height / 2);
+        const right = cx + halfW;
+        const left = cx - halfW;
+        const top = cy - halfH;
+        const bottom = cy + halfH;
+        const fullyOutside = right <= 0 || left >= cols || bottom <= 0 || top >= rows;
+
+        // Ignore tiny anti-alias crumbs fully outside the puzzle bounds.
+        const outsideBothAxes = (cx < 0 || cx > cols) && (cy < 0 || cy > rows);
+        const angle = Math.abs(Number(item.angle ?? 0));
+        const isRotatedMarker = angle >= 1 && Math.abs((angle % 90) - 45) <= 1.5;
+        const tinyCornerArtifact =
+          !hasText &&
+          (hasFill || hasBorder) &&
+          Math.max(width, height) <= 0.22 &&
+          fullyOutside &&
+          outsideBothAxes &&
+          !isRotatedMarker;
+        if (tinyCornerArtifact) return null;
+
+        // Drop oversized border-only light frames that create white halos.
+        const centeredOnGrid = Math.abs(cx - cols / 2) <= 0.25 && Math.abs(cy - rows / 2) <= 0.25;
+        const oversizedByOneCell =
+          width >= cols + 0.75 &&
+          width <= cols + 1.25 &&
+          height >= rows + 0.75 &&
+          height <= rows + 1.25;
+        const whiteHaloFrame =
+          !hasText &&
+          !hasFill &&
+          hasBorder &&
+          centeredOnGrid &&
+          oversizedByOneCell &&
+          isVeryLightColorToken(item.borderColor);
+        if (whiteHaloFrame) return null;
+
+        return item;
+      })
+      .filter(Boolean) as typeof items;
+  };
+
+  return {
+    ...cosmetics,
+    underlays: normalizeLayerArray(cosmetics.underlays),
+    overlays: normalizeLayerArray(cosmetics.overlays),
+  };
 }
 
 export async function loadFromSudokuPad(inputUrlOrId: string): Promise<{ key: string; def: PuzzleDefinition; raw: any }> {
@@ -891,6 +969,20 @@ export async function loadFromSudokuPad(inputUrlOrId: string): Promise<{ key: st
   const size = Math.max(shape.rows, shape.cols, inferPuzzleSize(sclObj, givens));
   const subgrid = shape.rows === shape.cols ? detectStandardSubgrid(sclObj, size) : undefined;
   const normalizedCosmetics = normalizeLayerCosmeticsToGrid(cosmetics, shape.rows, shape.cols);
+
+  if (normalizedCosmetics.gridVisible == null && Array.isArray(sclObj?.regions)) {
+    const regionCells = sclObj.regions.flatMap((region: any) => parseCellRefs(region));
+    if (regionCells.length) {
+      const regionRows = Math.max(...regionCells.map((rc: CellRC) => rc.r)) + 1;
+      const regionCols = Math.max(...regionCells.map((rc: CellRC) => rc.c)) + 1;
+      const hasDenseCustomArtwork =
+        (normalizedCosmetics.lines?.length ?? 0) > 0 ||
+        ((normalizedCosmetics.overlays?.length ?? 0) + (normalizedCosmetics.underlays?.length ?? 0)) >= 20;
+      if (hasDenseCustomArtwork && (regionRows < shape.rows || regionCols < shape.cols)) {
+        normalizedCosmetics.gridVisible = false;
+      }
+    }
+  }
 
   const key = normalizePuzzleKey(sourceId);
   const def: PuzzleDefinition = {
@@ -1218,39 +1310,73 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
     const text = item?.text ?? item?.te;
     const textStr = text == null ? "" : String(text).trim();
     const explicitTextSize = parseFiniteNumberToken(item?.textSize ?? item?.fontSize ?? item?.fs);
+    const minSpan = Math.min(
+      Number.isFinite(width) ? Number(width) : Number.POSITIVE_INFINITY,
+      Number.isFinite(height) ? Number(height) : Number.POSITIVE_INFINITY,
+    );
+    const inferredTinyTextSize =
+      explicitTextSize == null && text != null && Number.isFinite(minSpan) && minSpan <= 0.35
+        ? Math.max(9, Math.min(14, minSpan * 56 * 2.0))
+        : undefined;
+    const isTinyTextMarker =
+      textStr.length === 1 &&
+      typeof width === "number" &&
+      typeof height === "number" &&
+      width <= 0.42 &&
+      height <= 0.42;
 
     const hasExplicitBorderColor = item?.borderColor != null || item?.outlineC != null || item?.c1 != null;
+    const hasExplicitFillColor = item?.backgroundColor != null || item?.fill != null || item?.baseC != null;
     // In compact SudokuPad payloads, '#0' in stroke-like keys frequently means no visible stroke.
     const rawStroke = item?.borderColor ?? item?.outlineC ?? item?.c1 ?? item?.stroke;
     const strokeToken = normalizeColorToken(rawStroke);
-    const borderColor = isNoStrokeToken(rawStroke) ? undefined : strokeToken;
-    const hasShapeGeometry =
-      (Number.isFinite(width) && Number(width) > 0) ||
-      (Number.isFinite(height) && Number(height) > 0) ||
-      rounded;
-    const fillColor = normalizeColorToken(
-      item?.backgroundColor ??
-      item?.c2 ??
-      item?.fill ??
-      // In compact payloads, `c` is often the primary fill for shape markers.
-      ((!textStr.length && hasShapeGeometry) ? item?.c : undefined)
-    );
+    const isTinyRoundedTextMarker =
+      textStr.length > 0 &&
+      rounded &&
+      Number.isFinite(width) &&
+      Number.isFinite(height) &&
+      Number(width) <= 0.5 &&
+      Number(height) <= 0.5;
+    const hasZeroSpan =
+      (Number.isFinite(width) && Number(width) <= 0.001) ||
+      (Number.isFinite(height) && Number(height) <= 0.001);
+    const strokeActsAsTextColor = isTinyRoundedTextMarker && !hasExplicitBorderColor && item?.stroke != null;
+    const borderColor = strokeActsAsTextColor || isNoStrokeToken(rawStroke) ? undefined : strokeToken;
+    const fillColor = normalizeColorToken(item?.backgroundColor ?? item?.c2 ?? item?.fill);
+    const isSlenderTextAnchor =
+      textStr.length > 0 &&
+      Number.isFinite(width) &&
+      Number.isFinite(height) &&
+      Number(Math.min(width as number, height as number)) <= 0.2 &&
+      Number(Math.max(width as number, height as number)) >= 0.45;
+    const shouldTreatAsTextOnly =
+      hasZeroSpan ||
+      isSlenderTextAnchor &&
+      !hasExplicitFillColor;
+    const noVisibleStroke = !borderColor;
+    const isRoundedTextMarker = textStr.length > 0 && rounded && noVisibleStroke;
+    const tinyMarkerShouldKeepShape = isTinyTextMarker && rounded && (Boolean(fillColor) || Boolean(borderColor));
+    const suppressShape =
+      shouldTreatAsTextOnly ||
+      (!tinyMarkerShouldKeepShape && isTinyTextMarker) ||
+      (isRoundedTextMarker && !fillColor);
 
     return {
       center: ct,
       width,
       height,
-      rounded,
-      color: fillColor,
-      borderColor,
+      rounded: suppressShape ? false : rounded,
+      color: suppressShape ? undefined : fillColor,
+      borderColor: suppressShape ? undefined : borderColor,
       borderThickness: parseFiniteNumberToken(item?.thickness ?? item?.th),
       text,
       textColor: normalizeColorToken(
         item?.color ??
         item?.textColor ??
-        item?.c
+        item?.c ??
+        (strokeActsAsTextColor || shouldTreatAsTextOnly ? item?.stroke : undefined)
       ),
-      textSize: explicitTextSize,
+      textSize: explicitTextSize ?? inferredTinyTextSize,
       angle: parseFiniteNumberToken(item?.angle),
       target: typeof item?.target === "string" ? item.target : undefined,
       opacity: parseOpacityToken(item?.opacity ?? item?.alpha),
@@ -1260,7 +1386,15 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
   const overlaysSrc = Array.isArray(scl?.overlays) ? scl.overlays : [];
   if (overlaysSrc.length) {
     const parsed = overlaysSrc.map(parseLayerItem).filter(Boolean) as Array<Record<string, unknown>>;
-    const under = parsed.filter((item) => categorizeTarget(item.target) === "under");
+    const overlaysFromCompactAlias = Boolean(scl?.__overlaysFromCompactAlias);
+    const under = parsed.filter((item) => {
+      const target = categorizeTarget(item.target);
+      if (target === "under") return true;
+      // Legacy compact `o` items without explicit target are frequently decorative
+      // underlay artwork, not top overlays.
+      if (overlaysFromCompactAlias && target == null) return true;
+      return false;
+    });
     const over = parsed.filter((item) => !under.includes(item));
     if (over.length) cosmetics.overlays = over as any;
     if (under.length) cosmetics.underlays = [...(cosmetics.underlays ?? []), ...(under as any)];
