@@ -1158,7 +1158,13 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
   }
 
   // arrows
-  const arrowsSrc = Array.isArray(scl?.arrow) ? scl.arrow : Array.isArray(scl?.arrows) ? scl.arrows : [];
+  const arrowsSrc = Array.isArray(scl?.arrow)
+    ? scl.arrow
+    : Array.isArray(scl?.arrows)
+      ? scl.arrows
+      : Array.isArray(scl?.a)
+        ? scl.a
+        : [];
   if (arrowsSrc.length) {
     cosmetics.arrows = arrowsSrc
       .map((a: any) => {
