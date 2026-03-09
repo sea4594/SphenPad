@@ -7,7 +7,6 @@ type EdgeTrack = "top" | "bottom" | "left" | "right";
 type LineSegmentDraft = { a: CellRC; b: CellRC; edgeTrack?: EdgeTrack };
 type LayerItem = NonNullable<PuzzleDefinition["cosmetics"]["underlays"]>[number];
 const LINE_NODE_RADIUS = 0.5;
-const LINE_NODE_EPSILON = 1e-6;
 
 type DragState = {
   path: CellRC[];
@@ -1452,7 +1451,7 @@ export function GridCanvas(props: {
           const cx = nc + 0.5;
           const cy = nr + 0.5;
           const dist = Math.hypot(px - cx, py - cy);
-          if (dist <= hotZoneRadius + LINE_NODE_EPSILON && dist < bestDist) {
+          if (dist <= hotZoneRadius && dist < bestDist) {
             bestDist = dist;
             best = { r: nr, c: nc };
           }
@@ -1474,13 +1473,13 @@ export function GridCanvas(props: {
     fromClientY: number,
     toClientX: number,
     toClientY: number,
-    opts?: { hotZoneRadius?: number; samplesPerCell?: number; maxHops?: number }
+    opts?: { hotZoneHalfSize?: number; samplesPerCell?: number; maxHops?: number }
   ): CellRC[] {
     const start = eventGridPoint(fromClientX, fromClientY) ?? eventGridPoint(toClientX, toClientY);
     const end = eventGridPoint(toClientX, toClientY);
     if (!start || !end) return [];
 
-    const hotZoneRadius = Math.max(0.2, Math.min(LINE_NODE_RADIUS, opts?.hotZoneRadius ?? LINE_NODE_RADIUS));
+    const hotZoneHalfSize = Math.max(0.2, Math.min(LINE_NODE_RADIUS, opts?.hotZoneHalfSize ?? LINE_NODE_RADIUS));
     const samplesPerCell = Math.max(8, Math.min(40, opts?.samplesPerCell ?? 24));
     const maxHops = Math.max(1, Math.min(20, opts?.maxHops ?? 12));
 
@@ -1508,10 +1507,14 @@ export function GridCanvas(props: {
 
       for (const cand of candidates) {
         if (!inCornerBounds(cand.r, cand.c)) continue;
-        const dist = Math.hypot(px - cand.c, py - cand.r);
-        if (dist <= hotZoneRadius + LINE_NODE_EPSILON && dist < bestDist) {
-          bestDist = dist;
-          best = { r: cand.r, c: cand.c };
+        const dxToNode = Math.abs(px - cand.c);
+        const dyToNode = Math.abs(py - cand.r);
+        if (dxToNode <= hotZoneHalfSize && dyToNode <= hotZoneHalfSize) {
+          const dist = Math.max(dxToNode, dyToNode);
+          if (dist < bestDist) {
+            bestDist = dist;
+            best = { r: cand.r, c: cand.c };
+          }
         }
       }
 
@@ -1524,14 +1527,13 @@ export function GridCanvas(props: {
     return hops;
   }
 
-  function nearestCornerNode(clientX: number, clientY: number, radius = 0.34): CellRC | null {
+  function nearestCornerNodeSquare(clientX: number, clientY: number, halfSize = LINE_NODE_RADIUS): CellRC | null {
     const gp = eventGridPoint(clientX, clientY);
     if (!gp) return null;
     const c = Math.round(gp.gx);
     const r = Math.round(gp.gy);
     if (r < 0 || c < 0 || r > rows || c > cols) return null;
-    const d = Math.hypot(gp.gx - c, gp.gy - r);
-    if (d > radius) return null;
+    if (Math.abs(gp.gx - c) > halfSize || Math.abs(gp.gy - r) > halfSize) return null;
     return { r, c };
   }
 
@@ -1618,7 +1620,7 @@ export function GridCanvas(props: {
       const kind = resolveInitialLineKind(pt);
       const edgeTapCandidate = kind === "edge" ? pickEdgeByPointer(e.clientX, e.clientY, 0.47) ?? undefined : undefined;
       const start = kind === "edge"
-        ? nearestCornerNode(e.clientX, e.clientY, LINE_NODE_RADIUS) ?? nearestCornerNodeLoose(e.clientX, e.clientY)
+        ? nearestCornerNodeSquare(e.clientX, e.clientY, LINE_NODE_RADIUS) ?? nearestCornerNodeLoose(e.clientX, e.clientY)
         : nearestCellCenter(e.clientX, e.clientY) ?? rc;
       if (!start) return;
       dragRef.current = {
@@ -1696,7 +1698,7 @@ export function GridCanvas(props: {
             drag.lastClientY ?? e.clientY,
             e.clientX,
             e.clientY,
-            { hotZoneRadius: LINE_NODE_RADIUS, samplesPerCell: 40, maxHops: 12 }
+            { hotZoneHalfSize: LINE_NODE_RADIUS, samplesPerCell: 24, maxHops: 12 }
           )
         : centerLineHopsFromPointer(
             drag.last,
