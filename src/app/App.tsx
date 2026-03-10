@@ -1,6 +1,7 @@
 import { Routes, Route, HashRouter, Navigate } from "react-router-dom";
 import { MainMenu } from "../ui/MainMenu";
 import { PuzzlePage } from "../ui/PuzzlePage";
+import { CtCArchivePage } from "../ui/CtCArchivePage";
 import { ThemeProvider } from "./theme";
 
 export function App() {
@@ -9,6 +10,7 @@ export function App() {
       <HashRouter>
         <Routes>
           <Route path="/" element={<MainMenu />} />
+          <Route path="/archive" element={<CtCArchivePage />} />
           <Route path="/p/:puzzleId" element={<PuzzlePage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
