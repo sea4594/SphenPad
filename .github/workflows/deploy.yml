@@ -2,7 +2,7 @@ name: Deploy To GitHub Pages
 
 on:
   push:
-    branches: ["main", "copilot/add-sort-filter-buttons"]
+    branches: ["main"]
   workflow_dispatch:
 
 permissions:
