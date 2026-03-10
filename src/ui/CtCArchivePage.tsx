@@ -43,6 +43,8 @@ const FALLBACK_VIDEO_LENGTH_INDEX = 3;
 const FALLBACK_VIDEO_DATE_INDEX = 4;
 const ARCHIVE_VIDEO_TYPE_SUDOKU = "sudoku";
 const ARCHIVE_EDIT_CELL_TO_LINK_SEARCH_WINDOW = 1200;
+const SUDOKUPAD_ICON_URL = "https://sudokupad.app/images/sudokupad_square_logo.png";
+const YOUTUBE_ICON_URL = "https://www.freeiconspng.com/uploads/logo-youtube-png-clipart-11.png";
 
 // Accepts either a full Google Sheets URL or a bare sheet ID.
 const CTC_ARCHIVE_SHEET_SOURCE = "https://docs.google.com/spreadsheets/d/11TrxONoAWMvP8ibULZqtNwG4WWripAcPIS9J-wi3emc/edit#gid=0";
@@ -139,6 +141,33 @@ function extractSourceId(rawInput: string): string {
     return clean(path || hash || qp || s);
   } catch {
     return s.replace(/^\/+/, "");
+  }
+}
+
+function normalizeSudokuPadUrl(rawInput: string): string {
+  const text = clean(rawInput);
+  if (!text) return "";
+  const embeddedUrlMatch = text.match(/https?:\/\/(?:sudokupad\.app|app\.crackingthecryptic\.com)[^\s")]+/i);
+  const candidate = embeddedUrlMatch?.[0] ?? text;
+  try {
+    const parsed = new URL(candidate);
+    const host = parsed.hostname.toLowerCase();
+    const path = parsed.pathname.replace(/^\/+/, "");
+    const loadParam = parsed.searchParams.get("load");
+    const puzzleParam = parsed.searchParams.get("puzzle");
+    if (host === "sudokupad.app") {
+      const id = clean(path || loadParam || puzzleParam || "");
+      return id ? `https://sudokupad.app/${id}` : "";
+    }
+    if (host === "app.crackingthecryptic.com") {
+      const id = clean(path || loadParam || puzzleParam || "");
+      return id ? `https://sudokupad.app/${id}` : "";
+    }
+    return "";
+  } catch {
+    const idMatch = candidate.match(/\b([a-z0-9_-]{8,})\b/i);
+    if (!idMatch) return "";
+    return `https://sudokupad.app/${idMatch[1]}`;
   }
 }
 
@@ -286,12 +315,10 @@ function parseArchiveRows(csv: string, sudokuPadLinksByUrlCell: Map<string, stri
       const youtubeFromColumn = byIdx(iYoutube);
       const urlCell = byIdx(iUrlCell).toUpperCase();
       const sudokuPadFromUrlCell = sudokuPadLinksByUrlCell.get(urlCell) ?? "";
-      const sudokuPadFromColumnIfUrl = /^https?:\/\//i.test(sudokuPadFromColumn) ? sudokuPadFromColumn : "";
       const sudokuPadUrl =
-        sudokuPadFromColumnIfUrl ||
-        sudokuPadFromUrlCell ||
-        row.find((cell) => /sudokupad\.app|app\.crackingthecryptic\.com/i.test(cell ?? ""))?.trim() ||
-        "";
+        normalizeSudokuPadUrl(sudokuPadFromColumn) ||
+        normalizeSudokuPadUrl(sudokuPadFromUrlCell) ||
+        normalizeSudokuPadUrl(row.find((cell) => /sudokupad\.app|app\.crackingthecryptic\.com/i.test(cell ?? ""))?.trim() || "");
       const youtubeUrl =
         youtubeFromColumn ||
         row.find((cell) => /youtu\.?be|youtube\.com/i.test(cell ?? ""))?.trim() ||
@@ -524,43 +551,43 @@ export function CtCArchivePage() {
                 return (
                   <div key={entry.id} className="card archiveEntryCard">
                     <div className="archiveEntryHead">
-                      <div className="archiveEntryMain">
-                        <div className="archiveTitleRow">
-                          {entry.sudokuPadUrl ? (
-                            <a className="btn archiveOpenIcon" href={entry.sudokuPadUrl} target="_blank" rel="noreferrer noopener" title="Open SudokuPad" aria-label="Open SudokuPad">
-                              <span aria-hidden="true">↗</span>
-                            </a>
-                          ) : (
-                            <button type="button" className="btn archiveOpenIcon" disabled title="Open SudokuPad" aria-label="Open SudokuPad">
-                              <span aria-hidden="true">↗</span>
-                            </button>
-                          )}
+                      <div className="archiveEntryMain archiveDetailsGrid">
+                        {entry.sudokuPadUrl ? (
+                          <a className="btn archiveOpenIcon" href={entry.sudokuPadUrl} target="_blank" rel="noreferrer noopener" title="Open SudokuPad" aria-label="Open SudokuPad">
+                            <img src={SUDOKUPAD_ICON_URL} alt="" className="archiveIconImage" />
+                          </a>
+                        ) : (
+                          <button type="button" className="btn archiveOpenIcon" disabled title="Open SudokuPad" aria-label="Open SudokuPad">
+                            <img src={SUDOKUPAD_ICON_URL} alt="" className="archiveIconImage" />
+                          </button>
+                        )}
+                        <div className="archiveInfoText">
                           <div className="archiveEntryTitle">
                             {solved ? "✓ " : ""}
                             {display(entry.title)}
                             <span className="archiveEntryCollection"> ({display(entry.collection)})</span>
                           </div>
+                          <div className="muted" style={{ fontSize: 13 }}>
+                            {display(entry.puzzleAuthor)} • {display(entry.subTypeConstraints)}
+                          </div>
                         </div>
-                        <div className="muted" style={{ fontSize: 13 }}>
-                          {display(entry.puzzleAuthor)} • {display(entry.subTypeConstraints)}
-                        </div>
-                        <div className="row">
-                          <button className="btn primary" disabled={importingId === entry.id} onClick={() => onImport(entry)}>
-                            {importingId === entry.id ? "Importing…" : "Import puzzle"}
+                        <button className="btn primary archiveImportBtn" disabled={importingId === entry.id} onClick={() => onImport(entry)}>
+                          {importingId === entry.id ? "Importing…" : <>Import<br />Puzzle</>}
+                        </button>
+                        {entry.youtubeUrl ? (
+                          <a className="btn archiveOpenIcon" href={entry.youtubeUrl} target="_blank" rel="noreferrer noopener" title="Open YouTube" aria-label="Open YouTube">
+                            <img src={YOUTUBE_ICON_URL} alt="" className="archiveIconImage" />
+                          </a>
+                        ) : (
+                          <button type="button" className="btn archiveOpenIcon" disabled title="Open YouTube" aria-label="Open YouTube">
+                            <img src={YOUTUBE_ICON_URL} alt="" className="archiveIconImage" />
                           </button>
-                        </div>
-                        <div className="muted" style={{ fontSize: 13 }}>
-                          {display(entry.videoTitle)} • {display(entry.videoHost)} • {display(entry.videoDate)} • {formatDurationHm(entry.videoLengthSeconds)}
-                        </div>
-                        <div className="row">
-                          {entry.youtubeUrl ? (
-                            <a className="btn" href={entry.youtubeUrl} target="_blank" rel="noreferrer noopener">
-                              Open YouTube
-                            </a>
-                          ) : (
-                            <span className="btn" aria-disabled="true">Open YouTube</span>
-                          )}
-                          <span className="muted">Type: {display(entry.videoType)}</span>
+                        )}
+                        <div className="archiveInfoText">
+                          <div style={{ fontSize: 14 }}>{display(entry.videoTitle)}</div>
+                          <div className="muted" style={{ fontSize: 13 }}>
+                            {display(entry.videoHost)} • {display(entry.videoDate)} • {formatDurationHm(entry.videoLengthSeconds)} • Type: {display(entry.videoType)}
+                          </div>
                         </div>
                       </div>
                     </div>
