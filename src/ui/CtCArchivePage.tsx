@@ -41,6 +41,7 @@ const FALLBACK_CONSTRAINTS_INDEX = 1;
 const FALLBACK_VIDEO_TITLE_INDEX = 2;
 const FALLBACK_VIDEO_LENGTH_INDEX = 3;
 const FALLBACK_VIDEO_DATE_INDEX = 4;
+const ARCHIVE_VIDEO_TYPE_SUDOKU = "sudoku";
 
 // Accepts either a full Google Sheets URL or a bare sheet ID.
 const CTC_ARCHIVE_SHEET_SOURCE = "https://docs.google.com/spreadsheets/d/11TrxONoAWMvP8ibULZqtNwG4WWripAcPIS9J-wi3emc/edit#gid=0";
@@ -69,7 +70,7 @@ function parseDurationSeconds(text: string): number | null {
   return total > 0 ? total : null;
 }
 
-function parseMinutesInput(text: string): number | null {
+function parseMinutesToSeconds(text: string): number | null {
   const value = Number(clean(text));
   if (!Number.isFinite(value) || value < 0) return null;
   return Math.round(value * 60);
@@ -264,7 +265,7 @@ function parseArchiveRows(csv: string): ArchiveEntry[] {
         sourceId,
       } satisfies ArchiveEntry;
     })
-    .filter((entry) => clean(entry.videoType).toLowerCase() === "sudoku")
+    .filter((entry) => clean(entry.videoType).toLowerCase() === ARCHIVE_VIDEO_TYPE_SUDOKU)
     .filter((entry) => entry.title || entry.sudokuPadUrl || entry.videoTitle);
 }
 
@@ -324,8 +325,8 @@ export function CtCArchivePage() {
 
   const filteredRows = useMemo(() => {
     const q = clean(query).toLowerCase();
-    const minSeconds = minLength ? parseMinutesInput(minLength) : null;
-    const maxSeconds = maxLength ? parseMinutesInput(maxLength) : null;
+    const minSeconds = minLength ? parseMinutesToSeconds(minLength) : null;
+    const maxSeconds = maxLength ? parseMinutesToSeconds(maxLength) : null;
 
     const getSearchText = (r: ArchiveEntry) => {
       if (searchField === "title") return r.title;
