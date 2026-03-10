@@ -151,7 +151,7 @@ function extractSourceId(rawInput: string): string {
 function normalizeSudokuPadUrl(rawInput: string): string {
   const text = clean(rawInput);
   if (!text) return "";
-  const embeddedUrlMatch = text.match(/https?:\/\/(?:sudokupad\.app|app\.crackingthecryptic\.com)[^\s")]+/i);
+  const embeddedUrlMatch = text.match(/https?:\/\/(?:www\.)?(?:sudokupad\.app|app\.crackingthecryptic\.com)[^\s")]+/i);
   const candidate = embeddedUrlMatch?.[0] ?? text;
   const toCanonical = (rawId: string) => {
     const decoded = clean(decodeURIComponent(rawId)).replace(/^\/+|\/+$/g, "");
@@ -176,10 +176,11 @@ function normalizeSudokuPadUrl(rawInput: string): string {
     const puzzleParam = parsed.searchParams.get("puzzle");
     const idParam = parsed.searchParams.get("id");
     const hash = parsed.hash.replace(/^#/, "");
-    if (host === "sudokupad.app") {
+    const normalizedHost = host.replace(/^www\./, "");
+    if (normalizedHost === "sudokupad.app") {
       return toCanonical(path || loadParam || puzzleParam || idParam || hash || "");
     }
-    if (host === "app.crackingthecryptic.com") {
+    if (normalizedHost === "app.crackingthecryptic.com") {
       return toCanonical(path || loadParam || puzzleParam || idParam || hash || "");
     }
     return "";
@@ -276,11 +277,11 @@ async function fetchArchiveSudokuPadLinks(): Promise<Map<string, string>> {
   if (!html) return linksByUrlCell;
   const patterns = [
     new RegExp(
-      `\\\\"3\\\\":\\[2,\\\\"([A-Z]+\\\\d+)\\\\"\\][\\\\s\\\\S]{0,${ARCHIVE_EDIT_CELL_TO_LINK_SEARCH_WINDOW}}?\\\\"24\\\\":\\\\"(https?:\\\\/\\\\/(?:sudokupad\\\\.app|app\\\\.crackingthecryptic\\\\.com)[^\\\\"]+)\\\\"`,
+      `\\\\"3\\\\":\\[2,\\\\"([A-Z]+\\\\d+)\\\\"\\][\\\\s\\\\S]{0,${ARCHIVE_EDIT_CELL_TO_LINK_SEARCH_WINDOW}}?\\\\"24\\\\":\\\\"(https?:\\\\/\\\\/(?:www\\\\.)?(?:sudokupad\\\\.app|app\\\\.crackingthecryptic\\\\.com)[^\\\\"]+)\\\\"`,
       "gi"
     ),
     new RegExp(
-      `"3":\\[2,"([A-Z]+\\d+)"\\][\\s\\S]{0,${ARCHIVE_EDIT_CELL_TO_LINK_SEARCH_WINDOW}}?"24":"(https?:\\/\\/(?:sudokupad\\.app|app\\.crackingthecryptic\\.com)[^"]+)"`,
+      `"3":\\[2,"([A-Z]+\\d+)"\\][\\s\\S]{0,${ARCHIVE_EDIT_CELL_TO_LINK_SEARCH_WINDOW}}?"24":"(https?:\\/\\/(?:www\\.)?(?:sudokupad\\.app|app\\.crackingthecryptic\\.com)[^"]+)"`,
       "gi"
     ),
   ];
