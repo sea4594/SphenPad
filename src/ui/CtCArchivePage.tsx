@@ -223,7 +223,11 @@ function parseArchiveRows(csv: string): ArchiveEntry[] {
   const iVideoHost = findIndexByAliases(header, ["video host", "host", "channel"]);
   const iVideoType = findIndexByAliases(header, ["video type", "type"]);
   const iCollection = findIndexByAliases(header, ["collection", "series"]);
-  const iSudokuPad = findIndexByAliases(header, ["sudokupad", "sudoku pad", "puzzle link", "sp"]);
+  const iSp = header.findIndex((h) => normalizeHeader(h) === "sp");
+  const iSudokuPad =
+    iSp >= 0
+      ? iSp
+      : findIndexByAliases(header, ["sudokupad", "sudoku pad", "puzzle link", "sudokupadlink"]);
   const iYoutube = findIndexByAliases(header, ["youtube", "video link", "youtube link"]);
   return body
     .map((row, idx) => {
@@ -238,9 +242,8 @@ function parseArchiveRows(csv: string): ArchiveEntry[] {
       const videoHost = byIdx(iVideoHost);
       const videoType = byIdx(iVideoType);
       const collection = byIdx(iCollection);
-      const sudokuPadFromColumn = byIdx(iSudokuPad);
       const youtubeFromColumn = byIdx(iYoutube);
-      const sudokuPadUrl = sudokuPadFromColumn;
+      const sudokuPadUrl = byIdx(iSudokuPad).trim();
       const youtubeUrl =
         youtubeFromColumn ||
         row.find((cell) => /youtu\.?be|youtube\.com/i.test(cell ?? ""))?.trim() ||
