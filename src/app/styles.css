@@ -347,6 +347,14 @@ input.url {
   gap: 8px;
 }
 
+.archiveFilterRow {
+  display: flex;
+  gap: 8px;
+  flex-wrap: nowrap;
+  align-items: center;
+  overflow-x: auto;
+}
+
 .archiveLenInput {
   min-width: 170px;
   max-width: 240px;
@@ -366,18 +374,13 @@ input.url {
 
 .archiveEntryMain {
   min-width: 0;
+  display: grid;
+  gap: 8px;
 }
 
 .archiveEntryTitle {
   font-size: 17px;
   font-weight: 700;
-}
-
-.archiveDetails {
-  display: grid;
-  gap: 7px;
-  border-top: 1px solid color-mix(in oklab, var(--text) 18%, transparent);
-  padding-top: 10px;
 }
 
 .puzzlePage {

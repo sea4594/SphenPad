@@ -17,6 +17,7 @@ type ArchiveEntry = {
   puzzleAuthor: string;
   videoHost: string;
   collection: string;
+  videoType: string;
   sudokuPadUrl: string;
   youtubeUrl: string;
   sourceId: string;
@@ -66,6 +67,22 @@ function parseDurationSeconds(text: string): number | null {
   const sec = Number((s.match(/(\d+)\s*s/) ?? [])[1] ?? 0);
   const total = h * 3600 + m * 60 + sec;
   return total > 0 ? total : null;
+}
+
+function parseMinutesInput(text: string): number | null {
+  const value = Number(clean(text));
+  if (!Number.isFinite(value) || value < 0) return null;
+  return Math.round(value * 60);
+}
+
+function formatDurationHm(seconds: number | null): string {
+  if (seconds == null || seconds < 0) return "~";
+  const totalMinutes = Math.floor(seconds / 60);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  if (hours <= 0) return `${minutes}m`;
+  if (minutes <= 0) return `${hours}h`;
+  return `${hours}h ${minutes}m`;
 }
 
 function parseCsv(text: string): string[][] {
@@ -152,8 +169,8 @@ function buildArchiveCsvUrls(source: string): string[] {
   const gid = gidMatch?.[1] ?? "";
   const gidSuffix = gid ? `&gid=${encodeURIComponent(gid)}` : "";
   const baseUrls = [
-    `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv${gidSuffix}`,
     `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv${gidSuffix}`,
+    `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv${gidSuffix}`,
   ];
   return baseUrls.flatMap(buildSourceCandidates);
 }
@@ -200,8 +217,9 @@ function parseArchiveRows(csv: string): ArchiveEntry[] {
   const iVideoDate = findIndexByAliases(header, ["video date", "date", "published"]);
   const iPuzzleAuthor = findIndexByAliases(header, ["puzzle author", "author", "setter"]);
   const iVideoHost = findIndexByAliases(header, ["video host", "host", "channel"]);
+  const iVideoType = findIndexByAliases(header, ["video type", "type"]);
   const iCollection = findIndexByAliases(header, ["collection", "series"]);
-  const iSudokuPad = findIndexByAliases(header, ["sudokupad", "sudoku pad", "puzzle link"]);
+  const iSudokuPad = findIndexByAliases(header, ["sudokupad", "sudoku pad", "puzzle link", "sp"]);
   const iYoutube = findIndexByAliases(header, ["youtube", "video link", "youtube link"]);
 
   return body
@@ -215,12 +233,13 @@ function parseArchiveRows(csv: string): ArchiveEntry[] {
       const parsedDateTs = Date.parse(videoDate);
       const puzzleAuthor = byIdx(iPuzzleAuthor);
       const videoHost = byIdx(iVideoHost);
+      const videoType = byIdx(iVideoType);
       const collection = byIdx(iCollection);
       const sudokuPadFromColumn = byIdx(iSudokuPad);
       const youtubeFromColumn = byIdx(iYoutube);
       const sudokuPadUrl =
         sudokuPadFromColumn ||
-        row.find((cell) => /sudokupad\.app/i.test(cell ?? ""))?.trim() ||
+        row.find((cell) => /sudokupad\.app|app\.crackingthecryptic\.com/i.test(cell ?? ""))?.trim() ||
         "";
       const youtubeUrl =
         youtubeFromColumn ||
@@ -238,12 +257,14 @@ function parseArchiveRows(csv: string): ArchiveEntry[] {
         videoDateTs: Number.isFinite(parsedDateTs) ? parsedDateTs : null,
         puzzleAuthor,
         videoHost,
+        videoType,
         collection,
         sudokuPadUrl,
         youtubeUrl,
         sourceId,
       } satisfies ArchiveEntry;
     })
+    .filter((entry) => clean(entry.videoType).toLowerCase() === "sudoku")
     .filter((entry) => entry.title || entry.sudokuPadUrl || entry.videoTitle);
 }
 
@@ -252,7 +273,6 @@ export function CtCArchivePage() {
   const [rows, setRows] = useState<ArchiveEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [expanded, setExpanded] = useState<string>("");
   const [importingId, setImportingId] = useState<string>("");
   const [completedKeys, setCompletedKeys] = useState<Set<string>>(new Set());
   const [uiMessage, setUiMessage] = useState("");
@@ -304,8 +324,8 @@ export function CtCArchivePage() {
 
   const filteredRows = useMemo(() => {
     const q = clean(query).toLowerCase();
-    const minSeconds = minLength ? parseDurationSeconds(minLength) : null;
-    const maxSeconds = maxLength ? parseDurationSeconds(maxLength) : null;
+    const minSeconds = minLength ? parseMinutesInput(minLength) : null;
+    const maxSeconds = maxLength ? parseMinutesInput(maxLength) : null;
 
     const getSearchText = (r: ArchiveEntry) => {
       if (searchField === "title") return r.title;
@@ -343,7 +363,7 @@ export function CtCArchivePage() {
 
   async function onImport(entry: ArchiveEntry) {
     if (!entry.sudokuPadUrl) {
-      setUiMessage("This archive row does not have a SudokuPad link.");
+      setUiMessage("No SudokuPad link found.");
       return;
     }
     setUiMessage("");
@@ -406,20 +426,8 @@ export function CtCArchivePage() {
                 <option value="host">Video host</option>
                 <option value="collection">Collection</option>
               </select>
-              <select
-                className="btn menuControlSelect"
-                value={sortField}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  if (isSortField(value)) setSortField(value);
-                }}
-              >
-                <option value="date">Sort: Video date</option>
-                <option value="title">Sort: Puzzle title</option>
-                <option value="video_length">Sort: Video length</option>
-              </select>
             </div>
-            <div className="row" style={{ marginTop: 8 }}>
+            <div className="archiveFilterRow" style={{ marginTop: 8 }}>
               <select className="btn menuControlSelect" value={hostFilter} onChange={(e) => setHostFilter(e.target.value)}>
                 {hosts.map((v) => <option key={v} value={v}>{v === "all" ? "Host: All" : `Host: ${v}`}</option>)}
               </select>
@@ -429,15 +437,29 @@ export function CtCArchivePage() {
               <select className="btn menuControlSelect" value={collectionFilter} onChange={(e) => setCollectionFilter(e.target.value)}>
                 {collections.map((v) => <option key={v} value={v}>{v === "all" ? "Collection: All" : `Collection: ${v}`}</option>)}
               </select>
-              <input className="url archiveLenInput" placeholder="Min length (e.g. 15:00)" value={minLength} onChange={(e) => setMinLength(e.target.value)} />
-              <input className="url archiveLenInput" placeholder="Max length (e.g. 1:00:00)" value={maxLength} onChange={(e) => setMaxLength(e.target.value)} />
+              <input className="url archiveLenInput" placeholder="Min length (minutes)" value={minLength} onChange={(e) => setMinLength(e.target.value)} />
+              <input className="url archiveLenInput" placeholder="Max length (minutes)" value={maxLength} onChange={(e) => setMaxLength(e.target.value)} />
             </div>
           </div>
 
           <div className="card">
             <div className="row" style={{ justifyContent: "space-between" }}>
               <div className="menuSectionTitle">CtC Archive Puzzles</div>
-              <div className="muted">{filteredRows.length} shown</div>
+              <div className="row">
+                <select
+                  className="btn menuControlSelect"
+                  value={sortField}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (isSortField(value)) setSortField(value);
+                  }}
+                >
+                  <option value="date">Sort: Video date</option>
+                  <option value="title">Sort: Puzzle title</option>
+                  <option value="video_length">Sort: Video length</option>
+                </select>
+                <div className="muted">{filteredRows.length} shown</div>
+              </div>
             </div>
 
             {error && <div className="muted" style={{ marginTop: 10 }}>{error}</div>}
@@ -447,44 +469,45 @@ export function CtCArchivePage() {
             <div className="menuPuzzleList">
               {filteredRows.map((entry) => {
                 const solved = entry.sourceId ? completedKeys.has(normalizePuzzleKey(entry.sourceId)) : false;
-                const isExpanded = expanded === entry.id;
+                const display = (value: string) => clean(value) || "~";
                 return (
                   <div key={entry.id} className="card archiveEntryCard">
                     <div className="archiveEntryHead">
-                      <button className="btn primary" disabled={importingId === entry.id} onClick={() => onImport(entry)}>
-                        {importingId === entry.id ? "Importing…" : "Import puzzle"}
-                      </button>
                       <div className="archiveEntryMain">
                         <div className="archiveEntryTitle">
                           {solved ? "✓ " : ""}
-                          {entry.title || "(untitled puzzle)"}
+                          {display(entry.title)}
                         </div>
-                        <div className="muted" style={{ fontSize: 13 }}>{entry.subTypeConstraints || "(no sub-type / constraints listed)"}</div>
                         <div className="muted" style={{ fontSize: 13 }}>
-                          {entry.videoTitle ? `"${entry.videoTitle}"` : "\"(no video title)\""}
-                          {entry.videoLength ? `   ${entry.videoLength}` : ""}
+                          {display(entry.puzzleAuthor)} • {display(entry.collection)} • {display(entry.subTypeConstraints)}
                         </div>
-                      </div>
-                      <button className="btn" onClick={() => setExpanded(isExpanded ? "" : entry.id)} title="Details">⋯</button>
-                    </div>
-                    {isExpanded && (
-                      <div className="archiveDetails">
-                        <div><strong>Puzzle name:</strong> {entry.title || "—"}</div>
-                        <div><strong>Puzzle author:</strong> {entry.puzzleAuthor || "—"}</div>
-                        <div><strong>Video title:</strong> {entry.videoTitle || "—"}</div>
-                        <div><strong>Video host:</strong> {entry.videoHost || "—"}</div>
-                        <div><strong>Video length:</strong> {entry.videoLength || "—"}</div>
-                        <div><strong>Video date:</strong> {entry.videoDate || "—"}</div>
                         <div className="row">
-                          <a className="btn" href={entry.sudokuPadUrl} target="_blank" rel="noreferrer noopener" aria-disabled={!entry.sudokuPadUrl}>
-                            Open SudokuPad
-                          </a>
-                          <a className="btn" href={entry.youtubeUrl} target="_blank" rel="noreferrer noopener" aria-disabled={!entry.youtubeUrl}>
-                            Open YouTube
-                          </a>
+                          <button className="btn primary" disabled={importingId === entry.id} onClick={() => onImport(entry)}>
+                            {importingId === entry.id ? "Importing…" : "Import puzzle"}
+                          </button>
+                          {entry.sudokuPadUrl ? (
+                            <a className="btn" href={entry.sudokuPadUrl} target="_blank" rel="noreferrer noopener">
+                              Open SudokuPad
+                            </a>
+                          ) : (
+                            <span className="btn" aria-disabled="true">Open SudokuPad</span>
+                          )}
+                        </div>
+                        <div className="muted" style={{ fontSize: 13 }}>
+                          {display(entry.videoTitle)} • {display(entry.videoHost)} • {display(entry.videoDate)} • {formatDurationHm(entry.videoLengthSeconds)}
+                        </div>
+                        <div className="row">
+                          {entry.youtubeUrl ? (
+                            <a className="btn" href={entry.youtubeUrl} target="_blank" rel="noreferrer noopener">
+                              Open YouTube
+                            </a>
+                          ) : (
+                            <span className="btn" aria-disabled="true">Open YouTube</span>
+                          )}
+                          <span className="muted">Type: {display(entry.videoType)}</span>
                         </div>
                       </div>
-                    )}
+                    </div>
                   </div>
                 );
               })}
