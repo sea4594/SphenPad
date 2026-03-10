@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import ExcelJS from "exceljs";
 import { normalizePuzzleKey } from "../core/id";
 import { makeInitialProgress } from "../core/scl";
 import { listPuzzles, upsertPuzzle } from "../core/storage";
@@ -89,43 +90,6 @@ function formatDurationHm(seconds: number | null): string {
   return `${hours}h ${minutes}m`;
 }
 
-function parseCsv(text: string): string[][] {
-  const rows: string[][] = [];
-  let row: string[] = [];
-  let cur = "";
-  let inQuotes = false;
-  for (let i = 0; i < text.length; i++) {
-    const ch = text[i];
-    const next = text[i + 1];
-    if (ch === "\"") {
-      if (inQuotes && next === "\"") {
-        cur += "\"";
-        i++;
-      } else {
-        inQuotes = !inQuotes;
-      }
-      continue;
-    }
-    if (!inQuotes && ch === ",") {
-      row.push(cur);
-      cur = "";
-      continue;
-    }
-    if (!inQuotes && (ch === "\n" || ch === "\r")) {
-      if (ch === "\r" && next === "\n") i++;
-      row.push(cur);
-      rows.push(row);
-      row = [];
-      cur = "";
-      continue;
-    }
-    cur += ch;
-  }
-  row.push(cur);
-  rows.push(row);
-  return rows.filter((r) => r.some((c) => clean(c)));
-}
-
 function normalizeHeader(v: string) {
   return clean(v).toLowerCase().replace(/[^a-z0-9]+/g, "");
 }
@@ -161,7 +125,7 @@ function buildSourceCandidates(baseUrl: string) {
   ];
 }
 
-function buildArchiveCsvUrls(source: string): string[] {
+function buildArchiveXlsxUrls(source: string): string[] {
   const trimmed = clean(source);
   if (!trimmed) return [];
   if (/^https?:\/\//i.test(trimmed) && !/\/spreadsheets\/d\//i.test(trimmed)) {
@@ -172,15 +136,39 @@ function buildArchiveCsvUrls(source: string): string[] {
   const gidMatch = trimmed.match(/[?#&]gid=(\d+)/);
   const gid = gidMatch?.[1] ?? "";
   const gidSuffix = gid ? `&gid=${encodeURIComponent(gid)}` : "";
-  const baseUrls = [
-    `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv${gidSuffix}`,
-    `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv${gidSuffix}`,
-  ];
-  return baseUrls.flatMap(buildSourceCandidates);
+  const baseUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=xlsx${gidSuffix}`;
+  return buildSourceCandidates(baseUrl);
 }
 
-async function fetchArchiveCsv(): Promise<string> {
-  const urls = buildArchiveCsvUrls(CTC_ARCHIVE_SHEET_SOURCE);
+function cellAsText(cell: ExcelJS.Cell): string {
+  const value = cell.value;
+  if (value && typeof value === "object" && "hyperlink" in value && typeof value.hyperlink === "string") {
+    return clean(value.hyperlink);
+  }
+  if (value && typeof value === "object" && "text" in value && typeof value.text === "string") {
+    return clean(value.text);
+  }
+  return clean(cell.text);
+}
+
+async function parseXlsxRows(buf: ArrayBuffer): Promise<string[][]> {
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(buf);
+  const sheet = workbook.worksheets[0];
+  if (!sheet) return [];
+  const rows: string[][] = [];
+  sheet.eachRow({ includeEmpty: false }, (row) => {
+    const values: string[] = [];
+    for (let i = 1; i <= row.cellCount; i++) {
+      values.push(cellAsText(row.getCell(i)));
+    }
+    rows.push(values);
+  });
+  return rows.filter((r) => r.some((c) => clean(c)));
+}
+
+async function fetchArchiveRows(): Promise<string[][]> {
+  const urls = buildArchiveXlsxUrls(CTC_ARCHIVE_SHEET_SOURCE);
   let lastErr: unknown;
   for (const url of urls) {
     try {
@@ -189,8 +177,8 @@ async function fetchArchiveCsv(): Promise<string> {
         lastErr = new Error(`HTTP ${res.status}`);
         continue;
       }
-      const text = await res.text();
-      if (text.includes(",")) return text;
+      const rows = await parseXlsxRows(await res.arrayBuffer());
+      if (rows.length > 1) return rows;
       lastErr = new Error("Unexpected archive payload");
     } catch (err) {
       lastErr = err;
@@ -208,8 +196,7 @@ function findIndexByAliases(headers: string[], aliases: string[]) {
   return -1;
 }
 
-function parseArchiveRows(csv: string): ArchiveEntry[] {
-  const rows = parseCsv(csv);
+function parseArchiveRows(rows: string[][]): ArchiveEntry[] {
   if (!rows.length) return [];
   const header = rows[0];
   const body = rows.slice(1);
@@ -293,8 +280,8 @@ export function CtCArchivePage() {
     setLoading(true);
     setError("");
     try {
-      const csv = await fetchArchiveCsv();
-      setRows(parseArchiveRows(csv));
+      const parsedRows = await fetchArchiveRows();
+      setRows(parseArchiveRows(parsedRows));
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
