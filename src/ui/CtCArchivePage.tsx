@@ -42,12 +42,9 @@ const FALLBACK_VIDEO_TITLE_INDEX = 2;
 const FALLBACK_VIDEO_LENGTH_INDEX = 3;
 const FALLBACK_VIDEO_DATE_INDEX = 4;
 const ARCHIVE_VIDEO_TYPE_SUDOKU = "sudoku";
-const ARCHIVE_EDIT_CELL_TO_LINK_SEARCH_WINDOW = 1200;
 const SUDOKUPAD_ICON_URL = "https://sudokupad.app/images/sudokupad_square_logo.png";
 const YOUTUBE_ICON_DATA_URL =
   "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='1' y='4' width='22' height='16' rx='4' fill='%23ff0000'/%3E%3Cpolygon points='10,8 17,12 10,16' fill='white'/%3E%3C/svg%3E";
-// Puzzle IDs are typically 6+ chars and include at least one letter and one digit.
-const SUDOKUPAD_ID_PATTERN = /\b(?=[a-z0-9_-]{6,}\b)(?=[a-z0-9_-]*[a-z])(?=[a-z0-9_-]*\d)[a-z0-9_-]+\b/i;
 
 // Accepts either a full Google Sheets URL or a bare sheet ID.
 const CTC_ARCHIVE_SHEET_SOURCE = "https://docs.google.com/spreadsheets/d/11TrxONoAWMvP8ibULZqtNwG4WWripAcPIS9J-wi3emc/edit#gid=0";
@@ -147,49 +144,6 @@ function extractSourceId(rawInput: string): string {
   }
 }
 
-/** Normalizes raw spreadsheet SudokuPad values (URL, embedded URL, or puzzle ID) into https://sudokupad.app/{id}. */
-function normalizeSudokuPadUrl(rawInput: string): string {
-  const text = clean(rawInput);
-  if (!text) return "";
-  const embeddedUrlMatch = text.match(/https?:\/\/(?:sudokupad\.app|app\.crackingthecryptic\.com)[^\s")]+/i);
-  const candidate = embeddedUrlMatch?.[0] ?? text;
-  const toCanonical = (rawId: string) => {
-    const decoded = clean(decodeURIComponent(rawId)).replace(/^\/+|\/+$/g, "");
-    if (!decoded) return "";
-    const parts = decoded.split("/").filter(Boolean);
-    const last = parts.at(-1) ?? "";
-    const fromLast = clean(last);
-    const generic = new Set(["sudoku", "puzzle", "app", "play"]);
-    const idCandidate = generic.has(fromLast.toLowerCase()) ? "" : fromLast;
-    const token =
-      idCandidate ||
-      clean(
-        (decoded.match(SUDOKUPAD_ID_PATTERN) ?? [])[0] ?? ""
-      );
-    return token ? `https://sudokupad.app/${token}` : "";
-  };
-  try {
-    const parsed = new URL(candidate);
-    const host = parsed.hostname.toLowerCase();
-    const path = parsed.pathname.replace(/^\/+/, "").replace(/\/+$/g, "");
-    const loadParam = parsed.searchParams.get("load");
-    const puzzleParam = parsed.searchParams.get("puzzle");
-    const idParam = parsed.searchParams.get("id");
-    const hash = parsed.hash.replace(/^#/, "");
-    if (host === "sudokupad.app") {
-      return toCanonical(path || loadParam || puzzleParam || idParam || hash || "");
-    }
-    if (host === "app.crackingthecryptic.com") {
-      return toCanonical(path || loadParam || puzzleParam || idParam || hash || "");
-    }
-    return "";
-  } catch {
-    const idMatch = candidate.match(SUDOKUPAD_ID_PATTERN);
-    if (!idMatch) return "";
-    return `https://sudokupad.app/${idMatch[0]}`;
-  }
-}
-
 function isSearchField(value: string): value is SearchField {
   return SEARCH_FIELDS.has(value as SearchField);
 }
@@ -225,17 +179,6 @@ function buildArchiveCsvUrls(source: string): string[] {
   return baseUrls.flatMap(buildSourceCandidates);
 }
 
-function buildArchiveEditUrls(source: string): string[] {
-  const trimmed = clean(source);
-  if (!trimmed) return [];
-  const sheetMatch = trimmed.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
-  const sheetId = sheetMatch?.[1] ?? trimmed;
-  const gidMatch = trimmed.match(/[?#&]gid=(\d+)/);
-  const gid = gidMatch?.[1] ?? "0";
-  const baseUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/edit?gid=${encodeURIComponent(gid)}`;
-  return buildSourceCandidates(baseUrl);
-}
-
 async function fetchArchiveCsv(): Promise<string> {
   const urls = buildArchiveCsvUrls(CTC_ARCHIVE_SHEET_SOURCE);
   let lastErr: unknown;
@@ -256,48 +199,6 @@ async function fetchArchiveCsv(): Promise<string> {
   throw lastErr instanceof Error ? lastErr : new Error("Unable to load CtC archive sheet");
 }
 
-async function fetchArchiveSudokuPadLinks(): Promise<Map<string, string>> {
-  const urls = buildArchiveEditUrls(CTC_ARCHIVE_SHEET_SOURCE);
-  let html = "";
-  for (const url of urls) {
-    try {
-      const res = (await Promise.race([fetch(url), timeout(12000)])) as Response;
-      if (!res.ok) continue;
-      const text = await res.text();
-      if (/sudokupad\.app|app\.crackingthecryptic\.com/i.test(text)) {
-        html = text;
-        break;
-      }
-    } catch {
-      // try next source candidate
-    }
-  }
-  const linksByUrlCell = new Map<string, string>();
-  if (!html) return linksByUrlCell;
-  const patterns = [
-    new RegExp(
-      `\\\\"3\\\\":\\[2,\\\\"([A-Z]+\\\\d+)\\\\"\\][\\\\s\\\\S]{0,${ARCHIVE_EDIT_CELL_TO_LINK_SEARCH_WINDOW}}?\\\\"24\\\\":\\\\"(https?:\\\\/\\\\/(?:sudokupad\\\\.app|app\\\\.crackingthecryptic\\\\.com)[^\\\\"]+)\\\\"`,
-      "gi"
-    ),
-    new RegExp(
-      `"3":\\[2,"([A-Z]+\\d+)"\\][\\s\\S]{0,${ARCHIVE_EDIT_CELL_TO_LINK_SEARCH_WINDOW}}?"24":"(https?:\\/\\/(?:sudokupad\\.app|app\\.crackingthecryptic\\.com)[^"]+)"`,
-      "gi"
-    ),
-  ];
-  for (const re of patterns) {
-    let match: RegExpExecArray | null = null;
-    while ((match = re.exec(html))) {
-      const urlCell = clean(match[1]).toUpperCase();
-      const rawUrl = clean(match[2]).replace(/\\u003d/g, "=").replace(/\\\//g, "/");
-      const url = normalizeSudokuPadUrl(rawUrl);
-      if (urlCell && url && !linksByUrlCell.has(urlCell)) {
-        linksByUrlCell.set(urlCell, url);
-      }
-    }
-  }
-  return linksByUrlCell;
-}
-
 function findIndexByAliases(headers: string[], aliases: string[]) {
   const normalized = headers.map(normalizeHeader);
   for (const alias of aliases.map(normalizeHeader)) {
@@ -307,7 +208,7 @@ function findIndexByAliases(headers: string[], aliases: string[]) {
   return -1;
 }
 
-function parseArchiveRows(csv: string, sudokuPadLinksByUrlCell: Map<string, string>): ArchiveEntry[] {
+function parseArchiveRows(csv: string): ArchiveEntry[] {
   const rows = parseCsv(csv);
   if (!rows.length) return [];
   const header = rows[0];
@@ -324,8 +225,6 @@ function parseArchiveRows(csv: string, sudokuPadLinksByUrlCell: Map<string, stri
   const iCollection = findIndexByAliases(header, ["collection", "series"]);
   const iSudokuPad = findIndexByAliases(header, ["sudokupad", "sudoku pad", "puzzle link", "sp"]);
   const iYoutube = findIndexByAliases(header, ["youtube", "video link", "youtube link"]);
-  const iUrlCell = findIndexByAliases(header, ["url cell"]);
-
   return body
     .map((row, idx) => {
       const byIdx = (i: number, fallback = "") => clean(i >= 0 ? row[i] : fallback);
@@ -341,12 +240,7 @@ function parseArchiveRows(csv: string, sudokuPadLinksByUrlCell: Map<string, stri
       const collection = byIdx(iCollection);
       const sudokuPadFromColumn = byIdx(iSudokuPad);
       const youtubeFromColumn = byIdx(iYoutube);
-      const urlCell = byIdx(iUrlCell).replace(/\$/g, "").toUpperCase();
-      const sudokuPadFromUrlCell = sudokuPadLinksByUrlCell.get(urlCell) ?? "";
-      const sudokuPadUrl =
-        normalizeSudokuPadUrl(sudokuPadFromColumn) ||
-        normalizeSudokuPadUrl(sudokuPadFromUrlCell) ||
-        normalizeSudokuPadUrl(row.find((cell) => /sudokupad\.app|app\.crackingthecryptic\.com/i.test(cell ?? ""))?.trim() || "");
+      const sudokuPadUrl = sudokuPadFromColumn;
       const youtubeUrl =
         youtubeFromColumn ||
         row.find((cell) => /youtu\.?be|youtube\.com/i.test(cell ?? ""))?.trim() ||
@@ -396,8 +290,8 @@ export function CtCArchivePage() {
     setLoading(true);
     setError("");
     try {
-      const [csv, sudokuPadLinksByUrlCell] = await Promise.all([fetchArchiveCsv(), fetchArchiveSudokuPadLinks()]);
-      setRows(parseArchiveRows(csv, sudokuPadLinksByUrlCell));
+      const csv = await fetchArchiveCsv();
+      setRows(parseArchiveRows(csv));
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
