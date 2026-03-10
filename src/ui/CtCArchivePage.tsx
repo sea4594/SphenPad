@@ -140,17 +140,26 @@ function buildSourceCandidates(baseUrl: string) {
   ];
 }
 
-async function fetchArchiveCsv(): Promise<string> {
-  const sheetMatch = CTC_ARCHIVE_SHEET_SOURCE.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
-  const sheetId = sheetMatch?.[1] ?? clean(CTC_ARCHIVE_SHEET_SOURCE);
-  const gidMatch = CTC_ARCHIVE_SHEET_SOURCE.match(/[?#&]gid=(\d+)/);
+function buildArchiveCsvUrls(source: string): string[] {
+  const trimmed = clean(source);
+  if (!trimmed) return [];
+  if (/^https?:\/\//i.test(trimmed) && !/\/spreadsheets\/d\//i.test(trimmed)) {
+    return buildSourceCandidates(trimmed);
+  }
+  const sheetMatch = trimmed.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+  const sheetId = sheetMatch?.[1] ?? trimmed;
+  const gidMatch = trimmed.match(/[?#&]gid=(\d+)/);
   const gid = gidMatch?.[1] ?? "";
   const gidSuffix = gid ? `&gid=${encodeURIComponent(gid)}` : "";
   const baseUrls = [
     `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv${gidSuffix}`,
     `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv${gidSuffix}`,
   ];
-  const urls = baseUrls.flatMap(buildSourceCandidates);
+  return baseUrls.flatMap(buildSourceCandidates);
+}
+
+async function fetchArchiveCsv(): Promise<string> {
+  const urls = buildArchiveCsvUrls(CTC_ARCHIVE_SHEET_SOURCE);
   let lastErr: unknown;
   for (const url of urls) {
     try {
