@@ -94,6 +94,9 @@ export function MainMenu() {
             <div className="menuSectionTitle">Load Puzzle</div>
             <div className="muted" style={{ marginTop: 2 }}>Paste a `sudokupad.app` link or a puzzle id</div>
             <div className="row" style={{ marginTop: 10 }}>
+              <button className="btn" onClick={() => nav("/archive")}>
+                Import from CtC archive
+              </button>
               <input
                 className="url"
                 placeholder="https://sudokupad.app/..."

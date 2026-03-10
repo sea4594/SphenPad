@@ -1163,6 +1163,11 @@ export function GridCanvas(props: {
       }
     }
 
+    if (!fogDefined) {
+      // Keep lines/marks above highlights and puzzle art, but behind numbers/letters.
+      drawUserLines();
+    }
+
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
         const cell = progress.cells[r][c];
@@ -1249,6 +1254,9 @@ export function GridCanvas(props: {
         drawGridLines();
       }
 
+      // Keep lines/marks above highlights under fog, but behind values/letters.
+      drawUserLines();
+
       // Keep user-entered values visible under fog; hide unrevealed givens.
       for (let r = 0; r < rows; r++) {
         for (let c = 0; c < cols; c++) {
@@ -1286,9 +1294,6 @@ export function GridCanvas(props: {
         }
       }
     }
-
-    // Always keep user lines on top of artwork/fog.
-    drawUserLines();
 
     // Dots should sit above grid/user lines.
     if (fogDefined) {

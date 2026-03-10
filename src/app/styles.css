@@ -342,6 +342,44 @@ input.url {
   overflow-wrap: anywhere;
 }
 
+.archiveControls {
+  display: grid;
+  gap: 8px;
+}
+
+.archiveLenInput {
+  min-width: 170px;
+  max-width: 240px;
+}
+
+.archiveEntryCard {
+  display: grid;
+  gap: 10px;
+}
+
+.archiveEntryHead {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 10px;
+  align-items: start;
+}
+
+.archiveEntryMain {
+  min-width: 0;
+}
+
+.archiveEntryTitle {
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.archiveDetails {
+  display: grid;
+  gap: 7px;
+  border-top: 1px solid color-mix(in oklab, var(--text) 18%, transparent);
+  padding-top: 10px;
+}
+
 .puzzlePage {
   width: 100%;
   max-width: 1260px;
@@ -904,6 +942,10 @@ input.url {
   }
 
   .menuPuzzleRow {
+    grid-template-columns: 1fr;
+  }
+
+  .archiveEntryHead {
     grid-template-columns: 1fr;
   }
 
