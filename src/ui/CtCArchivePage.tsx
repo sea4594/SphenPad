@@ -42,6 +42,7 @@ const FALLBACK_VIDEO_TITLE_INDEX = 2;
 const FALLBACK_VIDEO_LENGTH_INDEX = 3;
 const FALLBACK_VIDEO_DATE_INDEX = 4;
 const ARCHIVE_VIDEO_TYPE_SUDOKU = "sudoku";
+const ARCHIVE_EDIT_CELL_TO_LINK_SEARCH_WINDOW = 1200;
 
 // Accepts either a full Google Sheets URL or a bare sheet ID.
 const CTC_ARCHIVE_SHEET_SOURCE = "https://docs.google.com/spreadsheets/d/11TrxONoAWMvP8ibULZqtNwG4WWripAcPIS9J-wi3emc/edit#gid=0";
@@ -176,6 +177,17 @@ function buildArchiveCsvUrls(source: string): string[] {
   return baseUrls.flatMap(buildSourceCandidates);
 }
 
+function buildArchiveEditUrls(source: string): string[] {
+  const trimmed = clean(source);
+  if (!trimmed) return [];
+  const sheetMatch = trimmed.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+  const sheetId = sheetMatch?.[1] ?? trimmed;
+  const gidMatch = trimmed.match(/[?#&]gid=(\d+)/);
+  const gid = gidMatch?.[1] ?? "0";
+  const baseUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/edit?gid=${encodeURIComponent(gid)}`;
+  return buildSourceCandidates(baseUrl);
+}
+
 async function fetchArchiveCsv(): Promise<string> {
   const urls = buildArchiveCsvUrls(CTC_ARCHIVE_SHEET_SOURCE);
   let lastErr: unknown;
@@ -196,6 +208,39 @@ async function fetchArchiveCsv(): Promise<string> {
   throw lastErr instanceof Error ? lastErr : new Error("Unable to load CtC archive sheet");
 }
 
+async function fetchArchiveSudokuPadLinks(): Promise<Map<string, string>> {
+  const urls = buildArchiveEditUrls(CTC_ARCHIVE_SHEET_SOURCE);
+  let html = "";
+  for (const url of urls) {
+    try {
+      const res = (await Promise.race([fetch(url), timeout(12000)])) as Response;
+      if (!res.ok) continue;
+      const text = await res.text();
+      if (/sudokupad\.app|app\.crackingthecryptic\.com/i.test(text)) {
+        html = text;
+        break;
+      }
+    } catch {
+      // try next source candidate
+    }
+  }
+  const linksByUrlCell = new Map<string, string>();
+  if (!html) return linksByUrlCell;
+  const re = new RegExp(
+    `\\\\"3\\\\":\\[2,\\\\"(G\\\\d+)\\\\"\\][\\\\s\\\\S]{0,${ARCHIVE_EDIT_CELL_TO_LINK_SEARCH_WINDOW}}?\\\\"24\\\\":\\\\"(https:\\\\/\\\\/(?:sudokupad\\\\.app|app\\\\.crackingthecryptic\\\\.com)[^\\\\"]+)\\\\"`,
+    "gi"
+  );
+  let match: RegExpExecArray | null = null;
+  while ((match = re.exec(html))) {
+    const urlCell = clean(match[1]).toUpperCase();
+    const url = clean(match[2]).replace(/\\u003d/g, "=").replace(/\\\//g, "/");
+    if (urlCell && url && !linksByUrlCell.has(urlCell)) {
+      linksByUrlCell.set(urlCell, url);
+    }
+  }
+  return linksByUrlCell;
+}
+
 function findIndexByAliases(headers: string[], aliases: string[]) {
   const normalized = headers.map(normalizeHeader);
   for (const alias of aliases.map(normalizeHeader)) {
@@ -205,7 +250,7 @@ function findIndexByAliases(headers: string[], aliases: string[]) {
   return -1;
 }
 
-function parseArchiveRows(csv: string): ArchiveEntry[] {
+function parseArchiveRows(csv: string, sudokuPadLinksByUrlCell: Map<string, string>): ArchiveEntry[] {
   const rows = parseCsv(csv);
   if (!rows.length) return [];
   const header = rows[0];
@@ -222,6 +267,7 @@ function parseArchiveRows(csv: string): ArchiveEntry[] {
   const iCollection = findIndexByAliases(header, ["collection", "series"]);
   const iSudokuPad = findIndexByAliases(header, ["sudokupad", "sudoku pad", "puzzle link", "sp"]);
   const iYoutube = findIndexByAliases(header, ["youtube", "video link", "youtube link"]);
+  const iUrlCell = findIndexByAliases(header, ["url cell"]);
 
   return body
     .map((row, idx) => {
@@ -238,8 +284,12 @@ function parseArchiveRows(csv: string): ArchiveEntry[] {
       const collection = byIdx(iCollection);
       const sudokuPadFromColumn = byIdx(iSudokuPad);
       const youtubeFromColumn = byIdx(iYoutube);
+      const urlCell = byIdx(iUrlCell).toUpperCase();
+      const sudokuPadFromUrlCell = sudokuPadLinksByUrlCell.get(urlCell) ?? "";
+      const sudokuPadFromColumnIfUrl = /^https?:\/\//i.test(sudokuPadFromColumn) ? sudokuPadFromColumn : "";
       const sudokuPadUrl =
-        sudokuPadFromColumn ||
+        sudokuPadFromColumnIfUrl ||
+        sudokuPadFromUrlCell ||
         row.find((cell) => /sudokupad\.app|app\.crackingthecryptic\.com/i.test(cell ?? ""))?.trim() ||
         "";
       const youtubeUrl =
@@ -291,8 +341,8 @@ export function CtCArchivePage() {
     setLoading(true);
     setError("");
     try {
-      const csv = await fetchArchiveCsv();
-      setRows(parseArchiveRows(csv));
+      const [csv, sudokuPadLinksByUrlCell] = await Promise.all([fetchArchiveCsv(), fetchArchiveSudokuPadLinks()]);
+      setRows(parseArchiveRows(csv, sudokuPadLinksByUrlCell));
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -475,24 +525,29 @@ export function CtCArchivePage() {
                   <div key={entry.id} className="card archiveEntryCard">
                     <div className="archiveEntryHead">
                       <div className="archiveEntryMain">
-                        <div className="archiveEntryTitle">
-                          {solved ? "✓ " : ""}
-                          {display(entry.title)}
+                        <div className="archiveTitleRow">
+                          {entry.sudokuPadUrl ? (
+                            <a className="btn archiveOpenIcon" href={entry.sudokuPadUrl} target="_blank" rel="noreferrer noopener" title="Open SudokuPad" aria-label="Open SudokuPad">
+                              <span aria-hidden="true">↗</span>
+                            </a>
+                          ) : (
+                            <button type="button" className="btn archiveOpenIcon" disabled title="Open SudokuPad" aria-label="Open SudokuPad">
+                              <span aria-hidden="true">↗</span>
+                            </button>
+                          )}
+                          <div className="archiveEntryTitle">
+                            {solved ? "✓ " : ""}
+                            {display(entry.title)}
+                            <span className="archiveEntryCollection"> ({display(entry.collection)})</span>
+                          </div>
                         </div>
                         <div className="muted" style={{ fontSize: 13 }}>
-                          {display(entry.puzzleAuthor)} • {display(entry.collection)} • {display(entry.subTypeConstraints)}
+                          {display(entry.puzzleAuthor)} • {display(entry.subTypeConstraints)}
                         </div>
                         <div className="row">
                           <button className="btn primary" disabled={importingId === entry.id} onClick={() => onImport(entry)}>
                             {importingId === entry.id ? "Importing…" : "Import puzzle"}
                           </button>
-                          {entry.sudokuPadUrl ? (
-                            <a className="btn" href={entry.sudokuPadUrl} target="_blank" rel="noreferrer noopener">
-                              Open SudokuPad
-                            </a>
-                          ) : (
-                            <span className="btn" aria-disabled="true">Open SudokuPad</span>
-                          )}
                         </div>
                         <div className="muted" style={{ fontSize: 13 }}>
                           {display(entry.videoTitle)} • {display(entry.videoHost)} • {display(entry.videoDate)} • {formatDurationHm(entry.videoLengthSeconds)}

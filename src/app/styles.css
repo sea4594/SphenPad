@@ -383,6 +383,33 @@ input.url {
   font-weight: 700;
 }
 
+.archiveTitleRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.archiveEntryCollection {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.archiveOpenIcon {
+  min-width: 34px;
+  width: 34px;
+  height: 34px;
+  min-height: 34px;
+  padding: 0;
+  display: inline-grid;
+  place-items: center;
+  font-size: 15px;
+  border-radius: 999px;
+  text-decoration: none;
+  flex: 0 0 auto;
+}
+
 .puzzlePage {
   width: 100%;
   max-width: 1260px;
