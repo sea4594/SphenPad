@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import ExcelJS from "exceljs";
 import { normalizePuzzleKey } from "../core/id";
 import { makeInitialProgress } from "../core/scl";
 import { listPuzzles, upsertPuzzle } from "../core/storage";
@@ -46,6 +45,12 @@ const ARCHIVE_VIDEO_TYPE_SUDOKU = "sudoku";
 const SUDOKUPAD_ICON_URL = "https://sudokupad.app/images/sudokupad_square_logo.png";
 const YOUTUBE_ICON_DATA_URL =
   "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='1' y='4' width='22' height='16' rx='4' fill='%23ff0000'/%3E%3Cpolygon points='10,8 17,12 10,16' fill='white'/%3E%3C/svg%3E";
+const SP_ICON_TEXT = "🔢";
+// These keys come from the embedded Google Sheets cell payload in the /edit page response.
+const EDIT_PAGE_CELL_TEXT_KEY = "7";
+const EDIT_PAGE_CELL_HYPERLINK_KEY = "24";
+const EDIT_PAGE_SP_HYPERLINK_PATTERN = `\\\\"${EDIT_PAGE_CELL_TEXT_KEY}\\\\":\\[2,\\\\"${SP_ICON_TEXT}\\\\"\\][\\s\\S]*?\\\\"${EDIT_PAGE_CELL_HYPERLINK_KEY}\\\\":\\\\"([^\\\\"]+)\\\\"`;
+const SUDOKUPAD_URL_IN_ROW_REGEX = /https?:\/\/(?:sudokupad\.app|app\.crackingthecryptic\.com)\//i;
 
 // Accepts either a full Google Sheets URL or a bare sheet ID.
 const CTC_ARCHIVE_SHEET_SOURCE = "https://docs.google.com/spreadsheets/d/11TrxONoAWMvP8ibULZqtNwG4WWripAcPIS9J-wi3emc/edit#gid=0";
@@ -125,7 +130,7 @@ function buildSourceCandidates(baseUrl: string) {
   ];
 }
 
-function buildArchiveXlsxUrls(source: string): string[] {
+function buildArchiveGvizJsonUrls(source: string): string[] {
   const trimmed = clean(source);
   if (!trimmed) return [];
   if (/^https?:\/\//i.test(trimmed) && !/\/spreadsheets\/d\//i.test(trimmed)) {
@@ -136,39 +141,48 @@ function buildArchiveXlsxUrls(source: string): string[] {
   const gidMatch = trimmed.match(/[?#&]gid=(\d+)/);
   const gid = gidMatch?.[1] ?? "";
   const gidSuffix = gid ? `&gid=${encodeURIComponent(gid)}` : "";
-  const baseUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=xlsx${gidSuffix}`;
+  const baseUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json${gidSuffix}`;
   return buildSourceCandidates(baseUrl);
 }
 
-function cellAsText(cell: ExcelJS.Cell): string {
-  const value = cell.value;
-  if (value && typeof value === "object" && "hyperlink" in value && typeof value.hyperlink === "string") {
-    return clean(value.hyperlink);
-  }
-  if (value && typeof value === "object" && "text" in value && typeof value.text === "string") {
-    return clean(value.text);
-  }
-  return clean(cell.text);
+function decodeGoogleEscaped(v: string): string {
+  return v
+    .replace(/\\u003d/gi, "=")
+    .replace(/\\u0026/gi, "&")
+    .replace(/\\u002f/gi, "/")
+    .replace(/\\\//g, "/")
+    .replace(/\\u003a/gi, ":")
+    .replace(/\\u003f/gi, "?");
 }
 
-async function parseXlsxRows(buf: ArrayBuffer): Promise<string[][]> {
-  const workbook = new ExcelJS.Workbook();
-  await workbook.xlsx.load(buf);
-  const sheet = workbook.worksheets[0];
-  if (!sheet) return [];
-  const rows: string[][] = [];
-  sheet.eachRow({ includeEmpty: false }, (row) => {
-    const values: string[] = [];
-    for (let i = 1; i <= row.cellCount; i++) {
-      values.push(cellAsText(row.getCell(i)));
-    }
-    rows.push(values);
-  });
-  return rows.filter((r) => r.some((c) => clean(c)));
+function parseGvizJsonRows(payload: string): string[][] {
+  const prefix = "google.visualization.Query.setResponse(";
+  const start = payload.indexOf(prefix);
+  if (start < 0) return [];
+  let jsonText = payload.slice(start + prefix.length).trim();
+  if (jsonText.endsWith(");")) jsonText = jsonText.slice(0, -2);
+  const parsed = JSON.parse(jsonText) as {
+    table?: {
+      cols?: Array<{ label?: string }>;
+      rows?: Array<{ c?: Array<{ v?: unknown } | null> }>;
+    };
+  };
+  const cols = parsed.table?.cols ?? [];
+  const rows = parsed.table?.rows ?? [];
+  const header = cols.map((c) => clean(c.label));
+  const body = rows.map((row) =>
+    (row.c ?? []).map((cell) => {
+      if (!cell || cell.v == null) return "";
+      const value = cell.v;
+      if (typeof value === "string") return clean(value);
+      return clean(String(value));
+    })
+  );
+  return [header, ...body].filter((r) => r.some((c) => clean(c)));
 }
 
-async function fetchArchiveRows(): Promise<string[][]> {
-  const urls = buildArchiveXlsxUrls(CTC_ARCHIVE_SHEET_SOURCE);
+async function fetchArchiveSudokuPadLinks(): Promise<string[]> {
+  const urls = buildSourceCandidates(CTC_ARCHIVE_SHEET_SOURCE);
   let lastErr: unknown;
   for (const url of urls) {
     try {
@@ -177,14 +191,63 @@ async function fetchArchiveRows(): Promise<string[][]> {
         lastErr = new Error(`HTTP ${res.status}`);
         continue;
       }
-      const rows = await parseXlsxRows(await res.arrayBuffer());
-      if (rows.length > 1) return rows;
+      const text = await res.text();
+      const links: string[] = [];
+      const linkRegex = new RegExp(EDIT_PAGE_SP_HYPERLINK_PATTERN, "g");
+      for (const match of text.matchAll(linkRegex)) {
+        const decoded = clean(decodeGoogleEscaped(match[1] ?? ""));
+        if (decoded) links.push(decoded);
+      }
+      if (links.length) return links;
+    } catch (err) {
+      lastErr = err;
+    }
+  }
+  if (lastErr) console.warn("Unable to recover SudokuPad hyperlinks from sheet page", lastErr);
+  return [];
+}
+
+function looksLikeSudokuPadUrl(value: string): boolean {
+  return SUDOKUPAD_URL_IN_ROW_REGEX.test(clean(value));
+}
+
+async function fetchArchiveRows(): Promise<{ rows: string[][]; sudokuPadLinks: string[] }> {
+  const urls = buildArchiveGvizJsonUrls(CTC_ARCHIVE_SHEET_SOURCE);
+  let lastErr: unknown;
+  for (const url of urls) {
+    try {
+      const res = (await Promise.race([fetch(url), timeout(12000)])) as Response;
+      if (!res.ok) {
+        lastErr = new Error(`HTTP ${res.status}`);
+        continue;
+      }
+      const rows = parseGvizJsonRows(await res.text());
+      if (rows.length > 1) {
+        const sudokuPadLinks = await fetchArchiveSudokuPadLinks();
+        return { rows, sudokuPadLinks };
+      }
       lastErr = new Error("Unexpected archive payload");
     } catch (err) {
       lastErr = err;
     }
   }
   throw lastErr instanceof Error ? lastErr : new Error("Unable to load CtC archive sheet");
+}
+
+function pickSudokuPadUrl(row: string[], iSudokuPad: number, links: string[], linkIndexRef: { current: number }): string {
+  const fromColumn = clean(iSudokuPad >= 0 ? row[iSudokuPad] : "");
+  if (looksLikeSudokuPadUrl(fromColumn)) {
+    return fromColumn;
+  }
+  const discovered = clean(
+    row.find((cell) => SUDOKUPAD_URL_IN_ROW_REGEX.test(cell ?? ""))?.trim() ?? ""
+  );
+  if (fromColumn === SP_ICON_TEXT) {
+    const fromHyperlink = clean(links[linkIndexRef.current] ?? "");
+    linkIndexRef.current += 1;
+    return fromHyperlink || discovered;
+  }
+  return discovered;
 }
 
 function findIndexByAliases(headers: string[], aliases: string[]) {
@@ -196,7 +259,7 @@ function findIndexByAliases(headers: string[], aliases: string[]) {
   return -1;
 }
 
-function parseArchiveRows(rows: string[][]): ArchiveEntry[] {
+function parseArchiveRows(rows: string[][], sudokuPadLinks: string[] = []): ArchiveEntry[] {
   if (!rows.length) return [];
   const header = rows[0];
   const body = rows.slice(1);
@@ -210,12 +273,9 @@ function parseArchiveRows(rows: string[][]): ArchiveEntry[] {
   const iVideoHost = findIndexByAliases(header, ["video host", "host", "channel"]);
   const iVideoType = findIndexByAliases(header, ["video type", "type"]);
   const iCollection = findIndexByAliases(header, ["collection", "series"]);
-  const iSp = header.findIndex((h) => normalizeHeader(h) === "sp");
-  const iSudokuPad =
-    iSp >= 0
-      ? iSp
-      : findIndexByAliases(header, ["sudokupad", "sudoku pad", "puzzle link", "sudokupadlink"]);
+  const iSudokuPad = findIndexByAliases(header, ["sp", "sudokupad", "sudoku pad", "puzzle link", "sudokupadlink"]);
   const iYoutube = findIndexByAliases(header, ["youtube", "video link", "youtube link"]);
+  const linkIndexRef = { current: 0 };
   return body
     .map((row, idx) => {
       const byIdx = (i: number, fallback = "") => clean(i >= 0 ? row[i] : fallback);
@@ -230,7 +290,7 @@ function parseArchiveRows(rows: string[][]): ArchiveEntry[] {
       const videoType = byIdx(iVideoType);
       const collection = byIdx(iCollection);
       const youtubeFromColumn = byIdx(iYoutube);
-      const sudokuPadUrl = byIdx(iSudokuPad).trim();
+      const sudokuPadUrl = pickSudokuPadUrl(row, iSudokuPad, sudokuPadLinks, linkIndexRef);
       const youtubeUrl =
         youtubeFromColumn ||
         row.find((cell) => /youtu\.?be|youtube\.com/i.test(cell ?? ""))?.trim() ||
@@ -280,8 +340,8 @@ export function CtCArchivePage() {
     setLoading(true);
     setError("");
     try {
-      const parsedRows = await fetchArchiveRows();
-      setRows(parseArchiveRows(parsedRows));
+      const { rows: parsedRows, sudokuPadLinks } = await fetchArchiveRows();
+      setRows(parseArchiveRows(parsedRows, sudokuPadLinks));
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
