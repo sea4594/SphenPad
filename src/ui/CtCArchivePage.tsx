@@ -20,7 +20,7 @@ type ArchiveEntry = {
   videoType: string;
   sudokuPadUrl: string;
   youtubeUrl: string;
-  sourceId: string;
+  completionKey: string;
 };
 
 type SearchField =
@@ -235,7 +235,7 @@ async function fetchArchiveSudokuPadLinks(): Promise<Map<string, string>> {
       const urlCell = clean(match[1]).toUpperCase();
       const rawUrl = clean(match[2]).replace(/\\u003d/g, "=").replace(/\\\//g, "/");
       const url = clean(rawUrl);
-      if (urlCell && url && !linksByUrlCell.has(urlCell)) {
+      if (urlCell && isSudokuPadUrl(url) && !linksByUrlCell.has(urlCell)) {
         linksByUrlCell.set(urlCell, url);
       }
     }
@@ -288,16 +288,13 @@ function parseArchiveRows(csv: string, sudokuPadLinksByUrlCell: Map<string, stri
       const youtubeFromColumn = byIdx(iYoutube);
       const urlCell = byIdx(iUrlCell).replace(/\$/g, "").toUpperCase();
       const sudokuPadFromUrlCell = sudokuPadLinksByUrlCell.get(urlCell) ?? "";
-      const sudokuPadFromAnyColumn = row.find((cell) => isSudokuPadUrl(cell ?? ""))?.trim() ?? "";
-      const sudokuPadUrl =
-        (isSudokuPadUrl(sudokuPadFromUrlCell) ? sudokuPadFromUrlCell : "") ||
-        (isSudokuPadUrl(sudokuPadFromColumn) ? sudokuPadFromColumn : "") ||
-        (isSudokuPadUrl(sudokuPadFromAnyColumn) ? sudokuPadFromAnyColumn : "");
+      const sudokuPadFromAnyColumn = row.find((cell) => isSudokuPadUrl(cell ?? "")) ?? "";
+      const sudokuPadUrl = [sudokuPadFromUrlCell, sudokuPadFromColumn, sudokuPadFromAnyColumn].find(isSudokuPadUrl) ?? "";
       const youtubeUrl =
         youtubeFromColumn ||
         row.find((cell) => /youtu\.?be|youtube\.com/i.test(cell ?? ""))?.trim() ||
         "";
-      const sourceId = sudokuPadUrl;
+      const completionKey = sudokuPadUrl;
       return {
         id: `${title || "entry"}-${idx}`,
         title,
@@ -313,7 +310,7 @@ function parseArchiveRows(csv: string, sudokuPadLinksByUrlCell: Map<string, stri
         collection,
         sudokuPadUrl,
         youtubeUrl,
-        sourceId,
+        completionKey,
       } satisfies ArchiveEntry;
     })
     .filter((entry) => clean(entry.videoType).toLowerCase() === ARCHIVE_VIDEO_TYPE_SUDOKU)
@@ -520,7 +517,7 @@ export function CtCArchivePage() {
 
             <div className="menuPuzzleList">
               {filteredRows.map((entry) => {
-                const solved = entry.sourceId ? completedKeys.has(normalizePuzzleKey(entry.sourceId)) : false;
+                const solved = entry.completionKey ? completedKeys.has(normalizePuzzleKey(entry.completionKey)) : false;
                 const display = (value: string) => clean(value) || "~";
                 return (
                   <div key={entry.id} className="card archiveEntryCard">
