@@ -46,6 +46,8 @@ const ARCHIVE_EDIT_CELL_TO_LINK_SEARCH_WINDOW = 1200;
 const SUDOKUPAD_ICON_URL = "https://sudokupad.app/images/sudokupad_square_logo.png";
 const YOUTUBE_ICON_DATA_URL =
   "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='1' y='4' width='22' height='16' rx='4' fill='%23ff0000'/%3E%3Cpolygon points='10,8 17,12 10,16' fill='white'/%3E%3C/svg%3E";
+// Puzzle IDs are typically 6+ chars and include at least one letter and one digit.
+const SUDOKUPAD_ID_PATTERN = /\b(?=[a-z0-9_-]{6,}\b)(?=[a-z0-9_-]*[a-z])(?=[a-z0-9_-]*\d)[a-z0-9_-]+\b/i;
 
 // Accepts either a full Google Sheets URL or a bare sheet ID.
 const CTC_ARCHIVE_SHEET_SOURCE = "https://docs.google.com/spreadsheets/d/11TrxONoAWMvP8ibULZqtNwG4WWripAcPIS9J-wi3emc/edit#gid=0";
@@ -151,25 +153,40 @@ function normalizeSudokuPadUrl(rawInput: string): string {
   if (!text) return "";
   const embeddedUrlMatch = text.match(/https?:\/\/(?:sudokupad\.app|app\.crackingthecryptic\.com)[^\s")]+/i);
   const candidate = embeddedUrlMatch?.[0] ?? text;
+  const toCanonical = (rawId: string) => {
+    const decoded = clean(decodeURIComponent(rawId)).replace(/^\/+|\/+$/g, "");
+    if (!decoded) return "";
+    const parts = decoded.split("/").filter(Boolean);
+    const last = parts.at(-1) ?? "";
+    const fromLast = clean(last);
+    const generic = new Set(["sudoku", "puzzle", "app", "play"]);
+    const idCandidate = generic.has(fromLast.toLowerCase()) ? "" : fromLast;
+    const token =
+      idCandidate ||
+      clean(
+        (decoded.match(SUDOKUPAD_ID_PATTERN) ?? [])[0] ?? ""
+      );
+    return token ? `https://sudokupad.app/${token}` : "";
+  };
   try {
     const parsed = new URL(candidate);
     const host = parsed.hostname.toLowerCase();
-    const path = parsed.pathname.replace(/^\/+/, "");
+    const path = parsed.pathname.replace(/^\/+/, "").replace(/\/+$/g, "");
     const loadParam = parsed.searchParams.get("load");
     const puzzleParam = parsed.searchParams.get("puzzle");
+    const idParam = parsed.searchParams.get("id");
+    const hash = parsed.hash.replace(/^#/, "");
     if (host === "sudokupad.app") {
-      const id = clean(path || loadParam || puzzleParam || "");
-      return id ? `https://sudokupad.app/${id}` : "";
+      return toCanonical(path || loadParam || puzzleParam || idParam || hash || "");
     }
     if (host === "app.crackingthecryptic.com") {
-      const id = clean(path || loadParam || puzzleParam || "");
-      return id ? `https://sudokupad.app/${id}` : "";
+      return toCanonical(path || loadParam || puzzleParam || idParam || hash || "");
     }
     return "";
   } catch {
-    const idMatch = candidate.match(/\b([a-z0-9_-]{8,})\b/i);
+    const idMatch = candidate.match(SUDOKUPAD_ID_PATTERN);
     if (!idMatch) return "";
-    return `https://sudokupad.app/${idMatch[1]}`;
+    return `https://sudokupad.app/${idMatch[0]}`;
   }
 }
 
@@ -554,6 +571,9 @@ export function CtCArchivePage() {
                   <div key={entry.id} className="card archiveEntryCard">
                     <div className="archiveEntryHead">
                       <div className="archiveEntryMain archiveDetailsGrid">
+                        <button className="btn primary archiveImportBtn" disabled={importingId === entry.id} onClick={() => onImport(entry)} aria-label="Import Puzzle">
+                          {importingId === entry.id ? "Importing…" : <span className="archiveImportText"><span>IMPORT</span><span>PUZZLE</span></span>}
+                        </button>
                         {entry.sudokuPadUrl ? (
                           <a className="btn archiveOpenIcon" href={entry.sudokuPadUrl} target="_blank" rel="noreferrer noopener" title="Open SudokuPad" aria-label="Open SudokuPad">
                             <img src={SUDOKUPAD_ICON_URL} alt="" className="archiveIconImage" />
@@ -573,9 +593,6 @@ export function CtCArchivePage() {
                             {display(entry.puzzleAuthor)} • {display(entry.subTypeConstraints)}
                           </div>
                         </div>
-                        <button className="btn primary archiveImportBtn" disabled={importingId === entry.id} onClick={() => onImport(entry)} aria-label="Import Puzzle">
-                          {importingId === entry.id ? "Importing…" : <span className="archiveImportText"><span>Import</span><span>Puzzle</span></span>}
-                        </button>
                         {entry.youtubeUrl ? (
                           <a className="btn archiveOpenIcon" href={entry.youtubeUrl} target="_blank" rel="noreferrer noopener" title="Open YouTube" aria-label="Open YouTube">
                             <img src={YOUTUBE_ICON_DATA_URL} alt="" className="archiveIconImage" />
@@ -588,7 +605,7 @@ export function CtCArchivePage() {
                         <div className="archiveInfoText">
                           <div style={{ fontSize: 14 }}>{display(entry.videoTitle)}</div>
                           <div className="muted" style={{ fontSize: 13 }}>
-                            {display(entry.videoHost)} • {display(entry.videoDate)} • {formatDurationHm(entry.videoLengthSeconds)} • Type: {display(entry.videoType)}
+                            {display(entry.videoHost)} • {display(entry.videoDate)} • {formatDurationHm(entry.videoLengthSeconds)}
                           </div>
                         </div>
                       </div>
