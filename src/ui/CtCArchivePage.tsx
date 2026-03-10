@@ -274,16 +274,25 @@ async function fetchArchiveSudokuPadLinks(): Promise<Map<string, string>> {
   }
   const linksByUrlCell = new Map<string, string>();
   if (!html) return linksByUrlCell;
-  const re = new RegExp(
-    `\\\\"3\\\\":\\[2,\\\\"(G\\\\d+)\\\\"\\][\\\\s\\\\S]{0,${ARCHIVE_EDIT_CELL_TO_LINK_SEARCH_WINDOW}}?\\\\"24\\\\":\\\\"(https:\\\\/\\\\/(?:sudokupad\\\\.app|app\\\\.crackingthecryptic\\\\.com)[^\\\\"]+)\\\\"`,
-    "gi"
-  );
-  let match: RegExpExecArray | null = null;
-  while ((match = re.exec(html))) {
-    const urlCell = clean(match[1]).toUpperCase();
-    const url = clean(match[2]).replace(/\\u003d/g, "=").replace(/\\\//g, "/");
-    if (urlCell && url && !linksByUrlCell.has(urlCell)) {
-      linksByUrlCell.set(urlCell, url);
+  const patterns = [
+    new RegExp(
+      `\\\\"3\\\\":\\[2,\\\\"([A-Z]+\\\\d+)\\\\"\\][\\\\s\\\\S]{0,${ARCHIVE_EDIT_CELL_TO_LINK_SEARCH_WINDOW}}?\\\\"24\\\\":\\\\"(https?:\\\\/\\\\/(?:sudokupad\\\\.app|app\\\\.crackingthecryptic\\\\.com)[^\\\\"]+)\\\\"`,
+      "gi"
+    ),
+    new RegExp(
+      `"3":\\[2,"([A-Z]+\\d+)"\\][\\s\\S]{0,${ARCHIVE_EDIT_CELL_TO_LINK_SEARCH_WINDOW}}?"24":"(https?:\\/\\/(?:sudokupad\\.app|app\\.crackingthecryptic\\.com)[^"]+)"`,
+      "gi"
+    ),
+  ];
+  for (const re of patterns) {
+    let match: RegExpExecArray | null = null;
+    while ((match = re.exec(html))) {
+      const urlCell = clean(match[1]).toUpperCase();
+      const rawUrl = clean(match[2]).replace(/\\u003d/g, "=").replace(/\\\//g, "/");
+      const url = normalizeSudokuPadUrl(rawUrl);
+      if (urlCell && url && !linksByUrlCell.has(urlCell)) {
+        linksByUrlCell.set(urlCell, url);
+      }
     }
   }
   return linksByUrlCell;
@@ -332,7 +341,7 @@ function parseArchiveRows(csv: string, sudokuPadLinksByUrlCell: Map<string, stri
       const collection = byIdx(iCollection);
       const sudokuPadFromColumn = byIdx(iSudokuPad);
       const youtubeFromColumn = byIdx(iYoutube);
-      const urlCell = byIdx(iUrlCell).toUpperCase();
+      const urlCell = byIdx(iUrlCell).replace(/\$/g, "").toUpperCase();
       const sudokuPadFromUrlCell = sudokuPadLinksByUrlCell.get(urlCell) ?? "";
       const sudokuPadUrl =
         normalizeSudokuPadUrl(sudokuPadFromColumn) ||
