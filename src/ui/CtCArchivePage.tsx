@@ -42,12 +42,15 @@ const FALLBACK_VIDEO_TITLE_INDEX = 2;
 const FALLBACK_VIDEO_LENGTH_INDEX = 3;
 const FALLBACK_VIDEO_DATE_INDEX = 4;
 const ARCHIVE_VIDEO_TYPE_SUDOKU = "sudoku";
-const ARCHIVE_EDIT_CELL_TO_LINK_SEARCH_WINDOW = 1200;
 const SUDOKUPAD_ICON_URL = "https://sudokupad.app/images/sudokupad_square_logo.png";
 const YOUTUBE_ICON_DATA_URL =
   "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='1' y='4' width='22' height='16' rx='4' fill='%23ff0000'/%3E%3Cpolygon points='10,8 17,12 10,16' fill='white'/%3E%3C/svg%3E";
-// Puzzle IDs are typically 6+ chars and include at least one letter and one digit.
-const SUDOKUPAD_ID_PATTERN = /\b(?=[a-z0-9_-]{6,}\b)(?=[a-z0-9_-]*[a-z])(?=[a-z0-9_-]*\d)[a-z0-9_-]+\b/i;
+const SP_ICON_TEXT = "🔢";
+// These keys come from the embedded Google Sheets cell payload in the /edit page response.
+const EDIT_PAGE_CELL_TEXT_KEY = "7";
+const EDIT_PAGE_CELL_HYPERLINK_KEY = "24";
+const EDIT_PAGE_SP_HYPERLINK_PATTERN = `\\\\"${EDIT_PAGE_CELL_TEXT_KEY}\\\\":\\[2,\\\\"${SP_ICON_TEXT}\\\\"\\][\\s\\S]*?\\\\"${EDIT_PAGE_CELL_HYPERLINK_KEY}\\\\":\\\\"([^\\\\"]+)\\\\"`;
+const SUDOKUPAD_URL_IN_ROW_REGEX = /https?:\/\/(?:sudokupad\.app|app\.crackingthecryptic\.com)\//i;
 
 // Accepts either a full Google Sheets URL or a bare sheet ID.
 const CTC_ARCHIVE_SHEET_SOURCE = "https://docs.google.com/spreadsheets/d/11TrxONoAWMvP8ibULZqtNwG4WWripAcPIS9J-wi3emc/edit#gid=0";
@@ -92,43 +95,6 @@ function formatDurationHm(seconds: number | null): string {
   return `${hours}h ${minutes}m`;
 }
 
-function parseCsv(text: string): string[][] {
-  const rows: string[][] = [];
-  let row: string[] = [];
-  let cur = "";
-  let inQuotes = false;
-  for (let i = 0; i < text.length; i++) {
-    const ch = text[i];
-    const next = text[i + 1];
-    if (ch === "\"") {
-      if (inQuotes && next === "\"") {
-        cur += "\"";
-        i++;
-      } else {
-        inQuotes = !inQuotes;
-      }
-      continue;
-    }
-    if (!inQuotes && ch === ",") {
-      row.push(cur);
-      cur = "";
-      continue;
-    }
-    if (!inQuotes && (ch === "\n" || ch === "\r")) {
-      if (ch === "\r" && next === "\n") i++;
-      row.push(cur);
-      rows.push(row);
-      row = [];
-      cur = "";
-      continue;
-    }
-    cur += ch;
-  }
-  row.push(cur);
-  rows.push(row);
-  return rows.filter((r) => r.some((c) => clean(c)));
-}
-
 function normalizeHeader(v: string) {
   return clean(v).toLowerCase().replace(/[^a-z0-9]+/g, "");
 }
@@ -144,49 +110,6 @@ function extractSourceId(rawInput: string): string {
     return clean(path || hash || qp || s);
   } catch {
     return s.replace(/^\/+/, "");
-  }
-}
-
-/** Normalizes raw spreadsheet SudokuPad values (URL, embedded URL, or puzzle ID) into https://sudokupad.app/{id}. */
-function normalizeSudokuPadUrl(rawInput: string): string {
-  const text = clean(rawInput);
-  if (!text) return "";
-  const embeddedUrlMatch = text.match(/https?:\/\/(?:sudokupad\.app|app\.crackingthecryptic\.com)[^\s")]+/i);
-  const candidate = embeddedUrlMatch?.[0] ?? text;
-  const toCanonical = (rawId: string) => {
-    const decoded = clean(decodeURIComponent(rawId)).replace(/^\/+|\/+$/g, "");
-    if (!decoded) return "";
-    const parts = decoded.split("/").filter(Boolean);
-    const last = parts.at(-1) ?? "";
-    const fromLast = clean(last);
-    const generic = new Set(["sudoku", "puzzle", "app", "play"]);
-    const idCandidate = generic.has(fromLast.toLowerCase()) ? "" : fromLast;
-    const token =
-      idCandidate ||
-      clean(
-        (decoded.match(SUDOKUPAD_ID_PATTERN) ?? [])[0] ?? ""
-      );
-    return token ? `https://sudokupad.app/${token}` : "";
-  };
-  try {
-    const parsed = new URL(candidate);
-    const host = parsed.hostname.toLowerCase();
-    const path = parsed.pathname.replace(/^\/+/, "").replace(/\/+$/g, "");
-    const loadParam = parsed.searchParams.get("load");
-    const puzzleParam = parsed.searchParams.get("puzzle");
-    const idParam = parsed.searchParams.get("id");
-    const hash = parsed.hash.replace(/^#/, "");
-    if (host === "sudokupad.app") {
-      return toCanonical(path || loadParam || puzzleParam || idParam || hash || "");
-    }
-    if (host === "app.crackingthecryptic.com") {
-      return toCanonical(path || loadParam || puzzleParam || idParam || hash || "");
-    }
-    return "";
-  } catch {
-    const idMatch = candidate.match(SUDOKUPAD_ID_PATTERN);
-    if (!idMatch) return "";
-    return `https://sudokupad.app/${idMatch[0]}`;
   }
 }
 
@@ -207,7 +130,7 @@ function buildSourceCandidates(baseUrl: string) {
   ];
 }
 
-function buildArchiveCsvUrls(source: string): string[] {
+function buildArchiveGvizJsonUrls(source: string): string[] {
   const trimmed = clean(source);
   if (!trimmed) return [];
   if (/^https?:\/\//i.test(trimmed) && !/\/spreadsheets\/d\//i.test(trimmed)) {
@@ -218,26 +141,48 @@ function buildArchiveCsvUrls(source: string): string[] {
   const gidMatch = trimmed.match(/[?#&]gid=(\d+)/);
   const gid = gidMatch?.[1] ?? "";
   const gidSuffix = gid ? `&gid=${encodeURIComponent(gid)}` : "";
-  const baseUrls = [
-    `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv${gidSuffix}`,
-    `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv${gidSuffix}`,
-  ];
-  return baseUrls.flatMap(buildSourceCandidates);
-}
-
-function buildArchiveEditUrls(source: string): string[] {
-  const trimmed = clean(source);
-  if (!trimmed) return [];
-  const sheetMatch = trimmed.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
-  const sheetId = sheetMatch?.[1] ?? trimmed;
-  const gidMatch = trimmed.match(/[?#&]gid=(\d+)/);
-  const gid = gidMatch?.[1] ?? "0";
-  const baseUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/edit?gid=${encodeURIComponent(gid)}`;
+  const baseUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json${gidSuffix}`;
   return buildSourceCandidates(baseUrl);
 }
 
-async function fetchArchiveCsv(): Promise<string> {
-  const urls = buildArchiveCsvUrls(CTC_ARCHIVE_SHEET_SOURCE);
+function decodeGoogleEscaped(v: string): string {
+  return v
+    .replace(/\\u003d/gi, "=")
+    .replace(/\\u0026/gi, "&")
+    .replace(/\\u002f/gi, "/")
+    .replace(/\\\//g, "/")
+    .replace(/\\u003a/gi, ":")
+    .replace(/\\u003f/gi, "?");
+}
+
+function parseGvizJsonRows(payload: string): string[][] {
+  const prefix = "google.visualization.Query.setResponse(";
+  const start = payload.indexOf(prefix);
+  if (start < 0) return [];
+  let jsonText = payload.slice(start + prefix.length).trim();
+  if (jsonText.endsWith(");")) jsonText = jsonText.slice(0, -2);
+  const parsed = JSON.parse(jsonText) as {
+    table?: {
+      cols?: Array<{ label?: string }>;
+      rows?: Array<{ c?: Array<{ v?: unknown } | null> }>;
+    };
+  };
+  const cols = parsed.table?.cols ?? [];
+  const rows = parsed.table?.rows ?? [];
+  const header = cols.map((c) => clean(c.label));
+  const body = rows.map((row) =>
+    (row.c ?? []).map((cell) => {
+      if (!cell || cell.v == null) return "";
+      const value = cell.v;
+      if (typeof value === "string") return clean(value);
+      return clean(String(value));
+    })
+  );
+  return [header, ...body].filter((r) => r.some((c) => clean(c)));
+}
+
+async function fetchArchiveSudokuPadLinks(): Promise<string[]> {
+  const urls = buildSourceCandidates(CTC_ARCHIVE_SHEET_SOURCE);
   let lastErr: unknown;
   for (const url of urls) {
     try {
@@ -247,7 +192,40 @@ async function fetchArchiveCsv(): Promise<string> {
         continue;
       }
       const text = await res.text();
-      if (text.includes(",")) return text;
+      const links: string[] = [];
+      const linkRegex = new RegExp(EDIT_PAGE_SP_HYPERLINK_PATTERN, "g");
+      for (const match of text.matchAll(linkRegex)) {
+        const decoded = clean(decodeGoogleEscaped(match[1] ?? ""));
+        if (decoded) links.push(decoded);
+      }
+      if (links.length) return links;
+    } catch (err) {
+      lastErr = err;
+    }
+  }
+  if (lastErr) console.warn("Unable to recover SudokuPad hyperlinks from sheet page", lastErr);
+  return [];
+}
+
+function looksLikeSudokuPadUrl(value: string): boolean {
+  return SUDOKUPAD_URL_IN_ROW_REGEX.test(clean(value));
+}
+
+async function fetchArchiveRows(): Promise<{ rows: string[][]; sudokuPadLinks: string[] }> {
+  const urls = buildArchiveGvizJsonUrls(CTC_ARCHIVE_SHEET_SOURCE);
+  let lastErr: unknown;
+  for (const url of urls) {
+    try {
+      const res = (await Promise.race([fetch(url), timeout(12000)])) as Response;
+      if (!res.ok) {
+        lastErr = new Error(`HTTP ${res.status}`);
+        continue;
+      }
+      const rows = parseGvizJsonRows(await res.text());
+      if (rows.length > 1) {
+        const sudokuPadLinks = await fetchArchiveSudokuPadLinks();
+        return { rows, sudokuPadLinks };
+      }
       lastErr = new Error("Unexpected archive payload");
     } catch (err) {
       lastErr = err;
@@ -256,46 +234,20 @@ async function fetchArchiveCsv(): Promise<string> {
   throw lastErr instanceof Error ? lastErr : new Error("Unable to load CtC archive sheet");
 }
 
-async function fetchArchiveSudokuPadLinks(): Promise<Map<string, string>> {
-  const urls = buildArchiveEditUrls(CTC_ARCHIVE_SHEET_SOURCE);
-  let html = "";
-  for (const url of urls) {
-    try {
-      const res = (await Promise.race([fetch(url), timeout(12000)])) as Response;
-      if (!res.ok) continue;
-      const text = await res.text();
-      if (/sudokupad\.app|app\.crackingthecryptic\.com/i.test(text)) {
-        html = text;
-        break;
-      }
-    } catch {
-      // try next source candidate
-    }
+function pickSudokuPadUrl(row: string[], iSudokuPad: number, links: string[], linkIndexRef: { current: number }): string {
+  const fromColumn = clean(iSudokuPad >= 0 ? row[iSudokuPad] : "");
+  if (looksLikeSudokuPadUrl(fromColumn)) {
+    return fromColumn;
   }
-  const linksByUrlCell = new Map<string, string>();
-  if (!html) return linksByUrlCell;
-  const patterns = [
-    new RegExp(
-      `\\\\"3\\\\":\\[2,\\\\"([A-Z]+\\\\d+)\\\\"\\][\\\\s\\\\S]{0,${ARCHIVE_EDIT_CELL_TO_LINK_SEARCH_WINDOW}}?\\\\"24\\\\":\\\\"(https?:\\\\/\\\\/(?:sudokupad\\\\.app|app\\\\.crackingthecryptic\\\\.com)[^\\\\"]+)\\\\"`,
-      "gi"
-    ),
-    new RegExp(
-      `"3":\\[2,"([A-Z]+\\d+)"\\][\\s\\S]{0,${ARCHIVE_EDIT_CELL_TO_LINK_SEARCH_WINDOW}}?"24":"(https?:\\/\\/(?:sudokupad\\.app|app\\.crackingthecryptic\\.com)[^"]+)"`,
-      "gi"
-    ),
-  ];
-  for (const re of patterns) {
-    let match: RegExpExecArray | null = null;
-    while ((match = re.exec(html))) {
-      const urlCell = clean(match[1]).toUpperCase();
-      const rawUrl = clean(match[2]).replace(/\\u003d/g, "=").replace(/\\\//g, "/");
-      const url = normalizeSudokuPadUrl(rawUrl);
-      if (urlCell && url && !linksByUrlCell.has(urlCell)) {
-        linksByUrlCell.set(urlCell, url);
-      }
-    }
+  const discovered = clean(
+    row.find((cell) => SUDOKUPAD_URL_IN_ROW_REGEX.test(cell ?? ""))?.trim() ?? ""
+  );
+  if (fromColumn === SP_ICON_TEXT) {
+    const fromHyperlink = clean(links[linkIndexRef.current] ?? "");
+    linkIndexRef.current += 1;
+    return fromHyperlink || discovered;
   }
-  return linksByUrlCell;
+  return discovered;
 }
 
 function findIndexByAliases(headers: string[], aliases: string[]) {
@@ -307,8 +259,7 @@ function findIndexByAliases(headers: string[], aliases: string[]) {
   return -1;
 }
 
-function parseArchiveRows(csv: string, sudokuPadLinksByUrlCell: Map<string, string>): ArchiveEntry[] {
-  const rows = parseCsv(csv);
+function parseArchiveRows(rows: string[][], sudokuPadLinks: string[] = []): ArchiveEntry[] {
   if (!rows.length) return [];
   const header = rows[0];
   const body = rows.slice(1);
@@ -322,10 +273,9 @@ function parseArchiveRows(csv: string, sudokuPadLinksByUrlCell: Map<string, stri
   const iVideoHost = findIndexByAliases(header, ["video host", "host", "channel"]);
   const iVideoType = findIndexByAliases(header, ["video type", "type"]);
   const iCollection = findIndexByAliases(header, ["collection", "series"]);
-  const iSudokuPad = findIndexByAliases(header, ["sudokupad", "sudoku pad", "puzzle link", "sp"]);
+  const iSudokuPad = findIndexByAliases(header, ["sp", "sudokupad", "sudoku pad", "puzzle link", "sudokupadlink"]);
   const iYoutube = findIndexByAliases(header, ["youtube", "video link", "youtube link"]);
-  const iUrlCell = findIndexByAliases(header, ["url cell"]);
-
+  const linkIndexRef = { current: 0 };
   return body
     .map((row, idx) => {
       const byIdx = (i: number, fallback = "") => clean(i >= 0 ? row[i] : fallback);
@@ -339,14 +289,8 @@ function parseArchiveRows(csv: string, sudokuPadLinksByUrlCell: Map<string, stri
       const videoHost = byIdx(iVideoHost);
       const videoType = byIdx(iVideoType);
       const collection = byIdx(iCollection);
-      const sudokuPadFromColumn = byIdx(iSudokuPad);
       const youtubeFromColumn = byIdx(iYoutube);
-      const urlCell = byIdx(iUrlCell).replace(/\$/g, "").toUpperCase();
-      const sudokuPadFromUrlCell = sudokuPadLinksByUrlCell.get(urlCell) ?? "";
-      const sudokuPadUrl =
-        normalizeSudokuPadUrl(sudokuPadFromColumn) ||
-        normalizeSudokuPadUrl(sudokuPadFromUrlCell) ||
-        normalizeSudokuPadUrl(row.find((cell) => /sudokupad\.app|app\.crackingthecryptic\.com/i.test(cell ?? ""))?.trim() || "");
+      const sudokuPadUrl = pickSudokuPadUrl(row, iSudokuPad, sudokuPadLinks, linkIndexRef);
       const youtubeUrl =
         youtubeFromColumn ||
         row.find((cell) => /youtu\.?be|youtube\.com/i.test(cell ?? ""))?.trim() ||
@@ -396,8 +340,8 @@ export function CtCArchivePage() {
     setLoading(true);
     setError("");
     try {
-      const [csv, sudokuPadLinksByUrlCell] = await Promise.all([fetchArchiveCsv(), fetchArchiveSudokuPadLinks()]);
-      setRows(parseArchiveRows(csv, sudokuPadLinksByUrlCell));
+      const { rows: parsedRows, sudokuPadLinks } = await fetchArchiveRows();
+      setRows(parseArchiveRows(parsedRows, sudokuPadLinks));
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
