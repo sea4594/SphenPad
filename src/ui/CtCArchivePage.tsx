@@ -32,6 +32,15 @@ type SearchField =
   | "collection";
 type SortField = "title" | "video_length" | "date";
 
+const SEARCH_FIELDS = new Set<SearchField>(["any", "title", "constraints", "video_title", "author", "host", "collection"]);
+const SORT_FIELDS = new Set<SortField>(["title", "video_length", "date"]);
+
+const FALLBACK_TITLE_INDEX = 0;
+const FALLBACK_CONSTRAINTS_INDEX = 1;
+const FALLBACK_VIDEO_TITLE_INDEX = 2;
+const FALLBACK_VIDEO_LENGTH_INDEX = 3;
+const FALLBACK_VIDEO_DATE_INDEX = 4;
+
 const CTC_ARCHIVE_SHEET_ID = "11TrxONoAWMvP8ibULZqtNwG4WWripAcPIS9J-wi3emc";
 
 function timeout(ms: number) {
@@ -113,6 +122,14 @@ function extractSourceId(rawInput: string): string {
   }
 }
 
+function isSearchField(value: string): value is SearchField {
+  return SEARCH_FIELDS.has(value as SearchField);
+}
+
+function isSortField(value: string): value is SortField {
+  return SORT_FIELDS.has(value as SortField);
+}
+
 function buildSourceCandidates(baseUrl: string) {
   const encoded = encodeURIComponent(baseUrl);
   return [
@@ -175,11 +192,12 @@ function parseArchiveRows(csv: string): ArchiveEntry[] {
   return body
     .map((row, idx) => {
       const byIdx = (i: number, fallback = "") => clean(i >= 0 ? row[i] : fallback);
-      const title = byIdx(iTitle, row[0] ?? "");
-      const subTypeConstraints = byIdx(iConstraints, row[1] ?? "");
-      const videoTitle = byIdx(iVideoTitle, row[2] ?? "");
-      const videoLength = byIdx(iVideoLength, row[3] ?? "");
-      const videoDate = byIdx(iVideoDate, row[4] ?? "");
+      const title = byIdx(iTitle, row[FALLBACK_TITLE_INDEX] ?? "");
+      const subTypeConstraints = byIdx(iConstraints, row[FALLBACK_CONSTRAINTS_INDEX] ?? "");
+      const videoTitle = byIdx(iVideoTitle, row[FALLBACK_VIDEO_TITLE_INDEX] ?? "");
+      const videoLength = byIdx(iVideoLength, row[FALLBACK_VIDEO_LENGTH_INDEX] ?? "");
+      const videoDate = byIdx(iVideoDate, row[FALLBACK_VIDEO_DATE_INDEX] ?? "");
+      const parsedDateTs = Date.parse(videoDate);
       const puzzleAuthor = byIdx(iPuzzleAuthor);
       const videoHost = byIdx(iVideoHost);
       const collection = byIdx(iCollection);
@@ -202,7 +220,7 @@ function parseArchiveRows(csv: string): ArchiveEntry[] {
         videoLength,
         videoLengthSeconds: parseDurationSeconds(videoLength),
         videoDate,
-        videoDateTs: Number.isFinite(Date.parse(videoDate)) ? Date.parse(videoDate) : null,
+        videoDateTs: Number.isFinite(parsedDateTs) ? parsedDateTs : null,
         puzzleAuthor,
         videoHost,
         collection,
@@ -222,6 +240,7 @@ export function CtCArchivePage() {
   const [expanded, setExpanded] = useState<string>("");
   const [importingId, setImportingId] = useState<string>("");
   const [completedKeys, setCompletedKeys] = useState<Set<string>>(new Set());
+  const [uiMessage, setUiMessage] = useState("");
 
   const [query, setQuery] = useState("");
   const [searchField, setSearchField] = useState<SearchField>("any");
@@ -309,9 +328,10 @@ export function CtCArchivePage() {
 
   async function onImport(entry: ArchiveEntry) {
     if (!entry.sudokuPadUrl) {
-      alert("This archive row does not have a SudokuPad link.");
+      setUiMessage("This archive row does not have a SudokuPad link.");
       return;
     }
+    setUiMessage("");
     setImportingId(entry.id);
     try {
       const { key, def } = await loadFromSudokuPad(entry.sudokuPadUrl);
@@ -325,10 +345,10 @@ export function CtCArchivePage() {
         updatedAt: now,
         createdAt: existing?.createdAt ?? now,
       });
-      alert(`Imported: ${def.meta?.title ?? key}`);
+      setUiMessage(`Imported: ${def.meta?.title ?? key}`);
       await refreshCompleted();
     } catch (e: unknown) {
-      alert(e instanceof Error ? e.message : String(e));
+      setUiMessage(e instanceof Error ? e.message : String(e));
     } finally {
       setImportingId("");
     }
@@ -355,7 +375,14 @@ export function CtCArchivePage() {
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
               />
-              <select className="btn menuControlSelect" value={searchField} onChange={(e) => setSearchField(e.target.value as SearchField)}>
+              <select
+                className="btn menuControlSelect"
+                value={searchField}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  if (isSearchField(value)) setSearchField(value);
+                }}
+              >
                 <option value="any">Search: Any field</option>
                 <option value="title">Title</option>
                 <option value="constraints">Constraints</option>
@@ -364,7 +391,14 @@ export function CtCArchivePage() {
                 <option value="host">Video host</option>
                 <option value="collection">Collection</option>
               </select>
-              <select className="btn menuControlSelect" value={sortField} onChange={(e) => setSortField(e.target.value as SortField)}>
+              <select
+                className="btn menuControlSelect"
+                value={sortField}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  if (isSortField(value)) setSortField(value);
+                }}
+              >
                 <option value="date">Sort: Video date</option>
                 <option value="title">Sort: Puzzle title</option>
                 <option value="video_length">Sort: Video length</option>
@@ -393,6 +427,7 @@ export function CtCArchivePage() {
 
             {error && <div className="muted" style={{ marginTop: 10 }}>{error}</div>}
             {loading && <div className="muted" style={{ marginTop: 10 }}>Loading archive…</div>}
+            {!!uiMessage && <div className="muted" style={{ marginTop: 10 }}>{uiMessage}</div>}
 
             <div className="menuPuzzleList">
               {filteredRows.map((entry) => {
