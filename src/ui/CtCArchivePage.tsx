@@ -44,7 +44,8 @@ const FALLBACK_VIDEO_DATE_INDEX = 4;
 const ARCHIVE_VIDEO_TYPE_SUDOKU = "sudoku";
 const ARCHIVE_EDIT_CELL_TO_LINK_SEARCH_WINDOW = 1200;
 const SUDOKUPAD_ICON_URL = "https://sudokupad.app/images/sudokupad_square_logo.png";
-const YOUTUBE_ICON_URL = "https://www.freeiconspng.com/uploads/logo-youtube-png-clipart-11.png";
+const YOUTUBE_ICON_DATA_URL =
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='1' y='4' width='22' height='16' rx='4' fill='%23ff0000'/%3E%3Cpolygon points='10,8 17,12 10,16' fill='white'/%3E%3C/svg%3E";
 
 // Accepts either a full Google Sheets URL or a bare sheet ID.
 const CTC_ARCHIVE_SHEET_SOURCE = "https://docs.google.com/spreadsheets/d/11TrxONoAWMvP8ibULZqtNwG4WWripAcPIS9J-wi3emc/edit#gid=0";
@@ -144,6 +145,7 @@ function extractSourceId(rawInput: string): string {
   }
 }
 
+/** Normalizes raw spreadsheet SudokuPad values (URL, embedded URL, or puzzle ID) into https://sudokupad.app/{id}. */
 function normalizeSudokuPadUrl(rawInput: string): string {
   const text = clean(rawInput);
   if (!text) return "";
@@ -571,16 +573,16 @@ export function CtCArchivePage() {
                             {display(entry.puzzleAuthor)} • {display(entry.subTypeConstraints)}
                           </div>
                         </div>
-                        <button className="btn primary archiveImportBtn" disabled={importingId === entry.id} onClick={() => onImport(entry)}>
-                          {importingId === entry.id ? "Importing…" : <>Import<br />Puzzle</>}
+                        <button className="btn primary archiveImportBtn" disabled={importingId === entry.id} onClick={() => onImport(entry)} aria-label="Import Puzzle">
+                          {importingId === entry.id ? "Importing…" : <span className="archiveImportText"><span>Import</span><span>Puzzle</span></span>}
                         </button>
                         {entry.youtubeUrl ? (
                           <a className="btn archiveOpenIcon" href={entry.youtubeUrl} target="_blank" rel="noreferrer noopener" title="Open YouTube" aria-label="Open YouTube">
-                            <img src={YOUTUBE_ICON_URL} alt="" className="archiveIconImage" />
+                            <img src={YOUTUBE_ICON_DATA_URL} alt="" className="archiveIconImage" />
                           </a>
                         ) : (
                           <button type="button" className="btn archiveOpenIcon" disabled title="Open YouTube" aria-label="Open YouTube">
-                            <img src={YOUTUBE_ICON_URL} alt="" className="archiveIconImage" />
+                            <img src={YOUTUBE_ICON_DATA_URL} alt="" className="archiveIconImage" />
                           </button>
                         )}
                         <div className="archiveInfoText">

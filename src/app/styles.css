@@ -439,6 +439,11 @@ input.url {
   text-align: center;
 }
 
+.archiveImportText {
+  display: inline-grid;
+  justify-items: center;
+}
+
 .puzzlePage {
   width: 100%;
   max-width: 1260px;
