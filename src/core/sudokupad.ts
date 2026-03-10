@@ -66,7 +66,7 @@ async function fetchPuzzlePayloadById(sourceId: string): Promise<string> {
 
   for (const url of urls) {
     try {
-      const res = await Promise.race([fetch(url), timeout(12000)]) as Response;
+      const res = await Promise.race([fetch(url), timeout(8000)]) as Response;
       if (!res.ok) {
         lastErr = new Error(`HTTP ${res.status} while fetching puzzle payload`);
         continue;
@@ -742,7 +742,7 @@ async function fetchSolveCountByCounterId(counterId: string): Promise<number | u
   const urls = buildCounterApiUrls(counterId);
   for (const url of urls) {
     try {
-      const res = await Promise.race([fetch(url), timeout(12000)]) as Response;
+      const res = await Promise.race([fetch(url), timeout(5000)]) as Response;
       if (!res.ok) continue;
       const text = await res.text();
       const parsed = tryParseJson(text);
@@ -869,7 +869,10 @@ function normalizeLayerCosmeticsToGrid(
   };
 }
 
-export async function loadFromSudokuPad(inputUrlOrId: string): Promise<{ key: string; def: PuzzleDefinition; raw: any }> {
+export async function loadFromSudokuPad(
+  inputUrlOrId: string,
+  options: { preloadedPayload?: string } = {}
+): Promise<{ key: string; def: PuzzleDefinition; raw: any }> {
   const sourceDetails = parseSourceDetails(inputUrlOrId);
   const sourceIdRaw = sourceDetails.sourceId;
   const sourceId = fixURIComponentish(sourceIdRaw);
@@ -877,8 +880,11 @@ export async function loadFromSudokuPad(inputUrlOrId: string): Promise<{ key: st
   let payloadText: string | null = null;
   let raw: any = null;
 
-  // If it looks like embedded SCL/FPuz payload, decode locally.
-  if (/^(scl|ctc|fpuz|fpuzzles)/.test(sourceId)) {
+  if (options.preloadedPayload?.trim()) {
+    // Use the pre-fetched payload (from local archive cache) directly.
+    payloadText = options.preloadedPayload;
+  } else if (/^(scl|ctc|fpuz|fpuzzles)/.test(sourceId)) {
+    // If it looks like embedded SCL/FPuz payload, decode locally.
     payloadText = sourceId;
   } else {
     // Treat as short id and fetch from SudokuPad API.
