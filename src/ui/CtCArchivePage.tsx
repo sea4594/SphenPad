@@ -41,6 +41,7 @@ const FALLBACK_VIDEO_TITLE_INDEX = 2;
 const FALLBACK_VIDEO_LENGTH_INDEX = 3;
 const FALLBACK_VIDEO_DATE_INDEX = 4;
 
+// Accepts either a full Google Sheets URL or a bare sheet ID.
 const CTC_ARCHIVE_SHEET_SOURCE = "https://docs.google.com/spreadsheets/d/11TrxONoAWMvP8ibULZqtNwG4WWripAcPIS9J-wi3emc/edit#gid=0";
 
 function timeout(ms: number) {
@@ -142,14 +143,12 @@ function buildSourceCandidates(baseUrl: string) {
 async function fetchArchiveCsv(): Promise<string> {
   const sheetMatch = CTC_ARCHIVE_SHEET_SOURCE.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
   const sheetId = sheetMatch?.[1] ?? clean(CTC_ARCHIVE_SHEET_SOURCE);
-  const gidMatch =
-    CTC_ARCHIVE_SHEET_SOURCE.match(/[?#&]gid=(\d+)/) ??
-    CTC_ARCHIVE_SHEET_SOURCE.match(/#gid=(\d+)/);
+  const gidMatch = CTC_ARCHIVE_SHEET_SOURCE.match(/[?#&]gid=(\d+)/);
   const gid = gidMatch?.[1] ?? "";
   const gidSuffix = gid ? `&gid=${encodeURIComponent(gid)}` : "";
   const baseUrls = [
     `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv${gidSuffix}`,
-    `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv${gid ? `&gid=${encodeURIComponent(gid)}` : ""}`,
+    `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv${gidSuffix}`,
   ];
   const urls = baseUrls.flatMap(buildSourceCandidates);
   let lastErr: unknown;
