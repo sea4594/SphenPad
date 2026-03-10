@@ -8,7 +8,7 @@ import { firebaseEnabled, googleLogin, googleLogout } from "../firebase/client";
 import { IconSettings } from "./icons";
 import { SettingsOverlay } from "./SettingsOverlay";
 
-type SortOrder = "recent" | "newest" | "oldest" | "az";
+type SortOrder = "recent" | "az";
 type FilterStatus = "all" | "not_started" | "in_progress" | "complete";
 
 export function MainMenu() {
@@ -37,14 +37,8 @@ export function MainMenu() {
       result = result.filter((r) => (r.progress?.status ?? "not_started") === filterStatus);
     }
 
-    const addedAt = (r: (typeof rows)[number]) => r.createdAt ?? r.updatedAt;
-
     if (sortOrder === "recent") {
       result.sort((a, b) => b.updatedAt - a.updatedAt);
-    } else if (sortOrder === "newest") {
-      result.sort((a, b) => addedAt(b) - addedAt(a));
-    } else if (sortOrder === "oldest") {
-      result.sort((a, b) => addedAt(a) - addedAt(b));
     } else if (sortOrder === "az") {
       result.sort((a, b) => {
         const ta = (a.def?.meta?.title ?? "").toLowerCase();
@@ -132,8 +126,6 @@ export function MainMenu() {
                   onChange={(e) => setSortOrder(e.target.value as SortOrder)}
                 >
                   <option value="recent">Recent</option>
-                  <option value="newest">Newest</option>
-                  <option value="oldest">Oldest</option>
                   <option value="az">A → Z</option>
                 </select>
               </label>

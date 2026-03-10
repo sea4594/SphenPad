@@ -297,6 +297,7 @@ input.url {
   margin: 0 auto;
   display: grid;
   gap: 12px;
+  align-content: start;
 }
 
 .menuSectionTitle {
@@ -308,6 +309,7 @@ input.url {
   display: grid;
   gap: 8px;
   margin-top: 10px;
+  align-content: start;
 }
 
 .menuControlLabel {
