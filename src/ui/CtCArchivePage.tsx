@@ -41,7 +41,7 @@ const FALLBACK_VIDEO_TITLE_INDEX = 2;
 const FALLBACK_VIDEO_LENGTH_INDEX = 3;
 const FALLBACK_VIDEO_DATE_INDEX = 4;
 
-const CTC_ARCHIVE_SHEET_ID = "11TrxONoAWMvP8ibULZqtNwG4WWripAcPIS9J-wi3emc";
+const CTC_ARCHIVE_SHEET_SOURCE = "https://docs.google.com/spreadsheets/d/11TrxONoAWMvP8ibULZqtNwG4WWripAcPIS9J-wi3emc/edit#gid=0";
 
 function timeout(ms: number) {
   return new Promise<never>((_, rej) => setTimeout(() => rej(new Error("Timeout")), ms));
@@ -140,9 +140,16 @@ function buildSourceCandidates(baseUrl: string) {
 }
 
 async function fetchArchiveCsv(): Promise<string> {
+  const sheetMatch = CTC_ARCHIVE_SHEET_SOURCE.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+  const sheetId = sheetMatch?.[1] ?? clean(CTC_ARCHIVE_SHEET_SOURCE);
+  const gidMatch =
+    CTC_ARCHIVE_SHEET_SOURCE.match(/[?#&]gid=(\d+)/) ??
+    CTC_ARCHIVE_SHEET_SOURCE.match(/#gid=(\d+)/);
+  const gid = gidMatch?.[1] ?? "";
+  const gidSuffix = gid ? `&gid=${encodeURIComponent(gid)}` : "";
   const baseUrls = [
-    `https://docs.google.com/spreadsheets/d/${CTC_ARCHIVE_SHEET_ID}/gviz/tq?tqx=out:csv`,
-    `https://docs.google.com/spreadsheets/d/${CTC_ARCHIVE_SHEET_ID}/export?format=csv`,
+    `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv${gidSuffix}`,
+    `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv${gid ? `&gid=${encodeURIComponent(gid)}` : ""}`,
   ];
   const urls = baseUrls.flatMap(buildSourceCandidates);
   let lastErr: unknown;
@@ -178,7 +185,7 @@ function parseArchiveRows(csv: string): ArchiveEntry[] {
   const header = rows[0];
   const body = rows.slice(1);
 
-  const iTitle = findIndexByAliases(header, ["puzzle name", "title", "puzzle", "name"]);
+  const iTitle = findIndexByAliases(header, ["puzzle title", "puzzle name", "title", "puzzle", "name"]);
   const iConstraints = findIndexByAliases(header, ["puzzle sub-type / constraints", "constraints", "sub-type"]);
   const iVideoTitle = findIndexByAliases(header, ["video title", "video"]);
   const iVideoLength = findIndexByAliases(header, ["video length", "duration", "length"]);
