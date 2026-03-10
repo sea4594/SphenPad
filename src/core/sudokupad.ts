@@ -15,6 +15,7 @@ const PROD_API_BASE = "https://api.allorigins.win/raw?url=https://sudokupad.app/
 const COUNTER_API_BASE = "https://api.sudokupad.com/counter";
 const COUNTER_PROXY_A = "https://api.codetabs.com/v1/proxy/?quest=https://api.sudokupad.com/counter";
 const COUNTER_PROXY_B = "https://api.allorigins.win/raw?url=https://api.sudokupad.com/counter";
+const MAX_NESTED_SOURCE_URL_DEPTH = 2;
 
 export const SUDOKUPAD_IMPORT_REVISION = 6;
 
@@ -106,7 +107,7 @@ function readPuzzleIdFromHash(hash: string): string {
 
 function parseSourceId(input: string, depth = 0): string {
   const s = input.trim();
-  if (!s || depth > 2) return s.replace(/^\/+/, "");
+  if (!s || depth > MAX_NESTED_SOURCE_URL_DEPTH) return s.replace(/^\/+/, "");
   try {
     const u = new URL(s);
 
@@ -131,9 +132,9 @@ function parseSourceId(input: string, depth = 0): string {
     const hash = readPuzzleIdFromHash(u.hash);
     if (hash) return hash;
 
-    // Accept sudokupad.app/<id>, app.crackingthecryptic.com/sudoku/<id>, etc.
+    // Accept sudokupad.app/<id> and legacy CtC app paths like /sudoku/<id>.
     const path = u.pathname.replace(/^\/+/, "");
-    const fromLegacyPath = path.match(/^(?:sudoku|puzzle)\/(.+)$/i)?.[1] ?? "";
+    const fromLegacyPath = path.match(/^(?:sudoku|puzzle)\/([^/]+)$/i)?.[1] ?? "";
     return fromLegacyPath || path || s;
   } catch {
     return s.replace(/^\/+/, "");
