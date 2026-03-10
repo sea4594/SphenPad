@@ -190,4 +190,5 @@ export type PersistedPuzzle = {
   undo: unknown[];
   redo: unknown[];
   updatedAt: number;
+  createdAt?: number;
 };

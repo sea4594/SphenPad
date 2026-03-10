@@ -310,6 +310,16 @@ input.url {
   margin-top: 10px;
 }
 
+.menuControlLabel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.menuControlSelect {
+  cursor: pointer;
+}
+
 .menuPuzzleRow {
   display: grid;
   grid-template-columns: 1fr auto;
