@@ -87,15 +87,54 @@ async function fetchPuzzlePayloadById(sourceId: string): Promise<string> {
   throw lastErr instanceof Error ? lastErr : new Error("Failed to fetch puzzle payload");
 }
 
-function parseSourceId(input: string): string {
+function readPuzzleIdFromHash(hash: string): string {
+  const cleaned = hash.replace(/^#+/, "").replace(/^\/+/, "");
+  if (!cleaned) return "";
+  try {
+    const fromHash = new URLSearchParams(cleaned);
+    const fromParams =
+      fromHash.get("load") ??
+      fromHash.get("puzzle") ??
+      fromHash.get("puzzleid") ??
+      fromHash.get("id") ??
+      "";
+    return fromParams || cleaned;
+  } catch {
+    return cleaned;
+  }
+}
+
+function parseSourceId(input: string, depth = 0): string {
   const s = input.trim();
+  if (!s || depth > 2) return s.replace(/^\/+/, "");
   try {
     const u = new URL(s);
-    // Accept sudokupad.app/<id> or .../#<id> etc.
+
+    // Google Sheets links can be wrapped through redirectors like /url?q=<actual-url>.
+    const nestedUrlCandidate =
+      u.searchParams.get("url") ??
+      u.searchParams.get("u") ??
+      u.searchParams.get("q");
+    if (nestedUrlCandidate && /^https?:\/\//i.test(nestedUrlCandidate)) {
+      const nested = parseSourceId(nestedUrlCandidate, depth + 1);
+      if (nested) return nested;
+    }
+
+    const qp =
+      u.searchParams.get("load") ??
+      u.searchParams.get("puzzle") ??
+      u.searchParams.get("puzzleid") ??
+      u.searchParams.get("id") ??
+      "";
+    if (qp) return qp;
+
+    const hash = readPuzzleIdFromHash(u.hash);
+    if (hash) return hash;
+
+    // Accept sudokupad.app/<id>, app.crackingthecryptic.com/sudoku/<id>, etc.
     const path = u.pathname.replace(/^\/+/, "");
-    const hash = u.hash.replace(/^#/, "");
-    const qp = u.searchParams.get("load") ?? u.searchParams.get("puzzle") ?? "";
-    return path || hash || qp || s;
+    const fromLegacyPath = path.match(/^(?:sudoku|puzzle)\/(.+)$/i)?.[1] ?? "";
+    return fromLegacyPath || path || s;
   } catch {
     return s.replace(/^\/+/, "");
   }
