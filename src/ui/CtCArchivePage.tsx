@@ -1,14 +1,22 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { normalizePuzzleKey } from "../core/id";
 import { makeInitialProgress } from "../core/scl";
-import { listPuzzles, upsertPuzzle } from "../core/storage";
+import {
+  clearArchiveCache,
+  getArchivePayload,
+  listPuzzles,
+  putArchiveEntries,
+  putArchivePayload,
+  setArchiveMeta,
+  upsertPuzzle,
+} from "../core/storage";
 import { loadFromSudokuPad } from "../core/sudokupad";
 
 type ArchiveEntry = {
   id: string;
   title: string;
-  subTypeConstraints: string;
+  constraintTypes: string[];
   videoTitle: string;
   videoLength: string;
   videoLengthSeconds: number | null;
@@ -47,11 +55,8 @@ const SUDOKUPAD_ICON_URL = "https://sudokupad.app/images/sudokupad_square_logo.p
 const YOUTUBE_ICON_DATA_URL =
   "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='1' y='4' width='22' height='16' rx='4' fill='%23ff0000'/%3E%3Cpolygon points='10,8 17,12 10,16' fill='white'/%3E%3C/svg%3E";
 const SP_ICON_TEXT = "🔢";
-// These keys come from the embedded Google Sheets cell payload in the /edit page response.
-const EDIT_PAGE_CELL_TEXT_KEY = "7";
-const EDIT_PAGE_CELL_HYPERLINK_KEY = "24";
-const EDIT_PAGE_SP_HYPERLINK_PATTERN = `\\\\"${EDIT_PAGE_CELL_TEXT_KEY}\\\\":\\[2,\\\\"${SP_ICON_TEXT}\\\\"\\][\\s\\S]*?\\\\"${EDIT_PAGE_CELL_HYPERLINK_KEY}\\\\":\\\\"([^\\\\"]+)\\\\"`;
 const SUDOKUPAD_URL_IN_ROW_REGEX = /https?:\/\/(?:sudokupad\.app|app\.crackingthecryptic\.com)\//i;
+const ARCHIVE_META_UPDATED_AT_KEY = "archiveSheetLastUpdatedAt";
 
 // Accepts either a full Google Sheets URL or a bare sheet ID.
 const CTC_ARCHIVE_SHEET_SOURCE = "https://docs.google.com/spreadsheets/d/11TrxONoAWMvP8ibULZqtNwG4WWripAcPIS9J-wi3emc/edit#gid=0";
@@ -115,10 +120,10 @@ function extractSourceId(rawInput: string): string {
   if (!s) return "";
   try {
     const u = new URL(s);
+    const qp = u.searchParams.get("load") ?? u.searchParams.get("puzzle") ?? u.searchParams.get("id") ?? "";
     const path = u.pathname.replace(/^\/+/, "");
     const hash = u.hash.replace(/^#/, "");
-    const qp = u.searchParams.get("load") ?? u.searchParams.get("puzzle") ?? "";
-    return clean(path || hash || qp || s);
+    return clean(qp || hash || path || s);
   } catch {
     return s.replace(/^\/+/, "");
   }
@@ -156,16 +161,6 @@ function buildArchiveGvizJsonUrls(source: string): string[] {
   return buildSourceCandidates(baseUrl);
 }
 
-function decodeGoogleEscaped(v: string): string {
-  return v
-    .replace(/\\u003d/gi, "=")
-    .replace(/\\u0026/gi, "&")
-    .replace(/\\u002f/gi, "/")
-    .replace(/\\\//g, "/")
-    .replace(/\\u003a/gi, ":")
-    .replace(/\\u003f/gi, "?");
-}
-
 function parseGvizJsonRows(payload: string): string[][] {
   const prefix = "google.visualization.Query.setResponse(";
   const start = payload.indexOf(prefix);
@@ -192,37 +187,77 @@ function parseGvizJsonRows(payload: string): string[][] {
   return [header, ...body].filter((r) => r.some((c) => clean(c)));
 }
 
-async function fetchArchiveSudokuPadLinks(): Promise<string[]> {
-  const urls = buildSourceCandidates(CTC_ARCHIVE_SHEET_SOURCE);
-  let lastErr: unknown;
-  for (const url of urls) {
-    try {
-      const res = (await Promise.race([fetch(url), timeout(8000)])) as Response;
-      if (!res.ok) {
-        lastErr = new Error(`HTTP ${res.status}`);
-        continue;
-      }
-      const text = await res.text();
-      const links: string[] = [];
-      const linkRegex = new RegExp(EDIT_PAGE_SP_HYPERLINK_PATTERN, "g");
-      for (const match of text.matchAll(linkRegex)) {
-        const decoded = clean(decodeGoogleEscaped(match[1] ?? ""));
-        if (decoded) links.push(decoded);
-      }
-      if (links.length) return links;
-    } catch (err) {
-      lastErr = err;
-    }
-  }
-  if (lastErr) console.warn("Unable to recover SudokuPad hyperlinks from sheet page", lastErr);
-  return [];
-}
-
 function looksLikeSudokuPadUrl(value: string): boolean {
   return SUDOKUPAD_URL_IN_ROW_REGEX.test(clean(value));
 }
 
-async function fetchArchiveRows(): Promise<{ rows: string[][]; sudokuPadLinks: string[] }> {
+function parseVideoDateTs(text: string): number | null {
+  const normalized = clean(text);
+  const parsed = Date.parse(normalized);
+  if (Number.isFinite(parsed)) return parsed;
+  const match = normalized.match(/^Date\((\d{4}),(\d{1,2}),(\d{1,2})\)/);
+  if (!match) return null;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const utc = Date.UTC(year, month, day);
+  return Number.isFinite(utc) ? utc : null;
+}
+
+function toConstraintTypes(value: string): string[] {
+  return clean(value)
+    .split(";")
+    .map((type) => clean(type))
+    .filter(Boolean);
+}
+
+function hasValidSudokuPadUrl(value: string): boolean {
+  return looksLikeSudokuPadUrl(value);
+}
+
+function normalizeArchiveEntry(raw: Partial<ArchiveEntry> & { subTypeConstraints?: string }, idx: number): ArchiveEntry | null {
+  const sudokuPadUrl = clean(raw.sudokuPadUrl);
+  const sourceId = clean(raw.sourceId || extractSourceId(sudokuPadUrl));
+  const stableKey = clean(raw.stableKey || toStableKey(sourceId));
+  if (!hasValidSudokuPadUrl(sudokuPadUrl) || !sourceId || !stableKey || stableKey === "unknown") return null;
+
+  const constraintTypes =
+    Array.isArray(raw.constraintTypes) && raw.constraintTypes.length
+      ? raw.constraintTypes.map((type) => clean(type)).filter(Boolean)
+      : toConstraintTypes(clean(raw.subTypeConstraints));
+  const videoDate = clean(raw.videoDate);
+  const videoDateTs = raw.videoDateTs ?? parseVideoDateTs(videoDate);
+  const videoLength = clean(raw.videoLength);
+  return {
+    id: clean(raw.id) || `${clean(raw.title) || "entry"}-${idx}`,
+    title: clean(raw.title),
+    constraintTypes,
+    videoTitle: clean(raw.videoTitle),
+    videoLength,
+    videoLengthSeconds: raw.videoLengthSeconds ?? parseDurationSeconds(videoLength),
+    videoDate,
+    videoDateTs: Number.isFinite(videoDateTs ?? NaN) ? (videoDateTs as number) : null,
+    puzzleAuthor: clean(raw.puzzleAuthor),
+    videoHost: clean(raw.videoHost),
+    collection: clean(raw.collection),
+    videoType: clean(raw.videoType),
+    sudokuPadUrl,
+    youtubeUrl: clean(raw.youtubeUrl),
+    sourceId,
+    stableKey,
+  };
+}
+
+function mergeArchiveEntries(existing: ArchiveEntry[], incoming: ArchiveEntry[]): ArchiveEntry[] {
+  if (!incoming.length) return existing;
+  const byKey = new Map(existing.map((entry) => [entry.stableKey, entry]));
+  for (const entry of incoming) {
+    if (!byKey.has(entry.stableKey)) byKey.set(entry.stableKey, entry);
+  }
+  return Array.from(byKey.values());
+}
+
+async function fetchArchiveRows(): Promise<string[][]> {
   const urls = buildArchiveGvizJsonUrls(CTC_ARCHIVE_SHEET_SOURCE);
   let lastErr: unknown;
   for (const url of urls) {
@@ -234,8 +269,7 @@ async function fetchArchiveRows(): Promise<{ rows: string[][]; sudokuPadLinks: s
       }
       const rows = parseGvizJsonRows(await res.text());
       if (rows.length > 1) {
-        const sudokuPadLinks = await fetchArchiveSudokuPadLinks();
-        return { rows, sudokuPadLinks };
+        return rows;
       }
       lastErr = new Error("Unexpected archive payload");
     } catch (err) {
@@ -245,7 +279,7 @@ async function fetchArchiveRows(): Promise<{ rows: string[][]; sudokuPadLinks: s
   throw lastErr instanceof Error ? lastErr : new Error("Unable to load CtC archive sheet");
 }
 
-function pickSudokuPadUrl(row: string[], iSudokuPad: number, links: string[], linkIndexRef: { current: number }): string {
+function pickSudokuPadUrl(row: string[], iSudokuPad: number): string {
   const fromColumn = clean(iSudokuPad >= 0 ? row[iSudokuPad] : "");
   if (looksLikeSudokuPadUrl(fromColumn)) {
     return fromColumn;
@@ -253,11 +287,7 @@ function pickSudokuPadUrl(row: string[], iSudokuPad: number, links: string[], li
   const discovered = clean(
     row.find((cell) => SUDOKUPAD_URL_IN_ROW_REGEX.test(cell ?? ""))?.trim() ?? ""
   );
-  if (fromColumn === SP_ICON_TEXT) {
-    const fromHyperlink = clean(links[linkIndexRef.current] ?? "");
-    linkIndexRef.current += 1;
-    return fromHyperlink || discovered;
-  }
+  if (fromColumn === SP_ICON_TEXT) return "";
   return discovered;
 }
 
@@ -270,7 +300,7 @@ function findIndexByAliases(headers: string[], aliases: string[]) {
   return -1;
 }
 
-function parseArchiveRows(rows: string[][], sudokuPadLinks: string[] = []): ArchiveEntry[] {
+function parseArchiveRows(rows: string[][]): ArchiveEntry[] {
   if (!rows.length) return [];
   const header = rows[0];
   const body = rows.slice(1);
@@ -286,47 +316,40 @@ function parseArchiveRows(rows: string[][], sudokuPadLinks: string[] = []): Arch
   const iCollection = findIndexByAliases(header, ["collection", "series"]);
   const iSudokuPad = findIndexByAliases(header, ["sp", "sudokupad", "sudoku pad", "puzzle link", "sudokupadlink"]);
   const iYoutube = findIndexByAliases(header, ["youtube", "video link", "youtube link"]);
-  const linkIndexRef = { current: 0 };
   return body
     .map((row, idx) => {
       const byIdx = (i: number, fallback = "") => clean(i >= 0 ? row[i] : fallback);
       const title = byIdx(iTitle, row[FALLBACK_TITLE_INDEX] ?? "");
-      const subTypeConstraints = byIdx(iConstraints, row[FALLBACK_CONSTRAINTS_INDEX] ?? "");
+      const constraints = byIdx(iConstraints, row[FALLBACK_CONSTRAINTS_INDEX] ?? "");
       const videoTitle = byIdx(iVideoTitle, row[FALLBACK_VIDEO_TITLE_INDEX] ?? "");
       const videoLength = byIdx(iVideoLength, row[FALLBACK_VIDEO_LENGTH_INDEX] ?? "");
       const videoDate = byIdx(iVideoDate, row[FALLBACK_VIDEO_DATE_INDEX] ?? "");
-      const parsedDateTs = Date.parse(videoDate);
       const puzzleAuthor = byIdx(iPuzzleAuthor);
       const videoHost = byIdx(iVideoHost);
       const videoType = byIdx(iVideoType);
       const collection = byIdx(iCollection);
       const youtubeFromColumn = byIdx(iYoutube);
-      const sudokuPadUrl = pickSudokuPadUrl(row, iSudokuPad, sudokuPadLinks, linkIndexRef);
+      const sudokuPadUrl = pickSudokuPadUrl(row, iSudokuPad);
       const youtubeUrl =
         youtubeFromColumn ||
         row.find((cell) => /youtu\.?be|youtube\.com/i.test(cell ?? ""))?.trim() ||
         "";
-      const sourceId = extractSourceId(sudokuPadUrl);
-      const stableKey = toStableKey(sourceId);
-      return {
+      return normalizeArchiveEntry({
         id: `${title || "entry"}-${idx}`,
         title,
-        subTypeConstraints,
+        constraintTypes: toConstraintTypes(constraints),
         videoTitle,
         videoLength,
-        videoLengthSeconds: parseDurationSeconds(videoLength),
         videoDate,
-        videoDateTs: Number.isFinite(parsedDateTs) ? parsedDateTs : null,
         puzzleAuthor,
         videoHost,
-        videoType,
         collection,
+        videoType,
         sudokuPadUrl,
         youtubeUrl,
-        sourceId,
-        stableKey,
-      } satisfies ArchiveEntry;
+      }, idx);
     })
+    .filter((entry): entry is ArchiveEntry => !!entry)
     .filter((entry) => clean(entry.videoType).toLowerCase() === ARCHIVE_VIDEO_TYPE_SUDOKU)
     .filter((entry) => entry.title || entry.sudokuPadUrl || entry.videoTitle);
 }
@@ -336,9 +359,10 @@ async function loadManifest(): Promise<ArchiveEntry[] | null> {
   try {
     const res = await fetch(`${import.meta.env.BASE_URL}archive/archive-manifest.json`);
     if (!res.ok) return null;
-    const data = (await res.json()) as { entries?: ArchiveEntry[] };
+    const data = (await res.json()) as { entries?: Array<Partial<ArchiveEntry> & { subTypeConstraints?: string }> };
     if (!Array.isArray(data.entries) || data.entries.length === 0) return null;
-    return data.entries;
+    const entries = data.entries.map((entry, idx) => normalizeArchiveEntry(entry, idx)).filter((entry): entry is ArchiveEntry => !!entry);
+    return entries.length ? entries : null;
   } catch {
     return null;
   }
@@ -349,11 +373,17 @@ async function loadCachedPuzzlePayload(stableKey: string): Promise<string | unde
   if (!stableKey || stableKey === "unknown") return undefined;
   try {
     const res = await fetch(`${import.meta.env.BASE_URL}archive/puzzles/${stableKey}.json`);
-    if (!res.ok) return undefined;
-    const data = (await res.json()) as { payload?: string };
-    return typeof data.payload === "string" && data.payload.trim() ? data.payload : undefined;
+    const payload = res.ok
+      ? ((await res.json()) as { payload?: string }).payload
+      : undefined;
+    const normalizedPayload = typeof payload === "string" && payload.trim() ? payload : undefined;
+    if (normalizedPayload) {
+      await putArchivePayload(stableKey, normalizedPayload);
+      return normalizedPayload;
+    }
+    return getArchivePayload(stableKey);
   } catch {
-    return undefined;
+    return getArchivePayload(stableKey);
   }
 }
 
@@ -375,19 +405,60 @@ export function CtCArchivePage() {
   const [minLength, setMinLength] = useState("");
   const [maxLength, setMaxLength] = useState("");
 
-  async function refreshRows() {
+  const checkForNewEntries = useCallback(async (baseEntries: ArchiveEntry[]) => {
+    try {
+      const parsedRows = await fetchArchiveRows();
+      const fetchedEntries = parseArchiveRows(parsedRows);
+      const baseKeys = new Set(baseEntries.map((entry) => entry.stableKey));
+      const newEntries = fetchedEntries.filter((entry) => !baseKeys.has(entry.stableKey));
+      if (!newEntries.length) return;
+
+      setRows((prev) => mergeArchiveEntries(prev, newEntries));
+      setUiMessage(`Found ${newEntries.length} new archive puzzle${newEntries.length === 1 ? "" : "s"}.`);
+      await putArchiveEntries(newEntries.map((entry) => ({ stableKey: entry.stableKey, sourceId: entry.sourceId, data: entry })));
+      await setArchiveMeta(ARCHIVE_META_UPDATED_AT_KEY, Date.now());
+    } catch {
+      // Passive background check is non-blocking and should never disrupt archive browsing.
+    }
+  }, []);
+
+  const loadArchiveFromManifest = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
-      // Primary: load from pre-built local manifest (fast, no external requests).
       const manifestEntries = await loadManifest();
       if (manifestEntries) {
         setRows(manifestEntries);
+        setLoading(false);
+        void checkForNewEntries(manifestEntries);
         return;
       }
-      // Fallback: fetch live from Google Sheets.
-      const { rows: parsedRows, sudokuPadLinks } = await fetchArchiveRows();
-      setRows(parseArchiveRows(parsedRows, sudokuPadLinks));
+      const parsedRows = await fetchArchiveRows();
+      const entries = parseArchiveRows(parsedRows);
+      setRows(entries);
+      await putArchiveEntries(entries.map((entry) => ({ stableKey: entry.stableKey, sourceId: entry.sourceId, data: entry })));
+      await setArchiveMeta(ARCHIVE_META_UPDATED_AT_KEY, Date.now());
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setLoading(false);
+    }
+  }, [checkForNewEntries]);
+
+  async function reloadAllRows() {
+    if (!window.confirm("Are you sure you want to reload all puzzles from the CtC Archive?")) return;
+    setLoading(true);
+    setError("");
+    setUiMessage("");
+    setRows([]);
+    try {
+      await clearArchiveCache();
+      const parsedRows = await fetchArchiveRows();
+      const entries = parseArchiveRows(parsedRows);
+      setRows(entries);
+      await putArchiveEntries(entries.map((entry) => ({ stableKey: entry.stableKey, sourceId: entry.sourceId, data: entry })));
+      await setArchiveMeta(ARCHIVE_META_UPDATED_AT_KEY, Date.now());
+      setUiMessage(`Reloaded ${entries.length} archive puzzles.`);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -401,9 +472,9 @@ export function CtCArchivePage() {
   }
 
   useEffect(() => {
-    refreshRows();
+    void loadArchiveFromManifest();
     refreshCompleted();
-  }, []);
+  }, [loadArchiveFromManifest]);
 
   const hosts = useMemo(
     () => ["all", ...Array.from(new Set(rows.map((r) => r.videoHost).filter(Boolean))).sort((a, b) => a.localeCompare(b))],
@@ -425,12 +496,12 @@ export function CtCArchivePage() {
 
     const getSearchText = (r: ArchiveEntry) => {
       if (searchField === "title") return r.title;
-      if (searchField === "constraints") return r.subTypeConstraints;
+      if (searchField === "constraints") return r.constraintTypes.join("; ");
       if (searchField === "video_title") return r.videoTitle;
       if (searchField === "author") return r.puzzleAuthor;
       if (searchField === "host") return r.videoHost;
       if (searchField === "collection") return r.collection;
-      return [r.title, r.subTypeConstraints, r.videoTitle, r.puzzleAuthor, r.videoHost, r.collection].join(" ");
+      return [r.title, r.constraintTypes.join("; "), r.videoTitle, r.puzzleAuthor, r.videoHost, r.collection].join(" ");
     };
 
     const list = rows.filter((r) => {
@@ -458,7 +529,7 @@ export function CtCArchivePage() {
   }, [rows, query, searchField, sortField, hostFilter, authorFilter, collectionFilter, minLength, maxLength]);
 
   async function onImport(entry: ArchiveEntry) {
-    if (!entry.sudokuPadUrl) {
+    if (!entry.sudokuPadUrl || !entry.sourceId) {
       setUiMessage("No SudokuPad link found.");
       return;
     }
@@ -495,8 +566,8 @@ export function CtCArchivePage() {
         <button className="btn" onClick={() => nav("/")}>Back</button>
         <div className="brand">CtC Archive</div>
         <div className="spacer" />
-        <button className="btn" onClick={refreshRows} disabled={loading}>
-          {loading ? "Refreshing…" : "Refresh"}
+        <button className="btn" onClick={reloadAllRows} disabled={loading}>
+          {loading ? "Reloading…" : "Reload all"}
         </button>
       </div>
 
@@ -569,15 +640,16 @@ export function CtCArchivePage() {
             <div className="menuPuzzleList">
               {filteredRows.map((entry) => {
                 const solved = entry.sourceId ? completedKeys.has(normalizePuzzleKey(entry.sourceId)) : false;
+                const hasSudokuPad = !!entry.sudokuPadUrl && !!entry.sourceId;
                 const display = (value: string) => clean(value) || "~";
                 return (
                   <div key={entry.id} className="card archiveEntryCard">
                     <div className="archiveEntryHead">
                       <div className="archiveEntryMain archiveDetailsGrid">
-                        <button className="btn primary archiveImportBtn" disabled={importingId === entry.id} onClick={() => onImport(entry)} aria-label="Import Puzzle">
+                        <button className="btn primary archiveImportBtn" disabled={!hasSudokuPad || importingId === entry.id} onClick={() => onImport(entry)} aria-label="Import Puzzle">
                           {importingId === entry.id ? "Importing…" : <span className="archiveImportText"><span>IMPORT</span><span>PUZZLE</span></span>}
                         </button>
-                        {entry.sudokuPadUrl ? (
+                        {hasSudokuPad ? (
                           <a className="btn archiveOpenIcon" href={entry.sudokuPadUrl} target="_blank" rel="noreferrer noopener" title="Open SudokuPad" aria-label="Open SudokuPad">
                             <img src={SUDOKUPAD_ICON_URL} alt="" className="archiveIconImage" />
                           </a>
@@ -593,7 +665,7 @@ export function CtCArchivePage() {
                             <span className="archiveEntryCollection"> ({display(entry.collection)})</span>
                           </div>
                           <div className="muted" style={{ fontSize: 13 }}>
-                            {display(entry.puzzleAuthor)} • {display(entry.subTypeConstraints)}
+                            {display(entry.puzzleAuthor)} • {display(entry.constraintTypes.join("; "))}
                           </div>
                         </div>
                         {entry.youtubeUrl ? (

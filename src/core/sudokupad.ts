@@ -91,11 +91,10 @@ function parseSourceId(input: string): string {
   const s = input.trim();
   try {
     const u = new URL(s);
-    // Accept sudokupad.app/<id> or .../#<id> etc.
+    const qp = u.searchParams.get("load") ?? u.searchParams.get("puzzle") ?? u.searchParams.get("id") ?? "";
     const path = u.pathname.replace(/^\/+/, "");
     const hash = u.hash.replace(/^#/, "");
-    const qp = u.searchParams.get("load") ?? u.searchParams.get("puzzle") ?? "";
-    return path || hash || qp || s;
+    return (qp || hash || path || s).trim();
   } catch {
     return s.replace(/^\/+/, "");
   }
