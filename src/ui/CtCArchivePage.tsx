@@ -336,11 +336,12 @@ function mergeArchiveRows(existingRows: ArchiveEntry[], sheetRows: ArchiveEntry[
   const merged: ArchiveEntry[] = sheetRows.map((entry) => {
     const existing = existingById.get(entry.id);
     if (!existing) return entry;
+    const existingStableKey = clean(existing.stableKey);
     return {
       ...entry,
       sudokuPadUrl: clean(existing.sudokuPadUrl) || entry.sudokuPadUrl,
       sourceId: clean(existing.sourceId) || entry.sourceId,
-      stableKey: clean(existing.stableKey) && existing.stableKey !== "unknown" ? existing.stableKey : entry.stableKey,
+      stableKey: existingStableKey && existingStableKey !== "unknown" ? existingStableKey : entry.stableKey,
     };
   });
   const mergedIds = new Set(merged.map((entry) => entry.id));
@@ -446,23 +447,23 @@ export function CtCArchivePage() {
     try {
       const { rows: parsedRows, sudokuPadLinks } = await fetchArchiveRows();
       const nextRows = parseArchiveRows(parsedRows, sudokuPadLinks);
-      setRows(mergeArchiveRows(rows, nextRows));
+      setRows(nextRows);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
       setLoading(false);
     }
-  }, [rows]);
+  }, []);
 
-  async function refreshCompleted() {
+  const refreshCompleted = useCallback(async () => {
     const puzzles = await listPuzzles();
     setCompletedKeys(new Set(puzzles.filter((p) => p.progress?.status === "complete").map((p) => p.key)));
-  }
+  }, []);
 
   useEffect(() => {
     void refreshRows();
     void refreshCompleted();
-  }, [refreshRows]);
+  }, [refreshRows, refreshCompleted]);
 
   const hosts = useMemo(
     () => ["all", ...Array.from(new Set(rows.map((r) => r.videoHost).filter(Boolean))).sort((a, b) => a.localeCompare(b))],
@@ -648,7 +649,7 @@ export function CtCArchivePage() {
                         <div className="archiveInfoText">
                           <div className="archiveEntryTitle">
                             {solved ? "✓ " : ""}
-                            "{display(entry.title)}" — {display(entry.collection)}
+                            "{display(entry.title)}" - {display(entry.collection)}
                           </div>
                           <div className="muted" style={{ fontSize: 13 }}>
                             {display(entry.puzzleAuthor)} • {display(entry.subTypeConstraints)}
