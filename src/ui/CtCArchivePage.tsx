@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { normalizePuzzleKey } from "../core/id";
 import { makeInitialProgress } from "../core/scl";
@@ -331,6 +331,25 @@ function parseArchiveRows(rows: string[][], sudokuPadLinks: string[] = []): Arch
     .filter((entry) => entry.title || entry.sudokuPadUrl || entry.videoTitle);
 }
 
+function mergeArchiveRows(existingRows: ArchiveEntry[], sheetRows: ArchiveEntry[]): ArchiveEntry[] {
+  const existingById = new Map(existingRows.map((entry) => [entry.id, entry]));
+  const merged: ArchiveEntry[] = sheetRows.map((entry) => {
+    const existing = existingById.get(entry.id);
+    if (!existing) return entry;
+    return {
+      ...entry,
+      sudokuPadUrl: clean(existing.sudokuPadUrl) || entry.sudokuPadUrl,
+      sourceId: clean(existing.sourceId) || entry.sourceId,
+      stableKey: clean(existing.stableKey) && existing.stableKey !== "unknown" ? existing.stableKey : entry.stableKey,
+    };
+  });
+  const mergedIds = new Set(merged.map((entry) => entry.id));
+  for (const existing of existingRows) {
+    if (!mergedIds.has(existing.id)) merged.push(existing);
+  }
+  return merged;
+}
+
 /** Try to load archive entries from the local pre-built manifest. Returns null on failure. */
 async function loadManifest(): Promise<ArchiveEntry[] | null> {
   try {
@@ -361,6 +380,7 @@ export function CtCArchivePage() {
   const nav = useNavigate();
   const [rows, setRows] = useState<ArchiveEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [syncingSheet, setSyncingSheet] = useState(false);
   const [error, setError] = useState("");
   const [importingId, setImportingId] = useState<string>("");
   const [completedKeys, setCompletedKeys] = useState<Set<string>>(new Set());
@@ -375,14 +395,35 @@ export function CtCArchivePage() {
   const [minLength, setMinLength] = useState("");
   const [maxLength, setMaxLength] = useState("");
 
-  async function refreshRows() {
+  const syncNewRowsFromSheet = useCallback(async (baseRows: ArchiveEntry[]) => {
+    setSyncingSheet(true);
+    try {
+      const { rows: parsedRows, sudokuPadLinks } = await fetchArchiveRows();
+      const nextRows = parseArchiveRows(parsedRows, sudokuPadLinks);
+      const mergedRows = mergeArchiveRows(baseRows, nextRows);
+      const baseIds = new Set(baseRows.map((entry) => entry.id));
+      const added = mergedRows.filter((entry) => !baseIds.has(entry.id)).length;
+      setRows(mergedRows);
+      if (added > 0) {
+        setUiMessage(`Found ${added} new puzzle${added === 1 ? "" : "s"} from the CtC archive.`);
+      }
+    } catch (err) {
+      console.warn("Background CtC archive sync failed", err);
+    } finally {
+      setSyncingSheet(false);
+    }
+  }, []);
+
+  const refreshRows = useCallback(async () => {
     setLoading(true);
     setError("");
+    setUiMessage("");
     try {
       // Primary: load from pre-built local manifest (fast, no external requests).
       const manifestEntries = await loadManifest();
       if (manifestEntries) {
         setRows(manifestEntries);
+        void syncNewRowsFromSheet(manifestEntries);
         return;
       }
       // Fallback: fetch live from Google Sheets.
@@ -393,7 +434,25 @@ export function CtCArchivePage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [syncNewRowsFromSheet]);
+
+  const reloadAllRows = useCallback(async () => {
+    const confirmed = window.confirm("Are you sure you want to reload all puzzles from the CtC Archive?");
+    if (!confirmed) return;
+    setLoading(true);
+    setError("");
+    setUiMessage("");
+    setRows([]);
+    try {
+      const { rows: parsedRows, sudokuPadLinks } = await fetchArchiveRows();
+      const nextRows = parseArchiveRows(parsedRows, sudokuPadLinks);
+      setRows(mergeArchiveRows(rows, nextRows));
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setLoading(false);
+    }
+  }, [rows]);
 
   async function refreshCompleted() {
     const puzzles = await listPuzzles();
@@ -401,9 +460,9 @@ export function CtCArchivePage() {
   }
 
   useEffect(() => {
-    refreshRows();
-    refreshCompleted();
-  }, []);
+    void refreshRows();
+    void refreshCompleted();
+  }, [refreshRows]);
 
   const hosts = useMemo(
     () => ["all", ...Array.from(new Set(rows.map((r) => r.videoHost).filter(Boolean))).sort((a, b) => a.localeCompare(b))],
@@ -495,8 +554,8 @@ export function CtCArchivePage() {
         <button className="btn" onClick={() => nav("/")}>Back</button>
         <div className="brand">CtC Archive</div>
         <div className="spacer" />
-        <button className="btn" onClick={refreshRows} disabled={loading}>
-          {loading ? "Refreshing…" : "Refresh"}
+        <button className="btn" onClick={reloadAllRows} disabled={loading || syncingSheet}>
+          {loading ? "Reloading…" : syncingSheet ? "Checking…" : "Reload all"}
         </button>
       </div>
 
@@ -575,7 +634,7 @@ export function CtCArchivePage() {
                     <div className="archiveEntryHead">
                       <div className="archiveEntryMain archiveDetailsGrid">
                         <button className="btn primary archiveImportBtn" disabled={importingId === entry.id} onClick={() => onImport(entry)} aria-label="Import Puzzle">
-                          {importingId === entry.id ? "Importing…" : <span className="archiveImportText"><span>IMPORT</span><span>PUZZLE</span></span>}
+                          {importingId === entry.id ? "Importing…" : "IMPORT"}
                         </button>
                         {entry.sudokuPadUrl ? (
                           <a className="btn archiveOpenIcon" href={entry.sudokuPadUrl} target="_blank" rel="noreferrer noopener" title="Open SudokuPad" aria-label="Open SudokuPad">
@@ -589,8 +648,7 @@ export function CtCArchivePage() {
                         <div className="archiveInfoText">
                           <div className="archiveEntryTitle">
                             {solved ? "✓ " : ""}
-                            {display(entry.title)}
-                            <span className="archiveEntryCollection"> ({display(entry.collection)})</span>
+                            "{display(entry.title)}" — {display(entry.collection)}
                           </div>
                           <div className="muted" style={{ fontSize: 13 }}>
                             {display(entry.puzzleAuthor)} • {display(entry.subTypeConstraints)}
