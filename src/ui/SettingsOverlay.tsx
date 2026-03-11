@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useTheme, type ThemeColor } from "../app/theme";
 
 const themeChoices: Array<{ key: ThemeColor; label: string; preview: string[] }> = [
@@ -9,14 +10,24 @@ const themeChoices: Array<{ key: ThemeColor; label: string; preview: string[] }>
 ];
 
 export function SettingsOverlay(props: { onClose: () => void; onRestartRequest?: () => void }) {
+  const { onClose, onRestartRequest } = props;
   const { mode, color, setMode, setColor } = useTheme();
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      onClose();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [onClose]);
 
   return (
-    <div className="overlayBackdrop" onClick={props.onClose}>
-      <div className="card settingsCard" onClick={(e) => e.stopPropagation()}>
+    <div className="overlayBackdrop" onClick={onClose}>
+      <div className="card settingsCard" role="dialog" aria-modal="true" aria-label="Settings" onClick={(e) => e.stopPropagation()}>
         <div className="settingsHeader">
           <div style={{ fontWeight: 800, fontSize: 22 }}>Settings</div>
-          <button className="btn" onClick={props.onClose}>Close</button>
+          <button className="btn" onClick={onClose}>Close</button>
         </div>
 
         <div className="settingsSection">
@@ -50,14 +61,14 @@ export function SettingsOverlay(props: { onClose: () => void; onRestartRequest?:
             ))}
           </div>
 
-          {props.onRestartRequest ? (
+          {onRestartRequest ? (
             <div className="settingsRow" style={{ marginTop: 4 }}>
               <div className="muted">Puzzle</div>
               <button
                 className="btn"
                 onClick={() => {
-                  props.onRestartRequest?.();
-                  props.onClose();
+                  onRestartRequest?.();
+                  onClose();
                 }}
               >
                 Restart

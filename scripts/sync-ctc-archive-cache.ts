@@ -54,9 +54,6 @@ type PuzzleCache = {
 const CTC_ARCHIVE_SHEET_SOURCE =
   "https://docs.google.com/spreadsheets/d/11TrxONoAWMvP8ibULZqtNwG4WWripAcPIS9J-wi3emc/edit#gid=0";
 
-const EDIT_PAGE_CELL_TEXT_KEY = "7";
-const EDIT_PAGE_CELL_HYPERLINK_KEY = "24";
-const EDIT_PAGE_SP_HYPERLINK_PATTERN = `\\\\"${EDIT_PAGE_CELL_TEXT_KEY}\\\\":\\[2,\\\\"🔢\\\\"\\][\\s\\S]*?\\\\"${EDIT_PAGE_CELL_HYPERLINK_KEY}\\\\":\\\\"([^\\\\"]+)\\\\"`;
 const SUDOKUPAD_URL_IN_ROW_REGEX =
   /https?:\/\/(?:sudokupad\.app|app\.crackingthecryptic\.com)\//i;
 const ARCHIVE_VIDEO_TYPE_SUDOKU = "sudoku";
@@ -128,16 +125,6 @@ async function withConcurrency<T>(
 // Google Sheets parsing (mirrors CtCArchivePage.tsx logic)
 // ---------------------------------------------------------------------------
 
-function decodeGoogleEscaped(v: string): string {
-  return v
-    .replace(/\\u003d/gi, "=")
-    .replace(/\\u0026/gi, "&")
-    .replace(/\\u002f/gi, "/")
-    .replace(/\\\//g, "/")
-    .replace(/\\u003a/gi, ":")
-    .replace(/\\u003f/gi, "?");
-}
-
 function parseGvizJsonRows(payload: string): string[][] {
   const prefix = "google.visualization.Query.setResponse(";
   const start = payload.indexOf(prefix);
@@ -187,12 +174,10 @@ async function fetchSudokuPadLinks(): Promise<string[]> {
     const res = await fetchWithTimeout(CTC_ARCHIVE_SHEET_SOURCE);
     if (!res.ok) return [];
     const text = await res.text();
-    const links: string[] = [];
-    const linkRegex = new RegExp(EDIT_PAGE_SP_HYPERLINK_PATTERN, "g");
-    for (const match of text.matchAll(linkRegex)) {
-      const decoded = clean(decodeGoogleEscaped(match[1] ?? ""));
-      if (decoded) links.push(decoded);
-    }
+    const links = Array.from(
+      text.matchAll(/https?:\/\/(?:sudokupad\.app|app\.crackingthecryptic\.com)\/[^\s"'<>)\\]+/gi),
+      (match) => clean(match[0])
+    );
     return links;
   } catch (err) {
     log(`Warning: could not fetch SP hyperlinks: ${String(err)}`);
@@ -268,15 +253,12 @@ function pickSudokuPadUrl(
 ): string {
   const fromColumn = clean(iSudokuPad >= 0 ? row[iSudokuPad] : "");
   if (looksLikeSudokuPadUrl(fromColumn)) return fromColumn;
-  const discovered = clean(
-    row.find((cell) => SUDOKUPAD_URL_IN_ROW_REGEX.test(cell ?? ""))?.trim() ?? ""
-  );
   if (fromColumn === SP_ICON_TEXT) {
     const fromHyperlink = clean(links[linkIndexRef.current] ?? "");
     linkIndexRef.current += 1;
-    return fromHyperlink || discovered;
+    if (fromHyperlink) return fromHyperlink;
   }
-  return discovered;
+  return clean(row.find((cell) => SUDOKUPAD_URL_IN_ROW_REGEX.test(cell ?? ""))?.trim() ?? "");
 }
 
 function parseArchiveRows(rows: string[][], sudokuPadLinks: string[] = []): ArchiveEntry[] {

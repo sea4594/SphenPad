@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { normalizePuzzleKey } from "../core/id";
 import { makeInitialProgress } from "../core/scl";
@@ -47,11 +47,8 @@ const SUDOKUPAD_ICON_URL = "https://sudokupad.app/images/sudokupad_square_logo.p
 const YOUTUBE_ICON_DATA_URL =
   "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='1' y='4' width='22' height='16' rx='4' fill='%23ff0000'/%3E%3Cpolygon points='10,8 17,12 10,16' fill='white'/%3E%3C/svg%3E";
 const SP_ICON_TEXT = "🔢";
-// These keys come from the embedded Google Sheets cell payload in the /edit page response.
-const EDIT_PAGE_CELL_TEXT_KEY = "7";
-const EDIT_PAGE_CELL_HYPERLINK_KEY = "24";
-const EDIT_PAGE_SP_HYPERLINK_PATTERN = `\\\\"${EDIT_PAGE_CELL_TEXT_KEY}\\\\":\\[2,\\\\"${SP_ICON_TEXT}\\\\"\\][\\s\\S]*?\\\\"${EDIT_PAGE_CELL_HYPERLINK_KEY}\\\\":\\\\"([^\\\\"]+)\\\\"`;
 const SUDOKUPAD_URL_IN_ROW_REGEX = /https?:\/\/(?:sudokupad\.app|app\.crackingthecryptic\.com)\//i;
+const COLLECTION_NONE_VALUE = "none";
 
 // Accepts either a full Google Sheets URL or a bare sheet ID.
 const CTC_ARCHIVE_SHEET_SOURCE = "https://docs.google.com/spreadsheets/d/11TrxONoAWMvP8ibULZqtNwG4WWripAcPIS9J-wi3emc/edit#gid=0";
@@ -106,6 +103,19 @@ function formatDurationHm(seconds: number | null): string {
   return `${hours}h ${minutes}m`;
 }
 
+function displayCollection(collection: string): string {
+  const normalized = clean(collection);
+  if (!normalized || normalized.toLowerCase() === COLLECTION_NONE_VALUE) return "";
+  return normalized;
+}
+
+function splitConstraintTypes(value: string): string[] {
+  return clean(value)
+    .split(";")
+    .map((part) => clean(part))
+    .filter(Boolean);
+}
+
 function normalizeHeader(v: string) {
   return clean(v).toLowerCase().replace(/[^a-z0-9]+/g, "");
 }
@@ -156,16 +166,6 @@ function buildArchiveGvizJsonUrls(source: string): string[] {
   return buildSourceCandidates(baseUrl);
 }
 
-function decodeGoogleEscaped(v: string): string {
-  return v
-    .replace(/\\u003d/gi, "=")
-    .replace(/\\u0026/gi, "&")
-    .replace(/\\u002f/gi, "/")
-    .replace(/\\\//g, "/")
-    .replace(/\\u003a/gi, ":")
-    .replace(/\\u003f/gi, "?");
-}
-
 function parseGvizJsonRows(payload: string): string[][] {
   const prefix = "google.visualization.Query.setResponse(";
   const start = payload.indexOf(prefix);
@@ -194,27 +194,22 @@ function parseGvizJsonRows(payload: string): string[][] {
 
 async function fetchArchiveSudokuPadLinks(): Promise<string[]> {
   const urls = buildSourceCandidates(CTC_ARCHIVE_SHEET_SOURCE);
-  let lastErr: unknown;
   for (const url of urls) {
     try {
       const res = (await Promise.race([fetch(url), timeout(8000)])) as Response;
       if (!res.ok) {
-        lastErr = new Error(`HTTP ${res.status}`);
         continue;
       }
       const text = await res.text();
-      const links: string[] = [];
-      const linkRegex = new RegExp(EDIT_PAGE_SP_HYPERLINK_PATTERN, "g");
-      for (const match of text.matchAll(linkRegex)) {
-        const decoded = clean(decodeGoogleEscaped(match[1] ?? ""));
-        if (decoded) links.push(decoded);
-      }
+      const links = Array.from(
+        text.matchAll(/https?:\/\/(?:sudokupad\.app|app\.crackingthecryptic\.com)\/[^\s"'<>)\\]+/gi),
+        (match) => clean(match[0])
+      );
       if (links.length) return links;
-    } catch (err) {
-      lastErr = err;
+    } catch {
+      continue;
     }
   }
-  if (lastErr) console.warn("Unable to recover SudokuPad hyperlinks from sheet page", lastErr);
   return [];
 }
 
@@ -247,17 +242,15 @@ async function fetchArchiveRows(): Promise<{ rows: string[][]; sudokuPadLinks: s
 
 function pickSudokuPadUrl(row: string[], iSudokuPad: number, links: string[], linkIndexRef: { current: number }): string {
   const fromColumn = clean(iSudokuPad >= 0 ? row[iSudokuPad] : "");
-  if (looksLikeSudokuPadUrl(fromColumn)) {
-    return fromColumn;
+  if (looksLikeSudokuPadUrl(fromColumn)) return fromColumn;
+  if (fromColumn === SP_ICON_TEXT) {
+    const fromHyperlink = clean(links[linkIndexRef.current] ?? "");
+    linkIndexRef.current += 1;
+    if (fromHyperlink) return fromHyperlink;
   }
   const discovered = clean(
     row.find((cell) => SUDOKUPAD_URL_IN_ROW_REGEX.test(cell ?? ""))?.trim() ?? ""
   );
-  if (fromColumn === SP_ICON_TEXT) {
-    const fromHyperlink = clean(links[linkIndexRef.current] ?? "");
-    linkIndexRef.current += 1;
-    return fromHyperlink || discovered;
-  }
   return discovered;
 }
 
@@ -375,35 +368,64 @@ export function CtCArchivePage() {
   const [minLength, setMinLength] = useState("");
   const [maxLength, setMaxLength] = useState("");
 
-  async function refreshRows() {
+  const refreshCompleted = useCallback(async () => {
+    const puzzles = await listPuzzles();
+    setCompletedKeys(new Set(puzzles.filter((p) => p.progress?.status === "complete").map((p) => p.key)));
+  }, []);
+
+  const refreshRows = useCallback(async (options: { forceLive?: boolean; background?: boolean } = {}) => {
+    const { forceLive = false, background = false } = options;
     setLoading(true);
     setError("");
     try {
-      // Primary: load from pre-built local manifest (fast, no external requests).
-      const manifestEntries = await loadManifest();
-      if (manifestEntries) {
-        setRows(manifestEntries);
-        return;
+      if (!forceLive) {
+        // Primary: load from pre-built local manifest (fast, no external requests).
+        const manifestEntries = await loadManifest();
+        if (manifestEntries) {
+          setRows(manifestEntries);
+          if (!background) return;
+        }
       }
-      // Fallback: fetch live from Google Sheets.
+      // Live sync: fetch from Google Sheets (used for initial background sync and reload-all).
       const { rows: parsedRows, sudokuPadLinks } = await fetchArchiveRows();
-      setRows(parseArchiveRows(parsedRows, sudokuPadLinks));
+      const parsed = parseArchiveRows(parsedRows, sudokuPadLinks);
+      if (parsed.length) {
+        setRows(parsed);
+        if (background) {
+          setUiMessage((prev) => prev || "Background sync complete.");
+        }
+      } else if (forceLive) {
+        setRows([]);
+      }
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : String(e));
+      if (!background) {
+        setError(e instanceof Error ? e.message : String(e));
+      }
     } finally {
       setLoading(false);
     }
-  }
+  }, []);
 
-  async function refreshCompleted() {
-    const puzzles = await listPuzzles();
-    setCompletedKeys(new Set(puzzles.filter((p) => p.progress?.status === "complete").map((p) => p.key)));
+  async function reloadAllRows() {
+    const ok = window.confirm("Are you sure you want to reload all puzzles from the CtC Archive?");
+    if (!ok) return;
+    setRows([]);
+    setUiMessage("");
+    await refreshRows({ forceLive: true });
   }
 
   useEffect(() => {
-    refreshRows();
+    let cancelled = false;
+    (async () => {
+      await refreshRows();
+      if (cancelled) return;
+      void refreshRows({ forceLive: true, background: true });
+    })();
     refreshCompleted();
-  }, []);
+    return () => {
+      cancelled = true;
+    };
+  }, [refreshCompleted, refreshRows]);
 
   const hosts = useMemo(
     () => ["all", ...Array.from(new Set(rows.map((r) => r.videoHost).filter(Boolean))).sort((a, b) => a.localeCompare(b))],
@@ -495,8 +517,8 @@ export function CtCArchivePage() {
         <button className="btn" onClick={() => nav("/")}>Back</button>
         <div className="brand">CtC Archive</div>
         <div className="spacer" />
-        <button className="btn" onClick={refreshRows} disabled={loading}>
-          {loading ? "Refreshing…" : "Refresh"}
+        <button className="btn" onClick={reloadAllRows} disabled={loading}>
+          {loading ? "Reloading…" : "Reload all"}
         </button>
       </div>
 
@@ -570,12 +592,14 @@ export function CtCArchivePage() {
               {filteredRows.map((entry) => {
                 const solved = entry.sourceId ? completedKeys.has(normalizePuzzleKey(entry.sourceId)) : false;
                 const display = (value: string) => clean(value) || "~";
+                const constraints = splitConstraintTypes(entry.subTypeConstraints);
+                const collection = displayCollection(entry.collection);
                 return (
                   <div key={entry.id} className="card archiveEntryCard">
                     <div className="archiveEntryHead">
                       <div className="archiveEntryMain archiveDetailsGrid">
                         <button className="btn primary archiveImportBtn" disabled={importingId === entry.id} onClick={() => onImport(entry)} aria-label="Import Puzzle">
-                          {importingId === entry.id ? "Importing…" : <span className="archiveImportText"><span>IMPORT</span><span>PUZZLE</span></span>}
+                          {importingId === entry.id ? "Importing…" : "IMPORT"}
                         </button>
                         {entry.sudokuPadUrl ? (
                           <a className="btn archiveOpenIcon" href={entry.sudokuPadUrl} target="_blank" rel="noreferrer noopener" title="Open SudokuPad" aria-label="Open SudokuPad">
@@ -590,11 +614,18 @@ export function CtCArchivePage() {
                           <div className="archiveEntryTitle">
                             {solved ? "✓ " : ""}
                             {display(entry.title)}
-                            <span className="archiveEntryCollection"> ({display(entry.collection)})</span>
+                            {collection ? <span className="archiveEntryCollection"> (Collection: {collection})</span> : null}
                           </div>
-                          <div className="muted" style={{ fontSize: 13 }}>
-                            {display(entry.puzzleAuthor)} • {display(entry.subTypeConstraints)}
-                          </div>
+                          <div className="archiveMetaSmall">{display(entry.puzzleAuthor)}</div>
+                          {constraints.length ? (
+                            <ul className="archiveConstraintList">
+                              {constraints.map((constraint) => (
+                                <li key={`${entry.id}-${constraint}`}>{constraint}</li>
+                              ))}
+                            </ul>
+                          ) : (
+                            <div className="archiveMetaMedium">~</div>
+                          )}
                         </div>
                         {entry.youtubeUrl ? (
                           <a className="btn archiveOpenIcon" href={entry.youtubeUrl} target="_blank" rel="noreferrer noopener" title="Open YouTube" aria-label="Open YouTube">
@@ -606,9 +637,10 @@ export function CtCArchivePage() {
                           </button>
                         )}
                         <div className="archiveInfoText">
-                          <div style={{ fontSize: 14 }}>{display(entry.videoTitle)}</div>
-                          <div className="muted" style={{ fontSize: 13 }}>
-                            {display(entry.videoHost)} • {display(entry.videoDate)} • {formatDurationHm(entry.videoLengthSeconds)}
+                          <div className="archiveVideoTitle">{display(entry.videoTitle)}</div>
+                          <div className="archiveMetaSmall">{display(entry.videoDate)}</div>
+                          <div className="archiveMetaMedium">
+                            {formatDurationHm(entry.videoLengthSeconds)} - {display(entry.videoHost)}
                           </div>
                         </div>
                       </div>

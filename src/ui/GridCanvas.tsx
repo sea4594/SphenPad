@@ -1333,6 +1333,8 @@ export function GridCanvas(props: {
     rows,
     cellX,
     cellY,
+    cosmeticUnit,
+    emojiTextFont,
     inBounds,
     normalizeDotRc,
     worldX,

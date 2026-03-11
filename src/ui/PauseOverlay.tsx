@@ -1,3 +1,4 @@
+import { useCallback, useEffect } from "react";
 import type { PuzzleMeta } from "../core/model";
 
 export function PauseOverlay(props: {
@@ -9,17 +10,26 @@ export function PauseOverlay(props: {
   onStayPaused: () => void;
   onRestart: () => void;
 }) {
-  const { meta, started } = props;
+  const { meta, started, onResume, onStart } = props;
   const sourcePath = (props.sourceId ?? "").trim().replace(/^\/+/, "");
   const sudokuPadUrl = sourcePath ? `https://sudokupad.app/${encodeURI(sourcePath)}` : "";
-  const onBackdropClick = () => {
-    if (started) props.onResume();
-    else props.onStart();
-  };
+  const onBackdropClick = useCallback(() => {
+    if (started) onResume();
+    else onStart();
+  }, [onResume, onStart, started]);
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      onBackdropClick();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [onBackdropClick]);
 
   return (
     <div className="overlayBackdrop" onClick={onBackdropClick}>
-      <div className="card" onClick={(e) => e.stopPropagation()} style={{ width: "min(860px, 100%)", maxHeight: "min(92dvh, calc(100vh - 24px))", overflow: "auto", display: "flex", flexDirection: "column" }}>
+      <div className="card" role="dialog" aria-modal="true" aria-label="Pause menu" onClick={(e) => e.stopPropagation()} style={{ width: "min(860px, 100%)", maxHeight: "min(92dvh, calc(100vh - 24px))", overflow: "auto", display: "flex", flexDirection: "column" }}>
         <div className="row" style={{ justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "nowrap" }}>
           <div style={{ fontWeight: 800, fontSize: 22, minWidth: 0, overflowWrap: "anywhere" }}>{meta?.title || "(untitled)"}</div>
           {sudokuPadUrl ? (
