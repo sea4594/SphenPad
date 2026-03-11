@@ -194,12 +194,10 @@ function parseGvizJsonRows(payload: string): string[][] {
 
 async function fetchArchiveSudokuPadLinks(): Promise<string[]> {
   const urls = buildSourceCandidates(CTC_ARCHIVE_SHEET_SOURCE);
-  let lastErr: unknown;
   for (const url of urls) {
     try {
       const res = (await Promise.race([fetch(url), timeout(8000)])) as Response;
       if (!res.ok) {
-        lastErr = new Error(`HTTP ${res.status}`);
         continue;
       }
       const text = await res.text();
@@ -210,11 +208,10 @@ async function fetchArchiveSudokuPadLinks(): Promise<string[]> {
         if (decoded) links.push(decoded);
       }
       if (links.length) return links;
-    } catch (err) {
-      lastErr = err;
+    } catch {
+      continue;
     }
   }
-  if (lastErr) console.warn("Unable to recover SudokuPad hyperlinks from sheet page", lastErr);
   return [];
 }
 
