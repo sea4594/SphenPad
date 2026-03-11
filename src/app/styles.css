@@ -397,6 +397,11 @@ input.url {
   font-weight: 700;
 }
 
+.archiveVideoTitle {
+  font-size: 15px;
+  font-weight: 700;
+}
+
 .archiveTitleRow {
   display: flex;
   align-items: center;
@@ -434,6 +439,26 @@ input.url {
   min-width: 0;
   display: grid;
   gap: 4px;
+}
+
+.archiveMetaSmall {
+  font-size: 12px;
+  font-style: italic;
+  color: var(--muted);
+}
+
+.archiveMetaMedium {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.archiveConstraintList {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 2px;
+  font-size: 13px;
+  color: var(--muted);
 }
 
 .archiveImportBtn {
