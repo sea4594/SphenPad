@@ -21,6 +21,7 @@ type ArchiveEntry = {
   sudokuPadUrl: string;
   youtubeUrl: string;
   sourceId: string;
+  stableKey: string;
 };
 
 type SearchField =
@@ -57,6 +58,16 @@ const CTC_ARCHIVE_SHEET_SOURCE = "https://docs.google.com/spreadsheets/d/11TrxON
 
 function timeout(ms: number) {
   return new Promise<never>((_, rej) => setTimeout(() => rej(new Error("Timeout")), ms));
+}
+
+/** Convert a sourceId to a filesystem-safe key for puzzle cache file lookup. */
+function toStableKey(sourceId: string): string {
+  return sourceId
+    .trim()
+    .replace(/[^a-zA-Z0-9._-]/g, "_")
+    .replace(/_+/g, "_")
+    .replace(/^_|_$/, "")
+    .slice(0, 200) || "unknown";
 }
 
 function clean(v: string | undefined) {
@@ -186,7 +197,7 @@ async function fetchArchiveSudokuPadLinks(): Promise<string[]> {
   let lastErr: unknown;
   for (const url of urls) {
     try {
-      const res = (await Promise.race([fetch(url), timeout(12000)])) as Response;
+      const res = (await Promise.race([fetch(url), timeout(8000)])) as Response;
       if (!res.ok) {
         lastErr = new Error(`HTTP ${res.status}`);
         continue;
@@ -216,7 +227,7 @@ async function fetchArchiveRows(): Promise<{ rows: string[][]; sudokuPadLinks: s
   let lastErr: unknown;
   for (const url of urls) {
     try {
-      const res = (await Promise.race([fetch(url), timeout(12000)])) as Response;
+      const res = (await Promise.race([fetch(url), timeout(8000)])) as Response;
       if (!res.ok) {
         lastErr = new Error(`HTTP ${res.status}`);
         continue;
@@ -296,6 +307,7 @@ function parseArchiveRows(rows: string[][], sudokuPadLinks: string[] = []): Arch
         row.find((cell) => /youtu\.?be|youtube\.com/i.test(cell ?? ""))?.trim() ||
         "";
       const sourceId = extractSourceId(sudokuPadUrl);
+      const stableKey = toStableKey(sourceId);
       return {
         id: `${title || "entry"}-${idx}`,
         title,
@@ -312,10 +324,37 @@ function parseArchiveRows(rows: string[][], sudokuPadLinks: string[] = []): Arch
         sudokuPadUrl,
         youtubeUrl,
         sourceId,
+        stableKey,
       } satisfies ArchiveEntry;
     })
     .filter((entry) => clean(entry.videoType).toLowerCase() === ARCHIVE_VIDEO_TYPE_SUDOKU)
     .filter((entry) => entry.title || entry.sudokuPadUrl || entry.videoTitle);
+}
+
+/** Try to load archive entries from the local pre-built manifest. Returns null on failure. */
+async function loadManifest(): Promise<ArchiveEntry[] | null> {
+  try {
+    const res = await fetch(`${import.meta.env.BASE_URL}archive/archive-manifest.json`);
+    if (!res.ok) return null;
+    const data = (await res.json()) as { entries?: ArchiveEntry[] };
+    if (!Array.isArray(data.entries) || data.entries.length === 0) return null;
+    return data.entries;
+  } catch {
+    return null;
+  }
+}
+
+/** Try to load a cached puzzle payload for import. Returns undefined if not cached. */
+async function loadCachedPuzzlePayload(stableKey: string): Promise<string | undefined> {
+  if (!stableKey || stableKey === "unknown") return undefined;
+  try {
+    const res = await fetch(`${import.meta.env.BASE_URL}archive/puzzles/${stableKey}.json`);
+    if (!res.ok) return undefined;
+    const data = (await res.json()) as { payload?: string };
+    return typeof data.payload === "string" && data.payload.trim() ? data.payload : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 export function CtCArchivePage() {
@@ -340,6 +379,13 @@ export function CtCArchivePage() {
     setLoading(true);
     setError("");
     try {
+      // Primary: load from pre-built local manifest (fast, no external requests).
+      const manifestEntries = await loadManifest();
+      if (manifestEntries) {
+        setRows(manifestEntries);
+        return;
+      }
+      // Fallback: fetch live from Google Sheets.
       const { rows: parsedRows, sudokuPadLinks } = await fetchArchiveRows();
       setRows(parseArchiveRows(parsedRows, sudokuPadLinks));
     } catch (e: unknown) {
@@ -419,7 +465,11 @@ export function CtCArchivePage() {
     setUiMessage("");
     setImportingId(entry.id);
     try {
-      const { key, def } = await loadFromSudokuPad(entry.sudokuPadUrl);
+      // Use the cached puzzle payload if available; otherwise fall back to network fetch.
+      const cachedPayload = await loadCachedPuzzlePayload(entry.stableKey);
+      const { key, def } = await loadFromSudokuPad(entry.sudokuPadUrl, {
+        preloadedPayload: cachedPayload,
+      });
       const now = Date.now();
       const existing = (await listPuzzles()).find((p) => p.key === key);
       await upsertPuzzle(key, {

@@ -27,6 +27,9 @@ jobs:
       - name: Install deps
         run: npm ci
 
+      - name: Sync archive cache
+        run: npm run sync-archive-cache
+
       - name: Build
         run: npm run build
 
