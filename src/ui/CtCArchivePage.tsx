@@ -48,7 +48,7 @@ const YOUTUBE_ICON_DATA_URL =
   "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='1' y='4' width='22' height='16' rx='4' fill='%23ff0000'/%3E%3Cpolygon points='10,8 17,12 10,16' fill='white'/%3E%3C/svg%3E";
 const SP_ICON_TEXT = "🔢";
 const SUDOKUPAD_URL_IN_ROW_REGEX = /https?:\/\/(?:sudokupad\.app|app\.crackingthecryptic\.com)\//i;
-const COLLECTION_NONE = "none";
+const COLLECTION_NONE_VALUE = "none";
 
 // Accepts either a full Google Sheets URL or a bare sheet ID.
 const CTC_ARCHIVE_SHEET_SOURCE = "https://docs.google.com/spreadsheets/d/11TrxONoAWMvP8ibULZqtNwG4WWripAcPIS9J-wi3emc/edit#gid=0";
@@ -105,7 +105,7 @@ function formatDurationHm(seconds: number | null): string {
 
 function displayCollection(collection: string): string {
   const normalized = clean(collection);
-  if (!normalized || normalized.toLowerCase() === COLLECTION_NONE) return "";
+  if (!normalized || normalized.toLowerCase() === COLLECTION_NONE_VALUE) return "";
   return normalized;
 }
 
