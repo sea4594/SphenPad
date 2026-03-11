@@ -728,11 +728,15 @@ export function PuzzlePage() {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
       event.preventDefault();
-      closeRestartPrompt();
+      setRestartPromptOpen(false);
+      setRestartFromPause((fromPause) => {
+        if (fromPause) setPauseMenuOpen(true);
+        return false;
+      });
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [restartPromptOpen, restartFromPause]);
+  }, [restartPromptOpen]);
 
   function onDoubleSelectCell(rc: CellRC) {
     if (!data || data.progress.activeTool === "line") return;
