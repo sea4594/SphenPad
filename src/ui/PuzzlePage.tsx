@@ -723,6 +723,17 @@ export function PuzzlePage() {
     setRestartFromPause(false);
   }
 
+  useEffect(() => {
+    if (!restartPromptOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      closeRestartPrompt();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [restartPromptOpen, restartFromPause]);
+
   function onDoubleSelectCell(rc: CellRC) {
     if (!data || data.progress.activeTool === "line") return;
     const cell = data.progress.cells[rc.r][rc.c];
