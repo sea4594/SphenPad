@@ -32,6 +32,8 @@ type ArchiveEntry = {
   stableKey: string;
 };
 
+type ManifestArchiveEntry = Partial<ArchiveEntry> & { subTypeConstraints?: string };
+
 type SearchField =
   | "any"
   | "title"
@@ -54,7 +56,6 @@ const ARCHIVE_VIDEO_TYPE_SUDOKU = "sudoku";
 const SUDOKUPAD_ICON_URL = "https://sudokupad.app/images/sudokupad_square_logo.png";
 const YOUTUBE_ICON_DATA_URL =
   "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='1' y='4' width='22' height='16' rx='4' fill='%23ff0000'/%3E%3Cpolygon points='10,8 17,12 10,16' fill='white'/%3E%3C/svg%3E";
-const SP_ICON_TEXT = "🔢";
 const SUDOKUPAD_URL_IN_ROW_REGEX = /https?:\/\/(?:sudokupad\.app|app\.crackingthecryptic\.com)\//i;
 const ARCHIVE_META_UPDATED_AT_KEY = "archiveSheetLastUpdatedAt";
 
@@ -200,6 +201,7 @@ function parseVideoDateTs(text: string): number | null {
   const year = Number(match[1]);
   const month = Number(match[2]);
   const day = Number(match[3]);
+  // Google gviz `Date(y,m,d)` uses JavaScript Date constructor semantics (zero-indexed month).
   const utc = Date.UTC(year, month, day);
   return Number.isFinite(utc) ? utc : null;
 }
@@ -251,6 +253,7 @@ function normalizeArchiveEntry(raw: Partial<ArchiveEntry> & { subTypeConstraints
 function mergeArchiveEntries(existing: ArchiveEntry[], incoming: ArchiveEntry[]): ArchiveEntry[] {
   if (!incoming.length) return existing;
   const byKey = new Map(existing.map((entry) => [entry.stableKey, entry]));
+  // Passive background checks only append newly discovered entries for the current session.
   for (const entry of incoming) {
     if (!byKey.has(entry.stableKey)) byKey.set(entry.stableKey, entry);
   }
@@ -287,7 +290,6 @@ function pickSudokuPadUrl(row: string[], iSudokuPad: number): string {
   const discovered = clean(
     row.find((cell) => SUDOKUPAD_URL_IN_ROW_REGEX.test(cell ?? ""))?.trim() ?? ""
   );
-  if (fromColumn === SP_ICON_TEXT) return "";
   return discovered;
 }
 
@@ -359,7 +361,7 @@ async function loadManifest(): Promise<ArchiveEntry[] | null> {
   try {
     const res = await fetch(`${import.meta.env.BASE_URL}archive/archive-manifest.json`);
     if (!res.ok) return null;
-    const data = (await res.json()) as { entries?: Array<Partial<ArchiveEntry> & { subTypeConstraints?: string }> };
+    const data = (await res.json()) as { entries?: ManifestArchiveEntry[] };
     if (!Array.isArray(data.entries) || data.entries.length === 0) return null;
     const entries = data.entries.map((entry, idx) => normalizeArchiveEntry(entry, idx)).filter((entry): entry is ArchiveEntry => !!entry);
     return entries.length ? entries : null;
@@ -472,8 +474,16 @@ export function CtCArchivePage() {
   }
 
   useEffect(() => {
+    let active = true;
     void loadArchiveFromManifest();
-    refreshCompleted();
+    void (async () => {
+      const puzzles = await listPuzzles();
+      if (!active) return;
+      setCompletedKeys(new Set(puzzles.filter((p) => p.progress?.status === "complete").map((p) => p.key)));
+    })();
+    return () => {
+      active = false;
+    };
   }, [loadArchiveFromManifest]);
 
   const hosts = useMemo(

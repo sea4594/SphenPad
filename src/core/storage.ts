@@ -9,6 +9,8 @@ type PersistedArchiveEntry = {
   data: unknown;
 };
 
+type ArchiveEntryWrite = Omit<PersistedArchiveEntry, "updatedAt"> & { updatedAt?: number };
+
 type PersistedArchivePayload = {
   stableKey: string;
   payload: string;
@@ -26,6 +28,9 @@ class SphenDB extends Dexie {
   archiveMeta!: Table<PersistedArchiveMeta, string>;
   constructor() {
     super("sphenpad");
+    this.version(1).stores({
+      puzzles: "key",
+    });
     this.version(2).stores({
       puzzles: "key",
       archiveEntries: "stableKey, sourceId, updatedAt",
@@ -59,7 +64,7 @@ export async function clearArchiveCache() {
   await Promise.all([db.archiveEntries.clear(), db.archivePayloads.clear(), db.archiveMeta.clear()]);
 }
 
-export async function putArchiveEntries(entries: Array<{ stableKey: string; sourceId: string; updatedAt?: number; data: unknown }>) {
+export async function putArchiveEntries(entries: ArchiveEntryWrite[]) {
   if (!entries.length) return;
   const updatedAt = Date.now();
   await db.archiveEntries.bulkPut(
