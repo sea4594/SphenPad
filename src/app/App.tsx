@@ -12,6 +12,12 @@ export function App() {
     const root = document.documentElement;
     const coarsePointer = window.matchMedia("(hover: none) and (pointer: coarse)");
 
+    const readViewportSize = () => {
+      const vw = Math.max(1, Math.round(window.visualViewport?.width ?? window.innerWidth));
+      const vh = Math.max(1, Math.round(window.visualViewport?.height ?? window.innerHeight));
+      return { vw, vh, shortSide: Math.min(vw, vh), longSide: Math.max(vw, vh) };
+    };
+
     const getLandscapeDirection = (): "cw" | "ccw" => {
       const angle = window.screen?.orientation?.angle;
       if (typeof angle === "number") {
@@ -30,13 +36,17 @@ export function App() {
     };
 
     const updateForcedPortraitMode = () => {
-      const shortSide = Math.min(window.innerWidth, window.innerHeight);
+      const { vw, vh, shortSide, longSide } = readViewportSize();
       const onMobileDevice = coarsePointer.matches || shortSide <= 1000;
-      const rotatedLandscape = window.innerWidth > window.innerHeight;
+      const rotatedLandscape = vw > vh;
       if (onMobileDevice && rotatedLandscape) {
+        root.style.setProperty("--force-portrait-short", `${shortSide}px`);
+        root.style.setProperty("--force-portrait-long", `${longSide}px`);
         root.setAttribute("data-force-portrait", getLandscapeDirection());
       } else {
         root.removeAttribute("data-force-portrait");
+        root.style.removeProperty("--force-portrait-short");
+        root.style.removeProperty("--force-portrait-long");
       }
     };
 
@@ -84,6 +94,8 @@ export function App() {
       window.removeEventListener("orientationchange", onViewportChange);
       coarsePointer.removeEventListener?.("change", onViewportChange);
       root.removeAttribute("data-force-portrait");
+      root.style.removeProperty("--force-portrait-short");
+      root.style.removeProperty("--force-portrait-long");
     };
   }, []);
 
