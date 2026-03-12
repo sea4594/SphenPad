@@ -8,6 +8,19 @@ import { ThemeProvider } from "./theme";
 export function App() {
   useEffect(() => {
     type LockableOrientation = ScreenOrientation & { lock?: (kind: string) => Promise<void> };
+    const root = document.documentElement;
+    const coarsePointer = window.matchMedia("(hover: none) and (pointer: coarse)");
+
+    const updateForcedPortraitMode = () => {
+      const shortSide = Math.min(window.innerWidth, window.innerHeight);
+      const onMobileDevice = coarsePointer.matches || shortSide <= 1000;
+      const rotatedLandscape = window.innerWidth > window.innerHeight;
+      if (onMobileDevice && rotatedLandscape) {
+        root.setAttribute("data-force-portrait", "true");
+      } else {
+        root.removeAttribute("data-force-portrait");
+      }
+    };
 
     const lockPortrait = async () => {
       const orientation = window.screen?.orientation as LockableOrientation | undefined;
@@ -20,7 +33,10 @@ export function App() {
     };
 
     const relockIfVisible = () => {
-      if (document.visibilityState === "visible") void lockPortrait();
+      if (document.visibilityState === "visible") {
+        updateForcedPortraitMode();
+        void lockPortrait();
+      }
     };
 
     const onFirstInteraction = () => {
@@ -28,15 +44,28 @@ export function App() {
       window.removeEventListener("pointerdown", onFirstInteraction);
     };
 
+    const onViewportChange = () => {
+      updateForcedPortraitMode();
+      void lockPortrait();
+    };
+
+    updateForcedPortraitMode();
     void lockPortrait();
     window.addEventListener("focus", relockIfVisible);
     document.addEventListener("visibilitychange", relockIfVisible);
     window.addEventListener("pointerdown", onFirstInteraction, { passive: true });
+    window.addEventListener("resize", onViewportChange);
+    window.addEventListener("orientationchange", onViewportChange);
+    coarsePointer.addEventListener?.("change", onViewportChange);
 
     return () => {
       window.removeEventListener("focus", relockIfVisible);
       document.removeEventListener("visibilitychange", relockIfVisible);
       window.removeEventListener("pointerdown", onFirstInteraction);
+      window.removeEventListener("resize", onViewportChange);
+      window.removeEventListener("orientationchange", onViewportChange);
+      coarsePointer.removeEventListener?.("change", onViewportChange);
+      root.removeAttribute("data-force-portrait");
     };
   }, []);
 
