@@ -48,6 +48,9 @@ const SUDOKUPAD_URL_REGEX =
 const YOUTUBE_URL_REGEX =
   /https?:\/\/(?:www\.)?(?:youtube\.com|youtu\.be)\/[^\s"'<>)]*/i;
 const HTTP_URL_REGEX = /^https?:\/\//i;
+const BARE_TINYURL_REGEX = /^(?:www\.)?tinyurl\.com\/[A-Za-z0-9_-]+(?:[/?#][^\s"'<>)]*)?$/i;
+const ENCODED_SUDOKUPAD_URL_REGEX =
+  /https?%3A%2F%2F(?:sudokupad\.app|app\.crackingthecryptic\.com)%2F[A-Za-z0-9%._~!$&'()*+,;=:@/-]+/i;
 
 const FETCH_CONCURRENCY = 5;
 const FETCH_TIMEOUT_MS = 15_000;
@@ -190,9 +193,19 @@ function looksLikeHttpUrl(value: string): boolean {
   return HTTP_URL_REGEX.test(clean(value));
 }
 
+function normalizeTinyUrl(value: string): string {
+  const url = clean(value);
+  if (!url) return "";
+  if (looksLikeHttpUrl(url)) return url;
+  if (!BARE_TINYURL_REGEX.test(url)) return "";
+  return `https://${url.replace(/^\/+/, "")}`;
+}
+
 function normalizeSudokuPadLink(value: string): string {
   const url = clean(value);
   if (!url) return "";
+  const normalizedTinyUrl = normalizeTinyUrl(url);
+  if (normalizedTinyUrl) return normalizedTinyUrl;
   if (!looksLikeHttpUrl(url)) return "";
   return url;
 }
@@ -334,7 +347,23 @@ async function resolveSudokuPadRedirect(url: string): Promise<string> {
   try {
     const res = await fetchWithTimeout(url);
     const finalUrl = clean(res.url);
-    return looksLikeSudokuPadUrl(finalUrl) ? finalUrl : "";
+    if (looksLikeSudokuPadUrl(finalUrl)) return finalUrl;
+
+    const body = await res.text();
+    const directMatch = clean(body.match(SUDOKUPAD_URL_REGEX)?.[0]);
+    if (looksLikeSudokuPadUrl(directMatch)) return directMatch;
+
+    const encodedMatch = clean(body.match(ENCODED_SUDOKUPAD_URL_REGEX)?.[0]);
+    if (encodedMatch) {
+      try {
+        const decoded = decodeURIComponent(encodedMatch);
+        if (looksLikeSudokuPadUrl(decoded)) return decoded;
+      } catch {
+        // Ignore malformed percent-encoding and continue.
+      }
+    }
+
+    return "";
   } catch {
     return "";
   }
