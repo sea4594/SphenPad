@@ -1,0 +1,45 @@
+name: Sync CtC Archive Cache
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 * * * *"
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Sync archive cache
+        run: npm run sync-archive-cache
+
+      - name: Commit and push archive updates
+        env:
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/archive/archive-manifest.json public/archive/puzzles
+          if git diff --cached --quiet; then
+            echo "No archive changes to commit."
+            exit 0
+          fi
+          git commit -m "chore: sync CtC archive cache"
+          git push origin "HEAD:${DEFAULT_BRANCH}"
