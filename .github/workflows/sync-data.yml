@@ -39,7 +39,7 @@ jobs:
       - name: Detect data changes
         id: data_changes
         run: |
-          if [[ -n "$(git status --porcelain -- public/archive/archive-manifest.json)" ]]; then
+          if [[ -n "$(git status --porcelain -- public/archive/archive-manifest.json public/archive/puzzles)" ]]; then
             echo "changed=true" >> "$GITHUB_OUTPUT"
           else
             echo "changed=false" >> "$GITHUB_OUTPUT"
@@ -50,8 +50,8 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add public/archive/archive-manifest.json
-          git commit -m "chore: sync archive data"
+          git add public/archive/archive-manifest.json public/archive/puzzles
+          git commit -m "chore: sync archive cache"
           git push origin "HEAD:${GITHUB_REF_NAME}"
 
       - name: Build

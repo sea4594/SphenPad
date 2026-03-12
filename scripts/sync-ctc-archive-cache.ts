@@ -6,9 +6,11 @@
  *
  * Writes:
  *   public/archive/archive-manifest.json  - list of all archive entries (metadata)
+ *   public/archive/puzzles/*.json         - cached SudokuPad payloads
  */
 
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readdirSync, rmSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import * as XLSX from "xlsx";
@@ -30,11 +32,37 @@ type ArchiveEntry = {
   youtubeUrl: string;
   sourceId: string;
   stableKey: string;
+  cacheKey: string;
 };
 
 type Manifest = {
   generatedAt: string;
   entries: ArchiveEntry[];
+};
+
+type PuzzleCacheRecord = {
+  sourceId: string;
+  stableKey: string;
+  cacheKey: string;
+  sudokuPadUrl: string;
+  fetchedAt: string;
+  payload: string;
+};
+
+type PuzzleCacheTarget = {
+  sourceId: string;
+  cacheKey: string;
+  stableKey: string;
+  sudokuPadUrl: string;
+};
+
+type PuzzleCacheSyncResult = {
+  totalTargets: number;
+  written: number;
+  unchanged: number;
+  failed: number;
+  missingWithoutCache: number;
+  removed: number;
 };
 
 type ParsedSheetRow = string[];
@@ -54,6 +82,7 @@ const ENCODED_SUDOKUPAD_URL_REGEX =
 
 const FETCH_CONCURRENCY = 5;
 const FETCH_TIMEOUT_MS = 15_000;
+const SUDOKUPAD_API_BASE = "https://sudokupad.app/api/puzzle";
 
 const FALLBACK_TITLE_INDEX = 0;
 const FALLBACK_CONSTRAINTS_INDEX = 1;
@@ -65,6 +94,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const REPO_ROOT = join(__dirname, "..");
 const MANIFEST_PATH = join(REPO_ROOT, "public", "archive", "archive-manifest.json");
+const PUZZLES_DIR = join(REPO_ROOT, "public", "archive", "puzzles");
 
 function clean(v: string | undefined | null): string {
   return (v ?? "").trim();
@@ -86,6 +116,42 @@ function writeTextIfChanged(path: string, next: string): boolean {
 
   writeFileSync(path, next, "utf8");
   return true;
+}
+
+function ensureDirectory(path: string) {
+  if (existsSync(path)) return;
+  mkdirSync(path, { recursive: true });
+}
+
+function buildPuzzleCachePath(cacheKey: string): string {
+  return join(PUZZLES_DIR, `${cacheKey}.json`);
+}
+
+function listPuzzleCacheFiles(): string[] {
+  ensureDirectory(PUZZLES_DIR);
+  return readdirSync(PUZZLES_DIR).filter((name) => name.endsWith(".json"));
+}
+
+function readPuzzleCacheRecord(path: string): PuzzleCacheRecord | null {
+  if (!existsSync(path)) return null;
+
+  try {
+    const parsed = JSON.parse(readFileSync(path, "utf8")) as Partial<PuzzleCacheRecord>;
+    const payload = typeof parsed.payload === "string" ? parsed.payload : "";
+    const sourceId = clean(parsed.sourceId);
+    if (!payload || !sourceId) return null;
+
+    return {
+      sourceId,
+      stableKey: clean(parsed.stableKey) || toStableKey(sourceId),
+      cacheKey: clean(parsed.cacheKey),
+      sudokuPadUrl: clean(parsed.sudokuPadUrl),
+      fetchedAt: clean(parsed.fetchedAt),
+      payload,
+    };
+  } catch {
+    return null;
+  }
 }
 
 async function fetchWithTimeout(url: string, ms = FETCH_TIMEOUT_MS): Promise<Response> {
@@ -114,6 +180,189 @@ async function withConcurrency<T>(
   }
 
   await Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, worker));
+}
+
+function isEmbeddedPuzzlePayload(sourceId: string): boolean {
+  return /^(scl|ctc|fpuz|fpuzzles)/i.test(clean(sourceId));
+}
+
+function looksLikePuzzlePayload(text: string): boolean {
+  const t = text.trim();
+  if (!t) return false;
+  if (/^<!doctype html/i.test(t) || /^<html[\s>]/i.test(t)) return false;
+  if (/^(scl|ctc|fpuz|fpuzzles)/i.test(t)) return true;
+  if (/^[[{]/.test(t)) return true;
+  return false;
+}
+
+function buildSudokuPadApiUrl(sourceId: string): string {
+  const encoded = sourceId.split("/").map(encodeURIComponent).join("/");
+  return `${SUDOKUPAD_API_BASE}/${encoded}`;
+}
+
+async function fetchPuzzlePayload(sourceId: string): Promise<string> {
+  const normalizedSourceId = clean(sourceId);
+  if (!normalizedSourceId) throw new Error("Missing SudokuPad source ID");
+
+  if (isEmbeddedPuzzlePayload(normalizedSourceId)) {
+    return normalizedSourceId;
+  }
+
+  const url = buildSudokuPadApiUrl(normalizedSourceId);
+  const res = await fetchWithTimeout(url);
+  if (!res.ok) {
+    throw new Error(`HTTP ${res.status} fetching puzzle payload for ${normalizedSourceId}`);
+  }
+
+  const payload = await res.text();
+  if (!looksLikePuzzlePayload(payload)) {
+    throw new Error(`Unexpected puzzle payload format for ${normalizedSourceId}`);
+  }
+
+  return payload;
+}
+
+function assignCacheKeys(entries: ArchiveEntry[]): void {
+  const sourceToCacheKey = new Map<string, string>();
+  const usedCacheKeys = new Set<string>();
+
+  for (const entry of entries) {
+    const sourceId = clean(entry.sourceId);
+    if (!sourceId) {
+      entry.cacheKey = "";
+      continue;
+    }
+
+    const existingCacheKey = sourceToCacheKey.get(sourceId);
+    if (existingCacheKey) {
+      entry.cacheKey = existingCacheKey;
+      continue;
+    }
+
+    const baseKey = toStableKey(sourceId);
+    let candidate = baseKey;
+    let suffix = 2;
+    while (usedCacheKeys.has(candidate)) {
+      candidate = `${baseKey}_${suffix}`;
+      suffix += 1;
+    }
+
+    sourceToCacheKey.set(sourceId, candidate);
+    usedCacheKeys.add(candidate);
+    entry.cacheKey = candidate;
+  }
+}
+
+function buildPuzzleCacheTargets(entries: ArchiveEntry[]): PuzzleCacheTarget[] {
+  const byCacheKey = new Map<string, PuzzleCacheTarget>();
+
+  for (const entry of entries) {
+    const sourceId = clean(entry.sourceId);
+    const cacheKey = clean(entry.cacheKey || entry.stableKey);
+    if (!sourceId || !cacheKey) continue;
+
+    const existing = byCacheKey.get(cacheKey);
+    if (existing) {
+      if (existing.sourceId !== sourceId) {
+        log(
+          `WARN: cache key collision for ${cacheKey}; keeping ${existing.sourceId} and skipping ${sourceId}.`,
+        );
+      } else if (!existing.sudokuPadUrl && clean(entry.sudokuPadUrl)) {
+        existing.sudokuPadUrl = clean(entry.sudokuPadUrl);
+      }
+      continue;
+    }
+
+    byCacheKey.set(cacheKey, {
+      sourceId,
+      cacheKey,
+      stableKey: toStableKey(sourceId),
+      sudokuPadUrl: clean(entry.sudokuPadUrl),
+    });
+  }
+
+  return Array.from(byCacheKey.values()).sort((a, b) => a.cacheKey.localeCompare(b.cacheKey));
+}
+
+async function syncPuzzlePayloadCache(entries: ArchiveEntry[]): Promise<PuzzleCacheSyncResult> {
+  ensureDirectory(PUZZLES_DIR);
+
+  const targets = buildPuzzleCacheTargets(entries);
+  const existingFiles = listPuzzleCacheFiles();
+  const expectedFiles = new Set(targets.map((target) => `${target.cacheKey}.json`));
+
+  let written = 0;
+  let unchanged = 0;
+  let failed = 0;
+  let missingWithoutCache = 0;
+
+  if (targets.length) {
+    log(`Syncing ${targets.length} puzzle cache payload(s)...`);
+  }
+
+  await withConcurrency(targets, FETCH_CONCURRENCY, async (target) => {
+    const path = buildPuzzleCachePath(target.cacheKey);
+    const existing = readPuzzleCacheRecord(path);
+
+    let payload = "";
+    try {
+      payload = await fetchPuzzlePayload(target.sourceId);
+    } catch (err) {
+      failed += 1;
+      if (existing?.payload) {
+        log(`WARN: failed to refresh ${target.cacheKey}; keeping previous cache. ${String(err)}`);
+        return;
+      }
+
+      missingWithoutCache += 1;
+      log(`WARN: failed to fetch ${target.cacheKey}; no local cache exists. ${String(err)}`);
+      return;
+    }
+
+    if (
+      existing &&
+      existing.sourceId === target.sourceId &&
+      existing.cacheKey === target.cacheKey &&
+      existing.stableKey === target.stableKey &&
+      existing.sudokuPadUrl === target.sudokuPadUrl &&
+      existing.payload === payload
+    ) {
+      unchanged += 1;
+      return;
+    }
+
+    const record: PuzzleCacheRecord = {
+      sourceId: target.sourceId,
+      stableKey: target.stableKey,
+      cacheKey: target.cacheKey,
+      sudokuPadUrl: target.sudokuPadUrl,
+      fetchedAt: new Date().toISOString(),
+      payload,
+    };
+
+    const didWrite = writeTextIfChanged(path, toJson(record));
+    if (didWrite) {
+      written += 1;
+    } else {
+      unchanged += 1;
+    }
+  });
+
+  let removed = 0;
+  for (const fileName of existingFiles) {
+    if (expectedFiles.has(fileName)) continue;
+    rmSync(join(PUZZLES_DIR, fileName));
+    removed += 1;
+  }
+
+  return {
+    totalTargets: targets.length,
+    written,
+    unchanged,
+    failed,
+    missingWithoutCache,
+    removed,
+  };
 }
 
 function normalizeHeader(v: string): string {
@@ -337,6 +586,7 @@ function parseArchiveRows(rows: ParsedSheetRow[]): ArchiveEntry[] {
         youtubeUrl,
         sourceId,
         stableKey,
+        cacheKey: stableKey,
       } satisfies ArchiveEntry;
     })
     .filter((entry) => clean(entry.videoType).toLowerCase() === ARCHIVE_VIDEO_TYPE_SUDOKU)
@@ -437,6 +687,7 @@ async function main() {
 
   const entries = parseArchiveRows(sheetRows);
   await normalizeNonDirectSudokuPadLinks(entries);
+  assignCacheKeys(entries);
 
   log(`Parsed ${entries.length} archive entries.`);
 
@@ -455,6 +706,17 @@ async function main() {
     for (const entry of missingSudokuPad.slice(0, 20)) {
       log(`  - ${entry.title || "(untitled)"} | ${entry.videoDate} | ${entry.videoTitle}`);
     }
+  }
+
+  const cacheSyncResult = await syncPuzzlePayloadCache(entries);
+  log(
+    `Puzzle cache sync: ${cacheSyncResult.written} updated, ${cacheSyncResult.unchanged} unchanged, ` +
+      `${cacheSyncResult.removed} removed, ${cacheSyncResult.failed} fetch warnings.`,
+  );
+  if (cacheSyncResult.missingWithoutCache > 0) {
+    log(
+      `WARN: ${cacheSyncResult.missingWithoutCache} puzzle payload(s) could not be fetched and have no local cache yet.`,
+    );
   }
 
   const manifest: Manifest = {

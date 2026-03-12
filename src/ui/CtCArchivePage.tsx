@@ -22,6 +22,7 @@ type ArchiveEntry = {
   youtubeUrl: string;
   sourceId: string;
   stableKey: string;
+  cacheKey?: string;
 };
 
 type SearchField =
@@ -96,16 +97,38 @@ function isSortField(value: string): value is SortField {
   return SORT_FIELDS.has(value as SortField);
 }
 
-async function loadManifest(bustCache = false): Promise<ArchiveEntry[] | null> {
+type CachedPuzzlePayload = {
+  sourceId?: string;
+  stableKey?: string;
+  cacheKey?: string;
+  payload?: string;
+};
+
+async function loadManifest(): Promise<ArchiveEntry[] | null> {
   try {
-    const suffix = bustCache ? `?ts=${Date.now()}` : "";
-    const res = await fetch(`${import.meta.env.BASE_URL}archive/archive-manifest.json${suffix}`, {
-      cache: bustCache ? "no-store" : "default",
-    });
+    const res = await fetch(`${import.meta.env.BASE_URL}archive/archive-manifest.json`);
     if (!res.ok) return null;
     const data = (await res.json()) as { entries?: ArchiveEntry[] };
     if (!Array.isArray(data.entries) || data.entries.length === 0) return null;
     return data.entries;
+  } catch {
+    return null;
+  }
+}
+
+async function loadCachedPuzzlePayload(entry: ArchiveEntry): Promise<string | null> {
+  const cacheKey = clean(entry.cacheKey || entry.stableKey);
+  if (!cacheKey) return null;
+
+  try {
+    const res = await fetch(
+      `${import.meta.env.BASE_URL}archive/puzzles/${encodeURIComponent(cacheKey)}.json`,
+    );
+    if (!res.ok) return null;
+
+    const data = (await res.json()) as CachedPuzzlePayload;
+    const payload = typeof data.payload === "string" ? data.payload.trim() : "";
+    return payload || null;
   } catch {
     return null;
   }
@@ -140,16 +163,15 @@ export function CtCArchivePage() {
     );
   }
 
-  async function refreshRows(options: { bustCache?: boolean } = {}) {
-    const { bustCache = false } = options;
+  async function refreshRows() {
     setLoading(true);
     setError("");
 
     try {
-      const manifestEntries = await loadManifest(bustCache);
+      const manifestEntries = await loadManifest();
       if (!manifestEntries) {
         setRows([]);
-        setError("Unable to load archive manifest. Run `npm run sync-archive-cache` and rebuild.");
+        setError("Unable to load archive manifest. Run npm run sync-archive-cache and rebuild.");
         return;
       }
       setRows(manifestEntries);
@@ -158,15 +180,6 @@ export function CtCArchivePage() {
     } finally {
       setLoading(false);
     }
-  }
-
-  async function reloadAllRows() {
-    const ok = window.confirm("Are you sure you want to reload all puzzles from the CtC Archive?");
-    if (!ok) return;
-
-    setRows([]);
-    setUiMessage("");
-    await refreshRows({ bustCache: true });
   }
 
   useEffect(() => {
@@ -247,8 +260,9 @@ export function CtCArchivePage() {
   ]);
 
   async function onImport(entry: ArchiveEntry) {
-    if (!entry.sudokuPadUrl) {
-      setUiMessage("No SudokuPad link found.");
+    const importSource = clean(entry.sourceId || entry.sudokuPadUrl);
+    if (!importSource) {
+      setUiMessage("No puzzle source ID found in archive metadata.");
       return;
     }
 
@@ -256,7 +270,16 @@ export function CtCArchivePage() {
     setImportingId(entry.id);
 
     try {
-      const { key, def } = await loadFromSudokuPad(entry.sudokuPadUrl);
+      const cachedPayload = await loadCachedPuzzlePayload(entry);
+      if (!cachedPayload) {
+        setUiMessage("No cached puzzle payload found. Run archive sync to regenerate local cache files.");
+        return;
+      }
+
+      const { key, def } = await loadFromSudokuPad(importSource, {
+        preloadedPayload: cachedPayload,
+        skipCounterFetch: true,
+      });
 
       const now = Date.now();
       const existing = (await listPuzzles()).find((p) => p.key === key);
@@ -287,9 +310,6 @@ export function CtCArchivePage() {
         </button>
         <div className="brand">CtC Archive</div>
         <div className="spacer" />
-        <button className="btn" onClick={reloadAllRows} disabled={loading}>
-          {loading ? "Reloading…" : "Reload all"}
-        </button>
       </div>
 
       <div className="page">

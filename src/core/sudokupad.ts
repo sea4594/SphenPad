@@ -871,7 +871,7 @@ function normalizeLayerCosmeticsToGrid(
 
 export async function loadFromSudokuPad(
   inputUrlOrId: string,
-  options: { preloadedPayload?: string } = {}
+  options: { preloadedPayload?: string; skipCounterFetch?: boolean } = {}
 ): Promise<{ key: string; def: PuzzleDefinition; raw: any }> {
   const sourceDetails = parseSourceDetails(inputUrlOrId);
   const sourceIdRaw = sourceDetails.sourceId;
@@ -951,7 +951,8 @@ export async function loadFromSudokuPad(
   );
 
   const counterId = buildCounterId(author, title);
-  const counterSolveCount = puzzleSolveCount == null && counterId
+  const counterSolveCount =
+    !options.skipCounterFetch && puzzleSolveCount == null && counterId
     ? await fetchSolveCountByCounterId(counterId)
     : undefined;
 

@@ -18,6 +18,19 @@ npm run build
 npm run preview
 ```
 
+## Archive cache
+
+The CtC archive page reads only local static data:
+
+- `public/archive/archive-manifest.json` for archive metadata
+- `public/archive/puzzles/*.json` for cached puzzle payloads
+
+Refresh both caches locally with:
+
+```bash
+npm run sync-archive-cache
+```
+
 ## Puzzle page controls
 
 Only one tool panel is visible at a time:
@@ -36,8 +49,10 @@ Line tool modes:
 
 ## GitHub Pages deployment
 
-This repo includes a workflow at `.github/workflows/deploy.yml`.
-On every push to `main`, GitHub Actions builds and deploys `dist/` to GitHub Pages.
+This repo includes two deployment-related workflows:
+
+- `.github/workflows/deploy.yml`: builds and deploys on pushes to `main` (except archive cache-only changes).
+- `.github/workflows/sync-data.yml`: runs on a ~6-hour schedule, refreshes archive cache data, commits cache updates, then builds and deploys.
 
 Expected site URL:
 
