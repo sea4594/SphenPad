@@ -11,7 +11,11 @@
   --gradient-a: #2e3b57;
   --gradient-b: #33413a;
   --switch-track: rgba(255, 255, 255, 0.24);
-  --safe-inline: max(env(safe-area-inset-left), env(safe-area-inset-right));
+  --safe-top: env(safe-area-inset-top);
+  --safe-bottom: env(safe-area-inset-bottom);
+  --safe-left: env(safe-area-inset-left);
+  --safe-right: env(safe-area-inset-right);
+  --safe-inline: max(var(--safe-left), var(--safe-right));
   font-family: Barlow, "Trebuchet MS", "Segoe UI", sans-serif;
 }
 
@@ -150,10 +154,28 @@ body {
 
 html[data-force-portrait],
 html[data-force-portrait] body {
-  --safe-inline: 0px;
+  --safe-top: var(--force-safe-top, 0px);
+  --safe-bottom: var(--force-safe-bottom, 0px);
+  --safe-left: var(--force-safe-inline-start, 0px);
+  --safe-right: var(--force-safe-inline-end, 0px);
+  --safe-inline: max(var(--safe-left), var(--safe-right));
   width: 100%;
   height: 100%;
   overflow: hidden;
+}
+
+html[data-force-portrait="ccw"] {
+  --force-safe-top: env(safe-area-inset-left);
+  --force-safe-bottom: env(safe-area-inset-right);
+  --force-safe-inline-start: env(safe-area-inset-bottom);
+  --force-safe-inline-end: env(safe-area-inset-top);
+}
+
+html[data-force-portrait="cw"] {
+  --force-safe-top: env(safe-area-inset-right);
+  --force-safe-bottom: env(safe-area-inset-left);
+  --force-safe-inline-start: env(safe-area-inset-top);
+  --force-safe-inline-end: env(safe-area-inset-bottom);
 }
 
 html[data-force-portrait] #root {
@@ -178,14 +200,6 @@ html[data-force-portrait] .shell {
   width: 100%;
   height: 100%;
   min-height: 100%;
-}
-
-html[data-force-portrait] .topbar {
-  padding: 8px 14px 10px 14px !important;
-}
-
-html[data-force-portrait] .page {
-  padding: 14px !important;
 }
 
 html[data-force-portrait] .overlayBackdrop {
@@ -228,7 +242,7 @@ button,
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 12px;
-  padding: max(8px, env(safe-area-inset-top)) max(14px, var(--safe-inline)) 10px max(14px, var(--safe-inline));
+  padding: max(8px, var(--safe-top)) max(14px, var(--safe-inline)) 10px max(14px, var(--safe-inline));
   background: color-mix(in oklab, var(--bg) 88%, transparent);
   backdrop-filter: blur(8px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
@@ -271,7 +285,7 @@ button,
 }
 
 .page {
-  padding: 14px max(14px, var(--safe-inline)) max(14px, env(safe-area-inset-bottom)) max(14px, var(--safe-inline));
+  padding: 14px max(14px, var(--safe-inline)) max(14px, var(--safe-bottom)) max(14px, var(--safe-inline));
   display: grid;
   gap: 12px;
   min-height: 0;
@@ -866,7 +880,7 @@ input.url {
 
 @media (max-width: 760px), ((hover: none) and (pointer: coarse)) {
   .topbar {
-    padding: max(6px, env(safe-area-inset-top)) max(10px, var(--safe-inline)) 8px max(10px, var(--safe-inline));
+    padding: max(6px, var(--safe-top)) max(10px, var(--safe-inline)) 8px max(10px, var(--safe-inline));
     gap: 8px;
     backdrop-filter: none;
   }
@@ -881,7 +895,7 @@ input.url {
   }
 
   .puzzleTopbar {
-    padding: max(4px, env(safe-area-inset-top)) max(10px, var(--safe-inline)) 6px max(10px, var(--safe-inline));
+    padding: max(4px, var(--safe-top)) max(10px, var(--safe-inline)) 6px max(10px, var(--safe-inline));
     gap: 4px;
   }
 
@@ -909,7 +923,7 @@ input.url {
   }
 
   .page {
-    padding: 10px max(10px, var(--safe-inline)) max(8px, env(safe-area-inset-bottom)) max(10px, var(--safe-inline));
+    padding: 10px max(10px, var(--safe-inline)) max(8px, var(--safe-bottom)) max(10px, var(--safe-inline));
   }
 
   input.url {

@@ -11,10 +11,15 @@ export function App() {
     type LockableOrientation = ScreenOrientation & { lock?: (kind: string) => Promise<void> };
     const root = document.documentElement;
     const coarsePointer = window.matchMedia("(hover: none) and (pointer: coarse)");
+    const visualViewport = window.visualViewport;
 
     const readViewportSize = () => {
-      const vw = Math.max(1, Math.round(window.visualViewport?.width ?? window.innerWidth));
-      const vh = Math.max(1, Math.round(window.visualViewport?.height ?? window.innerHeight));
+      const layoutW = Math.max(1, Math.round(window.innerWidth));
+      const layoutH = Math.max(1, Math.round(window.innerHeight));
+      const visualW = Math.max(1, Math.round(visualViewport?.width ?? layoutW));
+      const visualH = Math.max(1, Math.round(visualViewport?.height ?? layoutH));
+      const vw = Math.max(layoutW, visualW);
+      const vh = Math.max(layoutH, visualH);
       return { vw, vh, shortSide: Math.min(vw, vh), longSide: Math.max(vw, vh) };
     };
 
@@ -84,6 +89,8 @@ export function App() {
     window.addEventListener("pointerdown", onFirstInteraction, { passive: true });
     window.addEventListener("resize", onViewportChange);
     window.addEventListener("orientationchange", onViewportChange);
+    visualViewport?.addEventListener("resize", onViewportChange);
+    visualViewport?.addEventListener("scroll", onViewportChange);
     coarsePointer.addEventListener?.("change", onViewportChange);
 
     return () => {
@@ -92,6 +99,8 @@ export function App() {
       window.removeEventListener("pointerdown", onFirstInteraction);
       window.removeEventListener("resize", onViewportChange);
       window.removeEventListener("orientationchange", onViewportChange);
+      visualViewport?.removeEventListener("resize", onViewportChange);
+      visualViewport?.removeEventListener("scroll", onViewportChange);
       coarsePointer.removeEventListener?.("change", onViewportChange);
       root.removeAttribute("data-force-portrait");
       root.style.removeProperty("--force-portrait-short");
