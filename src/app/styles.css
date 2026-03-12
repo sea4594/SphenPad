@@ -170,6 +170,7 @@ html[data-force-portrait] body {
 }
 
 html[data-force-portrait="ccw"] {
+  --force-rotate: -90deg;
   --force-safe-top: env(safe-area-inset-left);
   --force-safe-bottom: env(safe-area-inset-right);
   --force-safe-inline-start: env(safe-area-inset-bottom);
@@ -177,6 +178,7 @@ html[data-force-portrait="ccw"] {
 }
 
 html[data-force-portrait="cw"] {
+  --force-rotate: 90deg;
   --force-safe-top: env(safe-area-inset-right);
   --force-safe-bottom: env(safe-area-inset-left);
   --force-safe-inline-start: env(safe-area-inset-top);
@@ -185,20 +187,13 @@ html[data-force-portrait="cw"] {
 
 html[data-force-portrait] #root {
   position: fixed;
-  top: 0;
-  left: 0;
+  top: 50%;
+  left: 50%;
   width: var(--force-portrait-short, 100dvh);
   height: var(--force-portrait-long, 100dvw);
-  transform-origin: top left;
+  transform-origin: center center;
+  transform: translate(-50%, -50%) rotate(var(--force-rotate, 0deg));
   overflow: hidden;
-}
-
-html[data-force-portrait="ccw"] #root {
-  transform: translateY(var(--force-portrait-short, 100dvh)) rotate(-90deg);
-}
-
-html[data-force-portrait="cw"] #root {
-  transform: translateX(var(--force-portrait-long, 100dvw)) rotate(90deg);
 }
 
 html[data-force-portrait] .shell {
@@ -1031,7 +1026,7 @@ input.url {
   }
 
   .page {
-    padding: 10px max(10px, var(--safe-right)) max(8px, var(--safe-bottom)) max(10px, var(--safe-left));
+    padding: 10px max(10px, var(--safe-right)) var(--safe-bottom) max(10px, var(--safe-left));
   }
 
   input.url {

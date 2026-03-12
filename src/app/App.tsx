@@ -13,51 +13,43 @@ export function App() {
     const coarsePointer = window.matchMedia("(hover: none) and (pointer: coarse)");
     const mobilePlatform = /android|iphone|ipad|ipod/i.test(navigator.userAgent);
     const touchPrimaryInput = coarsePointer.matches && navigator.maxTouchPoints > 1;
+    const onMobileDevice = mobilePlatform || touchPrimaryInput;
     const visualViewport = window.visualViewport;
     let lastLandscapeDirection: "cw" | "ccw" = "ccw";
 
-    const readViewportSize = () => {
-      const layoutW = Math.max(1, Math.round(window.innerWidth));
-      const layoutH = Math.max(1, Math.round(window.innerHeight));
-      const vw = layoutW;
-      const vh = layoutH;
-      return {
-        vw,
-        vh,
-        shortSide: Math.min(vw, vh),
-        longSide: Math.max(vw, vh),
-      };
-    };
-
     const getLandscapeDirection = (): "cw" | "ccw" => {
+      const legacyAngle = (window as LegacyOrientationWindow).orientation;
+      if (typeof legacyAngle === "number" && Math.abs(legacyAngle) === 90) {
+        // Keep content upright by applying the opposite rotation of the current device angle.
+        lastLandscapeDirection = legacyAngle > 0 ? "ccw" : "cw";
+        return lastLandscapeDirection;
+      }
+
       const angle = window.screen?.orientation?.angle;
       if (typeof angle === "number") {
         const normalized = ((angle % 360) + 360) % 360;
         if (normalized === 90) {
-          lastLandscapeDirection = "cw";
-          return lastLandscapeDirection;
-        }
-        if (normalized === 270) {
           lastLandscapeDirection = "ccw";
           return lastLandscapeDirection;
         }
-      }
-
-      const legacyAngle = (window as LegacyOrientationWindow).orientation;
-      if (typeof legacyAngle === "number" && Math.abs(legacyAngle) === 90) {
-        // iOS window.orientation uses positive for left-side-down and negative for right-side-down.
-        lastLandscapeDirection = legacyAngle > 0 ? "ccw" : "cw";
-        return lastLandscapeDirection;
+        if (normalized === 270) {
+          lastLandscapeDirection = "cw";
+          return lastLandscapeDirection;
+        }
       }
 
       return lastLandscapeDirection;
     };
 
     const updateForcedPortraitMode = () => {
-      const { vw, vh, shortSide, longSide } = readViewportSize();
-      const onMobileDevice = mobilePlatform || touchPrimaryInput;
+      const layoutW = Math.max(1, Math.round(window.innerWidth));
+      const layoutH = Math.max(1, Math.round(window.innerHeight));
+      const vw = Math.max(1, Math.round(visualViewport?.width ?? layoutW));
+      const vh = Math.max(1, Math.round(visualViewport?.height ?? layoutH));
       const rotatedLandscape = vw > vh;
       if (onMobileDevice && rotatedLandscape) {
+        const shortSide = Math.min(vw, vh);
+        const longSide = Math.max(vw, vh);
         root.style.setProperty("--force-portrait-short", `${shortSide}px`);
         root.style.setProperty("--force-portrait-long", `${longSide}px`);
         root.setAttribute("data-force-portrait", getLandscapeDirection());
@@ -92,7 +84,6 @@ export function App() {
 
     const onViewportChange = () => {
       updateForcedPortraitMode();
-      void lockPortrait();
     };
 
     updateForcedPortraitMode();
@@ -103,7 +94,6 @@ export function App() {
     window.addEventListener("resize", onViewportChange);
     window.addEventListener("orientationchange", onViewportChange);
     visualViewport?.addEventListener("resize", onViewportChange);
-    visualViewport?.addEventListener("scroll", onViewportChange);
     coarsePointer.addEventListener?.("change", onViewportChange);
 
     return () => {
@@ -113,7 +103,6 @@ export function App() {
       window.removeEventListener("resize", onViewportChange);
       window.removeEventListener("orientationchange", onViewportChange);
       visualViewport?.removeEventListener("resize", onViewportChange);
-      visualViewport?.removeEventListener("scroll", onViewportChange);
       coarsePointer.removeEventListener?.("change", onViewportChange);
       root.removeAttribute("data-force-portrait");
       root.style.removeProperty("--force-portrait-short");
