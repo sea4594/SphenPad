@@ -162,8 +162,15 @@ html[data-force-portrait] #root {
   width: 100dvh;
   height: 100dvw;
   transform-origin: top left;
-  transform: translateY(100dvh) rotate(-90deg);
   overflow: hidden;
+}
+
+html[data-force-portrait="ccw"] #root {
+  transform: translateY(100dvh) rotate(-90deg);
+}
+
+html[data-force-portrait="cw"] #root {
+  transform: translateX(100dvw) rotate(90deg);
 }
 
 html[data-force-portrait] .shell {

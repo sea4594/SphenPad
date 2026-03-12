@@ -7,16 +7,34 @@ import { ThemeProvider } from "./theme";
 
 export function App() {
   useEffect(() => {
+    type LegacyOrientationWindow = Window & { orientation?: number };
     type LockableOrientation = ScreenOrientation & { lock?: (kind: string) => Promise<void> };
     const root = document.documentElement;
     const coarsePointer = window.matchMedia("(hover: none) and (pointer: coarse)");
+
+    const getLandscapeDirection = (): "cw" | "ccw" => {
+      const angle = window.screen?.orientation?.angle;
+      if (typeof angle === "number") {
+        const normalized = ((angle % 360) + 360) % 360;
+        if (normalized === 90) return "cw";
+        if (normalized === 270) return "ccw";
+      }
+
+      const legacyAngle = (window as LegacyOrientationWindow).orientation;
+      if (typeof legacyAngle === "number") {
+        if (legacyAngle > 0) return "cw";
+        if (legacyAngle < 0) return "ccw";
+      }
+
+      return "ccw";
+    };
 
     const updateForcedPortraitMode = () => {
       const shortSide = Math.min(window.innerWidth, window.innerHeight);
       const onMobileDevice = coarsePointer.matches || shortSide <= 1000;
       const rotatedLandscape = window.innerWidth > window.innerHeight;
       if (onMobileDevice && rotatedLandscape) {
-        root.setAttribute("data-force-portrait", "true");
+        root.setAttribute("data-force-portrait", getLandscapeDirection());
       } else {
         root.removeAttribute("data-force-portrait");
       }
