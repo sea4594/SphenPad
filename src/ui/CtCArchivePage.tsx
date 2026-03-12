@@ -254,6 +254,7 @@ export function CtCArchivePage() {
   const [hostFilter, setHostFilter] = useState("all");
   const [authorFilter, setAuthorFilter] = useState("all");
   const [collectionFilter, setCollectionFilter] = useState("all");
+  const [constraintFilters, setConstraintFilters] = useState<string[]>([]);
   const [minLength, setMinLength] = useState("");
   const [maxLength, setMaxLength] = useState("");
   const [visibleRowsCount, setVisibleRowsCount] = useState(renderConfig.initialVisibleRows);
@@ -319,6 +320,11 @@ export function CtCArchivePage() {
     [rows],
   );
 
+  const constraintOptions = useMemo(
+    () => Array.from(new Set(rows.flatMap((r) => r.constraintTypes).filter(Boolean))).sort((a, b) => a.localeCompare(b)),
+    [rows],
+  );
+
   const rowsByDate = useMemo(() => [...rows].sort(sortByDateDesc), [rows]);
   const rowsByTitle = useMemo(() => [...rows].sort(sortByTitleAsc), [rows]);
   const rowsByVideoLength = useMemo(() => [...rows].sort(sortByVideoLengthAsc), [rows]);
@@ -338,6 +344,9 @@ export function CtCArchivePage() {
       if (hostFilter !== "all" && r.videoHost !== hostFilter) return false;
       if (authorFilter !== "all" && r.puzzleAuthor !== authorFilter) return false;
       if (collectionFilter !== "all" && r.collection !== collectionFilter) return false;
+      if (constraintFilters.length && !constraintFilters.every((selectedConstraint) => r.constraintTypes.includes(selectedConstraint))) {
+        return false;
+      }
       if (minSeconds != null && (r.videoLengthSeconds == null || r.videoLengthSeconds < minSeconds)) return false;
       if (maxSeconds != null && (r.videoLengthSeconds == null || r.videoLengthSeconds > maxSeconds)) return false;
       if (!matchesSearch(r, searchField, q)) return false;
@@ -350,6 +359,7 @@ export function CtCArchivePage() {
     hostFilter,
     authorFilter,
     collectionFilter,
+    constraintFilters,
     minLength,
     maxLength,
   ]);
@@ -364,6 +374,7 @@ export function CtCArchivePage() {
     hostFilter,
     authorFilter,
     collectionFilter,
+    constraintFilters,
     minLength,
     maxLength,
     rows,
@@ -379,6 +390,17 @@ export function CtCArchivePage() {
   const onLoadMoreRows = useCallback(() => {
     setVisibleRowsCount((count) => count + renderConfig.visibleRowsStep);
   }, [renderConfig.visibleRowsStep]);
+
+  const onClearFilters = useCallback(() => {
+    setQuery("");
+    setSearchField("any");
+    setHostFilter("all");
+    setAuthorFilter("all");
+    setCollectionFilter("all");
+    setConstraintFilters([]);
+    setMinLength("");
+    setMaxLength("");
+  }, []);
 
   async function onImport(entry: PreparedArchiveEntry) {
     const importSource = clean(entry.sourceId || entry.sudokuPadUrl);
@@ -470,7 +492,7 @@ export function CtCArchivePage() {
               </select>
             </div>
 
-            <div className="archiveFilterRow" style={{ marginTop: 8 }}>
+            <div className="archiveFilterRow">
               <label className="archiveFilterControl">
                 <span className="muted archiveFilterLabel">Host</span>
                 <select
@@ -517,6 +539,30 @@ export function CtCArchivePage() {
               </label>
 
               <label className="archiveFilterControl">
+                <span className="muted archiveFilterLabel">Constraints</span>
+                <select
+                  className="btn menuControlSelect archiveConstraintSelect"
+                  multiple
+                  value={constraintFilters}
+                  onChange={(e) => {
+                    const nextSelected = Array.from(e.target.selectedOptions, (option) => option.value);
+                    setConstraintFilters(nextSelected);
+                  }}
+                >
+                  {constraintOptions.map((value) => (
+                    <option key={value} value={value}>
+                      {value}
+                    </option>
+                  ))}
+                </select>
+                <span className="muted archiveFilterHint">
+                  {constraintFilters.length ? `${constraintFilters.length} selected` : "All"}
+                </span>
+              </label>
+            </div>
+
+            <div className="archiveLengthRow">
+              <label className="archiveFilterControl">
                 <span className="muted archiveFilterLabel">Min Length (Minutes)</span>
                 <input
                   className="url archiveLenInput"
@@ -535,6 +581,12 @@ export function CtCArchivePage() {
                   onChange={(e) => setMaxLength(e.target.value)}
                 />
               </label>
+            </div>
+
+            <div className="archiveFilterActions">
+              <button type="button" className="btn" onClick={onClearFilters}>
+                Clear Filters
+              </button>
             </div>
           </div>
 

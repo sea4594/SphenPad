@@ -493,6 +493,7 @@ input.url {
 .archiveFilterRow {
   display: flex;
   gap: 8px;
+  margin-top: 8px;
   flex-wrap: wrap;
   align-items: flex-start;
 }
@@ -518,6 +519,27 @@ input.url {
 .archiveLenInput {
   min-width: 0;
   max-width: none;
+}
+
+.archiveConstraintSelect {
+  min-height: 110px;
+}
+
+.archiveFilterHint {
+  font-size: 12px;
+  line-height: 1.1;
+}
+
+.archiveLengthRow {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.archiveFilterActions {
+  display: flex;
+  justify-content: flex-start;
 }
 
 .archiveEntryCard {
