@@ -8,6 +8,10 @@ export type ParsedArchiveSheet = {
   rows: ParsedArchiveSheetRow[];
 };
 
+type ArchiveSheetParserOptions = {
+  log?: (message: string) => void;
+};
+
 type GvizCell = { v?: unknown; f?: unknown; p?: unknown } | null;
 
 const SUDOKUPAD_URL_IN_ROW_REGEX = /https?:\/\/(?:sudokupad\.app|app\.crackingthecryptic\.com)\/[^\s"'<>)\\]+/i;
@@ -53,7 +57,7 @@ function decodeEscapedUrl(url: string): string {
     .replace(/\\\//g, "/");
 }
 
-function parseSudokuPadUrlByRowNumber(sourcePayload: string): Map<number, string> {
+function parseSudokuPadUrlByRowNumber(sourcePayload: string, options?: ArchiveSheetParserOptions): Map<number, string> {
   const urlByRowNumber = new Map<number, string>();
   for (const match of sourcePayload.matchAll(SUDOKUPAD_URL_BY_ROW_REGEX)) {
     const rowNumber = Number(match[1]);
@@ -62,6 +66,9 @@ function parseSudokuPadUrlByRowNumber(sourcePayload: string): Map<number, string
     if (!sudokuPadUrl) continue;
     urlByRowNumber.set(rowNumber, sudokuPadUrl);
   }
+  options?.log?.(
+    `source payload sudokuPad row-map entries=${urlByRowNumber.size} payloadLength=${sourcePayload.length}`
+  );
   return urlByRowNumber;
 }
 
@@ -93,7 +100,12 @@ function extractSudokuPadUrlForRow(cells: GvizCell[], iSudokuPad: number): strin
   return "";
 }
 
-export function parseArchiveSheetPayload(payload: string, sourcePayload = ""): ParsedArchiveSheet {
+export function parseArchiveSheetPayload(
+  payload: string,
+  sourcePayload = "",
+  options?: ArchiveSheetParserOptions
+): ParsedArchiveSheet {
+  const log = options?.log;
   const prefix = "google.visualization.Query.setResponse(";
   const start = payload.indexOf(prefix);
   if (start < 0) return { header: [], rows: [] };
@@ -109,7 +121,12 @@ export function parseArchiveSheetPayload(payload: string, sourcePayload = ""): P
   const rawRows = parsed.table?.rows ?? [];
   const header = cols.map((c) => clean(c.label));
   const iSudokuPad = findIndexByAliases(header, ["sp", "sudokupad", "sudoku pad", "puzzle link", "sudokupadlink"]);
-  const sudokuPadUrlByRowNumber = sourcePayload ? parseSudokuPadUrlByRowNumber(sourcePayload) : new Map<number, string>();
+  const sudokuPadUrlByRowNumber = sourcePayload
+    ? parseSudokuPadUrlByRowNumber(sourcePayload, options)
+    : new Map<number, string>();
+  let sudokuPadFromCellCount = 0;
+  let sudokuPadFromRowMapCount = 0;
+  const markerWithoutUrlRows: number[] = [];
   const rows = rawRows
     .map((row, index) => {
       const cells = row.c ?? [];
@@ -120,10 +137,22 @@ export function parseArchiveSheetPayload(payload: string, sourcePayload = ""): P
         return clean(String(cellValue));
       });
       const rowNumber = index + GVIZ_DATA_START_ROW_NUMBER;
+      const markerValue = clean(iSudokuPad >= 0 ? values[iSudokuPad] : "");
       const sudokuPadUrlFromRow = extractSudokuPadUrlForRow(cells, iSudokuPad);
-      const sudokuPadUrl = sudokuPadUrlFromRow || clean(sudokuPadUrlByRowNumber.get(rowNumber));
+      if (sudokuPadUrlFromRow) sudokuPadFromCellCount += 1;
+      const sudokuPadFromRowMap = clean(sudokuPadUrlByRowNumber.get(rowNumber));
+      if (!sudokuPadUrlFromRow && sudokuPadFromRowMap) sudokuPadFromRowMapCount += 1;
+      const sudokuPadUrl = sudokuPadUrlFromRow || sudokuPadFromRowMap;
+      if (markerValue === "🔢" && !sudokuPadUrl) markerWithoutUrlRows.push(rowNumber);
       return { values, sudokuPadUrl };
     })
     .filter((row) => row.values.some((cell) => clean(cell)) || row.sudokuPadUrl);
+  log?.(
+    `gviz rows=${rawRows.length} parsedRows=${rows.length} iSudokuPad=${iSudokuPad} sudokuPadFromCell=${sudokuPadFromCellCount} sudokuPadFromRowMap=${sudokuPadFromRowMapCount} rowsWithSudokuPad=${rows.filter((row) => !!row.sudokuPadUrl).length}`
+  );
+  if (markerWithoutUrlRows.length) {
+    const sample = markerWithoutUrlRows.slice(0, 12).join(", ");
+    log?.(`rows with SP marker but empty sudokuPadUrl count=${markerWithoutUrlRows.length} sample=[${sample}]`);
+  }
   return { header, rows };
 }
