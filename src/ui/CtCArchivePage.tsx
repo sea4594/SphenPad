@@ -629,7 +629,7 @@ export function CtCArchivePage() {
                       <div className="archiveEntryMain archiveDetailsGrid">
                         {entry.sudokuPadUrl ? (
                           <a
-                            className="btn archiveOpenIcon"
+                            className="btn archiveOpenIcon archiveSudokuPadIcon"
                             href={entry.sudokuPadUrl}
                             target="_blank"
                             rel="noreferrer noopener"
@@ -641,7 +641,7 @@ export function CtCArchivePage() {
                         ) : (
                           <button
                             type="button"
-                            className="btn archiveOpenIcon"
+                            className="btn archiveOpenIcon archiveSudokuPadIcon"
                             disabled
                             title="Open SudokuPad"
                             aria-label="Open SudokuPad"
@@ -650,7 +650,7 @@ export function CtCArchivePage() {
                           </button>
                         )}
 
-                        <div className="archiveInfoText">
+                        <div className="archiveInfoText archivePuzzleInfo">
                           <div className="archiveEntryTitle">
                             {solved ? "✓ " : ""}
                             {display(entry.title)}
@@ -677,7 +677,7 @@ export function CtCArchivePage() {
 
                         {entry.youtubeUrl ? (
                           <a
-                            className="btn archiveOpenIcon"
+                            className="btn archiveOpenIcon archiveYoutubeIcon"
                             href={entry.youtubeUrl}
                             target="_blank"
                             rel="noreferrer noopener"
@@ -689,7 +689,7 @@ export function CtCArchivePage() {
                         ) : (
                           <button
                             type="button"
-                            className="btn archiveOpenIcon"
+                            className="btn archiveOpenIcon archiveYoutubeIcon"
                             disabled
                             title="Open YouTube"
                             aria-label="Open YouTube"
@@ -698,7 +698,7 @@ export function CtCArchivePage() {
                           </button>
                         )}
 
-                        <div className="archiveInfoText">
+                        <div className="archiveInfoText archiveVideoInfo">
                           <div className="archiveVideoTitle">{display(entry.videoTitle)}</div>
                           <div className="archiveMetaSmall">{display(entry.videoDate)}</div>
                           <div className="archiveMetaMedium">

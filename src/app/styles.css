@@ -533,11 +533,31 @@ input.url {
 }
 
 .archiveDetailsGrid {
-  grid-template-columns: auto minmax(0, 1fr);
-  grid-template-rows: auto auto auto;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-rows: auto auto;
   column-gap: 10px;
   row-gap: 10px;
   align-items: start;
+}
+
+.archiveSudokuPadIcon {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.archivePuzzleInfo {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.archiveYoutubeIcon {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.archiveVideoInfo {
+  grid-column: 2;
+  grid-row: 2;
 }
 
 .archiveEntryTitle {
@@ -610,8 +630,8 @@ input.url {
 }
 
 .archiveImportBtn {
-  grid-column: 2;
-  grid-row: 3;
+  grid-column: 3;
+  grid-row: 2;
   justify-self: end;
   white-space: nowrap;
   align-self: end;
