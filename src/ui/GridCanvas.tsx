@@ -8,6 +8,14 @@ type LineSegmentDraft = { a: CellRC; b: CellRC; edgeTrack?: EdgeTrack };
 type LayerItem = NonNullable<PuzzleDefinition["cosmetics"]["underlays"]>[number];
 const LINE_NODE_RADIUS = 0.5;
 
+function isLikelyMobileDevice(): boolean {
+  if (typeof window === "undefined") return false;
+  const mobilePlatform = /android|iphone|ipad|ipod/i.test(window.navigator.userAgent);
+  const coarsePointer = window.matchMedia("(hover: none) and (pointer: coarse)").matches;
+  const touchPrimaryInput = coarsePointer && window.navigator.maxTouchPoints > 1;
+  return mobilePlatform || touchPrimaryInput;
+}
+
 type DragState = {
   path: CellRC[];
   segments: LineSegmentDraft[];
@@ -70,10 +78,7 @@ export function GridCanvas(props: {
   const [bgImage, setBgImage] = useState<HTMLImageElement | null>(null);
   const [linePreview, setLinePreview] = useState<{ segments: LineSegmentDraft[]; kind: LineKindResolved } | null>(null);
   const [emojiRenderVersion, setEmojiRenderVersion] = useState(0);
-  const [mobileViewport, setMobileViewport] = useState(() => {
-    if (typeof window === "undefined") return false;
-    return Math.min(window.innerWidth, window.innerHeight) <= 1000;
-  });
+  const [mobileViewport, setMobileViewport] = useState(() => isLikelyMobileDevice());
 
   const basePad = Math.max(14, Math.round(cellPx * 0.32));
   const pad = mobileViewport ? Math.max(3, Math.round(basePad * 0.2)) : basePad;
@@ -312,20 +317,24 @@ export function GridCanvas(props: {
     const el = wrapRef.current;
     if (!el) return;
     const update = () => {
+      const boardCard = (el.closest(".boardCard") as HTMLElement | null) ?? (el.parentElement as HTMLElement | null) ?? null;
       const boardColumn = (el.closest(".boardColumn") as HTMLElement | null) ?? null;
       const gridLayout = (el.closest(".gridLayout") as HTMLElement | null) ?? null;
-      const pane = boardColumn ?? (el.parentElement as HTMLElement | null) ?? el;
-      const shortSide = Math.min(window.innerWidth, window.innerHeight);
+      const pane = boardCard ?? boardColumn ?? el;
       const longSide = Math.max(window.innerWidth, window.innerHeight);
-      const isNarrow = shortSide <= 760;
-      const isMobile = shortSide <= 1000;
+      const isMobile = isLikelyMobileDevice();
 
-      const width = pane.clientWidth || window.innerWidth;
+      const width = Math.max(1, el.clientWidth || pane.clientWidth || window.innerWidth);
 
       const topbar = document.querySelector(".topbar") as HTMLElement | null;
       const normalizedViewportHeight = isMobile ? longSide : window.innerHeight;
       const viewportHeight = Math.max(180, normalizedViewportHeight - (topbar?.offsetHeight ?? 0) - 16);
-      const measuredHeight = Math.max(boardColumn?.clientHeight ?? 0, gridLayout?.clientHeight ?? 0, pane.clientHeight || 0);
+      const measuredHeight = Math.max(
+        boardCard?.clientHeight ?? 0,
+        boardColumn?.clientHeight ?? 0,
+        gridLayout?.clientHeight ?? 0,
+        pane.clientHeight || 0
+      );
 
       const height = isMobile
         ? Math.max(160, viewportHeight)
@@ -338,14 +347,31 @@ export function GridCanvas(props: {
       const spanX = cols + outsideLeft + outsideRight;
       const spanY = rows + outsideTop + outsideBottom;
       const padFactor = isMobile ? 0.14 : 0.68;
-      const byWidth = (Math.max(240, width - sideMargin * 2)) / (spanX + padFactor);
-      const byHeight = (Math.max(220, height - topBottomPad * 2)) / (spanY + padFactor);
+      const availableWidth = Math.max(240, width - sideMargin * 2);
+      const availableHeight = Math.max(220, height - topBottomPad * 2);
+      const byWidth = availableWidth / (spanX + padFactor);
+      const byHeight = availableHeight / (spanY + padFactor);
 
-      const desktop = window.matchMedia("(hover: hover) and (pointer: fine)").matches && longSide >= 1080;
+      const desktop = !isMobile && window.matchMedia("(hover: hover) and (pointer: fine)").matches && longSide >= 1080;
       const mobileMinCell = 21;
+      const desktopMinCell = 14;
       const maxCell = desktop ? 96 : 72;
-      const minCell = isNarrow ? mobileMinCell : 28;
-      const next = Math.floor(Math.min(maxCell, Math.max(minCell, Math.min(byWidth, byHeight))));
+      const minCell = isMobile ? mobileMinCell : desktopMinCell;
+      let next = Math.floor(Math.min(maxCell, Math.max(minCell, Math.min(byWidth, byHeight))));
+
+      const fits = (cell: number) => {
+        const basePadding = Math.max(14, Math.round(cell * 0.32));
+        const padding = isMobile ? Math.max(3, Math.round(basePadding * 0.2)) : basePadding;
+        const fullWidth = padding * 2 + spanX * cell;
+        const fullHeight = padding * 2 + spanY * cell;
+        return fullWidth <= availableWidth && fullHeight <= availableHeight;
+      };
+
+      while (next > minCell && !fits(next)) next -= 1;
+      if (!isMobile) {
+        while (next > 8 && !fits(next)) next -= 1;
+      }
+
       setCellPx(next);
       setMobileViewport(isMobile);
     };
