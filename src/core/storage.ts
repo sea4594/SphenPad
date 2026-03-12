@@ -28,6 +28,14 @@ export async function listPuzzles() {
     .sort((a, b) => b.updatedAt - a.updatedAt);
 }
 
+export async function listCompletedPuzzleKeys() {
+  const keys: string[] = [];
+  await db.puzzles.each((row) => {
+    if (row.data.progress?.status === "complete") keys.push(row.key);
+  });
+  return keys;
+}
+
 export async function deletePuzzle(key: string) {
   await db.puzzles.delete(key);
 }

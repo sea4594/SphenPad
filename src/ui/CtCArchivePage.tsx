@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useDeferredValue, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { normalizePuzzleKey } from "../core/id";
 import { makeInitialProgress } from "../core/scl";
-import { listPuzzles, upsertPuzzle } from "../core/storage";
+import { getPuzzle, listCompletedPuzzleKeys, upsertPuzzle } from "../core/storage";
 import { loadFromSudokuPad } from "../core/sudokupad";
 
 type ArchiveEntry = {
@@ -23,6 +23,18 @@ type ArchiveEntry = {
   sourceId: string;
   stableKey: string;
   cacheKey?: string;
+};
+
+type PreparedArchiveEntry = ArchiveEntry & {
+  sourceKey: string;
+  constraintTypes: string[];
+  titleLower: string;
+  constraintsLower: string;
+  videoTitleLower: string;
+  puzzleAuthorLower: string;
+  videoHostLower: string;
+  collectionLower: string;
+  searchAnyLower: string;
 };
 
 type SearchField =
@@ -55,6 +67,30 @@ const YOUTUBE_ICON_DATA_URL =
   "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='1' y='4' width='22' height='16' rx='4' fill='%23ff0000'/%3E%3Cpolygon points='10,8 17,12 10,16' fill='white'/%3E%3C/svg%3E";
 
 const COLLECTION_NONE_VALUE = "none";
+const MOBILE_MEDIA_QUERY = "(max-width: 760px)";
+const MOBILE_VISIBLE_ROWS_INITIAL = 24;
+const MOBILE_VISIBLE_ROWS_STEP = 24;
+const DESKTOP_VISIBLE_ROWS_INITIAL = 80;
+const DESKTOP_VISIBLE_ROWS_STEP = 80;
+
+function getRenderConfig() {
+  const isMobile =
+    typeof window !== "undefined" &&
+    typeof window.matchMedia === "function" &&
+    window.matchMedia(MOBILE_MEDIA_QUERY).matches;
+  if (isMobile) {
+    return {
+      compact: true,
+      initialVisibleRows: MOBILE_VISIBLE_ROWS_INITIAL,
+      visibleRowsStep: MOBILE_VISIBLE_ROWS_STEP,
+    };
+  }
+  return {
+    compact: false,
+    initialVisibleRows: DESKTOP_VISIBLE_ROWS_INITIAL,
+    visibleRowsStep: DESKTOP_VISIBLE_ROWS_STEP,
+  };
+}
 
 function clean(v: string | undefined | null) {
   return (v ?? "").trim();
@@ -87,6 +123,74 @@ function splitConstraintTypes(value: string): string[] {
     .split(";")
     .map((part) => clean(part))
     .filter(Boolean);
+}
+
+function prepareArchiveEntry(entry: ArchiveEntry): PreparedArchiveEntry {
+  const titleLower = clean(entry.title).toLowerCase();
+  const constraintsLower = clean(entry.subTypeConstraints).toLowerCase();
+  const videoTitleLower = clean(entry.videoTitle).toLowerCase();
+  const puzzleAuthorLower = clean(entry.puzzleAuthor).toLowerCase();
+  const videoHostLower = clean(entry.videoHost).toLowerCase();
+  const collectionLower = clean(entry.collection).toLowerCase();
+  const sourceId = clean(entry.sourceId);
+
+  return {
+    ...entry,
+    sourceKey: sourceId ? normalizePuzzleKey(sourceId) : "",
+    constraintTypes: splitConstraintTypes(entry.subTypeConstraints),
+    titleLower,
+    constraintsLower,
+    videoTitleLower,
+    puzzleAuthorLower,
+    videoHostLower,
+    collectionLower,
+    searchAnyLower: [
+      titleLower,
+      constraintsLower,
+      videoTitleLower,
+      puzzleAuthorLower,
+      videoHostLower,
+      collectionLower,
+    ].join(" "),
+  };
+}
+
+function matchesSearch(entry: PreparedArchiveEntry, searchField: SearchField, queryLower: string): boolean {
+  if (!queryLower) return true;
+  if (searchField === "title") return entry.titleLower.includes(queryLower);
+  if (searchField === "constraints") return entry.constraintsLower.includes(queryLower);
+  if (searchField === "video_title") return entry.videoTitleLower.includes(queryLower);
+  if (searchField === "author") return entry.puzzleAuthorLower.includes(queryLower);
+  if (searchField === "host") return entry.videoHostLower.includes(queryLower);
+  if (searchField === "collection") return entry.collectionLower.includes(queryLower);
+  return entry.searchAnyLower.includes(queryLower);
+}
+
+function sortByDateDesc(a: PreparedArchiveEntry, b: PreparedArchiveEntry): number {
+  const av = a.videoDateTs ?? 0;
+  const bv = b.videoDateTs ?? 0;
+  return bv - av;
+}
+
+function sortByTitleAsc(a: PreparedArchiveEntry, b: PreparedArchiveEntry): number {
+  return a.title.localeCompare(b.title);
+}
+
+function sortByVideoLengthAsc(a: PreparedArchiveEntry, b: PreparedArchiveEntry): number {
+  const av = a.videoLengthSeconds ?? Number.MAX_SAFE_INTEGER;
+  const bv = b.videoLengthSeconds ?? Number.MAX_SAFE_INTEGER;
+  return av - bv;
+}
+
+async function waitForNextFrame(): Promise<void> {
+  if (typeof window === "undefined") return;
+  await new Promise<void>((resolve) => {
+    if (typeof window.requestAnimationFrame === "function") {
+      window.requestAnimationFrame(() => resolve());
+      return;
+    }
+    window.setTimeout(() => resolve(), 0);
+  });
 }
 
 function isSearchField(value: string): value is SearchField {
@@ -136,8 +240,9 @@ async function loadCachedPuzzlePayload(entry: ArchiveEntry): Promise<string | nu
 
 export function CtCArchivePage() {
   const nav = useNavigate();
+  const [renderConfig] = useState(getRenderConfig);
 
-  const [rows, setRows] = useState<ArchiveEntry[]>([]);
+  const [rows, setRows] = useState<PreparedArchiveEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [importingId, setImportingId] = useState("");
@@ -151,16 +256,12 @@ export function CtCArchivePage() {
   const [collectionFilter, setCollectionFilter] = useState("all");
   const [minLength, setMinLength] = useState("");
   const [maxLength, setMaxLength] = useState("");
+  const [visibleRowsCount, setVisibleRowsCount] = useState(renderConfig.initialVisibleRows);
+  const deferredQuery = useDeferredValue(query);
 
   async function refreshCompleted() {
-    const puzzles = await listPuzzles();
-    setCompletedKeys(
-      new Set(
-        puzzles
-          .filter((p) => p.progress?.status === "complete")
-          .map((p) => p.key),
-      ),
-    );
+    const completed = await listCompletedPuzzleKeys();
+    setCompletedKeys(new Set(completed));
   }
 
   async function refreshRows() {
@@ -174,7 +275,7 @@ export function CtCArchivePage() {
         setError("Unable to load archive manifest. Run npm run sync-archive-cache and rebuild.");
         return;
       }
-      setRows(manifestEntries);
+      setRows(manifestEntries.map(prepareArchiveEntry));
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -184,7 +285,23 @@ export function CtCArchivePage() {
 
   useEffect(() => {
     void refreshRows();
-    void refreshCompleted();
+
+    const run = () => {
+      void refreshCompleted();
+    };
+
+    if (typeof window === "undefined") {
+      run();
+      return;
+    }
+
+    if (typeof window.requestIdleCallback === "function") {
+      const handle = window.requestIdleCallback(run, { timeout: 500 });
+      return () => window.cancelIdleCallback(handle);
+    }
+
+    const timer = window.setTimeout(run, 150);
+    return () => window.clearTimeout(timer);
   }, []);
 
   const hosts = useMemo(
@@ -202,56 +319,34 @@ export function CtCArchivePage() {
     [rows],
   );
 
+  const rowsByDate = useMemo(() => [...rows].sort(sortByDateDesc), [rows]);
+  const rowsByTitle = useMemo(() => [...rows].sort(sortByTitleAsc), [rows]);
+  const rowsByVideoLength = useMemo(() => [...rows].sort(sortByVideoLengthAsc), [rows]);
+
+  const sortedRows = useMemo(() => {
+    if (sortField === "title") return rowsByTitle;
+    if (sortField === "video_length") return rowsByVideoLength;
+    return rowsByDate;
+  }, [sortField, rowsByDate, rowsByTitle, rowsByVideoLength]);
+
   const filteredRows = useMemo(() => {
-    const q = clean(query).toLowerCase();
+    const q = clean(deferredQuery).toLowerCase();
     const minSeconds = minLength ? parseMinutesToSeconds(minLength) : null;
     const maxSeconds = maxLength ? parseMinutesToSeconds(maxLength) : null;
 
-    const getSearchText = (r: ArchiveEntry) => {
-      if (searchField === "title") return r.title;
-      if (searchField === "constraints") return r.subTypeConstraints;
-      if (searchField === "video_title") return r.videoTitle;
-      if (searchField === "author") return r.puzzleAuthor;
-      if (searchField === "host") return r.videoHost;
-      if (searchField === "collection") return r.collection;
-      return [
-        r.title,
-        r.subTypeConstraints,
-        r.videoTitle,
-        r.puzzleAuthor,
-        r.videoHost,
-        r.collection,
-      ].join(" ");
-    };
-
-    const list = rows.filter((r) => {
+    return sortedRows.filter((r) => {
       if (hostFilter !== "all" && r.videoHost !== hostFilter) return false;
       if (authorFilter !== "all" && r.puzzleAuthor !== authorFilter) return false;
       if (collectionFilter !== "all" && r.collection !== collectionFilter) return false;
       if (minSeconds != null && (r.videoLengthSeconds == null || r.videoLengthSeconds < minSeconds)) return false;
       if (maxSeconds != null && (r.videoLengthSeconds == null || r.videoLengthSeconds > maxSeconds)) return false;
-      if (q && !getSearchText(r).toLowerCase().includes(q)) return false;
+      if (!matchesSearch(r, searchField, q)) return false;
       return true;
     });
-
-    list.sort((a, b) => {
-      if (sortField === "title") return a.title.localeCompare(b.title);
-      if (sortField === "video_length") {
-        const av = a.videoLengthSeconds ?? Number.MAX_SAFE_INTEGER;
-        const bv = b.videoLengthSeconds ?? Number.MAX_SAFE_INTEGER;
-        return av - bv;
-      }
-      const av = a.videoDateTs ?? 0;
-      const bv = b.videoDateTs ?? 0;
-      return bv - av;
-    });
-
-    return list;
   }, [
-    rows,
-    query,
+    sortedRows,
+    deferredQuery,
     searchField,
-    sortField,
     hostFilter,
     authorFilter,
     collectionFilter,
@@ -259,7 +354,35 @@ export function CtCArchivePage() {
     maxLength,
   ]);
 
-  async function onImport(entry: ArchiveEntry) {
+  useEffect(() => {
+    setVisibleRowsCount(renderConfig.initialVisibleRows);
+  }, [
+    renderConfig.initialVisibleRows,
+    deferredQuery,
+    searchField,
+    sortField,
+    hostFilter,
+    authorFilter,
+    collectionFilter,
+    minLength,
+    maxLength,
+    rows,
+  ]);
+
+  const visibleRows = useMemo(
+    () => filteredRows.slice(0, visibleRowsCount),
+    [filteredRows, visibleRowsCount],
+  );
+
+  const hasMoreRows = visibleRowsCount < filteredRows.length;
+  const remainingRowsCount = Math.max(filteredRows.length - visibleRows.length, 0);
+  const loadMoreCount = Math.min(renderConfig.visibleRowsStep, remainingRowsCount);
+
+  const onLoadMoreRows = useCallback(() => {
+    setVisibleRowsCount((count) => count + renderConfig.visibleRowsStep);
+  }, [renderConfig.visibleRowsStep]);
+
+  async function onImport(entry: PreparedArchiveEntry) {
     const importSource = clean(entry.sourceId || entry.sudokuPadUrl);
     if (!importSource) {
       setUiMessage("No puzzle source ID found in archive metadata.");
@@ -268,6 +391,7 @@ export function CtCArchivePage() {
 
     setUiMessage("");
     setImportingId(entry.id);
+    await waitForNextFrame();
 
     try {
       const cachedPayload = await loadCachedPuzzlePayload(entry);
@@ -282,19 +406,26 @@ export function CtCArchivePage() {
       });
 
       const now = Date.now();
-      const existing = (await listPuzzles()).find((p) => p.key === key);
+      const existing = await getPuzzle(key);
+      const nextProgress = existing?.progress ?? makeInitialProgress(def);
 
       await upsertPuzzle(key, {
         def,
-        progress: existing?.progress ?? makeInitialProgress(def),
+        progress: nextProgress,
         undo: existing?.undo ?? [],
         redo: existing?.redo ?? [],
         updatedAt: now,
         createdAt: existing?.createdAt ?? now,
       });
 
+      setCompletedKeys((prev) => {
+        const next = new Set(prev);
+        if (nextProgress.status === "complete") next.add(key);
+        else next.delete(key);
+        return next;
+      });
+
       setUiMessage(`Imported: ${def.meta?.title ?? key}`);
-      await refreshCompleted();
     } catch (e: unknown) {
       setUiMessage(e instanceof Error ? e.message : String(e));
     } finally {
@@ -412,7 +543,7 @@ export function CtCArchivePage() {
                   <option value="video_length">Sort: Video length</option>
                 </select>
 
-                <div className="muted">{filteredRows.length} shown</div>
+                <div className="muted">{visibleRows.length} of {filteredRows.length} shown</div>
               </div>
             </div>
 
@@ -421,12 +552,14 @@ export function CtCArchivePage() {
             {!!uiMessage && <div className="muted" style={{ marginTop: 10 }}>{uiMessage}</div>}
 
             <div className="menuPuzzleList">
-              {filteredRows.map((entry) => {
-                const solved = entry.sourceId
-                  ? completedKeys.has(normalizePuzzleKey(entry.sourceId))
-                  : false;
+              {visibleRows.map((entry) => {
+                const solved = entry.sourceKey ? completedKeys.has(entry.sourceKey) : false;
                 const display = (value: string) => clean(value) || "~";
-                const constraints = splitConstraintTypes(entry.subTypeConstraints);
+                const constraints = entry.constraintTypes;
+                const visibleConstraints = renderConfig.compact
+                  ? constraints.slice(0, 3)
+                  : constraints;
+                const hiddenConstraintsCount = constraints.length - visibleConstraints.length;
                 const collection = displayCollection(entry.collection);
 
                 return (
@@ -481,9 +614,12 @@ export function CtCArchivePage() {
 
                           {constraints.length ? (
                             <ul className="archiveConstraintList">
-                              {constraints.map((constraint) => (
+                              {visibleConstraints.map((constraint) => (
                                 <li key={`${entry.id}-${constraint}`}>{constraint}</li>
                               ))}
+                              {hiddenConstraintsCount > 0 && (
+                                <li key={`${entry.id}-more`}>+{hiddenConstraintsCount} more</li>
+                              )}
                             </ul>
                           ) : (
                             <div className="archiveMetaMedium">~</div>
@@ -525,6 +661,14 @@ export function CtCArchivePage() {
                   </div>
                 );
               })}
+
+              {!loading && hasMoreRows && (
+                <div className="row" style={{ marginTop: 10, justifyContent: "center" }}>
+                  <button type="button" className="btn" onClick={onLoadMoreRows}>
+                    Load {loadMoreCount} more
+                  </button>
+                </div>
+              )}
 
               {!loading && !filteredRows.length && !error && (
                 <div className="muted">No archive puzzles match the current search/filter.</div>

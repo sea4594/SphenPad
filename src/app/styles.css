@@ -369,6 +369,8 @@ input.url {
 .archiveEntryCard {
   display: grid;
   gap: 10px;
+  content-visibility: auto;
+  contain-intrinsic-size: 220px;
 }
 
 .archiveEntryHead {
@@ -821,6 +823,7 @@ input.url {
   .topbar {
     padding: max(6px, env(safe-area-inset-top)) max(10px, var(--safe-inline)) 8px max(10px, var(--safe-inline));
     gap: 8px;
+    backdrop-filter: none;
   }
 
   .topbar .spacer {
