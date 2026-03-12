@@ -11,6 +11,8 @@ export type ParsedArchiveSheet = {
 type GvizCell = { v?: unknown; f?: unknown; p?: unknown } | null;
 
 const SUDOKUPAD_URL_IN_ROW_REGEX = /https?:\/\/(?:sudokupad\.app|app\.crackingthecryptic\.com)\/[^\s"'<>)\\]+/i;
+const SUDOKUPAD_URL_BY_ROW_REGEX =
+  /\\"3\\":\[2,\\"G(\d+)\\"].{0,12000}?\\"24\\":\\"(https?:\/\/(?:sudokupad\.app|app\.crackingthecryptic\.com)\/[^\\"]+)\\"/gis;
 
 function clean(v: string | undefined): string {
   return (v ?? "").trim();
@@ -32,6 +34,25 @@ function findIndexByAliases(headers: string[], aliases: string[]): number {
 function findSudokuPadUrlInText(text: string): string {
   const match = text.match(SUDOKUPAD_URL_IN_ROW_REGEX);
   return clean(match?.[0]);
+}
+
+function decodeEscapedUrl(url: string): string {
+  return url
+    .replace(/\\u003d/gi, "=")
+    .replace(/\\u0026/gi, "&")
+    .replace(/\\\//g, "/");
+}
+
+function parseSudokuPadUrlByRowNumber(sourcePayload: string): Map<number, string> {
+  const urlByRowNumber = new Map<number, string>();
+  for (const match of sourcePayload.matchAll(SUDOKUPAD_URL_BY_ROW_REGEX)) {
+    const rowNumber = Number(match[1]);
+    if (!Number.isFinite(rowNumber) || rowNumber <= 0) continue;
+    const sudokuPadUrl = clean(decodeEscapedUrl(match[2]));
+    if (!sudokuPadUrl) continue;
+    urlByRowNumber.set(rowNumber, sudokuPadUrl);
+  }
+  return urlByRowNumber;
 }
 
 function findSudokuPadUrlInCell(cell: GvizCell): string {
@@ -62,7 +83,7 @@ function extractSudokuPadUrlForRow(cells: GvizCell[], iSudokuPad: number): strin
   return "";
 }
 
-export function parseArchiveSheetPayload(payload: string): ParsedArchiveSheet {
+export function parseArchiveSheetPayload(payload: string, sourcePayload = ""): ParsedArchiveSheet {
   const prefix = "google.visualization.Query.setResponse(";
   const start = payload.indexOf(prefix);
   if (start < 0) return { header: [], rows: [] };
@@ -78,8 +99,9 @@ export function parseArchiveSheetPayload(payload: string): ParsedArchiveSheet {
   const rawRows = parsed.table?.rows ?? [];
   const header = cols.map((c) => clean(c.label));
   const iSudokuPad = findIndexByAliases(header, ["sp", "sudokupad", "sudoku pad", "puzzle link", "sudokupadlink"]);
+  const sudokuPadUrlByRowNumber = sourcePayload ? parseSudokuPadUrlByRowNumber(sourcePayload) : new Map<number, string>();
   const rows = rawRows
-    .map((row) => {
+    .map((row, index) => {
       const cells = row.c ?? [];
       const values = cells.map((cell) => {
         if (!cell || cell.v == null) return "";
@@ -87,7 +109,9 @@ export function parseArchiveSheetPayload(payload: string): ParsedArchiveSheet {
         if (typeof cellValue === "string") return clean(cellValue);
         return clean(String(cellValue));
       });
-      const sudokuPadUrl = extractSudokuPadUrlForRow(cells, iSudokuPad);
+      const rowNumber = index + 2;
+      const sudokuPadUrlFromRow = extractSudokuPadUrlForRow(cells, iSudokuPad);
+      const sudokuPadUrl = sudokuPadUrlFromRow || clean(sudokuPadUrlByRowNumber.get(rowNumber));
       return { values, sudokuPadUrl };
     })
     .filter((row) => row.values.some((cell) => clean(cell)) || row.sudokuPadUrl);
