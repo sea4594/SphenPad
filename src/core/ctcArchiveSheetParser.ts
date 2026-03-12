@@ -11,8 +11,18 @@ export type ParsedArchiveSheet = {
 type GvizCell = { v?: unknown; f?: unknown; p?: unknown } | null;
 
 const SUDOKUPAD_URL_IN_ROW_REGEX = /https?:\/\/(?:sudokupad\.app|app\.crackingthecryptic\.com)\/[^\s"'<>)\\]+/i;
+// The source payload packs one row's URL-cell marker and hyperlink metadata close together.
+// 12k chars safely spans one row block in current payloads without scanning across the whole document.
+const SUDOKUPAD_SOURCE_TO_ROW_LOOKAHEAD_CHARS = 12_000;
+const GVIZ_DATA_START_ROW_NUMBER = 2;
+// Source payload shape (Google internal):
+// - "3":[2,"G<n>"] identifies the URL Cell text (e.g. G42) for a row
+// - "24":"https://..." stores the hyperlink URL
 const SUDOKUPAD_URL_BY_ROW_REGEX =
-  /\\"3\\":\[2,\\"G(\d+)\\"].{0,12000}?\\"24\\":\\"(https?:\/\/(?:sudokupad\.app|app\.crackingthecryptic\.com)\/[^\\"]+)\\"/gis;
+  new RegExp(
+    String.raw`\\"3\\":\[2,\\"G(\d+)\\"].{0,${SUDOKUPAD_SOURCE_TO_ROW_LOOKAHEAD_CHARS}}?\\"24\\":\\"(https?:\/\/(?:sudokupad\.app|app\.crackingthecryptic\.com)\/[^\\"]+)\\"`,
+    "gis"
+  );
 
 function clean(v: string | undefined): string {
   return (v ?? "").trim();
@@ -109,7 +119,7 @@ export function parseArchiveSheetPayload(payload: string, sourcePayload = ""): P
         if (typeof cellValue === "string") return clean(cellValue);
         return clean(String(cellValue));
       });
-      const rowNumber = index + 2;
+      const rowNumber = index + GVIZ_DATA_START_ROW_NUMBER;
       const sudokuPadUrlFromRow = extractSudokuPadUrlForRow(cells, iSudokuPad);
       const sudokuPadUrl = sudokuPadUrlFromRow || clean(sudokuPadUrlByRowNumber.get(rowNumber));
       return { values, sudokuPadUrl };
