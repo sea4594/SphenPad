@@ -63,8 +63,10 @@ export function GridCanvas(props: {
   onLineTapCell: (rc: CellRC) => void;
   onLineTapEdge: (a: CellRC, b: CellRC) => void;
   onDoubleCell: (rc: CellRC) => void;
+  interactive?: boolean;
+  previewMode?: boolean;
 }) {
-  const { def, progress } = props;
+  const { def, progress, interactive = true, previewMode = false } = props;
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const dragRef = useRef<DragState | null>(null);
@@ -81,7 +83,11 @@ export function GridCanvas(props: {
   const [mobileViewport, setMobileViewport] = useState(() => isLikelyMobileDevice());
 
   const basePad = Math.max(14, Math.round(cellPx * 0.32));
-  const pad = mobileViewport ? Math.max(3, Math.round(basePad * 0.2)) : basePad;
+  const pad = previewMode
+    ? Math.max(2, Math.round(basePad * 0.16))
+    : mobileViewport
+      ? Math.max(3, Math.round(basePad * 0.2))
+      : basePad;
   const worldBounds = useMemo(() => {
     let minX = 0;
     let minY = 0;
@@ -336,19 +342,21 @@ export function GridCanvas(props: {
         pane.clientHeight || 0
       );
 
-      const height = isMobile
-        ? Math.max(160, viewportHeight)
-        : measuredHeight > 220
-          ? measuredHeight
-          : viewportHeight;
+      const height = previewMode
+        ? Math.max(1, measuredHeight || el.clientHeight || pane.clientHeight || viewportHeight)
+        : isMobile
+          ? Math.max(160, viewportHeight)
+          : measuredHeight > 220
+            ? measuredHeight
+            : viewportHeight;
 
-      const sideMargin = 8;
-      const topBottomPad = 8;
+      const sideMargin = previewMode ? 0 : 8;
+      const topBottomPad = previewMode ? 0 : 8;
       const spanX = cols + outsideLeft + outsideRight;
       const spanY = rows + outsideTop + outsideBottom;
       const padFactor = isMobile ? 0.14 : 0.68;
-      const availableWidth = Math.max(240, width - sideMargin * 2);
-      const availableHeight = Math.max(220, height - topBottomPad * 2);
+      const availableWidth = Math.max(previewMode ? 1 : 240, width - sideMargin * 2);
+      const availableHeight = Math.max(previewMode ? 1 : 220, height - topBottomPad * 2);
       const byWidth = availableWidth / (spanX + padFactor);
       const byHeight = availableHeight / (spanY + padFactor);
 
@@ -356,7 +364,7 @@ export function GridCanvas(props: {
       const mobileMinCell = 21;
       const desktopMinCell = 14;
       const maxCell = desktop ? 96 : 72;
-      const minCell = isMobile ? mobileMinCell : desktopMinCell;
+      const minCell = previewMode ? 2 : isMobile ? mobileMinCell : desktopMinCell;
       let next = Math.floor(Math.min(maxCell, Math.max(minCell, Math.min(byWidth, byHeight))));
 
       const fits = (cell: number) => {
@@ -384,7 +392,7 @@ export function GridCanvas(props: {
       ro.disconnect();
       window.removeEventListener("resize", update);
     };
-  }, [cols, outsideBottom, outsideLeft, outsideRight, outsideTop, rows]);
+  }, [cols, outsideBottom, outsideLeft, outsideRight, outsideTop, previewMode, rows]);
 
   useEffect(() => {
     if (!def.cosmetics.backgroundImageUrl) {
@@ -459,7 +467,7 @@ export function GridCanvas(props: {
     };
 
     const drawSelectionOutlines = () => {
-      if (!progress.selection.length) return;
+      if (!interactive || !progress.selection.length) return;
       const selected = new Set(progress.selection.map(rcKey));
       const inset = 1;
       ctx.save();
@@ -1640,6 +1648,7 @@ export function GridCanvas(props: {
   }
 
   function onDown(e: React.PointerEvent) {
+    if (!interactive) return;
     const pt = eventPoint(e.clientX, e.clientY);
     if (!pt) return;
     e.currentTarget.setPointerCapture(e.pointerId);
@@ -1714,6 +1723,7 @@ export function GridCanvas(props: {
   }
 
   function onMove(e: React.PointerEvent) {
+    if (!interactive) return;
     const drag = dragRef.current;
     if (!drag) return;
 
@@ -1804,6 +1814,7 @@ export function GridCanvas(props: {
   }
 
   function onUp(e: React.PointerEvent) {
+    if (!interactive) return;
     const drag = dragRef.current;
     if (!drag) return;
 
@@ -1837,11 +1848,13 @@ export function GridCanvas(props: {
   }
 
   function onCancel() {
+    if (!interactive) return;
     dragRef.current = null;
     setLinePreview(null);
   }
 
   function onDoubleClick(e: React.MouseEvent<HTMLCanvasElement>) {
+    if (!interactive) return;
     const pt = eventPoint(e.clientX, e.clientY);
     if (!pt) return;
     props.onDoubleCell({ r: pt.r, c: pt.c });
@@ -1851,13 +1864,21 @@ export function GridCanvas(props: {
     <div ref={wrapRef} className="boardSurface" style={{ display: "grid", placeItems: "center", maxWidth: "100%", maxHeight: "100%" }}>
       <canvas
         ref={canvasRef}
-        style={{ display: "block", margin: "0 auto", maxWidth: "100%", maxHeight: "100%", touchAction: "none", userSelect: "none" }}
-        onPointerDown={onDown}
-        onPointerMove={onMove}
-        onPointerUp={onUp}
-        onPointerCancel={onCancel}
-        onPointerLeave={onCancel}
-        onDoubleClick={onDoubleClick}
+        style={{
+          display: "block",
+          margin: "0 auto",
+          maxWidth: "100%",
+          maxHeight: "100%",
+          touchAction: interactive ? "none" : "auto",
+          userSelect: "none",
+          pointerEvents: interactive ? "auto" : "none",
+        }}
+        onPointerDown={interactive ? onDown : undefined}
+        onPointerMove={interactive ? onMove : undefined}
+        onPointerUp={interactive ? onUp : undefined}
+        onPointerCancel={interactive ? onCancel : undefined}
+        onPointerLeave={interactive ? onCancel : undefined}
+        onDoubleClick={interactive ? onDoubleClick : undefined}
       />
     </div>
   );

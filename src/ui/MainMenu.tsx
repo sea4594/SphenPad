@@ -15,6 +15,23 @@ type StoredPuzzle = Awaited<ReturnType<typeof listPuzzles>>[number];
 
 const NOOP = () => {};
 
+function summarizeConstraints(rules: string | undefined): string {
+  const source = (rules ?? "").replace(/\s+/g, " ").trim();
+  if (!source) return "No constraints listed.";
+
+  const cleaned = source
+    .replace(/normal\s+sudoku\s+rules\s+apply\.?/gi, "")
+    .replace(/^(rules?|constraints?)\s*[:\-]\s*/i, "")
+    .trim();
+
+  const text = cleaned || source;
+  const parts = text
+    .split(/[.;\n]+/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+  return parts.slice(0, 2).join("; ") || text;
+}
+
 export function MainMenu() {
   const nav = useNavigate();
   const [url, setUrl] = useState("");
@@ -158,6 +175,7 @@ export function MainMenu() {
                   selection: [],
                   multiSelect: false,
                 };
+                const constraintsSummary = summarizeConstraints(r.def?.meta?.rules);
 
                 return (
                   <div
@@ -166,26 +184,15 @@ export function MainMenu() {
                     onClick={() => nav(`/p/${encodeURIComponent(r.key)}`)}
                   >
                     <div className="menuPuzzleSummary">
-                      <div className="menuPuzzleTopRow">
-                        <div className="menuPuzzleTitleWrap">
-                          <div className="menuPuzzleTitle">{r.def?.meta?.title || "(untitled)"}</div>
-                          {r.def?.meta?.author ? (
-                            <div className="muted menuPuzzleAuthor">
-                              {r.def.meta.author}
-                            </div>
-                          ) : null}
-                        </div>
-
-                        <div className="menuPuzzlePreview" aria-hidden="true">
-                          <GridCanvas
-                            def={r.def}
-                            progress={previewProgress}
-                            onSelection={NOOP}
-                            onLineStroke={NOOP}
-                            onLineTapCell={NOOP}
-                            onLineTapEdge={NOOP}
-                            onDoubleCell={NOOP}
-                          />
+                      <div className="menuPuzzleTitleWrap">
+                        <div className="menuPuzzleTitle">{r.def?.meta?.title || "(untitled)"}</div>
+                        {r.def?.meta?.author ? (
+                          <div className="muted menuPuzzleAuthor">
+                            {r.def.meta.author}
+                          </div>
+                        ) : null}
+                        <div className="muted menuPuzzleConstraints">
+                          {constraintsSummary}
                         </div>
                       </div>
 
@@ -198,6 +205,20 @@ export function MainMenu() {
                     </div>
 
                     <div className="menuPuzzleDeleteStack">
+                      <div className="menuPuzzlePreview" aria-hidden="true">
+                        <GridCanvas
+                          def={r.def}
+                          progress={previewProgress}
+                          onSelection={NOOP}
+                          onLineStroke={NOOP}
+                          onLineTapCell={NOOP}
+                          onLineTapEdge={NOOP}
+                          onDoubleCell={NOOP}
+                          interactive={false}
+                          previewMode
+                        />
+                      </div>
+
                       <button
                         className="btn danger"
                         onClick={(e) => {
