@@ -14,7 +14,6 @@ import { CompletionOverlay } from "./CompletionOverlay";
 import { Keyboard } from "./Keyboard";
 import { GridCanvas } from "./GridCanvas";
 import {
-  IconExit,
   IconPause,
   IconPlay,
   IconCopyLink,
@@ -340,7 +339,6 @@ export function PuzzlePage() {
   const [restartPromptOpen, setRestartPromptOpen] = useState(false);
   const [restartFromPause, setRestartFromPause] = useState(false);
   const [reloadingPuzzle, setReloadingPuzzle] = useState(false);
-  const [mobileLandscape, setMobileLandscape] = useState(false);
   const tickRef = useRef<number | null>(null);
   const holdDelayRef = useRef<number | null>(null);
   const holdIntervalRef = useRef<number | null>(null);
@@ -352,21 +350,6 @@ export function PuzzlePage() {
   const definitionRefreshInFlightRef = useRef(new Set<string>());
 
   const userId = firebaseEnabled ? auth?.currentUser?.uid : null;
-
-  useEffect(() => {
-    const updateLayoutMode = () => {
-      const w = window.innerWidth;
-      const h = window.innerHeight;
-      setMobileLandscape(w <= 1000 && w > h);
-    };
-    updateLayoutMode();
-    window.addEventListener("resize", updateLayoutMode);
-    window.addEventListener("orientationchange", updateLayoutMode);
-    return () => {
-      window.removeEventListener("resize", updateLayoutMode);
-      window.removeEventListener("orientationchange", updateLayoutMode);
-    };
-  }, []);
 
   function normalizeProgress(progress: PuzzleProgress): PuzzleProgress {
     const cells = progress.cells.map((row) =>
@@ -1371,62 +1354,38 @@ export function PuzzlePage() {
 
   return (
     <div className="shell">
-      {!mobileLandscape ? (
-        <div className="topbar puzzleTopbar">
-          <button className="btn" onClick={() => nav("/")}>← Menu</button>
-          <div className="puzzleTopbarRight">
-            <div className="puzzleTimer">{timeStr}</div>
-            <button className="btn" onClick={onPausePlayClick} title="Pause or resume" disabled={data.progress.status === "complete"}>
-              {data.progress.status === "complete" ? <IconPause /> : data.progress.paused ? <IconPlay /> : <IconPause />}
-            </button>
-            <button className="btn" onClick={onReloadPuzzleClick} title="Reload puzzle from SudokuPad" disabled={reloadingPuzzle}>
-              <IconReload />
-            </button>
-            <button className="btn" onClick={onCopySudokuPadLinkClick} title="Copy SudokuPad link">
-              <IconCopyLink />
-            </button>
-            <button className="btn" onClick={() => setSettingsOpen(true)} title="Settings">
-              <IconSettings />
-            </button>
-          </div>
+      <div className="topbar puzzleTopbar">
+        <button className="btn" onClick={() => nav("/")}>← Menu</button>
+        <div className="puzzleTopbarRight">
+          <div className="puzzleTimer">{timeStr}</div>
+          <button className="btn" onClick={onPausePlayClick} title="Pause or resume" disabled={data.progress.status === "complete"}>
+            {data.progress.status === "complete" ? <IconPause /> : data.progress.paused ? <IconPlay /> : <IconPause />}
+          </button>
+          <button className="btn" onClick={onReloadPuzzleClick} title="Reload puzzle from SudokuPad" disabled={reloadingPuzzle}>
+            <IconReload />
+          </button>
+          <button className="btn" onClick={onCopySudokuPadLinkClick} title="Copy SudokuPad link">
+            <IconCopyLink />
+          </button>
+          <button className="btn" onClick={() => setSettingsOpen(true)} title="Settings">
+            <IconSettings />
+          </button>
         </div>
-      ) : null}
+      </div>
 
-      <div className={"page puzzlePage" + (mobileLandscape ? " mobileLandscape" : "") }>
-        <div className={"gridLayout" + (mobileLandscape ? " mobileLandscape" : "") }>
+      <div className="page puzzlePage">
+        <div className="gridLayout">
           <div className="boardColumn">
-            <div className={mobileLandscape ? "landscapeBoardArea" : ""}>
-              {mobileLandscape ? (
-                <div className="card landscapeSideRail">
-                  <button className="btn" onClick={() => nav("/")} title="Exit to menu" aria-label="Exit to menu">
-                    <IconExit />
-                  </button>
-                  <button className="btn" onClick={onPausePlayClick} title="Pause or resume" disabled={data.progress.status === "complete"}>
-                    {data.progress.status === "complete" ? <IconPause /> : data.progress.paused ? <IconPlay /> : <IconPause />}
-                  </button>
-                  <button className="btn" onClick={onReloadPuzzleClick} title="Reload puzzle from SudokuPad" disabled={reloadingPuzzle}>
-                    <IconReload />
-                  </button>
-                  <button className="btn" onClick={onCopySudokuPadLinkClick} title="Copy SudokuPad link">
-                    <IconCopyLink />
-                  </button>
-                  <button className="btn" onClick={() => setSettingsOpen(true)} title="Settings">
-                    <IconSettings />
-                  </button>
-                </div>
-              ) : null}
-
-              <div className="card boardCard">
-                <GridCanvas
-                  def={data.def}
-                  progress={data.progress}
-                  onSelection={setSelection}
-                  onLineStroke={onLineStroke}
-                  onLineTapCell={onLineTapCell}
-                  onLineTapEdge={onLineTapEdge}
-                  onDoubleCell={onDoubleSelectCell}
-                />
-              </div>
+            <div className="card boardCard">
+              <GridCanvas
+                def={data.def}
+                progress={data.progress}
+                onSelection={setSelection}
+                onLineStroke={onLineStroke}
+                onLineTapCell={onLineTapCell}
+                onLineTapEdge={onLineTapEdge}
+                onDoubleCell={onDoubleSelectCell}
+              />
             </div>
           </div>
 

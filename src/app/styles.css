@@ -498,40 +498,6 @@ input.url {
   min-width: 0;
 }
 
-.puzzlePage.mobileLandscape {
-  overflow: hidden;
-}
-
-.puzzlePage.mobileLandscape .gridLayout {
-  grid-template-columns: minmax(0, 1fr) auto;
-  grid-template-rows: 1fr;
-  height: 100%;
-  align-items: stretch;
-  gap: 0;
-}
-
-.puzzlePage.mobileLandscape .boardColumn {
-  height: 100%;
-  overflow: hidden;
-}
-
-.puzzlePage.mobileLandscape .kbdPanel {
-  grid-template-rows: 1fr;
-  min-height: 0;
-  height: 100%;
-  overflow: hidden;
-  align-content: stretch;
-}
-
-.puzzlePage.mobileLandscape .controlStack {
-  align-content: start;
-  min-height: 0;
-}
-
-.puzzlePage.mobileLandscape .puzzleMetaCard {
-  display: none;
-}
-
 .boardColumn {
   display: grid;
   gap: 8px;
@@ -540,36 +506,6 @@ input.url {
   min-height: 0;
   height: auto;
   overflow: hidden;
-}
-
-.landscapeBoardArea {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 8px;
-  height: 100%;
-  min-height: 0;
-  width: 100%;
-}
-
-.landscapeSideRail {
-  --rail-body-w: clamp(56px, 10vw, 78px);
-  --rail-empty-w: calc(var(--rail-body-w) / 3);
-  width: calc(var(--rail-empty-w) + var(--rail-body-w));
-  display: grid;
-  grid-template-columns: var(--rail-empty-w) var(--rail-body-w);
-  justify-items: stretch;
-  align-content: start;
-  gap: 8px;
-  padding: 8px;
-  padding-left: max(8px, calc(env(safe-area-inset-left) + 8px));
-}
-
-.landscapeSideRail .btn {
-  grid-column: 2;
-  min-height: 44px;
-  width: 100%;
-  aspect-ratio: 1 / 1;
-  padding: 6px;
 }
 
 .boardCard {
@@ -738,17 +674,6 @@ input.url {
   min-height: 40px;
 }
 
-.landscapeTopbarRow {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  gap: 8px;
-}
-
-.landscapeTopbarRow .puzzleTopbarRight {
-  margin-left: 0;
-}
-
 .overlayBackdrop {
   position: fixed;
   inset: 0;
@@ -856,7 +781,7 @@ input.url {
   border: 1px solid rgba(0, 0, 0, 0.26);
 }
 
-@media (min-width: 1001px) {
+@media (min-width: 1001px) and (hover: hover) and (pointer: fine) {
   .mobileControlPanel {
     --panel-gap: 10px;
     --panel-pad: 10px;
@@ -880,7 +805,7 @@ input.url {
   }
 }
 
-@media (min-width: 1080px) {
+@media (min-width: 1080px) and (hover: hover) and (pointer: fine) {
   .gridLayout {
     grid-template-columns: minmax(540px, 1fr) minmax(320px, 390px);
     align-items: stretch;
@@ -892,7 +817,7 @@ input.url {
   }
 }
 
-@media (max-width: 760px) {
+@media (max-width: 760px), ((hover: none) and (pointer: coarse)) {
   .topbar {
     padding: max(6px, env(safe-area-inset-top)) max(10px, var(--safe-inline)) 8px max(10px, var(--safe-inline));
     gap: 8px;
@@ -953,10 +878,10 @@ input.url {
     --panel-gap: 6px;
     --panel-pad: 6px;
     --panel-cell-ratio: 0.644;
-    --panel-cell: calc((100vw - (var(--panel-pad) * 2) - (var(--panel-gap) * 3)) / 4);
+    --panel-cell: calc((100vmin - (var(--panel-pad) * 2) - (var(--panel-gap) * 3)) / 4);
     --panel-row: calc(var(--panel-cell) * var(--panel-cell-ratio));
     --mobile-controls-h-raw: calc((var(--panel-row) * 5) + (var(--panel-gap) * 4) + (var(--panel-pad) * 2));
-    --mobile-controls-h: clamp(210px, var(--mobile-controls-h-raw), 46dvh);
+    --mobile-controls-h: clamp(210px, var(--mobile-controls-h-raw), 46vmax);
     grid-template-rows: minmax(0, 1fr) var(--mobile-controls-h);
     height: 100%;
     gap: 0;
@@ -979,7 +904,7 @@ input.url {
   .kbdPanel {
     grid-template-rows: 1fr;
     height: var(--mobile-controls-h);
-    max-height: 46dvh;
+    max-height: 46vmax;
     width: 100%;
     overflow: hidden;
     min-height: 0;
@@ -1057,128 +982,3 @@ input.url {
   }
 }
 
-@media (max-height: 560px) {
-  .topbar {
-    padding-top: 6px;
-    padding-bottom: 6px;
-  }
-
-  .page {
-    padding-top: 8px;
-  }
-
-  .card {
-    padding: 10px;
-  }
-
-  .btn {
-    min-height: 38px;
-    padding: 8px 10px;
-  }
-
-  .gridLayout {
-    grid-template-rows: minmax(0, 1fr) clamp(248px, 50dvh, 400px);
-    height: 100%;
-  }
-
-  .kbdPanel {
-    grid-template-rows: 1fr;
-    height: 100%;
-    overflow: hidden;
-  }
-
-  .keyGrid {
-    grid-template-rows: repeat(4, minmax(34px, 40px)) !important;
-  }
-
-  .keyButton,
-  .lineKindSelect {
-    height: clamp(34px, 7.6vh, 40px) !important;
-    min-height: 34px;
-  }
-
-  .puzzleMetaCard {
-    display: none;
-  }
-}
-
-@media (max-width: 1000px) and (orientation: landscape), (max-width: 1000px) and (max-height: 540px) and (min-aspect-ratio: 1/1) {
-  .puzzlePage {
-    padding-top: 0;
-    padding-bottom: 0;
-    padding-left: 0;
-    padding-right: 0;
-    overflow: hidden;
-  }
-
-  .gridLayout {
-    --panel-gap: 6px;
-    --panel-pad: 6px;
-    --panel-cell-ratio: 0.82;
-    --panel-row: calc((100dvh - (var(--panel-pad) * 2) - (var(--panel-gap) * 4)) / 5);
-    --panel-cell: calc(var(--panel-row) / var(--panel-cell-ratio));
-    --mobile-controls-w: calc((var(--panel-cell) * 4) + (var(--panel-gap) * 3) + (var(--panel-pad) * 2));
-    grid-template-columns: minmax(0, 1fr) var(--mobile-controls-w);
-    grid-template-rows: 1fr;
-    height: 100%;
-    align-items: stretch;
-    gap: 0;
-  }
-
-  .boardColumn {
-    height: 100%;
-    overflow: hidden;
-  }
-
-  .boardCard {
-    max-width: 100%;
-  }
-
-  .kbdPanel {
-    grid-template-rows: 1fr;
-    min-height: 0;
-    height: 100%;
-    width: var(--mobile-controls-w);
-    max-width: 100%;
-    justify-self: end;
-    align-self: stretch;
-    overflow: hidden;
-    align-content: stretch;
-  }
-
-  .controlStack {
-    align-content: stretch;
-    min-height: 0;
-    gap: 0;
-    height: 100%;
-    display: grid;
-  }
-
-  .mobileControlPanel {
-    width: var(--mobile-controls-w);
-    height: 100%;
-    grid-template-rows: repeat(5, var(--panel-row));
-    align-self: stretch;
-  }
-
-  .landscapeSideRail .btn svg,
-  .landscapeSideRail .btn > span {
-    transform: scale(1.18);
-    transform-origin: center;
-  }
-
-  .keyGrid {
-    gap: 6px !important;
-    grid-template-rows: repeat(4, minmax(34px, 42px)) !important;
-  }
-
-  .keyButton,
-  .lineKindSelect {
-    height: clamp(34px, 7.2vh, 42px) !important;
-    min-height: 34px;
-  }
-
-  .puzzleMetaCard {
-    display: none;
-  }
-}

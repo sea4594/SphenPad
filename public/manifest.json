@@ -3,6 +3,7 @@
   "short_name": "SphenPad",
   "start_url": "./",
   "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#191c22",
   "theme_color": "#191c22",
   "icons": [

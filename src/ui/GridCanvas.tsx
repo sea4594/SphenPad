@@ -72,7 +72,7 @@ export function GridCanvas(props: {
   const [emojiRenderVersion, setEmojiRenderVersion] = useState(0);
   const [mobileViewport, setMobileViewport] = useState(() => {
     if (typeof window === "undefined") return false;
-    return window.matchMedia("(max-width: 1000px)").matches;
+    return Math.min(window.innerWidth, window.innerHeight) <= 1000;
   });
 
   const basePad = Math.max(14, Math.round(cellPx * 0.32));
@@ -315,22 +315,20 @@ export function GridCanvas(props: {
       const boardColumn = (el.closest(".boardColumn") as HTMLElement | null) ?? null;
       const gridLayout = (el.closest(".gridLayout") as HTMLElement | null) ?? null;
       const pane = boardColumn ?? (el.parentElement as HTMLElement | null) ?? el;
+      const shortSide = Math.min(window.innerWidth, window.innerHeight);
+      const longSide = Math.max(window.innerWidth, window.innerHeight);
+      const isNarrow = shortSide <= 760;
+      const isMobile = shortSide <= 1000;
 
       const width = pane.clientWidth || window.innerWidth;
 
       const topbar = document.querySelector(".topbar") as HTMLElement | null;
-      const viewportHeight = Math.max(180, window.innerHeight - (topbar?.offsetHeight ?? 0) - 16);
+      const normalizedViewportHeight = isMobile ? longSide : window.innerHeight;
+      const viewportHeight = Math.max(180, normalizedViewportHeight - (topbar?.offsetHeight ?? 0) - 16);
       const measuredHeight = Math.max(boardColumn?.clientHeight ?? 0, gridLayout?.clientHeight ?? 0, pane.clientHeight || 0);
-      const boardHeight = Math.max(0, boardColumn?.clientHeight ?? pane.clientHeight ?? 0);
-      const isNarrow = window.matchMedia("(max-width: 760px)").matches;
-      const isMobile = window.matchMedia("(max-width: 1000px)").matches;
-      const isShort = window.matchMedia("(max-height: 560px)").matches;
-      const isLandscape =
-        window.matchMedia("(orientation: landscape)").matches ||
-        (window.matchMedia("(max-height: 540px)").matches && window.innerWidth > window.innerHeight);
 
       const height = isMobile
-        ? Math.max(160, boardHeight || viewportHeight)
+        ? Math.max(160, viewportHeight)
         : measuredHeight > 220
           ? measuredHeight
           : viewportHeight;
@@ -343,8 +341,8 @@ export function GridCanvas(props: {
       const byWidth = (Math.max(240, width - sideMargin * 2)) / (spanX + padFactor);
       const byHeight = (Math.max(220, height - topBottomPad * 2)) / (spanY + padFactor);
 
-      const desktop = window.matchMedia("(min-width: 1080px)").matches;
-      const mobileMinCell = isLandscape ? 18 : isShort ? 19 : 21;
+      const desktop = window.matchMedia("(hover: hover) and (pointer: fine)").matches && longSide >= 1080;
+      const mobileMinCell = 21;
       const maxCell = desktop ? 96 : 72;
       const minCell = isNarrow ? mobileMinCell : 28;
       const next = Math.floor(Math.min(maxCell, Math.max(minCell, Math.min(byWidth, byHeight))));
@@ -355,11 +353,9 @@ export function GridCanvas(props: {
     const ro = new ResizeObserver(update);
     ro.observe(el);
     if (el.parentElement) ro.observe(el.parentElement);
-    window.addEventListener("orientationchange", update);
     window.addEventListener("resize", update);
     return () => {
       ro.disconnect();
-      window.removeEventListener("orientationchange", update);
       window.removeEventListener("resize", update);
     };
   }, [cols, outsideBottom, outsideLeft, outsideRight, outsideTop, rows]);
