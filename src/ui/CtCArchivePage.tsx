@@ -627,15 +627,6 @@ export function CtCArchivePage() {
                   <div key={entry.id} className="card archiveEntryCard">
                     <div className="archiveEntryHead">
                       <div className="archiveEntryMain archiveDetailsGrid">
-                        <button
-                          className="btn primary archiveImportBtn"
-                          disabled={importingId === entry.id}
-                          onClick={() => onImport(entry)}
-                          aria-label="Import Puzzle"
-                        >
-                          {importingId === entry.id ? "Importing…" : "IMPORT"}
-                        </button>
-
                         {entry.sudokuPadUrl ? (
                           <a
                             className="btn archiveOpenIcon"
@@ -714,6 +705,15 @@ export function CtCArchivePage() {
                             {formatDurationHm(entry.videoLengthSeconds)} - {display(entry.videoHost)}
                           </div>
                         </div>
+
+                        <button
+                          className="btn primary archiveImportBtn"
+                          disabled={importingId === entry.id}
+                          onClick={() => onImport(entry)}
+                          aria-label="Import Puzzle"
+                        >
+                          {importingId === entry.id ? "Importing…" : "IMPORT"}
+                        </button>
                       </div>
                     </div>
                   </div>

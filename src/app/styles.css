@@ -170,17 +170,6 @@ html[data-force-portrait] body {
 }
 
 html[data-force-portrait="ccw"] {
-  --force-safe-top: env(safe-area-inset-right);
-  --force-safe-bottom: env(safe-area-inset-left);
-  --force-safe-inline-start: env(safe-area-inset-top);
-  --force-safe-inline-end: env(safe-area-inset-bottom);
-  --force-vv-top: var(--force-viewport-inset-right, 0px);
-  --force-vv-bottom: var(--force-viewport-inset-left, 0px);
-  --force-vv-inline-start: var(--force-viewport-inset-top, 0px);
-  --force-vv-inline-end: var(--force-viewport-inset-bottom, 0px);
-}
-
-html[data-force-portrait="cw"] {
   --force-safe-top: env(safe-area-inset-left);
   --force-safe-bottom: env(safe-area-inset-right);
   --force-safe-inline-start: env(safe-area-inset-bottom);
@@ -189,6 +178,17 @@ html[data-force-portrait="cw"] {
   --force-vv-bottom: var(--force-viewport-inset-right, 0px);
   --force-vv-inline-start: var(--force-viewport-inset-bottom, 0px);
   --force-vv-inline-end: var(--force-viewport-inset-top, 0px);
+}
+
+html[data-force-portrait="cw"] {
+  --force-safe-top: env(safe-area-inset-right);
+  --force-safe-bottom: env(safe-area-inset-left);
+  --force-safe-inline-start: env(safe-area-inset-top);
+  --force-safe-inline-end: env(safe-area-inset-bottom);
+  --force-vv-top: var(--force-viewport-inset-right, 0px);
+  --force-vv-bottom: var(--force-viewport-inset-left, 0px);
+  --force-vv-inline-start: var(--force-viewport-inset-top, 0px);
+  --force-vv-inline-end: var(--force-viewport-inset-bottom, 0px);
 }
 
 html[data-force-portrait] #root {
@@ -202,11 +202,11 @@ html[data-force-portrait] #root {
 }
 
 html[data-force-portrait="ccw"] #root {
-  transform: translateX(var(--force-portrait-long, 100dvw)) rotate(90deg);
+  transform: translateY(var(--force-portrait-short, 100dvh)) rotate(-90deg);
 }
 
 html[data-force-portrait="cw"] #root {
-  transform: translateY(var(--force-portrait-short, 100dvh)) rotate(-90deg);
+  transform: translateX(var(--force-portrait-long, 100dvw)) rotate(90deg);
 }
 
 html[data-force-portrait] .shell {
@@ -493,7 +493,6 @@ input.url {
 .archiveFilterRow {
   display: flex;
   gap: 8px;
-  margin-top: 8px;
   flex-wrap: wrap;
   align-items: flex-start;
 }
@@ -519,27 +518,6 @@ input.url {
 .archiveLenInput {
   min-width: 0;
   max-width: none;
-}
-
-.archiveConstraintSelect {
-  min-height: 110px;
-}
-
-.archiveFilterHint {
-  font-size: 12px;
-  line-height: 1.1;
-}
-
-.archiveLengthRow {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-  align-items: flex-start;
-}
-
-.archiveFilterActions {
-  display: flex;
-  justify-content: flex-start;
 }
 
 .archiveEntryCard {
