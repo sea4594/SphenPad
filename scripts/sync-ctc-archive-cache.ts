@@ -6,13 +6,9 @@
  *
  * Writes:
  *   public/archive/archive-manifest.json  - list of all archive entries (metadata)
- *   public/archive/puzzles/*.json         - raw puzzle payload per entry
- *
- * Incremental:
- *   skips puzzle files that already exist on disk.
  */
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import * as XLSX from "xlsx";
@@ -41,31 +37,17 @@ type Manifest = {
   entries: ArchiveEntry[];
 };
 
-type PuzzleCache = {
-  stableKey: string;
-  payload: string;
-};
-
-type SheetCell = XLSX.CellObject & {
-  l?: {
-    Target?: string;
-  };
-};
-
-type ParsedSheetRow = {
-  values: string[];
-  hyperlinks: string[];
-};
+type ParsedSheetRow = string[];
 
 const CTC_ARCHIVE_SHEET_SOURCE =
   "https://docs.google.com/spreadsheets/d/11TrxONoAWMvP8ibULZqtNwG4WWripAcPIS9J-wi3emc/edit#gid=0";
 
 const ARCHIVE_VIDEO_TYPE_SUDOKU = "sudoku";
-const SUDOKUPAD_API_BASE = "https://sudokupad.app/api/puzzle";
 const SUDOKUPAD_URL_REGEX =
   /https?:\/\/(?:sudokupad\.app|app\.crackingthecryptic\.com)\/[^\s"'<>)]*/i;
 const YOUTUBE_URL_REGEX =
   /https?:\/\/(?:www\.)?(?:youtube\.com|youtu\.be)\/[^\s"'<>)]*/i;
+const HTTP_URL_REGEX = /^https?:\/\//i;
 
 const FETCH_CONCURRENCY = 5;
 const FETCH_TIMEOUT_MS = 15_000;
@@ -80,7 +62,6 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const REPO_ROOT = join(__dirname, "..");
 const MANIFEST_PATH = join(REPO_ROOT, "public", "archive", "archive-manifest.json");
-const PUZZLES_DIR = join(REPO_ROOT, "public", "archive", "puzzles");
 
 function clean(v: string | undefined | null): string {
   return (v ?? "").trim();
@@ -88,6 +69,20 @@ function clean(v: string | undefined | null): string {
 
 function log(msg: string) {
   process.stdout.write(msg + "\n");
+}
+
+function toJson(value: unknown): string {
+  return JSON.stringify(value);
+}
+
+function writeTextIfChanged(path: string, next: string): boolean {
+  if (existsSync(path)) {
+    const prev = readFileSync(path, "utf8");
+    if (prev === next) return false;
+  }
+
+  writeFileSync(path, next, "utf8");
+  return true;
 }
 
 async function fetchWithTimeout(url: string, ms = FETCH_TIMEOUT_MS): Promise<Response> {
@@ -123,11 +118,19 @@ function normalizeHeader(v: string): string {
 }
 
 function findIndexByAliases(headers: string[], aliases: string[]): number {
-  const normalized = headers.map(normalizeHeader);
-  for (const alias of aliases.map(normalizeHeader)) {
-    const idx = normalized.findIndex((h) => h === alias || h.includes(alias));
-    if (idx >= 0) return idx;
+  const normalizedHeaders = headers.map(normalizeHeader);
+  const normalizedAliases = aliases.map(normalizeHeader).filter(Boolean);
+
+  for (const alias of normalizedAliases) {
+    const exactIdx = normalizedHeaders.findIndex((header) => header === alias);
+    if (exactIdx >= 0) return exactIdx;
   }
+
+  for (const alias of normalizedAliases) {
+    const containsIdx = normalizedHeaders.findIndex((header) => header.includes(alias));
+    if (containsIdx >= 0) return containsIdx;
+  }
+
   return -1;
 }
 
@@ -183,12 +186,21 @@ function looksLikeYouTubeUrl(value: string): boolean {
   return YOUTUBE_URL_REGEX.test(clean(value));
 }
 
-function firstNonEmpty(...values: Array<string | undefined>): string {
-  for (const value of values) {
-    const next = clean(value);
-    if (next) return next;
-  }
-  return "";
+function looksLikeHttpUrl(value: string): boolean {
+  return HTTP_URL_REGEX.test(clean(value));
+}
+
+function normalizeSudokuPadLink(value: string): string {
+  const url = clean(value);
+  if (!url) return "";
+  if (!looksLikeHttpUrl(url)) return "";
+  return url;
+}
+
+function normalizeYouTubeLink(value: string): string {
+  const url = clean(value);
+  if (!url) return "";
+  return looksLikeYouTubeUrl(url) ? url : "";
 }
 
 function buildSheetExportXlsxUrl(source: string): string {
@@ -203,10 +215,28 @@ function buildSheetExportXlsxUrl(source: string): string {
 async function fetchWorkbook(): Promise<XLSX.WorkBook> {
   const url = buildSheetExportXlsxUrl(CTC_ARCHIVE_SHEET_SOURCE);
   log(`Fetching workbook: ${url}`);
-  const res = await fetchWithTimeout(url);
+
+  let res: Response;
+  try {
+    res = await fetchWithTimeout(url);
+  } catch (err) {
+    throw new Error(`Failed to fetch workbook export: ${String(err)}`);
+  }
+
   if (!res.ok) throw new Error(`HTTP ${res.status} fetching workbook`);
-  const buffer = await res.arrayBuffer();
-  return XLSX.read(buffer, { type: "array" });
+
+  let buffer: ArrayBuffer;
+  try {
+    buffer = await res.arrayBuffer();
+  } catch (err) {
+    throw new Error(`Failed to read workbook export response body: ${String(err)}`);
+  }
+
+  try {
+    return XLSX.read(buffer, { type: "array" });
+  } catch (err) {
+    throw new Error(`Failed to parse workbook export as XLSX: ${String(err)}`);
+  }
 }
 
 function pickWorksheet(workbook: XLSX.WorkBook): XLSX.WorkSheet {
@@ -226,111 +256,53 @@ function pickWorksheet(workbook: XLSX.WorkBook): XLSX.WorkSheet {
   return sheet;
 }
 
-function extractHyperlinkFromCell(cell: SheetCell | undefined): string {
-  const direct = clean(cell?.l?.Target);
-  if (direct) return direct;
-
-  const formula = clean(typeof cell?.f === "string" ? cell.f : "");
-  if (formula) {
-    const match = formula.match(/HYPERLINK\(\s*"([^"]+)"/i);
-    if (match?.[1]) return clean(match[1]);
-  }
-
-  const rawValue =
-    typeof cell?.w === "string"
-      ? clean(cell.w)
-      : cell?.v == null
-        ? ""
-        : clean(String(cell.v));
-
-  if (looksLikeSudokuPadUrl(rawValue) || looksLikeYouTubeUrl(rawValue)) {
-    return rawValue;
-  }
-
-  return "";
-}
-
 function parseWorksheetRows(sheet: XLSX.WorkSheet): ParsedSheetRow[] {
-  const ref = sheet["!ref"];
-  if (!ref) return [];
+  const rows = XLSX.utils.sheet_to_json(sheet, {
+    header: 1,
+    raw: false,
+    defval: "",
+  }) as Array<Array<string | number | boolean | null | undefined>>;
 
-  const range = XLSX.utils.decode_range(ref);
-  const rows: ParsedSheetRow[] = [];
-
-  for (let r = range.s.r; r <= range.e.r; r += 1) {
-    const values: string[] = [];
-    const hyperlinks: string[] = [];
-
-    for (let c = range.s.c; c <= range.e.c; c += 1) {
-      const address = XLSX.utils.encode_cell({ r, c });
-      const cell = sheet[address] as SheetCell | undefined;
-
-      const value =
-        typeof cell?.w === "string"
-          ? clean(cell.w)
-          : cell?.v == null
-            ? ""
-            : clean(String(cell.v));
-
-      values.push(value);
-      hyperlinks.push(extractHyperlinkFromCell(cell));
-    }
-
-    if (values.some((v) => clean(v)) || hyperlinks.some((v) => clean(v))) {
-      rows.push({ values, hyperlinks });
-    }
-  }
-
-  return rows;
+  return rows
+    .map((row) => row.map((value) => clean(String(value ?? ""))))
+    .filter((row) => row.some((value) => value));
 }
 
 function parseArchiveRows(rows: ParsedSheetRow[]): ArchiveEntry[] {
   if (!rows.length) return [];
 
-  const header = rows[0].values;
+  const header = rows[0];
   const body = rows.slice(1);
 
-  const iTitle = findIndexByAliases(header, ["puzzle title", "puzzle name", "title", "puzzle", "name"]);
+  const iTitle = findIndexByAliases(header, ["puzzle title", "puzzle name", "title"]);
   const iConstraints = findIndexByAliases(header, ["puzzle sub-type / constraints", "constraints", "sub-type"]);
-  const iVideoTitle = findIndexByAliases(header, ["video title", "video"]);
+  const iVideoTitle = findIndexByAliases(header, ["video title", "title"]);
   const iVideoLength = findIndexByAliases(header, ["video length", "duration", "length"]);
-  const iVideoDate = findIndexByAliases(header, ["video date", "date", "published"]);
-  const iPuzzleAuthor = findIndexByAliases(header, ["puzzle author", "author", "setter"]);
-  const iVideoHost = findIndexByAliases(header, ["video host", "host", "channel"]);
+  const iVideoDate = findIndexByAliases(header, ["video date", "date"]);
+  const iPuzzleAuthor = findIndexByAliases(header, ["setter", "puzzle author", "author"]);
+  const iVideoHost = findIndexByAliases(header, ["host/solver", "video host", "host", "channel"]);
   const iVideoType = findIndexByAliases(header, ["video type", "type"]);
   const iCollection = findIndexByAliases(header, ["collection", "series"]);
-  const iSudokuPad = findIndexByAliases(header, ["sp", "sudokupad", "sudoku pad", "puzzle link", "sudokupadlink"]);
-  const iYoutube = findIndexByAliases(header, ["youtube", "video link", "youtube link"]);
+  const iSudokuPad = findIndexByAliases(header, ["puzzle link", "sudoku pad link", "sudokupad link", "sudokupad"]);
+  const iYoutube = findIndexByAliases(header, ["link yt", "youtube link", "youtube", "video link"]);
 
   return body
     .map((row, idx) => {
-      const byIdx = (i: number, fallback = "") => clean(i >= 0 ? row.values[i] : fallback);
-      const linkByIdx = (i: number) => clean(i >= 0 ? row.hyperlinks[i] : "");
+      const byIdx = (i: number, fallback = "") => clean(i >= 0 ? row[i] : fallback);
 
-      const title = byIdx(iTitle, row.values[FALLBACK_TITLE_INDEX] ?? "");
-      const subTypeConstraints = byIdx(iConstraints, row.values[FALLBACK_CONSTRAINTS_INDEX] ?? "");
-      const videoTitle = byIdx(iVideoTitle, row.values[FALLBACK_VIDEO_TITLE_INDEX] ?? "");
-      const videoLength = byIdx(iVideoLength, row.values[FALLBACK_VIDEO_LENGTH_INDEX] ?? "");
-      const videoDate = byIdx(iVideoDate, row.values[FALLBACK_VIDEO_DATE_INDEX] ?? "");
+      const title = byIdx(iTitle, row[FALLBACK_TITLE_INDEX] ?? "");
+      const subTypeConstraints = byIdx(iConstraints, row[FALLBACK_CONSTRAINTS_INDEX] ?? "");
+      const videoTitle = byIdx(iVideoTitle, row[FALLBACK_VIDEO_TITLE_INDEX] ?? "");
+      const videoLength = byIdx(iVideoLength, row[FALLBACK_VIDEO_LENGTH_INDEX] ?? "");
+      const videoDate = byIdx(iVideoDate, row[FALLBACK_VIDEO_DATE_INDEX] ?? "");
       const parsedDateTs = Date.parse(videoDate);
       const puzzleAuthor = byIdx(iPuzzleAuthor);
       const videoHost = byIdx(iVideoHost);
       const videoType = byIdx(iVideoType);
       const collection = byIdx(iCollection);
 
-      const sudokuPadUrl = firstNonEmpty(
-        linkByIdx(iSudokuPad),
-        looksLikeSudokuPadUrl(byIdx(iSudokuPad)) ? byIdx(iSudokuPad) : "",
-        row.hyperlinks.find((value) => looksLikeSudokuPadUrl(value)),
-        row.values.find((value) => looksLikeSudokuPadUrl(value)),
-      );
-
-      const youtubeUrl = firstNonEmpty(
-        linkByIdx(iYoutube),
-        looksLikeYouTubeUrl(byIdx(iYoutube)) ? byIdx(iYoutube) : "",
-        row.hyperlinks.find((value) => looksLikeYouTubeUrl(value)),
-        row.values.find((value) => looksLikeYouTubeUrl(value)),
-      );
+      const sudokuPadUrl = normalizeSudokuPadLink(byIdx(iSudokuPad));
+      const youtubeUrl = normalizeYouTubeLink(byIdx(iYoutube));
 
       const sourceId = extractSourceId(sudokuPadUrl);
       const stableKey = toStableKey(sourceId);
@@ -358,50 +330,68 @@ function parseArchiveRows(rows: ParsedSheetRow[]): ArchiveEntry[] {
     .filter((entry) => entry.title || entry.sudokuPadUrl || entry.videoTitle);
 }
 
-function looksLikePuzzlePayload(text: string): boolean {
-  const t = text.trim();
-  if (!t) return false;
-  if (/^]/i.test(t)) return false;
-  if (/^(scl|ctc|fpuz|fpuzzles)/i.test(t)) return true;
-  if (/^[\[{]/.test(t)) return true;
-  return false;
-}
-
-async function fetchPuzzlePayload(sourceId: string): Promise<string | null> {
-  const encoded = sourceId
-    .split("/")
-    .map(encodeURIComponent)
-    .join("/");
-
-  const url = `${SUDOKUPAD_API_BASE}/${encoded}`;
-
+async function resolveSudokuPadRedirect(url: string): Promise<string> {
   try {
     const res = await fetchWithTimeout(url);
-    if (!res.ok) {
-      log(`  SKIP ${sourceId}: HTTP ${res.status}`);
-      return null;
-    }
-
-    const text = await res.text();
-    if (!looksLikePuzzlePayload(text)) {
-      log(`  SKIP ${sourceId}: non-puzzle response`);
-      return null;
-    }
-
-    return text;
-  } catch (err) {
-    log(`  SKIP ${sourceId}: ${String(err)}`);
-    return null;
+    const finalUrl = clean(res.url);
+    return looksLikeSudokuPadUrl(finalUrl) ? finalUrl : "";
+  } catch {
+    return "";
   }
 }
 
-async function main() {
-  mkdirSync(PUZZLES_DIR, { recursive: true });
+async function normalizeNonDirectSudokuPadLinks(entries: ArchiveEntry[]): Promise<void> {
+  const nonDirectUrls = Array.from(
+    new Set(
+      entries
+        .map((entry) => clean(entry.sudokuPadUrl))
+        .filter((url) => url && !looksLikeSudokuPadUrl(url)),
+    ),
+  );
 
+  if (!nonDirectUrls.length) return;
+
+  log(`Resolving ${nonDirectUrls.length} non-direct SudokuPad link(s)...`);
+
+  const resolvedByUrl = new Map<string, string>();
+  await withConcurrency(nonDirectUrls, FETCH_CONCURRENCY, async (url) => {
+    const resolved = await resolveSudokuPadRedirect(url);
+    if (resolved) resolvedByUrl.set(url, resolved);
+  });
+
+  let resolvedCount = 0;
+  let droppedCount = 0;
+
+  for (const entry of entries) {
+    const current = clean(entry.sudokuPadUrl);
+    if (!current || looksLikeSudokuPadUrl(current)) continue;
+
+    const resolved = resolvedByUrl.get(current);
+    if (!resolved) {
+      entry.sudokuPadUrl = "";
+      entry.sourceId = "";
+      entry.stableKey = "unknown";
+      droppedCount += 1;
+      continue;
+    }
+
+    entry.sudokuPadUrl = resolved;
+    entry.sourceId = extractSourceId(resolved);
+    entry.stableKey = toStableKey(entry.sourceId);
+    resolvedCount += 1;
+  }
+
+  log(`Non-direct link normalization: ${resolvedCount} resolved, ${droppedCount} removed.`);
+}
+
+async function main() {
   let existingEntryIds = new Set<string>();
+  let existingManifest: Manifest | null = null;
+
   if (existsSync(MANIFEST_PATH)) {
     try {
       const existing = JSON.parse(readFileSync(MANIFEST_PATH, "utf8")) as Manifest;
+      existingManifest = existing;
       existingEntryIds = new Set((existing.entries ?? []).map((e) => e.id));
       log(`Loaded existing manifest with ${existingEntryIds.size} entries.`);
     } catch {
@@ -413,10 +403,12 @@ async function main() {
   const sheet = pickWorksheet(workbook);
   const sheetRows = parseWorksheetRows(sheet);
   if (sheetRows.length < 2) {
-    throw new Error("Unexpected workbook payload (too few rows)");
+    throw new Error("Workbook export did not contain enough rows in the selected sheet.");
   }
 
   const entries = parseArchiveRows(sheetRows);
+  await normalizeNonDirectSudokuPadLinks(entries);
+
   log(`Parsed ${entries.length} archive entries.`);
 
   const withSudokuPad = entries.filter((e) => !!e.sudokuPadUrl).length;
@@ -424,56 +416,37 @@ async function main() {
   log(`Entries with SudokuPad URL: ${withSudokuPad}/${entries.length}`);
   log(`Entries with YouTube URL:   ${withYouTube}/${entries.length}`);
 
+  if (withSudokuPad === 0) {
+    throw new Error("No SudokuPad URLs were found. Check the Puzzle Link column in the source sheet.");
+  }
+
   const missingSudokuPad = entries.filter((e) => !e.sudokuPadUrl);
   if (missingSudokuPad.length) {
     log("Missing SudokuPad URLs:");
     for (const entry of missingSudokuPad.slice(0, 20)) {
       log(`  - ${entry.title || "(untitled)"} | ${entry.videoDate} | ${entry.videoTitle}`);
     }
-    throw new Error(`Found ${missingSudokuPad.length} sudoku archive entries without SudokuPad URLs`);
-  }
-
-  const toFetch = entries.filter((e) => {
-    if (!e.sourceId) return false;
-    const puzzlePath = join(PUZZLES_DIR, `${e.stableKey}.json`);
-    return !existsSync(puzzlePath);
-  });
-
-  if (toFetch.length === 0) {
-    log("All puzzle payloads already cached.\nNothing to fetch.");
-  } else {
-    log(`Fetching ${toFetch.length} new puzzle payload(s) (concurrency=${FETCH_CONCURRENCY})…`);
-
-    let fetched = 0;
-    let skipped = 0;
-
-    await withConcurrency(toFetch, FETCH_CONCURRENCY, async (entry) => {
-      const payload = await fetchPuzzlePayload(entry.sourceId);
-      if (payload) {
-        const cache: PuzzleCache = {
-          stableKey: entry.stableKey,
-          payload,
-        };
-        const puzzlePath = join(PUZZLES_DIR, `${entry.stableKey}.json`);
-        writeFileSync(puzzlePath, JSON.stringify(cache), "utf8");
-        fetched += 1;
-        log(`  OK ${entry.stableKey}`);
-      } else {
-        skipped += 1;
-      }
-    });
-
-    log(`Done: ${fetched} fetched, ${skipped} skipped.`);
   }
 
   const manifest: Manifest = {
-    generatedAt: new Date().toISOString(),
+    generatedAt:
+      existingManifest != null &&
+      toJson(existingManifest.entries ?? []) === toJson(entries) &&
+      typeof existingManifest.generatedAt === "string" &&
+      clean(existingManifest.generatedAt)
+        ? existingManifest.generatedAt
+        : new Date().toISOString(),
     entries,
   };
 
   const newCount = entries.filter((e) => !existingEntryIds.has(e.id)).length;
-  writeFileSync(MANIFEST_PATH, JSON.stringify(manifest), "utf8");
-  log(`Wrote manifest: ${entries.length} entries (${newCount} new).`);
+  const manifestText = toJson(manifest);
+  const didWriteManifest = writeTextIfChanged(MANIFEST_PATH, manifestText);
+  if (didWriteManifest) {
+    log(`Wrote manifest: ${entries.length} entries (${newCount} new).`);
+  } else {
+    log(`Manifest unchanged: ${entries.length} entries (${newCount} new).`);
+  }
 }
 
 main().catch((err) => {

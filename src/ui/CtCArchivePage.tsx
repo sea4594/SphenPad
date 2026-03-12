@@ -111,19 +111,6 @@ async function loadManifest(bustCache = false): Promise<ArchiveEntry[] | null> {
   }
 }
 
-async function loadCachedPuzzlePayload(stableKey: string): Promise<string | undefined> {
-  if (!stableKey || stableKey === "unknown") return undefined;
-
-  try {
-    const res = await fetch(`${import.meta.env.BASE_URL}archive/puzzles/${stableKey}.json`);
-    if (!res.ok) return undefined;
-    const data = (await res.json()) as { payload?: string };
-    return typeof data.payload === "string" && data.payload.trim() ? data.payload : undefined;
-  } catch {
-    return undefined;
-  }
-}
-
 export function CtCArchivePage() {
   const nav = useNavigate();
 
@@ -269,10 +256,7 @@ export function CtCArchivePage() {
     setImportingId(entry.id);
 
     try {
-      const cachedPayload = await loadCachedPuzzlePayload(entry.stableKey);
-      const { key, def } = await loadFromSudokuPad(entry.sudokuPadUrl, {
-        preloadedPayload: cachedPayload,
-      });
+      const { key, def } = await loadFromSudokuPad(entry.sudokuPadUrl);
 
       const now = Date.now();
       const existing = (await listPuzzles()).find((p) => p.key === key);

@@ -3,7 +3,13 @@ name: Deploy To GitHub Pages
 on:
   push:
     branches: ["main"]
+    paths-ignore:
+      - "public/archive/**"
   workflow_dispatch:
+
+concurrency:
+  group: deploy-pages-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -26,9 +32,6 @@ jobs:
 
       - name: Install deps
         run: npm ci
-
-      - name: Sync archive cache
-        run: npm run sync-archive-cache
 
       - name: Build
         run: npm run build
