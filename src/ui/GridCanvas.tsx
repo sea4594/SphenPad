@@ -7,6 +7,7 @@ type EdgeTrack = "top" | "bottom" | "left" | "right";
 type LineSegmentDraft = { a: CellRC; b: CellRC; edgeTrack?: EdgeTrack };
 type LayerItem = NonNullable<PuzzleDefinition["cosmetics"]["underlays"]>[number];
 const LINE_NODE_RADIUS = 0.5;
+const PREVIEW_RENDER_BUDGET_PX = 340;
 
 function isLikelyMobileDevice(): boolean {
   if (typeof window === "undefined") return false;
@@ -355,8 +356,12 @@ export function GridCanvas(props: {
       const spanX = cols + outsideLeft + outsideRight;
       const spanY = rows + outsideTop + outsideBottom;
       const padFactor = isMobile ? 0.14 : 0.68;
-      const availableWidth = Math.max(previewMode ? 1 : 240, width - sideMargin * 2);
-      const availableHeight = Math.max(previewMode ? 1 : 220, height - topBottomPad * 2);
+      const availableWidth = previewMode
+        ? PREVIEW_RENDER_BUDGET_PX
+        : Math.max(240, width - sideMargin * 2);
+      const availableHeight = previewMode
+        ? PREVIEW_RENDER_BUDGET_PX
+        : Math.max(220, height - topBottomPad * 2);
       const byWidth = availableWidth / (spanX + padFactor);
       const byHeight = availableHeight / (spanY + padFactor);
 
@@ -369,7 +374,11 @@ export function GridCanvas(props: {
 
       const fits = (cell: number) => {
         const basePadding = Math.max(14, Math.round(cell * 0.32));
-        const padding = isMobile ? Math.max(3, Math.round(basePadding * 0.2)) : basePadding;
+        const padding = previewMode
+          ? Math.max(2, Math.round(basePadding * 0.16))
+          : isMobile
+            ? Math.max(3, Math.round(basePadding * 0.2))
+            : basePadding;
         const fullWidth = padding * 2 + spanX * cell;
         const fullHeight = padding * 2 + spanY * cell;
         return fullWidth <= availableWidth && fullHeight <= availableHeight;
