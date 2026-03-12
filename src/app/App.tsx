@@ -11,6 +11,8 @@ export function App() {
     type LockableOrientation = ScreenOrientation & { lock?: (kind: string) => Promise<void> };
     const root = document.documentElement;
     const coarsePointer = window.matchMedia("(hover: none) and (pointer: coarse)");
+    const mobilePlatform = /android|iphone|ipad|ipod/i.test(navigator.userAgent);
+    const touchPrimaryInput = coarsePointer.matches && navigator.maxTouchPoints > 1;
     const visualViewport = window.visualViewport;
 
     const readViewportSize = () => {
@@ -55,7 +57,7 @@ export function App() {
 
     const updateForcedPortraitMode = () => {
       const { vw, vh, shortSide, longSide, insetLeft, insetTop, insetRight, insetBottom } = readViewportSize();
-      const onMobileDevice = coarsePointer.matches || shortSide <= 1000;
+      const onMobileDevice = mobilePlatform || touchPrimaryInput;
       const rotatedLandscape = vw > vh;
       if (onMobileDevice && rotatedLandscape) {
         root.style.setProperty("--force-portrait-short", `${shortSide}px`);
