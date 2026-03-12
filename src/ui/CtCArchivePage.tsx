@@ -68,8 +68,8 @@ const YOUTUBE_ICON_DATA_URL =
 
 const COLLECTION_NONE_VALUE = "none";
 const MOBILE_MEDIA_QUERY = "(max-width: 760px)";
-const MOBILE_VISIBLE_ROWS_INITIAL = 24;
-const MOBILE_VISIBLE_ROWS_STEP = 24;
+const MOBILE_VISIBLE_ROWS_INITIAL = 100;
+const MOBILE_VISIBLE_ROWS_STEP = 100;
 const DESKTOP_VISIBLE_ROWS_INITIAL = 80;
 const DESKTOP_VISIBLE_ROWS_STEP = 80;
 
@@ -375,8 +375,6 @@ export function CtCArchivePage() {
   );
 
   const hasMoreRows = visibleRowsCount < filteredRows.length;
-  const remainingRowsCount = Math.max(filteredRows.length - visibleRows.length, 0);
-  const loadMoreCount = Math.min(renderConfig.visibleRowsStep, remainingRowsCount);
 
   const onLoadMoreRows = useCallback(() => {
     setVisibleRowsCount((count) => count + renderConfig.visibleRowsStep);
@@ -473,55 +471,70 @@ export function CtCArchivePage() {
             </div>
 
             <div className="archiveFilterRow" style={{ marginTop: 8 }}>
-              <select
-                className="btn menuControlSelect"
-                value={hostFilter}
-                onChange={(e) => setHostFilter(e.target.value)}
-              >
-                {hosts.map((v) => (
-                  <option key={v} value={v}>
-                    {v === "all" ? "Host: All" : `Host: ${v}`}
-                  </option>
-                ))}
-              </select>
+              <label className="archiveFilterControl">
+                <span className="muted archiveFilterLabel">Host</span>
+                <select
+                  className="btn menuControlSelect"
+                  value={hostFilter}
+                  onChange={(e) => setHostFilter(e.target.value)}
+                >
+                  {hosts.map((v) => (
+                    <option key={v} value={v}>
+                      {v === "all" ? "All" : v}
+                    </option>
+                  ))}
+                </select>
+              </label>
 
-              <select
-                className="btn menuControlSelect"
-                value={authorFilter}
-                onChange={(e) => setAuthorFilter(e.target.value)}
-              >
-                {authors.map((v) => (
-                  <option key={v} value={v}>
-                    {v === "all" ? "Author: All" : `Author: ${v}`}
-                  </option>
-                ))}
-              </select>
+              <label className="archiveFilterControl">
+                <span className="muted archiveFilterLabel">Author</span>
+                <select
+                  className="btn menuControlSelect"
+                  value={authorFilter}
+                  onChange={(e) => setAuthorFilter(e.target.value)}
+                >
+                  {authors.map((v) => (
+                    <option key={v} value={v}>
+                      {v === "all" ? "All" : v}
+                    </option>
+                  ))}
+                </select>
+              </label>
 
-              <select
-                className="btn menuControlSelect"
-                value={collectionFilter}
-                onChange={(e) => setCollectionFilter(e.target.value)}
-              >
-                {collections.map((v) => (
-                  <option key={v} value={v}>
-                    {v === "all" ? "Collection: All" : `Collection: ${v}`}
-                  </option>
-                ))}
-              </select>
+              <label className="archiveFilterControl">
+                <span className="muted archiveFilterLabel">Collection</span>
+                <select
+                  className="btn menuControlSelect"
+                  value={collectionFilter}
+                  onChange={(e) => setCollectionFilter(e.target.value)}
+                >
+                  {collections.map((v) => (
+                    <option key={v} value={v}>
+                      {v === "all" ? "All" : displayCollection(v) || "None"}
+                    </option>
+                  ))}
+                </select>
+              </label>
 
-              <input
-                className="url archiveLenInput"
-                placeholder="Min length (minutes)"
-                value={minLength}
-                onChange={(e) => setMinLength(e.target.value)}
-              />
+              <label className="archiveFilterControl">
+                <span className="muted archiveFilterLabel">Min Length (Minutes)</span>
+                <input
+                  className="url archiveLenInput"
+                  placeholder="Min length"
+                  value={minLength}
+                  onChange={(e) => setMinLength(e.target.value)}
+                />
+              </label>
 
-              <input
-                className="url archiveLenInput"
-                placeholder="Max length (minutes)"
-                value={maxLength}
-                onChange={(e) => setMaxLength(e.target.value)}
-              />
+              <label className="archiveFilterControl">
+                <span className="muted archiveFilterLabel">Max Length (Minutes)</span>
+                <input
+                  className="url archiveLenInput"
+                  placeholder="Max length"
+                  value={maxLength}
+                  onChange={(e) => setMaxLength(e.target.value)}
+                />
+              </label>
             </div>
           </div>
 
@@ -556,10 +569,6 @@ export function CtCArchivePage() {
                 const solved = entry.sourceKey ? completedKeys.has(entry.sourceKey) : false;
                 const display = (value: string) => clean(value) || "~";
                 const constraints = entry.constraintTypes;
-                const visibleConstraints = renderConfig.compact
-                  ? constraints.slice(0, 3)
-                  : constraints;
-                const hiddenConstraintsCount = constraints.length - visibleConstraints.length;
                 const collection = displayCollection(entry.collection);
 
                 return (
@@ -614,12 +623,9 @@ export function CtCArchivePage() {
 
                           {constraints.length ? (
                             <ul className="archiveConstraintList">
-                              {visibleConstraints.map((constraint) => (
+                              {constraints.map((constraint) => (
                                 <li key={`${entry.id}-${constraint}`}>{constraint}</li>
                               ))}
-                              {hiddenConstraintsCount > 0 && (
-                                <li key={`${entry.id}-more`}>+{hiddenConstraintsCount} more</li>
-                              )}
                             </ul>
                           ) : (
                             <div className="archiveMetaMedium">~</div>
@@ -665,7 +671,7 @@ export function CtCArchivePage() {
               {!loading && hasMoreRows && (
                 <div className="row" style={{ marginTop: 10, justifyContent: "center" }}>
                   <button type="button" className="btn" onClick={onLoadMoreRows}>
-                    Load {loadMoreCount} more
+                    Load {renderConfig.visibleRowsStep} more
                   </button>
                 </div>
               )}

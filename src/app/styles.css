@@ -406,6 +406,11 @@ input.url {
   overflow-wrap: anywhere;
 }
 
+.menuPuzzleActions {
+  width: 100%;
+  justify-content: flex-end;
+}
+
 .archiveControls {
   display: grid;
   gap: 8px;
@@ -414,15 +419,26 @@ input.url {
 .archiveFilterRow {
   display: flex;
   gap: 8px;
-  flex-wrap: nowrap;
-  align-items: center;
-  overflow-x: hidden;
+  flex-wrap: wrap;
+  align-items: flex-start;
 }
 
-.archiveFilterRow > .url,
-.archiveFilterRow > .btn.menuControlSelect {
+.archiveFilterControl {
   min-width: 0;
-  flex: 1;
+  flex: 1 1 170px;
+  display: grid;
+  gap: 4px;
+}
+
+.archiveFilterLabel {
+  font-size: 12px;
+  line-height: 1.1;
+}
+
+.archiveFilterControl > .url,
+.archiveFilterControl > .btn.menuControlSelect {
+  width: 100%;
+  min-width: 0;
 }
 
 .archiveLenInput {
@@ -1044,8 +1060,12 @@ input.url {
     display: none;
   }
 
-  .menuPuzzleRow .row {
+  .menuPuzzleRow .row:not(.menuPuzzleActions) {
     justify-content: flex-start !important;
+  }
+
+  .menuPuzzleActions {
+    justify-content: flex-end !important;
   }
 }
 

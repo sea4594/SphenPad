@@ -154,17 +154,18 @@ export function MainMenu() {
                   className="card menuPuzzleRow"
                   onClick={() => nav(`/p/${encodeURIComponent(r.key)}`)}
                 >
-                  <div>
+                  <div className="menuPuzzleSummary">
                     <div style={{ fontWeight: 700 }}>
-                      {r.def?.meta?.title || "(untitled)"}{" "}
-                      <span className="muted" style={{ fontWeight: 500 }}>
-                        {r.def?.meta?.author ? `- ${r.def.meta.author}` : ""}
-                      </span>
+                      {r.def?.meta?.title || "(untitled)"}
                     </div>
-                    <div className="muted" style={{ fontSize: 13 }}>{r.key}</div>
+                    {r.def?.meta?.author ? (
+                      <div className="muted" style={{ fontSize: 13, marginTop: 2 }}>
+                        {r.def.meta.author}
+                      </div>
+                    ) : null}
                   </div>
 
-                  <div className="row" style={{ justifyContent: "flex-end" }}>
+                  <div className="row menuPuzzleActions">
                     <div>{fmtHMS(r.progress?.totalMillis ?? 0)}</div>
                     <div className="muted" style={{ fontSize: 13 }}>
                       {r.progress?.status ?? "not_started"}
