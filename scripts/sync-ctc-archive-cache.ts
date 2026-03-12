@@ -200,26 +200,93 @@ function buildSudokuPadApiUrl(sourceId: string): string {
   return `${SUDOKUPAD_API_BASE}/${encoded}`;
 }
 
+function buildPuzzleSourceIdCandidates(sourceId: string): string[] {
+  const normalizedSourceId = clean(sourceId);
+  const candidates = new Set<string>();
+
+  const addCandidate = (value: string | null | undefined) => {
+    const v = clean(value ?? "");
+    if (!v) return;
+    candidates.add(v);
+  };
+
+  const addPathDerivedCandidates = (value: string | null | undefined) => {
+    const trimmed = clean(value ?? "").replace(/^\/+|\/+$/g, "");
+    if (!trimmed) return;
+
+    addCandidate(trimmed);
+
+    const parts = trimmed.split("/").map(clean).filter(Boolean);
+    if (parts.length < 2) return;
+
+    const first = parts[0].toLowerCase();
+    if ((first === "sudoku" || first === "webapp" || first === "puzzle") && parts[1]) {
+      addCandidate(parts[1]);
+    }
+
+    addCandidate(parts[parts.length - 1]);
+  };
+
+  addCandidate(normalizedSourceId);
+  addPathDerivedCandidates(normalizedSourceId);
+
+  try {
+    const decoded = decodeURIComponent(normalizedSourceId);
+    if (decoded !== normalizedSourceId) {
+      addCandidate(decoded);
+      addPathDerivedCandidates(decoded);
+    }
+  } catch {
+    // Ignore malformed percent-encoding and continue.
+  }
+
+  try {
+    const url = new URL(normalizedSourceId);
+    addPathDerivedCandidates(url.pathname);
+    addPathDerivedCandidates(url.hash.replace(/^#/, ""));
+    addPathDerivedCandidates(url.searchParams.get("load"));
+    addPathDerivedCandidates(url.searchParams.get("puzzle"));
+  } catch {
+    // Not a full URL; continue with path-derived candidates already collected.
+  }
+
+  return Array.from(candidates);
+}
+
 async function fetchPuzzlePayload(sourceId: string): Promise<string> {
   const normalizedSourceId = clean(sourceId);
   if (!normalizedSourceId) throw new Error("Missing SudokuPad source ID");
 
-  if (isEmbeddedPuzzlePayload(normalizedSourceId)) {
-    return normalizedSourceId;
+  const sourceCandidates = buildPuzzleSourceIdCandidates(normalizedSourceId);
+  let lastErr: Error | null = null;
+
+  for (const candidate of sourceCandidates) {
+    if (isEmbeddedPuzzlePayload(candidate)) {
+      return candidate;
+    }
+
+    try {
+      const url = buildSudokuPadApiUrl(candidate);
+      const res = await fetchWithTimeout(url);
+      if (!res.ok) {
+        lastErr = new Error(`HTTP ${res.status} fetching puzzle payload for ${candidate}`);
+        continue;
+      }
+
+      const payload = await res.text();
+      if (!looksLikePuzzlePayload(payload)) {
+        lastErr = new Error(`Unexpected puzzle payload format for ${candidate}`);
+        continue;
+      }
+
+      return payload;
+    } catch (err) {
+      lastErr = err instanceof Error ? err : new Error(String(err));
+    }
   }
 
-  const url = buildSudokuPadApiUrl(normalizedSourceId);
-  const res = await fetchWithTimeout(url);
-  if (!res.ok) {
-    throw new Error(`HTTP ${res.status} fetching puzzle payload for ${normalizedSourceId}`);
-  }
-
-  const payload = await res.text();
-  if (!looksLikePuzzlePayload(payload)) {
-    throw new Error(`Unexpected puzzle payload format for ${normalizedSourceId}`);
-  }
-
-  return payload;
+  if (lastErr) throw lastErr;
+  throw new Error(`Unable to resolve puzzle payload for ${normalizedSourceId}`);
 }
 
 function assignCacheKeys(entries: ArchiveEntry[]): void {
