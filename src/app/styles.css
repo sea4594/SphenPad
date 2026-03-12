@@ -390,7 +390,7 @@ input.url {
   display: grid;
   grid-template-columns: 1fr auto;
   gap: 10px;
-  align-items: center;
+  align-items: start;
   cursor: pointer;
 }
 
@@ -406,9 +406,45 @@ input.url {
   overflow-wrap: anywhere;
 }
 
-.menuPuzzleActions {
-  width: 100%;
-  justify-content: flex-end;
+.menuPuzzleMeta {
+  justify-content: flex-start;
+  gap: 10px;
+}
+
+.menuPuzzleDeleteStack {
+  display: grid;
+  justify-items: end;
+  align-content: start;
+  gap: 6px;
+}
+
+.menuPuzzlePreview {
+  --preview-cell-size: 8px;
+  display: grid;
+  grid-template-columns: repeat(var(--preview-cols, 9), var(--preview-cell-size));
+  grid-template-rows: repeat(var(--preview-rows, 9), var(--preview-cell-size));
+  gap: 1px;
+  padding: 2px;
+  border: 1px solid color-mix(in oklab, var(--text) 20%, transparent);
+  background: color-mix(in oklab, var(--panel-soft) 84%, transparent);
+}
+
+.menuPuzzlePreviewCell {
+  width: var(--preview-cell-size);
+  height: var(--preview-cell-size);
+  display: grid;
+  place-items: center;
+  font-size: 6px;
+  font-weight: 600;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: color-mix(in oklab, var(--muted) 88%, var(--text) 12%);
+  background: color-mix(in oklab, var(--panel) 86%, var(--text) 14%);
+}
+
+.menuPuzzlePreviewCell.given {
+  color: var(--text);
+  background: color-mix(in oklab, var(--accent) 38%, var(--panel-soft) 62%);
 }
 
 .archiveControls {
@@ -1060,12 +1096,13 @@ input.url {
     display: none;
   }
 
-  .menuPuzzleRow .row:not(.menuPuzzleActions) {
+  .menuPuzzleRow .row {
     justify-content: flex-start !important;
   }
 
-  .menuPuzzleActions {
+  .menuPuzzleDeleteStack {
     justify-content: flex-end !important;
+    justify-items: flex-end;
   }
 }
 

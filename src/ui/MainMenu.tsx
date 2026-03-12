@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { useNavigate } from "react-router-dom";
 import { loadFromSudokuPad } from "../core/sudokupad";
 import { deletePuzzle, listPuzzles, upsertPuzzle } from "../core/storage";
@@ -10,11 +10,72 @@ import { SettingsOverlay } from "./SettingsOverlay";
 
 type SortOrder = "recent" | "az";
 type FilterStatus = "all" | "not_started" | "in_progress" | "complete";
+type StoredPuzzle = Awaited<ReturnType<typeof listPuzzles>>[number];
+
+type PuzzlePreviewCell = {
+  key: string;
+  value: string;
+  isGiven: boolean;
+};
+
+type PuzzlePreview = {
+  rows: number;
+  cols: number;
+  cells: PuzzlePreviewCell[];
+};
+
+function normalizePreviewDimension(value: unknown, fallback: number): number {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n <= 0) return fallback;
+  return Math.max(1, Math.min(16, Math.floor(n)));
+}
+
+function asPreviewCellValue(value: unknown): string {
+  if (value == null) return "";
+  const text = String(value).trim();
+  return text ? text.slice(0, 1) : "";
+}
+
+function buildPuzzlePreview(row: StoredPuzzle): PuzzlePreview {
+  const progressRows = row.progress?.cells?.length ?? 0;
+  const progressCols = row.progress?.cells?.[0]?.length ?? 0;
+  const rowSource = row.def?.rows ?? row.def?.size ?? (progressRows > 0 ? progressRows : 9);
+  const colSource = row.def?.cols ?? row.def?.size ?? (progressCols > 0 ? progressCols : 9);
+  const rows = normalizePreviewDimension(rowSource, 9);
+  const cols = normalizePreviewDimension(colSource, 9);
+
+  const givensByCell = new Map<string, string>();
+  for (const given of row.def?.givens ?? []) {
+    const rr = Number(given?.rc?.r);
+    const cc = Number(given?.rc?.c);
+    if (!Number.isFinite(rr) || !Number.isFinite(cc)) continue;
+    if (rr < 0 || cc < 0 || rr >= rows || cc >= cols) continue;
+    const key = `${rr}:${cc}`;
+    const value = asPreviewCellValue(given.v);
+    if (value) givensByCell.set(key, value);
+  }
+
+  const cells: PuzzlePreviewCell[] = [];
+  for (let rr = 0; rr < rows; rr++) {
+    for (let cc = 0; cc < cols; cc++) {
+      const key = `${rr}:${cc}`;
+      const givenValue = givensByCell.get(key) ?? "";
+      const progressValue = asPreviewCellValue(row.progress?.cells?.[rr]?.[cc]?.value);
+      cells.push({
+        key,
+        value: progressValue || givenValue,
+        isGiven: Boolean(givenValue),
+      });
+    }
+  }
+
+  return { rows, cols, cells };
+}
 
 export function MainMenu() {
   const nav = useNavigate();
   const [url, setUrl] = useState("");
-  const [rows, setRows] = useState<Array<Awaited<ReturnType<typeof listPuzzles>>[number]>>([]);
+  const [rows, setRows] = useState<StoredPuzzle[]>([]);
   const [busy, setBusy] = useState<string>("");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [sortOrder, setSortOrder] = useState<SortOrder>("recent");
@@ -148,40 +209,62 @@ export function MainMenu() {
             </div>
 
             <div className="menuPuzzleList">
-              {displayRows.map((r) => (
-                <div
-                  key={r.key}
-                  className="card menuPuzzleRow"
-                  onClick={() => nav(`/p/${encodeURIComponent(r.key)}`)}
-                >
-                  <div className="menuPuzzleSummary">
-                    <div style={{ fontWeight: 700 }}>
-                      {r.def?.meta?.title || "(untitled)"}
-                    </div>
-                    {r.def?.meta?.author ? (
-                      <div className="muted" style={{ fontSize: 13, marginTop: 2 }}>
-                        {r.def.meta.author}
-                      </div>
-                    ) : null}
-                  </div>
+              {displayRows.map((r) => {
+                const preview = buildPuzzlePreview(r);
+                const previewStyle = {
+                  "--preview-rows": String(preview.rows),
+                  "--preview-cols": String(preview.cols),
+                } as CSSProperties;
 
-                  <div className="row menuPuzzleActions">
-                    <div>{fmtHMS(r.progress?.totalMillis ?? 0)}</div>
-                    <div className="muted" style={{ fontSize: 13 }}>
-                      {r.progress?.status ?? "not_started"}
+                return (
+                  <div
+                    key={r.key}
+                    className="card menuPuzzleRow"
+                    onClick={() => nav(`/p/${encodeURIComponent(r.key)}`)}
+                  >
+                    <div className="menuPuzzleSummary">
+                      <div style={{ fontWeight: 700 }}>
+                        {r.def?.meta?.title || "(untitled)"}
+                      </div>
+                      {r.def?.meta?.author ? (
+                        <div className="muted" style={{ fontSize: 13, marginTop: 2 }}>
+                          {r.def.meta.author}
+                        </div>
+                      ) : null}
+
+                      <div className="row menuPuzzleMeta" style={{ marginTop: 6 }}>
+                        <div>{fmtHMS(r.progress?.totalMillis ?? 0)}</div>
+                        <div className="muted" style={{ fontSize: 13 }}>
+                          {r.progress?.status ?? "not_started"}
+                        </div>
+                      </div>
                     </div>
-                    <button
-                      className="btn danger"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        deletePuzzle(r.key).then(refresh);
-                      }}
-                    >
-                      Delete
-                    </button>
+
+                    <div className="menuPuzzleDeleteStack">
+                      <div className="menuPuzzlePreview" style={previewStyle} aria-hidden="true">
+                        {preview.cells.map((cell) => (
+                          <span
+                            key={`${r.key}-${cell.key}`}
+                            className={cell.isGiven ? "menuPuzzlePreviewCell given" : "menuPuzzlePreviewCell"}
+                          >
+                            {cell.value}
+                          </span>
+                        ))}
+                      </div>
+
+                      <button
+                        className="btn danger"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deletePuzzle(r.key).then(refresh);
+                        }}
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
               {!displayRows.length && (
                 <div className="muted">
                   {filterStatus !== "all" ? "No puzzles match the current filter." : "No puzzles loaded yet."}
