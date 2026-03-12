@@ -15,21 +15,73 @@ type StoredPuzzle = Awaited<ReturnType<typeof listPuzzles>>[number];
 
 const NOOP = () => {};
 
-function summarizeConstraints(rules: string | undefined): string {
-  const source = (rules ?? "").replace(/\s+/g, " ").trim();
-  if (!source) return "No constraints listed.";
+function hasBorderClues(clues: { top?: string[]; bottom?: string[]; left?: string[]; right?: string[] } | undefined): boolean {
+  if (!clues) return false;
+  const sides = [clues.top, clues.bottom, clues.left, clues.right];
+  return sides.some((side) => Array.isArray(side) && side.some((v) => String(v ?? "").trim().length > 0));
+}
 
-  const cleaned = source
-    .replace(/normal\s+sudoku\s+rules\s+apply\.?/gi, "")
-    .replace(/^(rules?|constraints?)\s*[:\-]\s*/i, "")
-    .trim();
+function extractConstraintBullets(def: StoredPuzzle["def"]): string[] {
+  const out = new Set<string>();
+  const cosmetics = def.cosmetics;
 
-  const text = cleaned || source;
-  const parts = text
-    .split(/[.;\n]+/)
-    .map((part) => part.trim())
-    .filter(Boolean);
-  return parts.slice(0, 2).join("; ") || text;
+  if (cosmetics.cages?.length) out.add("Killer cages");
+  if (cosmetics.arrows?.length) out.add("Arrow constraints");
+  if (cosmetics.dots?.length) {
+    const hasBlack = cosmetics.dots.some((d) => d.kind === "black");
+    const hasWhite = cosmetics.dots.some((d) => d.kind === "white");
+    if (hasBlack && hasWhite) out.add("Black and white dots");
+    else if (hasBlack) out.add("Black dots");
+    else if (hasWhite) out.add("White dots");
+  }
+
+  if (cosmetics.thermolines?.length) out.add("Thermo lines");
+  if (cosmetics.whispers?.length || cosmetics.germanwhispers?.length) out.add("Whisper lines");
+  if (cosmetics.palindromes?.length) out.add("Palindrome lines");
+  if (cosmetics.renbanlines?.length) out.add("Renban lines");
+  if (cosmetics.entropics?.length) out.add("Entropic lines");
+  if (cosmetics.modularlines?.length) out.add("Modular lines");
+
+  if (hasBorderClues(cosmetics.skyscraper)) out.add("Skyscraper clues");
+  if (hasBorderClues(cosmetics.sandwich)) out.add("Sandwich clues");
+  if (hasBorderClues(cosmetics.xsum)) out.add("X-sum clues");
+  if (cosmetics.littlekillers?.length) out.add("Little killer clues");
+
+  if (cosmetics.irregularRegions?.length) out.add("Irregular regions");
+  if (cosmetics.disjointGroups?.length) out.add("Disjoint groups");
+
+  if (cosmetics.antiKnight) out.add("Anti-knight");
+  if (cosmetics.antiKing) out.add("Anti-king");
+  if (cosmetics.antiRook) out.add("Anti-rook");
+
+  if ((cosmetics.fogLights?.length ?? 0) > 0 || (cosmetics.fogTriggerEffects?.length ?? 0) > 0) {
+    out.add("Fog of war");
+  }
+
+  const rules = (def.meta?.rules ?? "").toLowerCase();
+  const keywordMap: Array<[RegExp, string]> = [
+    [/\bthermo\b/, "Thermo lines"],
+    [/\bwhisper\b/, "Whisper lines"],
+    [/\brenban\b/, "Renban lines"],
+    [/\bpalindrome\b/, "Palindrome lines"],
+    [/\barrow\b/, "Arrow constraints"],
+    [/\bkiller\b/, "Killer cages"],
+    [/\bsandwich\b/, "Sandwich clues"],
+    [/\bx\s*-?\s*sum\b/, "X-sum clues"],
+    [/\bskyscraper\b/, "Skyscraper clues"],
+    [/\blittle\s*killer\b/, "Little killer clues"],
+    [/\banti\s*-?\s*knight\b/, "Anti-knight"],
+    [/\banti\s*-?\s*king\b/, "Anti-king"],
+    [/\banti\s*-?\s*rook\b/, "Anti-rook"],
+    [/\bfog\b/, "Fog of war"],
+    [/\bentropic\b|\bentropy\b/, "Entropic lines"],
+  ];
+  for (const [pattern, label] of keywordMap) {
+    if (pattern.test(rules)) out.add(label);
+  }
+
+  if (!out.size) return ["Normal Sudoku rules only"];
+  return Array.from(out);
 }
 
 export function MainMenu() {
@@ -175,7 +227,7 @@ export function MainMenu() {
                   selection: [],
                   multiSelect: false,
                 };
-                const constraintsSummary = summarizeConstraints(r.def?.meta?.rules);
+                const constraintBullets = extractConstraintBullets(r.def);
 
                 return (
                   <div
@@ -191,9 +243,11 @@ export function MainMenu() {
                             {r.def.meta.author}
                           </div>
                         ) : null}
-                        <div className="muted menuPuzzleConstraints">
-                          {constraintsSummary}
-                        </div>
+                        <ul className="menuPuzzleConstraintList">
+                          {constraintBullets.map((constraint) => (
+                            <li key={`${r.key}-${constraint}`}>{constraint}</li>
+                          ))}
+                        </ul>
                       </div>
 
                       <div className="row menuPuzzleMeta">
