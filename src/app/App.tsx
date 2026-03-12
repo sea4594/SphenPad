@@ -18,9 +18,22 @@ export function App() {
       const layoutH = Math.max(1, Math.round(window.innerHeight));
       const visualW = Math.max(1, Math.round(visualViewport?.width ?? layoutW));
       const visualH = Math.max(1, Math.round(visualViewport?.height ?? layoutH));
+      const offsetLeft = Math.max(0, Math.round(visualViewport?.offsetLeft ?? 0));
+      const offsetTop = Math.max(0, Math.round(visualViewport?.offsetTop ?? 0));
+      const insetRight = Math.max(0, layoutW - visualW - offsetLeft);
+      const insetBottom = Math.max(0, layoutH - visualH - offsetTop);
       const vw = Math.max(layoutW, visualW);
       const vh = Math.max(layoutH, visualH);
-      return { vw, vh, shortSide: Math.min(vw, vh), longSide: Math.max(vw, vh) };
+      return {
+        vw,
+        vh,
+        shortSide: Math.min(vw, vh),
+        longSide: Math.max(vw, vh),
+        insetLeft: offsetLeft,
+        insetTop: offsetTop,
+        insetRight,
+        insetBottom,
+      };
     };
 
     const getLandscapeDirection = (): "cw" | "ccw" => {
@@ -41,17 +54,25 @@ export function App() {
     };
 
     const updateForcedPortraitMode = () => {
-      const { vw, vh, shortSide, longSide } = readViewportSize();
+      const { vw, vh, shortSide, longSide, insetLeft, insetTop, insetRight, insetBottom } = readViewportSize();
       const onMobileDevice = coarsePointer.matches || shortSide <= 1000;
       const rotatedLandscape = vw > vh;
       if (onMobileDevice && rotatedLandscape) {
         root.style.setProperty("--force-portrait-short", `${shortSide}px`);
         root.style.setProperty("--force-portrait-long", `${longSide}px`);
+        root.style.setProperty("--force-viewport-inset-left", `${insetLeft}px`);
+        root.style.setProperty("--force-viewport-inset-top", `${insetTop}px`);
+        root.style.setProperty("--force-viewport-inset-right", `${insetRight}px`);
+        root.style.setProperty("--force-viewport-inset-bottom", `${insetBottom}px`);
         root.setAttribute("data-force-portrait", getLandscapeDirection());
       } else {
         root.removeAttribute("data-force-portrait");
         root.style.removeProperty("--force-portrait-short");
         root.style.removeProperty("--force-portrait-long");
+        root.style.removeProperty("--force-viewport-inset-left");
+        root.style.removeProperty("--force-viewport-inset-top");
+        root.style.removeProperty("--force-viewport-inset-right");
+        root.style.removeProperty("--force-viewport-inset-bottom");
       }
     };
 
@@ -105,6 +126,10 @@ export function App() {
       root.removeAttribute("data-force-portrait");
       root.style.removeProperty("--force-portrait-short");
       root.style.removeProperty("--force-portrait-long");
+      root.style.removeProperty("--force-viewport-inset-left");
+      root.style.removeProperty("--force-viewport-inset-top");
+      root.style.removeProperty("--force-viewport-inset-right");
+      root.style.removeProperty("--force-viewport-inset-bottom");
     };
   }, []);
 

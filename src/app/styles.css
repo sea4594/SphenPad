@@ -148,16 +148,21 @@ body,
   color: var(--text);
 }
 
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
 body {
   overflow-x: hidden;
 }
 
 html[data-force-portrait],
 html[data-force-portrait] body {
-  --safe-top: var(--force-safe-top, 0px);
-  --safe-bottom: var(--force-safe-bottom, 0px);
-  --safe-left: var(--force-safe-inline-start, 0px);
-  --safe-right: var(--force-safe-inline-end, 0px);
+  --safe-top: max(var(--force-safe-top, 0px), var(--force-viewport-inset-top, 0px));
+  --safe-bottom: max(var(--force-safe-bottom, 0px), var(--force-viewport-inset-bottom, 0px));
+  --safe-left: max(var(--force-safe-inline-start, 0px), var(--force-viewport-inset-left, 0px));
+  --safe-right: max(var(--force-safe-inline-end, 0px), var(--force-viewport-inset-right, 0px));
   --safe-inline: max(var(--safe-left), var(--safe-right));
   width: 100%;
   height: 100%;
@@ -242,7 +247,7 @@ button,
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 12px;
-  padding: max(8px, var(--safe-top)) max(14px, var(--safe-inline)) 10px max(14px, var(--safe-inline));
+  padding: max(8px, var(--safe-top)) max(14px, var(--safe-right)) 10px max(14px, var(--safe-left));
   background: color-mix(in oklab, var(--bg) 88%, transparent);
   backdrop-filter: blur(8px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
@@ -285,7 +290,7 @@ button,
 }
 
 .page {
-  padding: 14px max(14px, var(--safe-inline)) max(14px, var(--safe-bottom)) max(14px, var(--safe-inline));
+  padding: 14px max(14px, var(--safe-right)) max(14px, var(--safe-bottom)) max(14px, var(--safe-left));
   display: grid;
   gap: 12px;
   min-height: 0;
@@ -880,7 +885,7 @@ input.url {
 
 @media (max-width: 760px), ((hover: none) and (pointer: coarse)) {
   .topbar {
-    padding: max(6px, var(--safe-top)) max(10px, var(--safe-inline)) 8px max(10px, var(--safe-inline));
+    padding: max(6px, var(--safe-top)) max(10px, var(--safe-right)) 8px max(10px, var(--safe-left));
     gap: 8px;
     backdrop-filter: none;
   }
@@ -895,7 +900,7 @@ input.url {
   }
 
   .puzzleTopbar {
-    padding: max(4px, var(--safe-top)) max(10px, var(--safe-inline)) 6px max(10px, var(--safe-inline));
+    padding: max(4px, var(--safe-top)) max(10px, var(--safe-right)) 6px max(10px, var(--safe-left));
     gap: 4px;
   }
 
@@ -923,7 +928,7 @@ input.url {
   }
 
   .page {
-    padding: 10px max(10px, var(--safe-inline)) max(8px, var(--safe-bottom)) max(10px, var(--safe-inline));
+    padding: 10px max(10px, var(--safe-right)) max(8px, var(--safe-bottom)) max(10px, var(--safe-left));
   }
 
   input.url {
