@@ -159,10 +159,10 @@ body {
 
 html[data-force-portrait],
 html[data-force-portrait] body {
-  --safe-top: max(var(--force-safe-top, 0px), var(--force-viewport-inset-top, 0px));
-  --safe-bottom: max(var(--force-safe-bottom, 0px), var(--force-viewport-inset-bottom, 0px));
-  --safe-left: max(var(--force-safe-inline-start, 0px), var(--force-viewport-inset-left, 0px));
-  --safe-right: max(var(--force-safe-inline-end, 0px), var(--force-viewport-inset-right, 0px));
+  --safe-top: max(var(--force-safe-top, 0px), var(--force-vv-top, 0px));
+  --safe-bottom: max(var(--force-safe-bottom, 0px), var(--force-vv-bottom, 0px));
+  --safe-left: max(var(--force-safe-inline-start, 0px), var(--force-vv-inline-start, 0px));
+  --safe-right: max(var(--force-safe-inline-end, 0px), var(--force-vv-inline-end, 0px));
   --safe-inline: max(var(--safe-left), var(--safe-right));
   width: 100%;
   height: 100%;
@@ -174,6 +174,10 @@ html[data-force-portrait="ccw"] {
   --force-safe-bottom: env(safe-area-inset-right);
   --force-safe-inline-start: env(safe-area-inset-bottom);
   --force-safe-inline-end: env(safe-area-inset-top);
+  --force-vv-top: var(--force-viewport-inset-left, 0px);
+  --force-vv-bottom: var(--force-viewport-inset-right, 0px);
+  --force-vv-inline-start: var(--force-viewport-inset-bottom, 0px);
+  --force-vv-inline-end: var(--force-viewport-inset-top, 0px);
 }
 
 html[data-force-portrait="cw"] {
@@ -181,6 +185,10 @@ html[data-force-portrait="cw"] {
   --force-safe-bottom: env(safe-area-inset-left);
   --force-safe-inline-start: env(safe-area-inset-top);
   --force-safe-inline-end: env(safe-area-inset-bottom);
+  --force-vv-top: var(--force-viewport-inset-right, 0px);
+  --force-vv-bottom: var(--force-viewport-inset-left, 0px);
+  --force-vv-inline-start: var(--force-viewport-inset-top, 0px);
+  --force-vv-inline-end: var(--force-viewport-inset-bottom, 0px);
 }
 
 html[data-force-portrait] #root {

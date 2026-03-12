@@ -14,6 +14,7 @@ export function App() {
     const mobilePlatform = /android|iphone|ipad|ipod/i.test(navigator.userAgent);
     const touchPrimaryInput = coarsePointer.matches && navigator.maxTouchPoints > 1;
     const visualViewport = window.visualViewport;
+    let lastLandscapeDirection: "cw" | "ccw" = "ccw";
 
     const readViewportSize = () => {
       const layoutW = Math.max(1, Math.round(window.innerWidth));
@@ -39,20 +40,26 @@ export function App() {
     };
 
     const getLandscapeDirection = (): "cw" | "ccw" => {
+      const legacyAngle = (window as LegacyOrientationWindow).orientation;
+      if (typeof legacyAngle === "number" && Math.abs(legacyAngle) === 90) {
+        lastLandscapeDirection = legacyAngle > 0 ? "cw" : "ccw";
+        return lastLandscapeDirection;
+      }
+
       const angle = window.screen?.orientation?.angle;
       if (typeof angle === "number") {
         const normalized = ((angle % 360) + 360) % 360;
-        if (normalized === 90) return "cw";
-        if (normalized === 270) return "ccw";
+        if (normalized === 90) {
+          lastLandscapeDirection = "cw";
+          return lastLandscapeDirection;
+        }
+        if (normalized === 270) {
+          lastLandscapeDirection = "ccw";
+          return lastLandscapeDirection;
+        }
       }
 
-      const legacyAngle = (window as LegacyOrientationWindow).orientation;
-      if (typeof legacyAngle === "number") {
-        if (legacyAngle > 0) return "cw";
-        if (legacyAngle < 0) return "ccw";
-      }
-
-      return "ccw";
+      return lastLandscapeDirection;
     };
 
     const updateForcedPortraitMode = () => {
