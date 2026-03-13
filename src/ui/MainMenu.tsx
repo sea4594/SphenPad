@@ -7,6 +7,7 @@ import {
   deletePuzzle,
   listFolders,
   listPuzzles,
+  removePuzzleFromFolder,
   type PuzzleFolder,
   upsertPuzzle,
 } from "../core/storage";
@@ -34,7 +35,6 @@ type FolderMenuPrefs = {
 const MAIN_MENU_FILTER_PREFS_KEY = "sphenpad-main-menu-filters-v1";
 const FOLDER_MENU_PREFS_KEY = "sphenpad-folder-menu-filters-v1";
 const ROOT_FOLDER_OPTION = "__root__";
-const CURRENT_FOLDER_OPTION = "__current__";
 
 const NOOP = () => {};
 
@@ -133,12 +133,6 @@ function sortFolders(rows: PuzzleFolder[], sortOrder: SortOrder): PuzzleFolder[]
 
   next.sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
   return next;
-}
-
-function resolveFolderParentId(selection: string, activeFolderId: string | null): string | null {
-  if (selection === ROOT_FOLDER_OPTION) return null;
-  if (selection === CURRENT_FOLDER_OPTION) return activeFolderId;
-  return selection;
 }
 
 function buildFolderPath(folder: PuzzleFolder, folderById: Map<string, PuzzleFolder>): string {
@@ -241,9 +235,11 @@ export function MainMenu() {
   const [folderSortOrder, setFolderSortOrder] = useState<SortOrder>(initialFolderPrefs.sortOrder);
   const [folderFilterStatus, setFolderFilterStatus] = useState<FilterStatus>(initialFolderPrefs.filterStatus);
   const [activeFolderId, setActiveFolderId] = useState<string | null>(null);
+  const [folderCreateDialogOpen, setFolderCreateDialogOpen] = useState(false);
   const [folderCreateName, setFolderCreateName] = useState("");
-  const [folderCreateParentId, setFolderCreateParentId] = useState<string>(CURRENT_FOLDER_OPTION);
   const [folderCreateBusy, setFolderCreateBusy] = useState("");
+  const [folderPuzzleMenu, setFolderPuzzleMenu] = useState<{ folderId: string; puzzleKey: string } | null>(null);
+  const [folderActionBusyKey, setFolderActionBusyKey] = useState<string | null>(null);
 
   const [deleteCandidate, setDeleteCandidate] = useState<StoredPuzzle | null>(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
@@ -285,6 +281,10 @@ export function MainMenu() {
       setActiveFolderId(null);
     }
   }, [activeFolderId, folders]);
+
+  useEffect(() => {
+    setFolderPuzzleMenu(null);
+  }, [activeFolderId, foldersOpen]);
 
   const totals = useMemo(() => {
     const ms = rows.reduce((a, r) => a + (r.progress?.totalMillis ?? 0), 0);
@@ -422,7 +422,8 @@ export function MainMenu() {
   function onOpenFolders() {
     setFoldersOpen(true);
     setActiveFolderId(null);
-    setFolderCreateParentId(CURRENT_FOLDER_OPTION);
+    setFolderCreateDialogOpen(false);
+    setFolderCreateName("");
     void refreshFolders();
   }
 
@@ -480,20 +481,33 @@ export function MainMenu() {
     const folderName = folderCreateName.trim();
     if (!folderName || folderCreateBusy) return;
 
-    const parentId = resolveFolderParentId(folderCreateParentId, activeFolderId);
-
     setFolderCreateBusy("Creating folder...");
     try {
-      const created = await createFolder(folderName, parentId);
+      const created = await createFolder(folderName, activeFolderId ?? null);
       await refreshFolders();
       setFolderCreateName("");
-      setFolderCreateParentId(CURRENT_FOLDER_OPTION);
+      setFolderCreateDialogOpen(false);
       setActiveFolderId(created.id);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
       alert(msg);
     } finally {
       setFolderCreateBusy("");
+    }
+  }
+
+  async function onRemovePuzzleFromFolder(folderId: string, puzzleKey: string) {
+    if (folderActionBusyKey) return;
+    setFolderActionBusyKey(puzzleKey);
+    try {
+      await removePuzzleFromFolder(folderId, puzzleKey);
+      await refreshFolders();
+      setFolderPuzzleMenu(null);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      alert(msg);
+    } finally {
+      setFolderActionBusyKey(null);
     }
   }
 
@@ -673,7 +687,11 @@ export function MainMenu() {
       </div>
 
       {foldersOpen ? (
-        <div className="overlayBackdrop" onClick={() => setFoldersOpen(false)}>
+        <div className="overlayBackdrop foldersOverlayBackdrop" onClick={() => {
+          setFolderPuzzleMenu(null);
+          setFolderCreateDialogOpen(false);
+          setFoldersOpen(false);
+        }}>
           <div
             className="card foldersOverlayCard"
             role="dialog"
@@ -681,9 +699,30 @@ export function MainMenu() {
             aria-label="Folders"
             onClick={(event) => event.stopPropagation()}
           >
-            <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
+            <div className="row" style={{ justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "nowrap" }}>
               <div className="menuSectionTitle">Folders</div>
-              <button className="btn" onClick={() => setFoldersOpen(false)} type="button">Close</button>
+              <div className="row" style={{ gap: 8, flexWrap: "nowrap" }}>
+                <button
+                  className="btn primary"
+                  onClick={() => {
+                    setFolderCreateName("");
+                    setFolderCreateDialogOpen(true);
+                  }}
+                  type="button"
+                >
+                  Create Folder
+                </button>
+                <button
+                  className="btn"
+                  onClick={() => {
+                    setFolderCreateDialogOpen(false);
+                    setFoldersOpen(false);
+                  }}
+                  type="button"
+                >
+                  Close
+                </button>
+              </div>
             </div>
 
             <div className="row" style={{ marginTop: 8 }}>
@@ -733,106 +772,209 @@ export function MainMenu() {
               ))}
             </div>
 
-            <div className="menuPuzzleList" style={{ marginTop: 12 }}>
-              <div className="muted" style={{ fontSize: 13 }}>
-                {activeFolder ? buildFolderPath(activeFolder, folderById) : "Top-level folders"}
-              </div>
+            <div className="foldersOverlayScroll">
+              <div className="menuPuzzleList" style={{ marginTop: 0 }}>
+                <div className="muted" style={{ fontSize: 13 }}>
+                  {activeFolder ? buildFolderPath(activeFolder, folderById) : "Top-level folders"}
+                </div>
 
-              {visibleChildFolders.map((folder) => {
-                const childCount = folderChildCounts.get(folder.id) ?? 0;
-                const puzzleCount = folder.puzzleKeys.length;
-                return (
-                  <button
-                    key={folder.id}
-                    className="card folderBrowserItem"
-                    onClick={() => setActiveFolderId(folder.id)}
-                    type="button"
-                  >
-                    <div className="row" style={{ justifyContent: "space-between", alignItems: "flex-start" }}>
-                      <div className="row" style={{ gap: 6 }}>
-                        <IconFolder />
-                        <div style={{ fontWeight: 700, overflowWrap: "anywhere" }}>{folder.name}</div>
-                      </div>
-                    </div>
-                    <div className="muted" style={{ fontSize: 13 }}>
-                      {puzzleCount} puzzle{puzzleCount === 1 ? "" : "s"} | {childCount} subfolder{childCount === 1 ? "" : "s"}
-                    </div>
-                  </button>
-                );
-              })}
-
-              {activeFolder ? (
-                <>
-                  <div className="muted" style={{ fontSize: 13, marginTop: 4 }}>Puzzles in this folder</div>
-                  {visibleFolderPuzzles.map((row) => (
+                {visibleChildFolders.map((folder) => {
+                  const childCount = folderChildCounts.get(folder.id) ?? 0;
+                  const puzzleCount = folder.puzzleKeys.length;
+                  return (
                     <button
-                      key={`${activeFolder.id}-${row.key}`}
-                      className="card folderPuzzleItem"
-                      onClick={() => openPuzzle(row.key)}
+                      key={folder.id}
+                      className="card folderBrowserItem"
+                      onClick={() => setActiveFolderId(folder.id)}
                       type="button"
                     >
-                      <div style={{ fontWeight: 700, overflowWrap: "anywhere" }}>{row.def?.meta?.title || "(untitled)"}</div>
-                      {row.def?.meta?.author ? (
-                        <div className="muted" style={{ fontSize: 13 }}>{row.def.meta.author}</div>
-                      ) : null}
-                      <div className="row" style={{ justifyContent: "space-between", marginTop: 4 }}>
-                        <div>{fmtHMS(row.progress?.totalMillis ?? 0)}</div>
-                        <div className="muted" style={{ fontSize: 13 }}>{statusLabel(puzzleStatus(row))}</div>
+                      <div className="row" style={{ justifyContent: "space-between", alignItems: "flex-start" }}>
+                        <div className="row" style={{ gap: 6 }}>
+                          <IconFolder />
+                          <div style={{ fontWeight: 700, overflowWrap: "anywhere" }}>{folder.name}</div>
+                        </div>
+                      </div>
+                      <div className="muted" style={{ fontSize: 13 }}>
+                        {puzzleCount} puzzle{puzzleCount === 1 ? "" : "s"} | {childCount} subfolder{childCount === 1 ? "" : "s"}
                       </div>
                     </button>
-                  ))}
-                  {!visibleFolderPuzzles.length ? (
-                    <div className="muted" style={{ marginTop: 2 }}>
-                      {folderFilterStatus === "all"
-                        ? "This folder has no puzzles yet."
-                        : "No puzzles in this folder match the current filter."}
-                    </div>
-                  ) : null}
-                </>
-              ) : null}
+                  );
+                })}
 
-              {!visibleChildFolders.length && !activeFolder ? (
-                <div className="muted">No folders yet. Create one below.</div>
-              ) : null}
+                {activeFolder ? (
+                  <>
+                    <div className="muted" style={{ fontSize: 13, marginTop: 4 }}>Puzzles in this folder</div>
+                    {visibleFolderPuzzles.map((row) => {
+                      const previewProgress = {
+                        ...row.progress,
+                        selection: [],
+                        multiSelect: false,
+                      };
+                      const constraintBullets = extractConstraintBullets(row.def);
+                      const menuOpen =
+                        folderPuzzleMenu?.folderId === activeFolder.id && folderPuzzleMenu.puzzleKey === row.key;
+                      const menuBusy = folderActionBusyKey === row.key;
+
+                      return (
+                        <div
+                          key={`${activeFolder.id}-${row.key}`}
+                          className="card menuPuzzleRow"
+                          onClick={() => openPuzzle(row.key)}
+                        >
+                          <div className="menuPuzzleSummary">
+                            <div className="menuPuzzleTitleWrap">
+                              <div className="menuPuzzleTitle">{row.def?.meta?.title || "(untitled)"}</div>
+                              {row.def?.meta?.author ? (
+                                <div className="muted menuPuzzleAuthor">
+                                  {row.def.meta.author}
+                                </div>
+                              ) : null}
+                              <ul className="menuPuzzleConstraintList">
+                                {constraintBullets.map((constraint) => (
+                                  <li key={`${row.key}-${constraint}`}>{constraint}</li>
+                                ))}
+                              </ul>
+                            </div>
+
+                            <div className="row menuPuzzleMeta">
+                              <div>{fmtHMS(row.progress?.totalMillis ?? 0)}</div>
+                              <div className="muted" style={{ fontSize: 13 }}>
+                                {statusLabel(puzzleStatus(row))}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="menuPuzzleDeleteStack">
+                            <div className="menuPuzzlePreview" aria-hidden="true">
+                              <GridCanvas
+                                def={row.def}
+                                progress={previewProgress}
+                                onSelection={NOOP}
+                                onLineStroke={NOOP}
+                                onLineTapCell={NOOP}
+                                onLineTapEdge={NOOP}
+                                onDoubleCell={NOOP}
+                                interactive={false}
+                                previewMode
+                              />
+                            </div>
+
+                            <div className="row menuPuzzleActions">
+                              <button
+                                className="btn menuPuzzleIconButton menuPuzzleMoreButton"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  setFolderPuzzleMenu((current) => {
+                                    if (!current || current.folderId !== activeFolder.id || current.puzzleKey !== row.key) {
+                                      return { folderId: activeFolder.id, puzzleKey: row.key };
+                                    }
+                                    return null;
+                                  });
+                                }}
+                                title="Puzzle actions"
+                                aria-label={`Actions for ${row.def?.meta?.title || "puzzle"}`}
+                                type="button"
+                              >
+                                <span aria-hidden>...</span>
+                              </button>
+
+                              {menuOpen ? (
+                                <div
+                                  className="card menuPuzzleMoreMenu"
+                                  onClick={(event) => event.stopPropagation()}
+                                >
+                                  <button
+                                    className="btn menuPuzzleMoreItem"
+                                    onClick={(event) => {
+                                      event.stopPropagation();
+                                      void onRemovePuzzleFromFolder(activeFolder.id, row.key);
+                                    }}
+                                    disabled={menuBusy}
+                                    type="button"
+                                  >
+                                    Remove from folder
+                                  </button>
+                                  <button
+                                    className="btn danger menuPuzzleMoreItem"
+                                    onClick={(event) => {
+                                      event.stopPropagation();
+                                      setFolderPuzzleMenu(null);
+                                      setDeleteCandidate(row);
+                                    }}
+                                    disabled={menuBusy}
+                                    type="button"
+                                  >
+                                    Delete
+                                  </button>
+                                </div>
+                              ) : null}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {!visibleFolderPuzzles.length ? (
+                      <div className="muted" style={{ marginTop: 2 }}>
+                        {folderFilterStatus === "all"
+                          ? "This folder has no puzzles yet."
+                          : "No puzzles in this folder match the current filter."}
+                      </div>
+                    ) : null}
+                  </>
+                ) : null}
+
+                {!visibleChildFolders.length && !activeFolder ? (
+                  <div className="muted">No folders yet. Use Create Folder to get started.</div>
+                ) : null}
+              </div>
             </div>
+          </div>
+        </div>
+      ) : null}
 
-            <div className="card" style={{ marginTop: 12 }}>
-              <div style={{ fontWeight: 700 }}>Create folder</div>
-              <div className="row" style={{ marginTop: 8 }}>
-                <input
-                  className="url"
-                  placeholder="Folder name"
-                  value={folderCreateName}
-                  onChange={(event) => setFolderCreateName(event.target.value)}
-                />
-              </div>
-              <div className="row" style={{ marginTop: 8 }}>
-                <label className="menuControlLabel" style={{ flex: "1 1 220px" }}>
-                  <span className="muted" style={{ fontSize: 13 }}>Parent</span>
-                  <select
-                    className="btn menuControlSelect"
-                    value={folderCreateParentId}
-                    onChange={(event) => setFolderCreateParentId(event.target.value)}
-                  >
-                    <option value={CURRENT_FOLDER_OPTION}>Current Folder</option>
-                    <option value={ROOT_FOLDER_OPTION}>Top Level</option>
-                    {folderPathOptions.map(({ folder, path }) => (
-                      <option key={`create-parent-${folder.id}`} value={folder.id}>{path}</option>
-                    ))}
-                  </select>
-                </label>
-                <button
-                  className="btn primary"
-                  onClick={() => {
-                    void onCreateFolderFromFoldersMenu();
-                  }}
-                  disabled={!folderCreateName.trim() || !!folderCreateBusy}
-                  type="button"
-                >
-                  Create
-                </button>
-              </div>
-              {folderCreateBusy ? <div className="muted" style={{ marginTop: 8 }}>{folderCreateBusy}</div> : null}
+      {folderCreateDialogOpen ? (
+        <div className="overlayBackdrop" onClick={() => (!folderCreateBusy ? setFolderCreateDialogOpen(false) : null)}>
+          <div
+            className="card confirmDialogCard"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Create folder"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div style={{ fontSize: 22, fontWeight: 800 }}>Create folder</div>
+            <div className="muted" style={{ marginTop: 6 }}>
+              {activeFolder
+                ? `Parent: ${buildFolderPath(activeFolder, folderById)}`
+                : "Parent: Top-level folders"}
+            </div>
+            <div className="row" style={{ marginTop: 10 }}>
+              <input
+                className="url"
+                placeholder="Folder name"
+                value={folderCreateName}
+                onChange={(event) => setFolderCreateName(event.target.value)}
+                autoFocus
+              />
+            </div>
+            <div className="row" style={{ marginTop: 14, justifyContent: "flex-end" }}>
+              <button
+                className="btn"
+                onClick={() => setFolderCreateDialogOpen(false)}
+                disabled={!!folderCreateBusy}
+                type="button"
+              >
+                Cancel
+              </button>
+              <button
+                className="btn primary"
+                onClick={() => {
+                  void onCreateFolderFromFoldersMenu();
+                }}
+                disabled={!folderCreateName.trim() || !!folderCreateBusy}
+                type="button"
+              >
+                {folderCreateBusy ? "Creating..." : "Create"}
+              </button>
             </div>
           </div>
         </div>

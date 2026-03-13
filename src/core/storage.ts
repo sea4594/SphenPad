@@ -96,6 +96,19 @@ export async function addPuzzleToFolder(folderId: string, puzzleKey: string) {
   });
 }
 
+export async function removePuzzleFromFolder(folderId: string, puzzleKey: string) {
+  await db.transaction("rw", db.folders, async () => {
+    const folder = await db.folders.get(folderId);
+    if (!folder) throw new Error("Folder not found.");
+    if (!folder.puzzleKeys.includes(puzzleKey)) return;
+    await db.folders.put({
+      ...folder,
+      puzzleKeys: folder.puzzleKeys.filter((entry) => entry !== puzzleKey),
+      updatedAt: Date.now(),
+    });
+  });
+}
+
 export async function deletePuzzle(key: string) {
   await db.transaction("rw", db.puzzles, db.folders, async () => {
     await db.puzzles.delete(key);
