@@ -359,6 +359,15 @@ input.url {
   align-content: start;
 }
 
+.foldersPageWrap {
+  width: min(1120px, 100%);
+}
+
+.foldersPageCard {
+  display: grid;
+  gap: 10px;
+}
+
 .menuSectionTitle {
   font-size: 20px;
   font-weight: 700;
@@ -578,6 +587,12 @@ input.url {
   width: min(760px, 100%);
   max-height: min(92dvh, calc(100vh - 24px));
   overflow: auto;
+}
+
+.addFolderNavigatorList {
+  max-height: min(40dvh, 380px);
+  overflow: auto;
+  padding-right: 2px;
 }
 
 .menuFolderPickButton {
