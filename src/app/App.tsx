@@ -29,8 +29,9 @@ export function App() {
     const getLandscapeDirection = (): "cw" | "ccw" => {
       const legacyAngle = (window as LegacyOrientationWindow).orientation;
       if (typeof legacyAngle === "number" && Math.abs(legacyAngle) === 90) {
-        // Keep content upright by applying the opposite rotation of the current device angle.
-        lastLandscapeDirection = legacyAngle > 0 ? "ccw" : "cw";
+        // iOS +90: left side down (landscape-left) → rotate content CW to correct.
+        // iOS -90: right side down (landscape-right) → rotate content CCW.
+        lastLandscapeDirection = legacyAngle > 0 ? "cw" : "ccw";
         return lastLandscapeDirection;
       }
 
@@ -38,11 +39,11 @@ export function App() {
       if (typeof angle === "number") {
         const normalized = ((angle % 360) + 360) % 360;
         if (normalized === 90) {
-          lastLandscapeDirection = "ccw";
+          lastLandscapeDirection = "cw";
           return lastLandscapeDirection;
         }
         if (normalized === 270) {
-          lastLandscapeDirection = "cw";
+          lastLandscapeDirection = "ccw";
           return lastLandscapeDirection;
         }
       }
@@ -55,15 +56,15 @@ export function App() {
       root.style.setProperty("--app-vh", `${vh}px`);
       const rotatedLandscape = vw > vh;
       if (onMobileDevice && rotatedLandscape) {
-        const shortSide = Math.min(vw, vh);
-        const longSide = Math.max(vw, vh);
-        root.style.setProperty("--force-portrait-short", `${shortSide}px`);
-        root.style.setProperty("--force-portrait-long", `${longSide}px`);
+        // vw = landscape visual width (long side = maps to portrait height after rotation)
+        // vh = landscape visual height (short side = maps to portrait width after rotation)
+        root.style.setProperty("--screen-w", `${vw}px`);
+        root.style.setProperty("--screen-h", `${vh}px`);
         root.setAttribute("data-force-portrait", getLandscapeDirection());
       } else {
         root.removeAttribute("data-force-portrait");
-        root.style.removeProperty("--force-portrait-short");
-        root.style.removeProperty("--force-portrait-long");
+        root.style.removeProperty("--screen-w");
+        root.style.removeProperty("--screen-h");
       }
     };
 
@@ -113,8 +114,8 @@ export function App() {
       coarsePointer.removeEventListener?.("change", onViewportChange);
       root.removeAttribute("data-force-portrait");
       root.style.removeProperty("--app-vh");
-      root.style.removeProperty("--force-portrait-short");
-      root.style.removeProperty("--force-portrait-long");
+      root.style.removeProperty("--screen-w");
+      root.style.removeProperty("--screen-h");
     };
   }, []);
 

@@ -150,7 +150,10 @@ body,
 }
 
 #root {
-  min-height: var(--app-vh, 100dvh);
+  /* Cap #root to the visual viewport so there is no blank strip below .shell */
+  height: var(--app-vh, 100dvh);
+  max-height: var(--app-vh, 100dvh);
+  overflow: hidden;
 }
 
 html {
@@ -191,20 +194,34 @@ html[data-force-portrait="cw"] {
 }
 
 html[data-force-portrait] #root {
+  /*
+   * Fill the visual screen with a fixed overlay. All content and transforms
+   * live inside .shell below. Keeping #root untransformed means that
+   * getBoundingClientRect and pointer events share the same coordinate space,
+   * which is required for correct tap calibration on the canvas.
+   */
   position: fixed;
-  top: 50%;
-  left: 50%;
-  width: var(--force-portrait-short, 100dvh);
-  height: var(--force-portrait-long, 100dvw);
-  transform-origin: center center;
-  transform: translate(-50%, -50%) rotate(var(--force-rotate, 0deg));
+  inset: 0;
+  width: 100%;
+  height: 100%;
   overflow: hidden;
 }
 
 html[data-force-portrait] .shell {
-  width: 100%;
-  height: 100%;
-  min-height: 100%;
+  /*
+   * Portrait-sized, centered, then rotated to fill the landscape screen.
+   * width  = --screen-h (landscape visual height = portrait width after rotation)
+   * height = --screen-w (landscape visual width  = portrait height after rotation)
+   */
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: var(--screen-h, 100dvh);
+  height: var(--screen-w, 100dvw);
+  min-height: 0;
+  transform-origin: center center;
+  transform: translate(-50%, -50%) rotate(var(--force-rotate, 0deg));
+  overflow: hidden;
 }
 
 html[data-force-portrait] .overlayBackdrop {
