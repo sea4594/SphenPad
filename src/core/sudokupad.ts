@@ -1153,6 +1153,26 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
       : Array.isArray(scl?.killer)
         ? scl.killer
         : [];
+
+  // Collect cells from hidden 'rowcol' constraint areas — these identify the true conflict domain
+  // in puzzles that have outer helper cells surrounding a smaller inner sudoku grid.
+  const rowColSeenKeys = new Set<string>();
+  const rowColDomainCells: CellRC[] = [];
+  for (const cg of cagesSrc) {
+    if (cg?.hidden !== true) continue;
+    if (String(cg?.type ?? "").toLowerCase() !== "rowcol") continue;
+    for (const rc of parseCellRefs(cg?.cells ?? cg?.ce)) {
+      const key = `${rc.r},${rc.c}`;
+      if (!rowColSeenKeys.has(key)) {
+        rowColSeenKeys.add(key);
+        rowColDomainCells.push(rc);
+      }
+    }
+  }
+  if (rowColDomainCells.length > 0) {
+    cosmetics.rowColCells = rowColDomainCells;
+  }
+
   if (cagesSrc.length) {
     cosmetics.cages = cagesSrc
       .map((cg: any) => {

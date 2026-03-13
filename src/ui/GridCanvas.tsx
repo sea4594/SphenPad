@@ -541,11 +541,13 @@ export function GridCanvas(props: {
       }
     });
     const hasImportedRegionBoundaries = regionByCell.size > 0;
+    const rowColCells = def.cosmetics.rowColCells ?? [];
+    const hasRowColDomain = rowColCells.length > 0;
     const subgrid = def.cosmetics.subgrid;
 
     const conflictDomainByCell: boolean[][] = Array.from(
       { length: rows },
-      () => Array.from({ length: cols }, () => !hasImportedRegionBoundaries),
+      () => Array.from({ length: cols }, () => !hasImportedRegionBoundaries && !hasRowColDomain),
     );
     if (hasImportedRegionBoundaries) {
       for (const key of regionByCell.keys()) {
@@ -554,6 +556,11 @@ export function GridCanvas(props: {
         const c = Number(cRaw);
         if (!Number.isFinite(r) || !Number.isFinite(c) || !inBounds(r, c)) continue;
         conflictDomainByCell[r][c] = true;
+      }
+    } else if (hasRowColDomain) {
+      for (const rc of rowColCells) {
+        if (!inBounds(rc.r, rc.c)) continue;
+        conflictDomainByCell[rc.r][rc.c] = true;
       }
     }
 
@@ -1385,23 +1392,9 @@ export function GridCanvas(props: {
           const corner = [...cell.notes.corner].sort();
           if (corner.length) {
             const hasCageLabel = cageLabelCells.has(`${r},${c}`);
-            let cornerFontPx = noteFontPx;
-            ctx.font = `${cornerFontPx}px ${gridTextFont}, ${emojiTextFont}`;
-            if (corner.length > 1) {
-              const cornerVals = corner.map((s) => normalizeSymbol(s)).filter(Boolean) as string[];
-              const sp0 = Math.max(0.2, cornerFontPx * 0.05);
-              const totalW0 = cornerVals.reduce((a, s) => a + Math.max(0.001, ctx.measureText(s).width), 0)
-                + (cornerVals.length - 1) * sp0;
-              const maxW = cellPx - cornerInsetX * 2;
-              if (totalW0 > maxW) {
-                cornerFontPx = Math.max(1, (cornerFontPx * maxW) / totalW0);
-                ctx.font = `${cornerFontPx}px ${gridTextFont}, ${emojiTextFont}`;
-              }
-            }
             drawSymbolRun(corner, x0 + cornerInsetX, y0 + (hasCageLabel ? cornerBaseY * 2 : cornerBaseY), {
               align: "left",
               isConflict: (symbol) => hasBigValuePeer(r, c, symbol),
-              fontPxOverride: cornerFontPx,
             });
           }
 
@@ -1517,23 +1510,9 @@ export function GridCanvas(props: {
 
           const corner = [...cell.notes.corner].sort();
           if (corner.length) {
-            let cornerFontPx = noteFontPx;
-            ctx.font = `${cornerFontPx}px ${gridTextFont}, ${emojiTextFont}`;
-            if (corner.length > 1) {
-              const cornerVals = corner.map((s) => normalizeSymbol(s)).filter(Boolean) as string[];
-              const sp0 = Math.max(0.2, cornerFontPx * 0.05);
-              const totalW0 = cornerVals.reduce((a, s) => a + Math.max(0.001, ctx.measureText(s).width), 0)
-                + (cornerVals.length - 1) * sp0;
-              const maxW = cellPx - cornerInsetX * 2;
-              if (totalW0 > maxW) {
-                cornerFontPx = Math.max(1, (cornerFontPx * maxW) / totalW0);
-                ctx.font = `${cornerFontPx}px ${gridTextFont}, ${emojiTextFont}`;
-              }
-            }
             drawSymbolRun(corner, x0 + cornerInsetX, y0 + cornerBaseY, {
               align: "left",
               isConflict: (symbol) => hasBigValuePeer(r, c, symbol),
-              fontPxOverride: cornerFontPx,
             });
           }
 

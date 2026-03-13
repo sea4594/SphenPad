@@ -129,6 +129,10 @@ export type PuzzleCosmetics = {
   // Regions
   irregularRegions?: Array<{ cells: CellRC[]; color?: string }>;
   disjointGroups?: Array<{ cells: CellRC[]; color?: string }>;
+  // Explicit row/col constraint domain (cells belonging to any hidden 'rowcol'-type constraint area).
+  // Set only when the puzzle uses custom row/col areas instead of the full standard grid,
+  // e.g. puzzles with outer helper cells surrounding a smaller inner grid.
+  rowColCells?: CellRC[];
   
   // Anti-constraints
   antiKnight?: boolean;
