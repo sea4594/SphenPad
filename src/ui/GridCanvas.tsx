@@ -1584,11 +1584,42 @@ export function GridCanvas(props: {
     widthPx,
   ]);
 
+  function clientToCanvasLocal(clientX: number, clientY: number) {
+    const canvas = canvasRef.current;
+    if (!canvas) return null;
+    const rect = canvas.getBoundingClientRect();
+    const relX = clientX - rect.left;
+    const relY = clientY - rect.top;
+    const forcedPortrait = document.documentElement.getAttribute("data-force-portrait");
+
+    if (forcedPortrait === "cw") {
+      // In cw mode the canvas is visually rotated +90deg, so map viewport
+      // coordinates back into unrotated canvas-local coordinates.
+      return {
+        x: Math.max(0, Math.min(canvas.clientWidth, canvas.clientWidth - relY)),
+        y: Math.max(0, Math.min(canvas.clientHeight, relX)),
+      };
+    }
+
+    if (forcedPortrait === "ccw") {
+      // In ccw mode the canvas is visually rotated -90deg.
+      return {
+        x: Math.max(0, Math.min(canvas.clientWidth, relY)),
+        y: Math.max(0, Math.min(canvas.clientHeight, canvas.clientHeight - relX)),
+      };
+    }
+
+    return {
+      x: Math.max(0, Math.min(canvas.clientWidth, relX)),
+      y: Math.max(0, Math.min(canvas.clientHeight, relY)),
+    };
+  }
+
   function eventPoint(clientX: number, clientY: number) {
-    const rect = canvasRef.current?.getBoundingClientRect();
-    if (!rect) return null;
-    const bx = clientX - rect.left - originX;
-    const by = clientY - rect.top - originY;
+    const local = clientToCanvasLocal(clientX, clientY);
+    if (!local) return null;
+    const bx = local.x - originX;
+    const by = local.y - originY;
     const c = Math.floor(bx / cellPx);
     const r = Math.floor(by / cellPx);
     if (!inBounds(r, c)) return null;
@@ -1598,10 +1629,10 @@ export function GridCanvas(props: {
   }
 
   function eventGridPoint(clientX: number, clientY: number) {
-    const rect = canvasRef.current?.getBoundingClientRect();
-    if (!rect) return null;
-    const gx = (clientX - rect.left - originX) / cellPx;
-    const gy = (clientY - rect.top - originY) / cellPx;
+    const local = clientToCanvasLocal(clientX, clientY);
+    if (!local) return null;
+    const gx = (local.x - originX) / cellPx;
+    const gy = (local.y - originY) / cellPx;
     return { gx, gy };
   }
 
