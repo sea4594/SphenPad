@@ -524,6 +524,14 @@ input.url {
   text-align: left;
 }
 
+.menuPuzzleStatusList {
+  display: grid;
+  gap: 6px;
+  margin: 2px 0;
+  padding-left: 10px;
+  border-left: 1px solid color-mix(in oklab, var(--text) 20%, transparent);
+}
+
 .menuPuzzlePreview {
   --menu-preview-size: 136px;
   width: var(--menu-preview-size);

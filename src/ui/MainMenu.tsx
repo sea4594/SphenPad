@@ -20,6 +20,7 @@ import { SettingsOverlay } from "./SettingsOverlay";
 
 type SortOrder = "recent" | "az";
 type FilterStatus = "all" | "not_started" | "in_progress" | "complete";
+type PuzzlePlayStatus = Exclude<FilterStatus, "all">;
 type StoredPuzzle = Awaited<ReturnType<typeof listPuzzles>>[number];
 
 type MainMenuFilterPrefs = {
@@ -243,6 +244,7 @@ export function MainMenu() {
   const [deleteCandidate, setDeleteCandidate] = useState<StoredPuzzle | null>(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [mainPuzzleMenuKey, setMainPuzzleMenuKey] = useState<string | null>(null);
+  const [mainPuzzleStatusMenuKey, setMainPuzzleStatusMenuKey] = useState<string | null>(null);
 
   const [addToFolderPuzzle, setAddToFolderPuzzle] = useState<StoredPuzzle | null>(null);
   const [addFolderNavId, setAddFolderNavId] = useState<string | null>(null);
@@ -460,10 +462,40 @@ export function MainMenu() {
     }
     window.open(url, "_blank", "noopener,noreferrer");
     setMainPuzzleMenuKey(null);
+    setMainPuzzleStatusMenuKey(null);
+  }
+
+  async function onSetPuzzleStatus(row: StoredPuzzle, status: PuzzlePlayStatus) {
+    const now = Date.now();
+    const nextProgress = {
+      ...row.progress,
+      status,
+      startedAt: status === "not_started" ? undefined : (row.progress.startedAt ?? now),
+      paused: status === "complete" ? false : row.progress.paused,
+    };
+
+    try {
+      await upsertPuzzle(row.key, {
+        def: row.def,
+        progress: nextProgress,
+        undo: row.undo,
+        redo: row.redo,
+        updatedAt: now,
+        createdAt: row.createdAt,
+      });
+      await refreshPuzzles();
+      await refreshFolders();
+      setMainPuzzleStatusMenuKey(null);
+      setMainPuzzleMenuKey(null);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      alert(msg);
+    }
   }
 
   function onOpenAddToFolder(puzzle: StoredPuzzle) {
     setMainPuzzleMenuKey(null);
+    setMainPuzzleStatusMenuKey(null);
     setAddToFolderPuzzle(puzzle);
     setAddFolderNavId(null);
     setAddToFolderBusy("");
@@ -631,6 +663,7 @@ export function MainMenu() {
                   multiSelect: false,
                 };
                 const constraintBullets = extractConstraintBullets(row.def);
+                const puzzlePlayStatus = puzzleStatus(row);
 
                 return (
                   <div
@@ -702,6 +735,65 @@ export function MainMenu() {
                             >
                               Open in SudokuPad
                             </button>
+
+                            <button
+                              className="btn menuPuzzleMoreItem"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                setMainPuzzleStatusMenuKey((current) => (current === row.key ? null : row.key));
+                              }}
+                              type="button"
+                            >
+                              Set status
+                            </button>
+
+                            {mainPuzzleStatusMenuKey === row.key ? (
+                              <div className="menuPuzzleStatusList">
+                                <button
+                                  className={`btn menuPuzzleMoreItem ${puzzlePlayStatus === "not_started" ? "primary" : ""}`}
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    void onSetPuzzleStatus(row, "not_started");
+                                  }}
+                                  type="button"
+                                >
+                                  Not Started
+                                </button>
+                                <button
+                                  className={`btn menuPuzzleMoreItem ${puzzlePlayStatus === "in_progress" ? "primary" : ""}`}
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    void onSetPuzzleStatus(row, "in_progress");
+                                  }}
+                                  type="button"
+                                >
+                                  In Progress
+                                </button>
+                                <button
+                                  className={`btn menuPuzzleMoreItem ${puzzlePlayStatus === "complete" ? "primary" : ""}`}
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    void onSetPuzzleStatus(row, "complete");
+                                  }}
+                                  type="button"
+                                >
+                                  Complete
+                                </button>
+                              </div>
+                            ) : null}
+
+                            <button
+                              className="btn danger menuPuzzleMoreItem"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                setMainPuzzleMenuKey(null);
+                                setMainPuzzleStatusMenuKey(null);
+                                setDeleteCandidate(row);
+                              }}
+                              type="button"
+                            >
+                              Delete
+                            </button>
                           </div>
                         ) : null}
 
@@ -709,6 +801,7 @@ export function MainMenu() {
                           className="btn menuPuzzleIconButton menuPuzzleMoreButton"
                           onClick={(event) => {
                             event.stopPropagation();
+                            setMainPuzzleStatusMenuKey(null);
                             setMainPuzzleMenuKey((current) => (current === row.key ? null : row.key));
                           }}
                           title="Puzzle options"
@@ -716,17 +809,6 @@ export function MainMenu() {
                           type="button"
                         >
                           <span aria-hidden>...</span>
-                        </button>
-
-                        <button
-                          className="btn danger"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            setDeleteCandidate(row);
-                          }}
-                          type="button"
-                        >
-                          Delete
                         </button>
                       </div>
                     </div>

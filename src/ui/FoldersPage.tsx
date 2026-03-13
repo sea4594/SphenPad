@@ -9,6 +9,7 @@ import {
   removePuzzleFromFolder,
   renameFolder,
   type PuzzleFolder,
+  upsertPuzzle,
 } from "../core/storage";
 import { fmtHMS } from "../core/time";
 import { GridCanvas } from "./GridCanvas";
@@ -17,6 +18,7 @@ import { SettingsOverlay } from "./SettingsOverlay";
 
 type SortOrder = "recent" | "az";
 type FilterStatus = "all" | "not_started" | "in_progress" | "complete";
+type PuzzlePlayStatus = Exclude<FilterStatus, "all">;
 type StoredPuzzle = Awaited<ReturnType<typeof listPuzzles>>[number];
 
 type FolderMenuPrefs = {
@@ -201,6 +203,7 @@ export function FoldersPage() {
   const [folderCreateBusy, setFolderCreateBusy] = useState("");
 
   const [folderPuzzleMenu, setFolderPuzzleMenu] = useState<{ folderId: string; puzzleKey: string } | null>(null);
+  const [folderPuzzleStatusMenuKey, setFolderPuzzleStatusMenuKey] = useState<string | null>(null);
   const [folderActionBusyKey, setFolderActionBusyKey] = useState<string | null>(null);
   const [folderRowMenuId, setFolderRowMenuId] = useState<string | null>(null);
   const [renameFolderTarget, setRenameFolderTarget] = useState<PuzzleFolder | null>(null);
@@ -238,6 +241,7 @@ export function FoldersPage() {
 
   useEffect(() => {
     setFolderPuzzleMenu(null);
+    setFolderPuzzleStatusMenuKey(null);
     setFolderRowMenuId(null);
   }, [activeFolderId]);
 
@@ -321,6 +325,7 @@ export function FoldersPage() {
       await removePuzzleFromFolder(folderId, puzzleKey);
       await refresh();
       setFolderPuzzleMenu(null);
+      setFolderPuzzleStatusMenuKey(null);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
       alert(msg);
@@ -341,6 +346,51 @@ export function FoldersPage() {
       alert(msg);
     } finally {
       setDeleteBusy(false);
+    }
+  }
+
+  function sudokuPadUrlFor(row: StoredPuzzle): string | null {
+    const source = (row.def?.sourceId ?? row.key).trim();
+    if (!source) return null;
+    if (/^https?:\/\//i.test(source)) return source;
+    return `https://sudokupad.app/${encodeURI(source.replace(/^\/+/, ""))}`;
+  }
+
+  function onOpenPuzzleInSudokuPad(row: StoredPuzzle) {
+    const url = sudokuPadUrlFor(row);
+    if (!url) {
+      alert("No SudokuPad source URL found for this puzzle.");
+      return;
+    }
+    window.open(url, "_blank", "noopener,noreferrer");
+    setFolderPuzzleMenu(null);
+    setFolderPuzzleStatusMenuKey(null);
+  }
+
+  async function onSetPuzzleStatus(row: StoredPuzzle, status: PuzzlePlayStatus) {
+    const now = Date.now();
+    const nextProgress = {
+      ...row.progress,
+      status,
+      startedAt: status === "not_started" ? undefined : (row.progress.startedAt ?? now),
+      paused: status === "complete" ? false : row.progress.paused,
+    };
+
+    try {
+      await upsertPuzzle(row.key, {
+        def: row.def,
+        progress: nextProgress,
+        undo: row.undo,
+        redo: row.redo,
+        updatedAt: now,
+        createdAt: row.createdAt,
+      });
+      await refresh();
+      setFolderPuzzleMenu(null);
+      setFolderPuzzleStatusMenuKey(null);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      alert(msg);
     }
   }
 
@@ -545,6 +595,9 @@ export function FoldersPage() {
                     const menuOpen =
                       folderPuzzleMenu?.folderId === activeFolder.id && folderPuzzleMenu.puzzleKey === row.key;
                     const menuBusy = folderActionBusyKey === row.key;
+                    const statusMenuKey = `${activeFolder.id}:${row.key}`;
+                    const statusMenuOpen = folderPuzzleStatusMenuKey === statusMenuKey;
+                    const playStatus = puzzleStatus(row);
 
                     return (
                       <div
@@ -595,6 +648,7 @@ export function FoldersPage() {
                               className="btn menuPuzzleIconButton menuPuzzleMoreButton"
                               onClick={(event) => {
                                 event.stopPropagation();
+                                setFolderPuzzleStatusMenuKey(null);
                                 setFolderPuzzleMenu((current) => {
                                   if (!current || current.folderId !== activeFolder.id || current.puzzleKey !== row.key) {
                                     return { folderId: activeFolder.id, puzzleKey: row.key };
@@ -625,11 +679,70 @@ export function FoldersPage() {
                                 >
                                   Remove from folder
                                 </button>
+
+                                <button
+                                  className="btn menuPuzzleMoreItem"
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    onOpenPuzzleInSudokuPad(row);
+                                  }}
+                                  type="button"
+                                >
+                                  Open in SudokuPad
+                                </button>
+
+                                <button
+                                  className="btn menuPuzzleMoreItem"
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    setFolderPuzzleStatusMenuKey((current) => (current === statusMenuKey ? null : statusMenuKey));
+                                  }}
+                                  type="button"
+                                >
+                                  Set status
+                                </button>
+
+                                {statusMenuOpen ? (
+                                  <div className="menuPuzzleStatusList">
+                                    <button
+                                      className={`btn menuPuzzleMoreItem ${playStatus === "not_started" ? "primary" : ""}`}
+                                      onClick={(event) => {
+                                        event.stopPropagation();
+                                        void onSetPuzzleStatus(row, "not_started");
+                                      }}
+                                      type="button"
+                                    >
+                                      Not Started
+                                    </button>
+                                    <button
+                                      className={`btn menuPuzzleMoreItem ${playStatus === "in_progress" ? "primary" : ""}`}
+                                      onClick={(event) => {
+                                        event.stopPropagation();
+                                        void onSetPuzzleStatus(row, "in_progress");
+                                      }}
+                                      type="button"
+                                    >
+                                      In Progress
+                                    </button>
+                                    <button
+                                      className={`btn menuPuzzleMoreItem ${playStatus === "complete" ? "primary" : ""}`}
+                                      onClick={(event) => {
+                                        event.stopPropagation();
+                                        void onSetPuzzleStatus(row, "complete");
+                                      }}
+                                      type="button"
+                                    >
+                                      Complete
+                                    </button>
+                                  </div>
+                                ) : null}
+
                                 <button
                                   className="btn danger menuPuzzleMoreItem"
                                   onClick={(event) => {
                                     event.stopPropagation();
                                     setFolderPuzzleMenu(null);
+                                    setFolderPuzzleStatusMenuKey(null);
                                     setDeleteCandidate(row);
                                   }}
                                   disabled={menuBusy}
