@@ -13,6 +13,7 @@ import { PauseOverlay } from "./PauseOverlay";
 import { CompletionOverlay } from "./CompletionOverlay";
 import { Keyboard } from "./Keyboard";
 import { GridCanvas } from "./GridCanvas";
+import { AppBrand } from "./AppBrand";
 import {
   IconPause,
   IconPlay,
@@ -1348,7 +1349,7 @@ export function PuzzlePage() {
   if (!data) {
     return (
       <div className="shell">
-        <div className="topbar"><div className="brand">SphenPad</div></div>
+        <div className="topbar"><AppBrand /></div>
         <div className="page"><div className="muted">Loading...</div></div>
       </div>
     );

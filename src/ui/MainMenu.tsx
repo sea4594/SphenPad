@@ -13,6 +13,7 @@ import {
 import { fmtHMS } from "../core/time";
 import { firebaseEnabled, googleLogin, googleLogout } from "../firebase/client";
 import { GridCanvas } from "./GridCanvas";
+import { AppBrand } from "./AppBrand";
 import { IconFolder, IconHome, IconImport, IconSettings } from "./icons";
 import { SettingsOverlay } from "./SettingsOverlay";
 
@@ -721,7 +722,7 @@ export function MainMenu() {
   return (
     <div className="shell">
       <div className="topbar">
-        <div className="brand">SphenPad</div>
+        <AppBrand />
         <div className="spacer" />
         <button className="btn" onClick={() => setSettingsOpen(true)} title="Settings" type="button">
           <IconSettings />
@@ -753,19 +754,8 @@ export function MainMenu() {
             </div>
           </div>
 
-          <div className="card">
-            <div className="row" style={{ justifyContent: "space-between" }}>
-              <div className="menuSectionTitle">Your puzzles</div>
-              <div className="muted">
-                {filterStatus !== "all"
-                  ? `${displayRows.length} of ${rowsMatchingSearchFilters.length}`
-                  : hasMainMenuSearchFilters
-                    ? `${displayRows.length} of ${rows.length}`
-                    : `${rows.length} total`}
-              </div>
-            </div>
-
-            <div className="archiveControls" style={{ marginTop: 8 }}>
+          <div className="card menuFilterPanelCard">
+            <div className="archiveControls">
               <div className="row">
                 <input
                   className="url"
@@ -853,6 +843,19 @@ export function MainMenu() {
                 <button type="button" className="btn" onClick={onClearMainMenuFilters}>
                   Clear Filters
                 </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="card">
+            <div className="row" style={{ justifyContent: "space-between" }}>
+              <div className="menuSectionTitle">Your puzzles</div>
+              <div className="muted">
+                {filterStatus !== "all"
+                  ? `${displayRows.length} of ${rowsMatchingSearchFilters.length}`
+                  : hasMainMenuSearchFilters
+                    ? `${displayRows.length} of ${rows.length}`
+                    : `${rows.length} total`}
               </div>
             </div>
 

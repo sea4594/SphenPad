@@ -274,6 +274,21 @@ button,
   letter-spacing: 0.4px;
 }
 
+.brandWrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.brandIcon {
+  width: 30px;
+  height: 30px;
+  display: block;
+  object-fit: cover;
+  flex: 0 0 auto;
+}
+
 .muted { color: var(--muted); }
 
 .card {
@@ -418,6 +433,10 @@ input.url {
   margin-top: 18px;
   padding-top: 14px;
   border-top: 1px solid color-mix(in oklab, var(--text) 16%, transparent);
+}
+
+.menuFilterPanelCard {
+  padding-top: 14px;
 }
 
 .menuStatusTab {

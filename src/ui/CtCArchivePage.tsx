@@ -4,6 +4,7 @@ import { normalizePuzzleKey } from "../core/id";
 import { makeInitialProgress } from "../core/scl";
 import { getPuzzle, listCompletedPuzzleKeys, upsertPuzzle } from "../core/storage";
 import { loadFromSudokuPad } from "../core/sudokupad";
+import { AppBrand } from "./AppBrand";
 import { IconFolder, IconHome, IconImport, IconSettings } from "./icons";
 import { SettingsOverlay } from "./SettingsOverlay";
 
@@ -611,7 +612,7 @@ export function CtCArchivePage() {
   return (
     <div className="shell">
       <div className="topbar">
-        <div className="brand">SphenPad</div>
+        <AppBrand />
         <div className="spacer" />
         <button className="btn" onClick={() => setSettingsOpen(true)} title="Settings" type="button">
           <IconSettings />
