@@ -323,6 +323,7 @@ export function MainMenu() {
   const [folderFilterStatus, setFolderFilterStatus] = useState<FilterStatus>(initialFolderPrefs.filterStatus);
   const [activeFolderId, setActiveFolderId] = useState<string | null>(null);
   const [folderCreateDialogOpen, setFolderCreateDialogOpen] = useState(false);
+  const [folderCreateContext, setFolderCreateContext] = useState<"folders" | "add-dialog">("folders");
   const [folderCreateName, setFolderCreateName] = useState("");
   const [folderCreateBusy, setFolderCreateBusy] = useState("");
   const [folderPuzzleMenu, setFolderPuzzleMenu] = useState<{ folderId: string; puzzleKey: string } | null>(null);
@@ -336,7 +337,6 @@ export function MainMenu() {
   const [addToFolderPuzzle, setAddToFolderPuzzle] = useState<StoredPuzzle | null>(null);
   const [addFolderNavId, setAddFolderNavId] = useState<string | null>(null);
   const [addToFolderBusy, setAddToFolderBusy] = useState("");
-  const [addFolderName, setAddFolderName] = useState("");
 
   async function refreshPuzzles() {
     setRows(await listPuzzles());
@@ -493,6 +493,8 @@ export function MainMenu() {
 
   const activeFolder = activeFolderId ? folderById.get(activeFolderId) ?? null : null;
   const addFolderNav = addFolderNavId ? folderById.get(addFolderNavId) ?? null : null;
+  const folderCreateParentId = folderCreateContext === "add-dialog" ? addFolderNavId : activeFolderId;
+  const folderCreateParent = folderCreateParentId ? folderById.get(folderCreateParentId) ?? null : null;
 
   const activeFolderTrail = useMemo(() => {
     const out: PuzzleFolder[] = [];
@@ -658,7 +660,6 @@ export function MainMenu() {
     setAddToFolderPuzzle(puzzle);
     setAddFolderNavId(null);
     setAddToFolderBusy("");
-    setAddFolderName("");
     void refreshFolders();
   }
 
@@ -677,38 +678,27 @@ export function MainMenu() {
     }
   }
 
-  async function onCreateFolderAndAddPuzzle() {
-    if (!addToFolderPuzzle) return;
-    const folderName = addFolderName.trim();
-    if (!folderName) return;
-
-    setAddToFolderBusy("Creating folder...");
-    try {
-      const created = await createFolder(folderName, addFolderNavId ?? null);
-      await addPuzzleToFolder(created.id, addToFolderPuzzle.key);
-      await refreshFolders();
-      setAddToFolderPuzzle(null);
-      setAddFolderNavId(null);
-      setAddFolderName("");
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : String(e);
-      alert(msg);
-    } finally {
-      setAddToFolderBusy("");
-    }
+  function openFolderCreateDialog(context: "folders" | "add-dialog") {
+    setFolderCreateContext(context);
+    setFolderCreateName("");
+    setFolderCreateDialogOpen(true);
   }
 
-  async function onCreateFolderFromFoldersMenu() {
+  async function onCreateFolder() {
     const folderName = folderCreateName.trim();
     if (!folderName || folderCreateBusy) return;
 
     setFolderCreateBusy("Creating folder...");
     try {
-      const created = await createFolder(folderName, activeFolderId ?? null);
+      const created = await createFolder(folderName, folderCreateParentId ?? null);
       await refreshFolders();
       setFolderCreateName("");
       setFolderCreateDialogOpen(false);
-      setActiveFolderId(created.id);
+      if (folderCreateContext === "add-dialog") {
+        setAddFolderNavId(created.id);
+      } else {
+        setActiveFolderId(created.id);
+      }
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
       alert(msg);
@@ -894,36 +884,36 @@ export function MainMenu() {
               </div>
             </div>
 
-            <div className="row" style={{ marginTop: 8, justifyContent: "space-between", alignItems: "flex-end" }}>
-              <label className="menuControlLabel">
-                <span className="muted" style={{ fontSize: 13 }}>Sort</span>
+            <div className="menuSecondaryControls">
+              <div className="row" style={{ justifyContent: "space-between", alignItems: "flex-end" }}>
                 <select
                   className="btn menuControlSelect"
                   value={sortOrder}
                   onChange={(e) => setSortOrder(e.target.value as SortOrder)}
+                  aria-label="Sort puzzles"
                 >
                   <option value="recent">Recent</option>
                   <option value="az">A - Z</option>
                 </select>
-              </label>
 
-              <button className="btn menuFolderButton" onClick={onOpenFolders} type="button">
-                <IconFolder />
-                <span>Folders</span>
-              </button>
-            </div>
-
-            <div className="menuStatusTabs" style={{ marginTop: 8 }}>
-              {(["all", "not_started", "in_progress", "complete"] as const).map((status) => (
-                <button
-                  key={status}
-                  className={`btn menuStatusTab ${filterStatus === status ? "is-active" : ""}`}
-                  onClick={() => setFilterStatus(status)}
-                  type="button"
-                >
-                  {statusLabel(status)} ({statusCounts[status]})
+                <button className="btn menuFolderButton" onClick={onOpenFolders} type="button">
+                  <IconFolder />
+                  <span>Folders</span>
                 </button>
-              ))}
+              </div>
+
+              <div className="menuStatusTabs">
+                {(["all", "not_started", "in_progress", "complete"] as const).map((status) => (
+                  <button
+                    key={status}
+                    className={`btn menuStatusTab ${filterStatus === status ? "is-active" : ""}`}
+                    onClick={() => setFilterStatus(status)}
+                    type="button"
+                  >
+                    {statusLabel(status)} ({statusCounts[status]})
+                  </button>
+                ))}
+              </div>
             </div>
 
             <div className="menuPuzzleList">
@@ -1116,13 +1106,10 @@ export function MainMenu() {
               <div className="row" style={{ gap: 8, flexWrap: "nowrap" }}>
                 <button
                   className="btn primary"
-                  onClick={() => {
-                    setFolderCreateName("");
-                    setFolderCreateDialogOpen(true);
-                  }}
+                  onClick={() => openFolderCreateDialog("folders")}
                   type="button"
                 >
-                  Create Folder
+                  New Folder
                 </button>
                 <button
                   className="btn"
@@ -1336,7 +1323,7 @@ export function MainMenu() {
                 ) : null}
 
                 {!visibleChildFolders.length && !activeFolder ? (
-                  <div className="muted">No folders yet. Use Create Folder to get started.</div>
+                  <div className="muted">No folders yet. Use New Folder to get started.</div>
                 ) : null}
               </div>
             </div>
@@ -1355,8 +1342,8 @@ export function MainMenu() {
           >
             <div style={{ fontSize: 22, fontWeight: 800 }}>Create folder</div>
             <div className="muted" style={{ marginTop: 6 }}>
-              {activeFolder
-                ? `Parent: ${buildFolderPath(activeFolder, folderById)}`
+              {folderCreateParent
+                ? `Parent: ${buildFolderPath(folderCreateParent, folderById)}`
                 : "Parent: Top-level folders"}
             </div>
             <div className="row" style={{ marginTop: 10 }}>
@@ -1380,12 +1367,12 @@ export function MainMenu() {
               <button
                 className="btn primary"
                 onClick={() => {
-                  void onCreateFolderFromFoldersMenu();
+                  void onCreateFolder();
                 }}
                 disabled={!folderCreateName.trim() || !!folderCreateBusy}
                 type="button"
               >
-                {folderCreateBusy ? "Creating..." : "Create"}
+                {folderCreateBusy ? "Creating..." : "New Folder"}
               </button>
             </div>
           </div>
@@ -1436,23 +1423,33 @@ export function MainMenu() {
                     ? `Current folder: ${buildFolderPath(addFolderNav, folderById)}`
                     : "Current folder: Top-level folders"}
                 </div>
-                <button
-                  className="btn primary"
-                  onClick={() => {
-                    if (!addFolderNav) return;
-                    void onAddPuzzleToExistingFolder(addFolderNav.id);
-                  }}
-                  disabled={!canAddToCurrentFolder || isCurrentFolderAlreadyAdded || !!addToFolderBusy}
-                  type="button"
-                >
-                  {!canAddToCurrentFolder
-                    ? "Select Folder"
-                    : isCurrentFolderAlreadyAdded
-                      ? "Already Added"
-                      : addToFolderBusy
-                        ? "Adding..."
-                        : "Add Here"}
-                </button>
+                <div className="row" style={{ justifyContent: "flex-end" }}>
+                  <button
+                    className="btn primary"
+                    onClick={() => openFolderCreateDialog("add-dialog")}
+                    disabled={!!folderCreateBusy}
+                    type="button"
+                  >
+                    New Folder
+                  </button>
+                  <button
+                    className="btn primary"
+                    onClick={() => {
+                      if (!addFolderNav) return;
+                      void onAddPuzzleToExistingFolder(addFolderNav.id);
+                    }}
+                    disabled={!canAddToCurrentFolder || isCurrentFolderAlreadyAdded || !!addToFolderBusy}
+                    type="button"
+                  >
+                    {!canAddToCurrentFolder
+                      ? "Select Folder"
+                      : isCurrentFolderAlreadyAdded
+                        ? "Already Added"
+                        : addToFolderBusy
+                          ? "Adding..."
+                          : "Add Here"}
+                  </button>
+                </div>
               </div>
 
               <div className="menuPuzzleList addFolderNavigatorList" style={{ marginTop: 10 }}>
@@ -1483,35 +1480,6 @@ export function MainMenu() {
                 {!addDialogChildFolders.length ? (
                   <div className="muted">No folders in this location.</div>
                 ) : null}
-              </div>
-
-              <div className="card addFolderCreateCard">
-                <div style={{ fontWeight: 700 }}>Create new folder in current location</div>
-                <div className="muted" style={{ marginTop: 6, fontSize: 13 }}>
-                  {addFolderNav
-                    ? `Location: ${buildFolderPath(addFolderNav, folderById)}`
-                    : "Location: Top-level folders"}
-                </div>
-                <div className="row" style={{ marginTop: 8 }}>
-                  <input
-                    className="url"
-                    placeholder="Folder name"
-                    value={addFolderName}
-                    onChange={(event) => setAddFolderName(event.target.value)}
-                  />
-                </div>
-                <div className="row" style={{ marginTop: 8, justifyContent: "flex-end" }}>
-                  <button
-                    className="btn primary"
-                    onClick={() => {
-                      void onCreateFolderAndAddPuzzle();
-                    }}
-                    disabled={!addFolderName.trim() || !!addToFolderBusy}
-                    type="button"
-                  >
-                    Create + Add
-                  </button>
-                </div>
               </div>
 
               <div className="muted addFolderBusyLine">{addToFolderBusy || "\u00A0"}</div>

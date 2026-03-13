@@ -396,6 +396,14 @@ input.url {
   gap: 6px;
 }
 
+.menuSecondaryControls {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid color-mix(in oklab, var(--text) 16%, transparent);
+}
+
 .menuStatusTab {
   min-width: 0;
   min-height: 40px;
@@ -479,14 +487,17 @@ input.url {
 }
 
 .menuPuzzleDeleteStack {
+  --menu-preview-size: 136px;
   display: flex;
   flex-direction: column;
-  align-items: flex-end;
+  align-items: stretch;
   gap: 6px;
+  width: var(--menu-preview-size);
 }
 
 .menuPuzzleActions {
   position: relative;
+  width: 100%;
   justify-content: flex-end;
   align-items: center;
   gap: 6px;
@@ -533,8 +544,7 @@ input.url {
 }
 
 .menuPuzzlePreview {
-  --menu-preview-size: 136px;
-  width: var(--menu-preview-size);
+  width: 100%;
   height: var(--menu-preview-size);
   overflow: hidden;
   border: 1px solid color-mix(in oklab, var(--text) 20%, transparent);
@@ -582,6 +592,52 @@ input.url {
   flex-wrap: wrap;
 }
 
+.folderBreadcrumbTrail {
+  gap: 0;
+  align-items: center;
+}
+
+.folderBreadcrumbLink,
+.folderTreeLinkButton {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  display: inline;
+  max-width: 100%;
+  color: inherit;
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+  text-align: left;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.folderBreadcrumbLink.is-active,
+.folderTreeLinkButton {
+  font-weight: 700;
+}
+
+.folderBreadcrumbSeparator {
+  color: var(--muted);
+  margin: 0 6px;
+}
+
+.folderTreeRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: start;
+  padding: 4px 0;
+}
+
+.folderTreeLinkBlock {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
 .folderBrowserItem,
 .folderPuzzleItem {
   width: 100%;
@@ -627,7 +683,7 @@ input.url {
 .addFolderDialogBody {
   min-height: 0;
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto auto;
+  grid-template-rows: auto minmax(0, 1fr) auto;
   gap: 10px;
 }
 
@@ -648,10 +704,6 @@ input.url {
   overflow: auto;
   padding-right: 2px;
   min-height: 0;
-  margin-top: 0 !important;
-}
-
-.addFolderCreateCard {
   margin-top: 0 !important;
 }
 
@@ -1365,7 +1417,7 @@ input.url {
     grid-template-columns: minmax(0, 1fr) auto;
   }
 
-  .menuPuzzlePreview {
+  .menuPuzzleDeleteStack {
     --menu-preview-size: 112px;
   }
 

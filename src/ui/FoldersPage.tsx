@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   createFolder,
@@ -13,7 +13,7 @@ import {
 } from "../core/storage";
 import { fmtHMS } from "../core/time";
 import { GridCanvas } from "./GridCanvas";
-import { IconFolder, IconSettings } from "./icons";
+import { IconSettings } from "./icons";
 import { SettingsOverlay } from "./SettingsOverlay";
 
 type SortOrder = "recent" | "az";
@@ -459,7 +459,7 @@ export function FoldersPage() {
                 }}
                 type="button"
               >
-                Create Folder
+                New Folder
               </button>
             </div>
 
@@ -490,23 +490,18 @@ export function FoldersPage() {
               </label>
             </div>
 
-            <div className="row folderBreadcrumbRow" style={{ marginTop: 4 }}>
-              <button
-                className={`btn ${activeFolderId === null ? "primary" : ""}`}
-                onClick={() => setActiveFolderId(null)}
-                type="button"
-              >
-                Top Level
-              </button>
-              {activeFolderTrail.map((folder) => (
-                <button
-                  key={folder.id}
-                  className={`btn ${activeFolderId === folder.id ? "primary" : ""}`}
-                  onClick={() => setActiveFolderId(folder.id)}
-                  type="button"
-                >
-                  {folder.name}
-                </button>
+            <div className="row folderBreadcrumbRow folderBreadcrumbTrail" style={{ marginTop: 4 }}>
+              {[{ id: null, name: "Top Level" }, ...activeFolderTrail].map((folder, index) => (
+                <Fragment key={folder.id ?? "top-level"}>
+                  {index > 0 ? <span className="folderBreadcrumbSeparator" aria-hidden="true">-&gt;</span> : null}
+                  <button
+                    className={`folderBreadcrumbLink ${activeFolderId === folder.id ? "is-active" : ""}`}
+                    onClick={() => setActiveFolderId(folder.id)}
+                    type="button"
+                  >
+                    {folder.name}
+                  </button>
+                </Fragment>
               ))}
             </div>
 
@@ -519,22 +514,19 @@ export function FoldersPage() {
                 const childCount = folderChildCounts.get(folder.id) ?? 0;
                 const puzzleCount = folder.puzzleKeys.length;
                 return (
-                  <div key={folder.id} className="card folderBrowserItem folderBrowserItemWithMenu">
-                    <button
-                      className="folderBrowserMainButton"
-                      onClick={() => setActiveFolderId(folder.id)}
-                      type="button"
-                    >
-                      <div className="row" style={{ justifyContent: "space-between", alignItems: "flex-start" }}>
-                        <div className="row" style={{ gap: 6 }}>
-                          <IconFolder />
-                          <div style={{ fontWeight: 700, overflowWrap: "anywhere" }}>{folder.name}</div>
-                        </div>
-                      </div>
+                  <div key={folder.id} className="folderTreeRow folderBrowserItemWithMenu">
+                    <div className="folderTreeLinkBlock">
+                      <button
+                        className="folderTreeLinkButton"
+                        onClick={() => setActiveFolderId(folder.id)}
+                        type="button"
+                      >
+                        {folder.name}
+                      </button>
                       <div className="muted" style={{ fontSize: 13 }}>
                         {puzzleCount} puzzle{puzzleCount === 1 ? "" : "s"} | {childCount} subfolder{childCount === 1 ? "" : "s"}
                       </div>
-                    </button>
+                    </div>
 
                     <div className="row menuPuzzleActions folderBrowserActions">
                       <button
@@ -768,7 +760,7 @@ export function FoldersPage() {
               ) : null}
 
               {!visibleChildFolders.length && !activeFolder ? (
-                <div className="muted">No folders yet. Create one to get started.</div>
+                <div className="muted">No folders yet. Use New Folder to get started.</div>
               ) : null}
             </div>
           </div>
@@ -816,7 +808,7 @@ export function FoldersPage() {
                 disabled={!folderCreateName.trim() || !!folderCreateBusy}
                 type="button"
               >
-                {folderCreateBusy ? "Creating..." : "Create"}
+                {folderCreateBusy ? "Creating..." : "New Folder"}
               </button>
             </div>
           </div>
