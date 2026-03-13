@@ -1496,7 +1496,7 @@ export function PuzzlePage() {
         />
       )}
 
-      {settingsOpen ? <SettingsOverlay onClose={() => setSettingsOpen(false)} onRestartRequest={() => openRestartPrompt(false)} /> : null}
+      {settingsOpen ? <SettingsOverlay onClose={() => setSettingsOpen(false)} /> : null}
 
       {restartPromptOpen ? (
         <div className="overlayBackdrop" onClick={closeRestartPrompt}>

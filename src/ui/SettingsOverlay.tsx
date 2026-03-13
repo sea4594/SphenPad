@@ -9,8 +9,8 @@ const themeChoices: Array<{ key: ThemeColor; label: string; preview: string[] }>
   { key: "berry", label: "Berry", preview: ["#ffbfd8", "#cb5f93", "#4a213f"] },
 ];
 
-export function SettingsOverlay(props: { onClose: () => void; onRestartRequest?: () => void }) {
-  const { onClose, onRestartRequest } = props;
+export function SettingsOverlay(props: { onClose: () => void }) {
+  const { onClose } = props;
   const { mode, color, hideTimer, outlineDigits, setMode, setColor, setHideTimer, setOutlineDigits } = useTheme();
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -83,20 +83,6 @@ export function SettingsOverlay(props: { onClose: () => void; onRestartRequest?:
             </button>
           </div>
 
-          {onRestartRequest ? (
-            <div className="settingsRow" style={{ marginTop: 4 }}>
-              <div className="muted">Puzzle</div>
-              <button
-                className="btn"
-                onClick={() => {
-                  onRestartRequest?.();
-                  onClose();
-                }}
-              >
-                Restart
-              </button>
-            </div>
-          ) : null}
         </div>
       </div>
     </div>
