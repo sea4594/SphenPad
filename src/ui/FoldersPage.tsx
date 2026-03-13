@@ -13,7 +13,7 @@ import {
 } from "../core/storage";
 import { fmtHMS } from "../core/time";
 import { GridCanvas } from "./GridCanvas";
-import { IconSettings } from "./icons";
+import { IconFolder, IconHome, IconSettings } from "./icons";
 import { SettingsOverlay } from "./SettingsOverlay";
 
 type SortOrder = "recent" | "az";
@@ -253,15 +253,6 @@ export function FoldersPage() {
     return new Map(rows.map((row) => [row.key, row]));
   }, [rows]);
 
-  const folderChildCounts = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const folder of folders) {
-      if (!folder.parentId) continue;
-      counts.set(folder.parentId, (counts.get(folder.parentId) ?? 0) + 1);
-    }
-    return counts;
-  }, [folders]);
-
   const activeFolder = activeFolderId ? folderById.get(activeFolderId) ?? null : null;
 
   const activeFolderTrail = useMemo(() => {
@@ -437,7 +428,6 @@ export function FoldersPage() {
   return (
     <div className="shell">
       <div className="topbar">
-        <button className="btn" onClick={() => nav("/")} type="button">Back</button>
         <div className="brand">SphenPad</div>
         <div className="muted">Folders</div>
         <div className="spacer" />
@@ -448,6 +438,22 @@ export function FoldersPage() {
 
       <div className="page">
         <div className="mainMenuWrap foldersPageWrap">
+          <div className="card">
+            <div className="row menuModeTabs" style={{ marginTop: 2 }}>
+              <button className="btn menuModeTab" onClick={() => nav("/")} type="button">
+                <IconHome />
+                <span>My Puzzles</span>
+              </button>
+              <button className="btn primary menuModeTab" onClick={() => nav("/folders")} type="button">
+                <IconFolder />
+                <span>Folders</span>
+              </button>
+              <button className="btn menuModeTab" onClick={() => nav("/archive")} type="button">
+                <span>Import</span>
+              </button>
+            </div>
+          </div>
+
           <div className="card foldersPageCard">
             <div className="row" style={{ justifyContent: "space-between", alignItems: "center", gap: 8 }}>
               <div className="menuSectionTitle">Folders</div>
@@ -461,33 +467,6 @@ export function FoldersPage() {
               >
                 New Folder
               </button>
-            </div>
-
-            <div className="row" style={{ marginTop: 4 }}>
-              <label className="menuControlLabel">
-                <span className="muted" style={{ fontSize: 13 }}>Sort</span>
-                <select
-                  className="btn menuControlSelect"
-                  value={sortOrder}
-                  onChange={(e) => setSortOrder(e.target.value as SortOrder)}
-                >
-                  <option value="recent">Recent</option>
-                  <option value="az">A - Z</option>
-                </select>
-              </label>
-              <label className="menuControlLabel">
-                <span className="muted" style={{ fontSize: 13 }}>Filter</span>
-                <select
-                  className="btn menuControlSelect"
-                  value={filterStatus}
-                  onChange={(e) => setFilterStatus(e.target.value as FilterStatus)}
-                >
-                  <option value="all">All</option>
-                  <option value="not_started">Not Started</option>
-                  <option value="in_progress">In Progress</option>
-                  <option value="complete">Complete</option>
-                </select>
-              </label>
             </div>
 
             <div className="row folderBreadcrumbRow folderBreadcrumbTrail" style={{ marginTop: 4 }}>
@@ -506,27 +485,19 @@ export function FoldersPage() {
             </div>
 
             <div className="menuPuzzleList">
-              <div className="muted" style={{ fontSize: 13 }}>
-                {activeFolder ? buildFolderPath(activeFolder, folderById) : "Top-level folders"}
-              </div>
-
               {visibleChildFolders.map((folder) => {
-                const childCount = folderChildCounts.get(folder.id) ?? 0;
-                const puzzleCount = folder.puzzleKeys.length;
                 return (
-                  <div key={folder.id} className="folderTreeRow folderBrowserItemWithMenu">
-                    <div className="folderTreeLinkBlock">
-                      <button
-                        className="folderTreeLinkButton"
-                        onClick={() => setActiveFolderId(folder.id)}
-                        type="button"
-                      >
-                        {folder.name}
-                      </button>
-                      <div className="muted" style={{ fontSize: 13 }}>
-                        {puzzleCount} puzzle{puzzleCount === 1 ? "" : "s"} | {childCount} subfolder{childCount === 1 ? "" : "s"}
+                  <div key={folder.id} className="card folderBrowserItem folderBrowserItemWithMenu">
+                    <button
+                      className="folderBrowserMainButton"
+                      onClick={() => setActiveFolderId(folder.id)}
+                      type="button"
+                    >
+                      <div className="row" style={{ gap: 6, alignItems: "flex-start" }}>
+                        <IconFolder />
+                        <div style={{ fontWeight: 700, overflowWrap: "anywhere" }}>{folder.name}</div>
                       </div>
-                    </div>
+                    </button>
 
                     <div className="row menuPuzzleActions folderBrowserActions">
                       <button
@@ -762,6 +733,29 @@ export function FoldersPage() {
               {!visibleChildFolders.length && !activeFolder ? (
                 <div className="muted">No folders yet. Use New Folder to get started.</div>
               ) : null}
+            </div>
+
+            <div className="row" style={{ marginTop: 4 }}>
+              <select
+                className="btn menuControlSelect"
+                value={sortOrder}
+                onChange={(e) => setSortOrder(e.target.value as SortOrder)}
+                aria-label="Sort folders"
+              >
+                <option value="recent">Recent</option>
+                <option value="az">A - Z</option>
+              </select>
+              <select
+                className="btn menuControlSelect"
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value as FilterStatus)}
+                aria-label="Filter folders"
+              >
+                <option value="all">All</option>
+                <option value="not_started">Not Started</option>
+                <option value="in_progress">In Progress</option>
+                <option value="complete">Complete</option>
+              </select>
             </div>
           </div>
         </div>

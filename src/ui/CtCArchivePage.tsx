@@ -4,6 +4,7 @@ import { normalizePuzzleKey } from "../core/id";
 import { makeInitialProgress } from "../core/scl";
 import { getPuzzle, listCompletedPuzzleKeys, upsertPuzzle } from "../core/storage";
 import { loadFromSudokuPad } from "../core/sudokupad";
+import { IconFolder, IconHome } from "./icons";
 
 type ArchiveEntry = {
   id: string;
@@ -608,15 +609,28 @@ export function CtCArchivePage() {
   return (
     <div className="shell">
       <div className="topbar">
-        <button className="btn" onClick={() => nav("/")}>
-          Back
-        </button>
         <div className="brand">CtC Archive</div>
         <div className="spacer" />
       </div>
 
       <div className="page">
         <div className="mainMenuWrap">
+          <div className="card">
+            <div className="row menuModeTabs" style={{ marginTop: 2 }}>
+              <button className="btn menuModeTab" onClick={() => nav("/")} type="button">
+                <IconHome />
+                <span>My Puzzles</span>
+              </button>
+              <button className="btn menuModeTab" onClick={() => nav("/folders")} type="button">
+                <IconFolder />
+                <span>Folders</span>
+              </button>
+              <button className="btn primary menuModeTab" onClick={() => nav("/archive")} type="button">
+                <span>Import</span>
+              </button>
+            </div>
+          </div>
+
           <div className="card">
             <div className="menuSectionTitle">Load Puzzle</div>
             <div className="muted" style={{ marginTop: 2 }}>Paste a sudokupad.app link or a puzzle id</div>
