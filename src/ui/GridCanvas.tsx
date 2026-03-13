@@ -335,8 +335,8 @@ export function GridCanvas(props: {
       const width = Math.max(1, el.clientWidth || pane.clientWidth || window.innerWidth);
 
       const topbar = document.querySelector(".topbar") as HTMLElement | null;
-      const visibleViewportHeight = window.visualViewport?.height ?? window.innerHeight;
-      const viewportHeight = Math.max(180, visibleViewportHeight - (topbar?.offsetHeight ?? 0) - 16);
+      const normalizedViewportHeight = isMobile ? longSide : window.innerHeight;
+      const viewportHeight = Math.max(180, normalizedViewportHeight - (topbar?.offsetHeight ?? 0) - 16);
       const measuredHeight = Math.max(
         boardCard?.clientHeight ?? 0,
         boardColumn?.clientHeight ?? 0,
@@ -1590,6 +1590,24 @@ export function GridCanvas(props: {
     const rect = canvas.getBoundingClientRect();
     const relX = clientX - rect.left;
     const relY = clientY - rect.top;
+    const forcedPortrait = document.documentElement.getAttribute("data-force-portrait");
+
+    if (forcedPortrait === "cw") {
+      // In cw mode the canvas is visually rotated +90deg, so map viewport
+      // coordinates back into unrotated canvas-local coordinates.
+      return {
+        x: Math.max(0, Math.min(canvas.clientWidth, canvas.clientWidth - relY)),
+        y: Math.max(0, Math.min(canvas.clientHeight, relX)),
+      };
+    }
+
+    if (forcedPortrait === "ccw") {
+      // In ccw mode the canvas is visually rotated -90deg.
+      return {
+        x: Math.max(0, Math.min(canvas.clientWidth, relY)),
+        y: Math.max(0, Math.min(canvas.clientHeight, canvas.clientHeight - relX)),
+      };
+    }
 
     return {
       x: Math.max(0, Math.min(canvas.clientWidth, relX)),
