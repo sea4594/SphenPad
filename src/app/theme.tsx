@@ -23,7 +23,7 @@ const ThemeContext = createContext<ThemeContextValue | null>(null);
 function readInitialTheme(): { mode: ThemeMode; color: ThemeColor; hideTimer: boolean; outlineDigits: boolean; conflictChecker: boolean } {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return { mode: "dark", color: "ocean", hideTimer: false, outlineDigits: false, conflictChecker: true };
+    if (!raw) return { mode: "dark", color: "ocean", hideTimer: false, outlineDigits: true, conflictChecker: true };
     const parsed = JSON.parse(raw) as {
       mode?: ThemeMode;
       color?: ThemeColor | "sunset";
@@ -37,11 +37,11 @@ function readInitialTheme(): { mode: ThemeMode; color: ThemeColor; hideTimer: bo
       ? (mappedColor as ThemeColor)
       : "ocean";
     const hideTimer = typeof parsed.hideTimer === "boolean" ? parsed.hideTimer : false;
-    const outlineDigits = typeof parsed.outlineDigits === "boolean" ? parsed.outlineDigits : false;
+    const outlineDigits = typeof parsed.outlineDigits === "boolean" ? parsed.outlineDigits : true;
     const conflictChecker = typeof parsed.conflictChecker === "boolean" ? parsed.conflictChecker : true;
     return { mode, color, hideTimer, outlineDigits, conflictChecker };
   } catch {
-    return { mode: "dark", color: "ocean", hideTimer: false, outlineDigits: false, conflictChecker: true };
+    return { mode: "dark", color: "ocean", hideTimer: false, outlineDigits: true, conflictChecker: true };
   }
 }
 
