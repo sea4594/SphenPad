@@ -16,6 +16,7 @@
   --safe-left: env(safe-area-inset-left);
   --safe-right: env(safe-area-inset-right);
   --safe-inline: max(var(--safe-left), var(--safe-right));
+  --app-vh: 100dvh;
   font-family: Barlow, "Trebuchet MS", "Segoe UI", sans-serif;
 }
 
@@ -148,6 +149,10 @@ body,
   color: var(--text);
 }
 
+#root {
+  min-height: var(--app-vh, 100dvh);
+}
+
 html {
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
@@ -229,8 +234,8 @@ button,
 .shell {
   display: grid;
   grid-template-rows: auto 1fr;
-  height: 100dvh;
-  min-height: 100svh;
+  height: var(--app-vh, 100dvh);
+  min-height: var(--app-vh, 100dvh);
   width: 100%;
   max-width: 100%;
   overflow: hidden;

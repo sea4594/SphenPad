@@ -541,13 +541,11 @@ export function GridCanvas(props: {
       }
     });
     const hasImportedRegionBoundaries = regionByCell.size > 0;
-    const rowColCells = def.cosmetics.rowColCells ?? [];
-    const hasRowColDomain = rowColCells.length > 0;
     const subgrid = def.cosmetics.subgrid;
 
     const conflictDomainByCell: boolean[][] = Array.from(
       { length: rows },
-      () => Array.from({ length: cols }, () => !hasImportedRegionBoundaries && !hasRowColDomain),
+      () => Array.from({ length: cols }, () => !hasImportedRegionBoundaries),
     );
     if (hasImportedRegionBoundaries) {
       for (const key of regionByCell.keys()) {
@@ -556,11 +554,6 @@ export function GridCanvas(props: {
         const c = Number(cRaw);
         if (!Number.isFinite(r) || !Number.isFinite(c) || !inBounds(r, c)) continue;
         conflictDomainByCell[r][c] = true;
-      }
-    } else if (hasRowColDomain) {
-      for (const rc of rowColCells) {
-        if (!inBounds(rc.r, rc.c)) continue;
-        conflictDomainByCell[rc.r][rc.c] = true;
       }
     }
 

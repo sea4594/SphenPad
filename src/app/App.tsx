@@ -18,6 +18,14 @@ export function App() {
     const visualViewport = window.visualViewport;
     let lastLandscapeDirection: "cw" | "ccw" = "ccw";
 
+    const getViewportSize = () => {
+      const layoutW = Math.max(1, Math.round(window.innerWidth));
+      const layoutH = Math.max(1, Math.round(window.innerHeight));
+      const vw = Math.max(1, Math.round(visualViewport?.width ?? layoutW));
+      const vh = Math.max(1, Math.round(visualViewport?.height ?? layoutH));
+      return { vw, vh };
+    };
+
     const getLandscapeDirection = (): "cw" | "ccw" => {
       const legacyAngle = (window as LegacyOrientationWindow).orientation;
       if (typeof legacyAngle === "number" && Math.abs(legacyAngle) === 90) {
@@ -43,10 +51,8 @@ export function App() {
     };
 
     const updateForcedPortraitMode = () => {
-      const layoutW = Math.max(1, Math.round(window.innerWidth));
-      const layoutH = Math.max(1, Math.round(window.innerHeight));
-      const vw = Math.max(1, Math.round(visualViewport?.width ?? layoutW));
-      const vh = Math.max(1, Math.round(visualViewport?.height ?? layoutH));
+      const { vw, vh } = getViewportSize();
+      root.style.setProperty("--app-vh", `${vh}px`);
       const rotatedLandscape = vw > vh;
       if (onMobileDevice && rotatedLandscape) {
         const shortSide = Math.min(vw, vh);
@@ -106,6 +112,7 @@ export function App() {
       visualViewport?.removeEventListener("resize", onViewportChange);
       coarsePointer.removeEventListener?.("change", onViewportChange);
       root.removeAttribute("data-force-portrait");
+      root.style.removeProperty("--app-vh");
       root.style.removeProperty("--force-portrait-short");
       root.style.removeProperty("--force-portrait-long");
     };
