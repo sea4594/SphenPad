@@ -381,6 +381,33 @@ input.url {
   cursor: pointer;
 }
 
+.menuStatusTabs {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.menuStatusTab {
+  min-width: 0;
+  min-height: 40px;
+  padding: 8px 6px;
+  line-height: 1.1;
+  font-size: 13px;
+  text-align: center;
+}
+
+.menuStatusTab.is-active {
+  background: color-mix(in oklab, var(--accent) 26%, transparent);
+  border-color: color-mix(in oklab, var(--accent) 84%, transparent);
+}
+
+.menuFolderButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
 .menuPuzzleRow {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -449,6 +476,22 @@ input.url {
   gap: 6px;
 }
 
+.menuPuzzleActions {
+  justify-content: flex-end;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: nowrap;
+}
+
+.menuPuzzleIconButton {
+  min-width: 42px;
+  width: 42px;
+  min-height: 42px;
+  padding: 0;
+  display: inline-grid;
+  place-items: center;
+}
+
 .menuPuzzlePreview {
   --menu-preview-size: 136px;
   width: var(--menu-preview-size);
@@ -470,6 +513,53 @@ input.url {
   height: auto !important;
   max-width: 100% !important;
   max-height: 100% !important;
+}
+
+.foldersOverlayCard {
+  width: min(920px, 100%);
+  max-height: min(92dvh, calc(100vh - 24px));
+  overflow: auto;
+}
+
+.folderBreadcrumbRow {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.folderBrowserItem,
+.folderPuzzleItem {
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  display: grid;
+  gap: 6px;
+}
+
+.folderPickerCard {
+  width: min(760px, 100%);
+  max-height: min(92dvh, calc(100vh - 24px));
+  overflow: auto;
+}
+
+.menuFolderPickButton {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+  text-align: left;
+}
+
+.menuFolderPathText {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.confirmDialogCard {
+  width: min(460px, 100%);
+  max-height: min(92dvh, calc(100vh - 24px));
+  overflow: auto;
 }
 
 .archiveControls {
@@ -1160,6 +1250,16 @@ input.url {
 
   .menuPuzzlePreview {
     --menu-preview-size: 112px;
+  }
+
+  .menuStatusTab {
+    min-height: 36px;
+    padding: 6px 4px;
+    font-size: 12px;
+  }
+
+  .menuPuzzleActions {
+    width: 100%;
   }
 
   .archiveEntryHead {

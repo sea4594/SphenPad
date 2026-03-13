@@ -45,6 +45,32 @@ export const IconSettings = () => (
 	</svg>
 );
 
+export const IconFolder = () => (
+	<svg width="18" height="18" viewBox="0 0 20 20" aria-hidden>
+		<path
+			d="M2.3 5.2a1.7 1.7 0 0 1 1.7-1.7h4.1l1.5 1.8h6.4a1.7 1.7 0 0 1 1.7 1.7v8.1a1.7 1.7 0 0 1-1.7 1.7H4a1.7 1.7 0 0 1-1.7-1.7V5.2Z"
+			fill="none"
+			stroke="currentColor"
+			strokeWidth="1.5"
+			strokeLinejoin="round"
+		/>
+	</svg>
+);
+
+export const IconFolderAdd = () => (
+	<svg width="18" height="18" viewBox="0 0 20 20" aria-hidden>
+		<path
+			d="M2.3 5.2a1.7 1.7 0 0 1 1.7-1.7h4.1l1.5 1.8h6.4a1.7 1.7 0 0 1 1.7 1.7v8.1a1.7 1.7 0 0 1-1.7 1.7H4a1.7 1.7 0 0 1-1.7-1.7V5.2Z"
+			fill="none"
+			stroke="currentColor"
+			strokeWidth="1.5"
+			strokeLinejoin="round"
+		/>
+		<path d="M10 8.2v5.6" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+		<path d="M7.2 11h5.6" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+	</svg>
+);
+
 export const IconSelectMode = (props: { multi: boolean }) => (
 	<span
 		style={{
