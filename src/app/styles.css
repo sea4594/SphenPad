@@ -497,9 +497,37 @@ input.url {
 }
 
 .archiveFilterControl > .url,
-.archiveFilterControl > .btn.menuControlSelect {
+.archiveFilterControl > .btn.menuControlSelect,
+.archiveFilterControl > .archiveConstraintSelect {
   width: 100%;
   min-width: 0;
+}
+
+.archiveConstraintSelect {
+  padding: 6px;
+  border-radius: 0;
+  border: 1px solid color-mix(in oklab, var(--text) 24%, transparent);
+  background: var(--panel-soft);
+  color: inherit;
+  line-height: 1.25;
+  min-height: 120px;
+  max-height: 180px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  user-select: auto;
+  -webkit-user-select: auto;
+}
+
+.archiveConstraintSelect option {
+  padding: 3px 4px;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.archiveFilterHint {
+  font-size: 12px;
 }
 
 .archiveLenInput {

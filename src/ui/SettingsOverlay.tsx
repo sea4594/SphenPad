@@ -62,7 +62,7 @@ export function SettingsOverlay(props: { onClose: () => void; onRestartRequest?:
           </div>
 
           <div className="settingsRow" style={{ marginTop: 4 }}>
-            <div className="muted">Hide live timer</div>
+            <div className="muted">Hide timer</div>
             <button
               className={"switch" + (hideTimer ? " is-on" : "")}
               onClick={() => setHideTimer(!hideTimer)}

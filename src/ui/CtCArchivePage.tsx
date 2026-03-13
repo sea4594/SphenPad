@@ -1,4 +1,4 @@
-import { useCallback, useDeferredValue, useEffect, useMemo, useState } from "react";
+import { useCallback, useDeferredValue, useEffect, useMemo, useState, type MouseEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { normalizePuzzleKey } from "../core/id";
 import { makeInitialProgress } from "../core/scl";
@@ -503,6 +503,18 @@ export function CtCArchivePage() {
     setMaxLength("");
   }, []);
 
+  const onConstraintMouseDown = useCallback((event: MouseEvent<HTMLSelectElement>) => {
+    const target = event.target;
+    if (!(target instanceof HTMLOptionElement)) return;
+    event.preventDefault();
+    const value = target.value;
+    setConstraintFilters((current) => (
+      current.includes(value)
+        ? current.filter((entry) => entry !== value)
+        : [...current, value]
+    ));
+  }, []);
+
   async function onImport(entry: PreparedArchiveEntry) {
     const importSource = clean(entry.sourceId || entry.sudokuPadUrl);
     if (!importSource) {
@@ -642,13 +654,16 @@ export function CtCArchivePage() {
               <label className="archiveFilterControl">
                 <span className="muted archiveFilterLabel">Constraints</span>
                 <select
-                  className="btn menuControlSelect archiveConstraintSelect"
+                  className="archiveConstraintSelect"
                   multiple
+                  size={Math.min(8, Math.max(4, constraintOptions.length || 4))}
                   value={constraintFilters}
+                  onMouseDown={onConstraintMouseDown}
                   onChange={(e) => {
                     const nextSelected = Array.from(e.target.selectedOptions, (option) => option.value);
                     setConstraintFilters(nextSelected);
                   }}
+                  aria-label="Filter by constraints"
                 >
                   {constraintOptions.map((value) => (
                     <option key={value} value={value}>
