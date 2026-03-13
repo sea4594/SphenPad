@@ -414,9 +414,9 @@ input.url {
 
 .menuSecondaryControls {
   display: grid;
-  gap: 8px;
-  margin-top: 12px;
-  padding-top: 10px;
+  gap: 10px;
+  margin-top: 18px;
+  padding-top: 14px;
   border-top: 1px solid color-mix(in oklab, var(--text) 16%, transparent);
 }
 
@@ -523,6 +523,15 @@ input.url {
 .menuPuzzleIconButton {
   min-width: 42px;
   width: 42px;
+  min-height: 42px;
+  padding: 0;
+  display: inline-grid;
+  place-items: center;
+}
+
+.menuPuzzleWideButton {
+  width: 100%;
+  min-width: 0;
   min-height: 42px;
   padding: 0;
   display: inline-grid;
@@ -699,7 +708,7 @@ input.url {
 .addFolderDialogBody {
   min-height: 0;
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
   gap: 10px;
 }
 
@@ -725,6 +734,12 @@ input.url {
 
 .addFolderBusyLine {
   min-height: 18px;
+}
+
+.addFolderDialogFooter {
+  justify-content: flex-end;
+  padding-top: 10px;
+  border-top: 1px solid color-mix(in oklab, var(--text) 16%, transparent);
 }
 
 .menuFolderPickButton {

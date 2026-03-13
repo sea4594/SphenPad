@@ -13,7 +13,7 @@ import {
 } from "../core/storage";
 import { fmtHMS } from "../core/time";
 import { GridCanvas } from "./GridCanvas";
-import { IconFolder, IconHome, IconSettings } from "./icons";
+import { IconFolder, IconHome, IconImport, IconSettings } from "./icons";
 import { SettingsOverlay } from "./SettingsOverlay";
 
 type SortOrder = "recent" | "az";
@@ -448,6 +448,7 @@ export function FoldersPage() {
                 <span>Folders</span>
               </button>
               <button className="btn menuModeTab" onClick={() => nav("/archive")} type="button">
+                <IconImport />
                 <span>Import</span>
               </button>
             </div>
@@ -457,7 +458,7 @@ export function FoldersPage() {
             <div className="row" style={{ justifyContent: "space-between", alignItems: "center", gap: 8 }}>
               <div className="menuSectionTitle">Folders</div>
               <button
-                className="btn primary"
+                className="btn"
                 onClick={() => {
                   setFolderCreateName("");
                   setFolderCreateDialogOpen(true);
@@ -466,29 +467,6 @@ export function FoldersPage() {
               >
                 New Folder
               </button>
-            </div>
-
-            <div className="row" style={{ marginTop: 4 }}>
-              <select
-                className="btn menuControlSelect"
-                value={sortOrder}
-                onChange={(e) => setSortOrder(e.target.value as SortOrder)}
-                aria-label="Sort folders"
-              >
-                <option value="recent">Recent</option>
-                <option value="az">A - Z</option>
-              </select>
-              <select
-                className="btn menuControlSelect"
-                value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value as FilterStatus)}
-                aria-label="Filter folders"
-              >
-                <option value="all">All</option>
-                <option value="not_started">Not Started</option>
-                <option value="in_progress">In Progress</option>
-                <option value="complete">Complete</option>
-              </select>
             </div>
 
             <div className="row folderBreadcrumbRow folderBreadcrumbTrail" style={{ marginTop: 4 }}>
@@ -755,6 +733,29 @@ export function FoldersPage() {
               {!visibleChildFolders.length && !activeFolder ? (
                 <div className="muted">No folders yet. Use New Folder to get started.</div>
               ) : null}
+            </div>
+
+            <div className="row" style={{ marginTop: 4 }}>
+              <select
+                className="btn menuControlSelect"
+                value={sortOrder}
+                onChange={(e) => setSortOrder(e.target.value as SortOrder)}
+                aria-label="Sort folders"
+              >
+                <option value="recent">Recent</option>
+                <option value="az">A - Z</option>
+              </select>
+              <select
+                className="btn menuControlSelect"
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value as FilterStatus)}
+                aria-label="Filter folders"
+              >
+                <option value="all">All</option>
+                <option value="not_started">Not Started</option>
+                <option value="in_progress">In Progress</option>
+                <option value="complete">Complete</option>
+              </select>
             </div>
           </div>
         </div>

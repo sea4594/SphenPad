@@ -4,7 +4,7 @@ import { normalizePuzzleKey } from "../core/id";
 import { makeInitialProgress } from "../core/scl";
 import { getPuzzle, listCompletedPuzzleKeys, upsertPuzzle } from "../core/storage";
 import { loadFromSudokuPad } from "../core/sudokupad";
-import { IconFolder, IconHome, IconSettings } from "./icons";
+import { IconFolder, IconHome, IconImport, IconSettings } from "./icons";
 import { SettingsOverlay } from "./SettingsOverlay";
 
 type ArchiveEntry = {
@@ -631,6 +631,7 @@ export function CtCArchivePage() {
                 <span>Folders</span>
               </button>
               <button className="btn primary menuModeTab" onClick={() => nav("/archive")} type="button">
+                <IconImport />
                 <span>Import</span>
               </button>
             </div>

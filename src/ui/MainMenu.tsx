@@ -13,7 +13,7 @@ import {
 import { fmtHMS } from "../core/time";
 import { firebaseEnabled, googleLogin, googleLogout } from "../firebase/client";
 import { GridCanvas } from "./GridCanvas";
-import { IconFolder, IconHome, IconSettings } from "./icons";
+import { IconFolder, IconHome, IconImport, IconSettings } from "./icons";
 import { SettingsOverlay } from "./SettingsOverlay";
 
 type SortOrder = "recent" | "az";
@@ -747,6 +747,7 @@ export function MainMenu() {
                 <span>Folders</span>
               </button>
               <button className="btn menuModeTab" onClick={() => nav("/archive")} type="button">
+                <IconImport />
                 <span>Import</span>
               </button>
             </div>
@@ -1025,7 +1026,7 @@ export function MainMenu() {
                         ) : null}
 
                         <button
-                          className="btn menuPuzzleIconButton menuPuzzleMoreButton"
+                          className="btn menuPuzzleWideButton menuPuzzleMoreButton"
                           onClick={(event) => {
                             event.stopPropagation();
                             setMainPuzzleStatusMenuKey(null);
@@ -1384,29 +1385,12 @@ export function MainMenu() {
               <div className="row" style={{ justifyContent: "flex-end", alignItems: "center" }}>
                 <div className="row" style={{ justifyContent: "flex-end" }}>
                   <button
-                    className="btn primary"
+                    className="btn"
                     onClick={() => openFolderCreateDialog("add-dialog")}
                     disabled={!!folderCreateBusy}
                     type="button"
                   >
                     New Folder
-                  </button>
-                  <button
-                    className="btn primary"
-                    onClick={() => {
-                      if (!addFolderNav) return;
-                      void onAddPuzzleToExistingFolder(addFolderNav.id);
-                    }}
-                    disabled={!canAddToCurrentFolder || isCurrentFolderAlreadyAdded || !!addToFolderBusy}
-                    type="button"
-                  >
-                    {!canAddToCurrentFolder
-                      ? "Select Folder"
-                      : isCurrentFolderAlreadyAdded
-                        ? "Already Added"
-                        : addToFolderBusy
-                          ? "Adding..."
-                          : "Add Here"}
                   </button>
                 </div>
               </div>
@@ -1433,8 +1417,26 @@ export function MainMenu() {
               </div>
 
               <div className="muted addFolderBusyLine">{addToFolderBusy || "\u00A0"}</div>
+
+              <div className="row addFolderDialogFooter">
+                <button
+                  className={`btn ${canAddToCurrentFolder && !isCurrentFolderAlreadyAdded ? "primary" : ""}`}
+                  onClick={() => {
+                    if (!addFolderNav) return;
+                    void onAddPuzzleToExistingFolder(addFolderNav.id);
+                  }}
+                  disabled={!canAddToCurrentFolder || isCurrentFolderAlreadyAdded || !!addToFolderBusy}
+                  type="button"
+                >
+                  {isCurrentFolderAlreadyAdded
+                    ? "Already Added"
+                    : addToFolderBusy
+                      ? "Adding..."
+                      : "Add Here"}
+                </button>
+              </div>
             </div>
-          </div>
+        </div>
         </div>
       ) : null}
 

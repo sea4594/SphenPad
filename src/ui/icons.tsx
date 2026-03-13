@@ -64,6 +64,15 @@ export const IconHome = () => (
 	</svg>
 );
 
+export const IconImport = () => (
+	<svg width="18" height="18" viewBox="0 0 20 20" aria-hidden>
+		<path d="M10 3.4v8.2" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+		<path d="M6.9 8.6 10 11.8l3.1-3.2" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+		<path d="M4 14.5h12" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+		<path d="M5.2 12.8v2.7h9.6v-2.7" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+	</svg>
+);
+
 export const IconFolderAdd = () => (
 	<svg width="18" height="18" viewBox="0 0 20 20" aria-hidden>
 		<path
