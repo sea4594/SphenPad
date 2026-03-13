@@ -429,7 +429,6 @@ export function FoldersPage() {
     <div className="shell">
       <div className="topbar">
         <div className="brand">SphenPad</div>
-        <div className="muted">Folders</div>
         <div className="spacer" />
         <button className="btn" onClick={() => setSettingsOpen(true)} title="Settings" type="button">
           <IconSettings />
@@ -467,6 +466,29 @@ export function FoldersPage() {
               >
                 New Folder
               </button>
+            </div>
+
+            <div className="row" style={{ marginTop: 4 }}>
+              <select
+                className="btn menuControlSelect"
+                value={sortOrder}
+                onChange={(e) => setSortOrder(e.target.value as SortOrder)}
+                aria-label="Sort folders"
+              >
+                <option value="recent">Recent</option>
+                <option value="az">A - Z</option>
+              </select>
+              <select
+                className="btn menuControlSelect"
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value as FilterStatus)}
+                aria-label="Filter folders"
+              >
+                <option value="all">All</option>
+                <option value="not_started">Not Started</option>
+                <option value="in_progress">In Progress</option>
+                <option value="complete">Complete</option>
+              </select>
             </div>
 
             <div className="row folderBreadcrumbRow folderBreadcrumbTrail" style={{ marginTop: 4 }}>
@@ -733,29 +755,6 @@ export function FoldersPage() {
               {!visibleChildFolders.length && !activeFolder ? (
                 <div className="muted">No folders yet. Use New Folder to get started.</div>
               ) : null}
-            </div>
-
-            <div className="row" style={{ marginTop: 4 }}>
-              <select
-                className="btn menuControlSelect"
-                value={sortOrder}
-                onChange={(e) => setSortOrder(e.target.value as SortOrder)}
-                aria-label="Sort folders"
-              >
-                <option value="recent">Recent</option>
-                <option value="az">A - Z</option>
-              </select>
-              <select
-                className="btn menuControlSelect"
-                value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value as FilterStatus)}
-                aria-label="Filter folders"
-              >
-                <option value="all">All</option>
-                <option value="not_started">Not Started</option>
-                <option value="in_progress">In Progress</option>
-                <option value="complete">Complete</option>
-              </select>
             </div>
           </div>
         </div>

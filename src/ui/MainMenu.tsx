@@ -1,4 +1,4 @@
-import { useDeferredValue, useEffect, useMemo, useState, type MouseEvent } from "react";
+import { Fragment, useDeferredValue, useEffect, useMemo, useState, type MouseEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   addPuzzleToFolder,
@@ -1298,7 +1298,10 @@ export function MainMenu() {
       ) : null}
 
       {folderCreateDialogOpen ? (
-        <div className="overlayBackdrop" onClick={() => (!folderCreateBusy ? setFolderCreateDialogOpen(false) : null)}>
+        <div
+          className="overlayBackdrop folderCreateOverlayBackdrop"
+          onClick={() => (!folderCreateBusy ? setFolderCreateDialogOpen(false) : null)}
+        >
           <div
             className="card confirmDialogCard"
             role="dialog"
@@ -1362,33 +1365,23 @@ export function MainMenu() {
               {addToFolderPuzzle.def?.meta?.title || "(untitled)"}
             </div>
 
-            <div className="row folderBreadcrumbRow addFolderBreadcrumbRow" style={{ marginTop: 10 }}>
-              <button
-                className={`btn ${addFolderNavId === null ? "primary" : ""}`}
-                onClick={() => setAddFolderNavId(null)}
-                type="button"
-              >
-                Top Level
-              </button>
-              {addFolderTrail.map((folder) => (
-                <button
-                  key={`add-trail-${folder.id}`}
-                  className={`btn ${addFolderNavId === folder.id ? "primary" : ""}`}
-                  onClick={() => setAddFolderNavId(folder.id)}
-                  type="button"
-                >
-                  {folder.name}
-                </button>
+            <div className="row folderBreadcrumbRow folderBreadcrumbTrail" style={{ marginTop: 10 }}>
+              {[{ id: null, name: "Top Level" }, ...addFolderTrail].map((folder, index) => (
+                <Fragment key={`add-trail-${folder.id ?? "top-level"}`}>
+                  {index > 0 ? <span className="folderBreadcrumbSeparator" aria-hidden="true">-&gt;</span> : null}
+                  <button
+                    className={`folderBreadcrumbLink ${addFolderNavId === folder.id ? "is-active" : ""}`}
+                    onClick={() => setAddFolderNavId(folder.id)}
+                    type="button"
+                  >
+                    {folder.name}
+                  </button>
+                </Fragment>
               ))}
             </div>
 
             <div className="addFolderDialogBody">
-              <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
-                <div className="muted" style={{ fontSize: 13 }}>
-                  {addFolderNav
-                    ? `Current folder: ${buildFolderPath(addFolderNav, folderById)}`
-                    : "Current folder: Top-level folders"}
-                </div>
+              <div className="row" style={{ justifyContent: "flex-end", alignItems: "center" }}>
                 <div className="row" style={{ justifyContent: "flex-end" }}>
                   <button
                     className="btn primary"
@@ -1420,9 +1413,6 @@ export function MainMenu() {
 
               <div className="menuPuzzleList addFolderNavigatorList" style={{ marginTop: 10 }}>
                 {addDialogChildFolders.map((folder) => {
-                  const childCount = folderChildCounts.get(folder.id) ?? 0;
-                  const puzzleCount = folder.puzzleKeys.length;
-                  const alreadyAdded = selectedPuzzleFolderIds.has(folder.id);
                   return (
                     <button
                       key={`add-folder-nav-${folder.id}`}
@@ -1430,15 +1420,9 @@ export function MainMenu() {
                       onClick={() => setAddFolderNavId(folder.id)}
                       type="button"
                     >
-                      <div className="row" style={{ justifyContent: "space-between", alignItems: "flex-start" }}>
-                        <div className="row" style={{ gap: 6 }}>
-                          <IconFolder />
-                          <div style={{ fontWeight: 700, overflowWrap: "anywhere" }}>{folder.name}</div>
-                        </div>
-                      </div>
-                      <div className="muted" style={{ fontSize: 13 }}>
-                        {puzzleCount} puzzle{puzzleCount === 1 ? "" : "s"} | {childCount} subfolder{childCount === 1 ? "" : "s"}
-                        {alreadyAdded ? " | already added" : ""}
+                      <div className="row" style={{ gap: 6, alignItems: "flex-start" }}>
+                        <IconFolder />
+                        <div style={{ fontWeight: 700, overflowWrap: "anywhere" }}>{folder.name}</div>
                       </div>
                     </button>
                   );

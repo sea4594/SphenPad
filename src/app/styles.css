@@ -360,7 +360,7 @@ input.url {
 }
 
 .foldersPageWrap {
-  width: min(1120px, 100%);
+  width: min(980px, 100%);
 }
 
 .foldersPageCard {
@@ -1153,6 +1153,10 @@ input.url {
   width: 100vw;
   max-width: 100vw;
   z-index: 60;
+}
+
+.folderCreateOverlayBackdrop {
+  z-index: 70;
 }
 
 .topbar .muted {

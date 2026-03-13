@@ -4,7 +4,8 @@ import { normalizePuzzleKey } from "../core/id";
 import { makeInitialProgress } from "../core/scl";
 import { getPuzzle, listCompletedPuzzleKeys, upsertPuzzle } from "../core/storage";
 import { loadFromSudokuPad } from "../core/sudokupad";
-import { IconFolder, IconHome } from "./icons";
+import { IconFolder, IconHome, IconSettings } from "./icons";
+import { SettingsOverlay } from "./SettingsOverlay";
 
 type ArchiveEntry = {
   id: string;
@@ -321,6 +322,7 @@ export function CtCArchivePage() {
   const [minLength, setMinLength] = useState(initialFilterPrefs.minLength);
   const [maxLength, setMaxLength] = useState(initialFilterPrefs.maxLength);
   const [visibleRowsCount, setVisibleRowsCount] = useState(renderConfig.initialVisibleRows);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const deferredQuery = useDeferredValue(query);
 
   useEffect(() => {
@@ -609,8 +611,11 @@ export function CtCArchivePage() {
   return (
     <div className="shell">
       <div className="topbar">
-        <div className="brand">CtC Archive</div>
+        <div className="brand">SphenPad</div>
         <div className="spacer" />
+        <button className="btn" onClick={() => setSettingsOpen(true)} title="Settings" type="button">
+          <IconSettings />
+        </button>
       </div>
 
       <div className="page">
@@ -921,6 +926,8 @@ export function CtCArchivePage() {
           </div>
         </div>
       </div>
+
+      {settingsOpen ? <SettingsOverlay onClose={() => setSettingsOpen(false)} /> : null}
     </div>
   );
 }
