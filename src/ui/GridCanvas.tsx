@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CellRC, PuzzleDefinition, PuzzleProgress } from "../core/model";
+import { useTheme } from "../app/theme";
 
 type LineKindResolved = "center" | "edge";
 type LineKindStored = LineKindResolved | "both";
@@ -67,6 +68,7 @@ export function GridCanvas(props: {
   previewMode?: boolean;
 }) {
   const { def, progress, interactive = true, previewMode = false } = props;
+  const { outlineDigits } = useTheme();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const dragRef = useRef<DragState | null>(null);
@@ -1164,6 +1166,19 @@ export function GridCanvas(props: {
     const candidateFontPx = Math.max(5, Math.min(12, Math.round(cellPx * 0.18)));
     const cornerInsetX = Math.max(2, Math.round(cellPx * 0.08));
     const cornerBaseY = Math.max(7, Math.round(cellPx * 0.22));
+    const digitOutlineWidth = Math.max(0.45, Math.min(0.9, cellPx * 0.015));
+    const drawDigitText = (text: string, x: number, y: number) => {
+      if (outlineDigits) {
+        ctx.save();
+        ctx.strokeStyle = "#ffffff";
+        ctx.lineWidth = digitOutlineWidth;
+        ctx.lineJoin = "round";
+        ctx.miterLimit = 2;
+        ctx.strokeText(text, x, y);
+        ctx.restore();
+      }
+      ctx.fillText(text, x, y);
+    };
     if (fogDefined) {
       const addLight = (rc: CellRC) => {
         if (!inBounds(rc.r, rc.c)) return;
@@ -1209,7 +1224,7 @@ export function GridCanvas(props: {
           ctx.font = cell.given ? `700 ${valueFontPx}px ${gridTextFont}, ${emojiTextFont}` : `650 ${valueFontPx}px ${gridTextFont}, ${emojiTextFont}`;
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";
-          ctx.fillText(cell.value, x0 + cellPx / 2, y0 + cellPx / 2 + 1);
+          drawDigitText(cell.value, x0 + cellPx / 2, y0 + cellPx / 2 + 1);
         } else {
           ctx.fillStyle = "#1e2633";
           ctx.font = `${noteFontPx}px ${gridTextFont}, ${emojiTextFont}`;
@@ -1220,13 +1235,13 @@ export function GridCanvas(props: {
           if (corner.length) {
             const hasCageLabel = cageLabelCells.has(`${r},${c}`);
             ctx.textAlign = "left";
-            ctx.fillText(corner.join(""), x0 + cornerInsetX, y0 + (hasCageLabel ? cornerBaseY * 2 : cornerBaseY));
+            drawDigitText(corner.join(""), x0 + cornerInsetX, y0 + (hasCageLabel ? cornerBaseY * 2 : cornerBaseY));
           }
 
           const center = [...cell.notes.center].sort();
           if (center.length) {
             ctx.textAlign = "center";
-            ctx.fillText(center.join(""), x0 + cellPx / 2, y0 + cellPx / 2);
+            drawDigitText(center.join(""), x0 + cellPx / 2, y0 + cellPx / 2);
           }
 
           const cand = new Set(cell.notes.candidates);
@@ -1300,7 +1315,7 @@ export function GridCanvas(props: {
             ctx.font = cell.given ? `700 ${valueFontPx}px ${gridTextFont}, ${emojiTextFont}` : `650 ${valueFontPx}px ${gridTextFont}, ${emojiTextFont}`;
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
-            ctx.fillText(cell.value, x0 + cellPx / 2, y0 + cellPx / 2 + 1);
+            drawDigitText(cell.value, x0 + cellPx / 2, y0 + cellPx / 2 + 1);
             continue;
           }
 
@@ -1313,13 +1328,13 @@ export function GridCanvas(props: {
           const corner = [...cell.notes.corner].sort();
           if (corner.length) {
             ctx.textAlign = "left";
-            ctx.fillText(corner.join(""), x0 + cornerInsetX, y0 + cornerBaseY);
+            drawDigitText(corner.join(""), x0 + cornerInsetX, y0 + cornerBaseY);
           }
 
           const center = [...cell.notes.center].sort();
           if (center.length) {
             ctx.textAlign = "center";
-            ctx.fillText(center.join(""), x0 + cellPx / 2, y0 + cellPx / 2);
+            drawDigitText(center.join(""), x0 + cellPx / 2, y0 + cellPx / 2);
           }
         }
       }
@@ -1355,6 +1370,7 @@ export function GridCanvas(props: {
     heightPx,
     highlightRotationRad,
     linePreview,
+    outlineDigits,
     cols,
     originX,
     originY,

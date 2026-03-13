@@ -48,6 +48,18 @@ type SearchField =
 
 type SortField = "title" | "video_length" | "date";
 
+type ArchiveFilterPrefs = {
+  query: string;
+  searchField: SearchField;
+  sortField: SortField;
+  hostFilter: string;
+  authorFilter: string;
+  collectionFilter: string;
+  constraintFilters: string[];
+  minLength: string;
+  maxLength: string;
+};
+
 const SEARCH_FIELDS = new Set<SearchField>([
   "any",
   "title",
@@ -72,6 +84,19 @@ const MOBILE_VISIBLE_ROWS_INITIAL = 100;
 const MOBILE_VISIBLE_ROWS_STEP = 100;
 const DESKTOP_VISIBLE_ROWS_INITIAL = 80;
 const DESKTOP_VISIBLE_ROWS_STEP = 80;
+const ARCHIVE_FILTER_PREFS_KEY = "sphenpad-archive-filters-v1";
+
+const DEFAULT_ARCHIVE_FILTER_PREFS: ArchiveFilterPrefs = {
+  query: "",
+  searchField: "any",
+  sortField: "date",
+  hostFilter: "all",
+  authorFilter: "all",
+  collectionFilter: "all",
+  constraintFilters: [],
+  minLength: "",
+  maxLength: "",
+};
 
 function getRenderConfig() {
   const isMobile =
@@ -201,6 +226,40 @@ function isSortField(value: string): value is SortField {
   return SORT_FIELDS.has(value as SortField);
 }
 
+function readInitialArchiveFilterPrefs(): ArchiveFilterPrefs {
+  try {
+    const raw = localStorage.getItem(ARCHIVE_FILTER_PREFS_KEY);
+    if (!raw) return DEFAULT_ARCHIVE_FILTER_PREFS;
+
+    const parsed = JSON.parse(raw) as Partial<ArchiveFilterPrefs>;
+
+    const searchField = typeof parsed.searchField === "string" && isSearchField(parsed.searchField)
+      ? parsed.searchField
+      : DEFAULT_ARCHIVE_FILTER_PREFS.searchField;
+    const sortField = typeof parsed.sortField === "string" && isSortField(parsed.sortField)
+      ? parsed.sortField
+      : DEFAULT_ARCHIVE_FILTER_PREFS.sortField;
+
+    return {
+      query: typeof parsed.query === "string" ? parsed.query : DEFAULT_ARCHIVE_FILTER_PREFS.query,
+      searchField,
+      sortField,
+      hostFilter: typeof parsed.hostFilter === "string" ? parsed.hostFilter : DEFAULT_ARCHIVE_FILTER_PREFS.hostFilter,
+      authorFilter: typeof parsed.authorFilter === "string" ? parsed.authorFilter : DEFAULT_ARCHIVE_FILTER_PREFS.authorFilter,
+      collectionFilter: typeof parsed.collectionFilter === "string"
+        ? parsed.collectionFilter
+        : DEFAULT_ARCHIVE_FILTER_PREFS.collectionFilter,
+      constraintFilters: Array.isArray(parsed.constraintFilters)
+        ? parsed.constraintFilters.filter((value): value is string => typeof value === "string")
+        : DEFAULT_ARCHIVE_FILTER_PREFS.constraintFilters,
+      minLength: typeof parsed.minLength === "string" ? parsed.minLength : DEFAULT_ARCHIVE_FILTER_PREFS.minLength,
+      maxLength: typeof parsed.maxLength === "string" ? parsed.maxLength : DEFAULT_ARCHIVE_FILTER_PREFS.maxLength,
+    };
+  } catch {
+    return DEFAULT_ARCHIVE_FILTER_PREFS;
+  }
+}
+
 type CachedPuzzlePayload = {
   sourceId?: string;
   stableKey?: string;
@@ -241,6 +300,7 @@ async function loadCachedPuzzlePayload(entry: ArchiveEntry): Promise<string | nu
 export function CtCArchivePage() {
   const nav = useNavigate();
   const [renderConfig] = useState(getRenderConfig);
+  const initialFilterPrefs = useMemo(readInitialArchiveFilterPrefs, []);
 
   const [rows, setRows] = useState<PreparedArchiveEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -248,17 +308,44 @@ export function CtCArchivePage() {
   const [importingId, setImportingId] = useState("");
   const [completedKeys, setCompletedKeys] = useState<Set<string>>(new Set());
   const [uiMessage, setUiMessage] = useState("");
-  const [query, setQuery] = useState("");
-  const [searchField, setSearchField] = useState<SearchField>("any");
-  const [sortField, setSortField] = useState<SortField>("date");
-  const [hostFilter, setHostFilter] = useState("all");
-  const [authorFilter, setAuthorFilter] = useState("all");
-  const [collectionFilter, setCollectionFilter] = useState("all");
-  const [constraintFilters, setConstraintFilters] = useState<string[]>([]);
-  const [minLength, setMinLength] = useState("");
-  const [maxLength, setMaxLength] = useState("");
+  const [query, setQuery] = useState(initialFilterPrefs.query);
+  const [searchField, setSearchField] = useState<SearchField>(initialFilterPrefs.searchField);
+  const [sortField, setSortField] = useState<SortField>(initialFilterPrefs.sortField);
+  const [hostFilter, setHostFilter] = useState(initialFilterPrefs.hostFilter);
+  const [authorFilter, setAuthorFilter] = useState(initialFilterPrefs.authorFilter);
+  const [collectionFilter, setCollectionFilter] = useState(initialFilterPrefs.collectionFilter);
+  const [constraintFilters, setConstraintFilters] = useState<string[]>(initialFilterPrefs.constraintFilters);
+  const [minLength, setMinLength] = useState(initialFilterPrefs.minLength);
+  const [maxLength, setMaxLength] = useState(initialFilterPrefs.maxLength);
   const [visibleRowsCount, setVisibleRowsCount] = useState(renderConfig.initialVisibleRows);
   const deferredQuery = useDeferredValue(query);
+
+  useEffect(() => {
+    localStorage.setItem(
+      ARCHIVE_FILTER_PREFS_KEY,
+      JSON.stringify({
+        query,
+        searchField,
+        sortField,
+        hostFilter,
+        authorFilter,
+        collectionFilter,
+        constraintFilters,
+        minLength,
+        maxLength,
+      } satisfies ArchiveFilterPrefs),
+    );
+  }, [
+    query,
+    searchField,
+    sortField,
+    hostFilter,
+    authorFilter,
+    collectionFilter,
+    constraintFilters,
+    minLength,
+    maxLength,
+  ]);
 
   async function refreshCompleted() {
     const completed = await listCompletedPuzzleKeys();
@@ -324,6 +411,20 @@ export function CtCArchivePage() {
     () => Array.from(new Set(rows.flatMap((r) => r.constraintTypes).filter(Boolean))).sort((a, b) => a.localeCompare(b)),
     [rows],
   );
+
+  useEffect(() => {
+    if (!rows.length) return;
+
+    setHostFilter((current) => (current === "all" || hosts.includes(current) ? current : "all"));
+    setAuthorFilter((current) => (current === "all" || authors.includes(current) ? current : "all"));
+    setCollectionFilter((current) => (current === "all" || collections.includes(current) ? current : "all"));
+    setConstraintFilters((current) => {
+      if (!current.length) return current;
+      const valid = new Set(constraintOptions);
+      const next = current.filter((value) => valid.has(value));
+      return next.length === current.length ? current : next;
+    });
+  }, [rows, hosts, authors, collections, constraintOptions]);
 
   const rowsByDate = useMemo(() => [...rows].sort(sortByDateDesc), [rows]);
   const rowsByTitle = useMemo(() => [...rows].sort(sortByTitleAsc), [rows]);

@@ -6,27 +6,38 @@ export type ThemeColor = "bw" | "ocean" | "forest" | "sepia" | "berry";
 type ThemeContextValue = {
   mode: ThemeMode;
   color: ThemeColor;
+  hideTimer: boolean;
+  outlineDigits: boolean;
   setMode: (mode: ThemeMode) => void;
   setColor: (color: ThemeColor) => void;
+  setHideTimer: (hideTimer: boolean) => void;
+  setOutlineDigits: (outlineDigits: boolean) => void;
 };
 
 const STORAGE_KEY = "sphenpad-theme-v1";
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
-function readInitialTheme(): { mode: ThemeMode; color: ThemeColor } {
+function readInitialTheme(): { mode: ThemeMode; color: ThemeColor; hideTimer: boolean; outlineDigits: boolean } {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return { mode: "dark", color: "ocean" };
-    const parsed = JSON.parse(raw) as { mode?: ThemeMode; color?: ThemeColor | "sunset" };
+    if (!raw) return { mode: "dark", color: "ocean", hideTimer: false, outlineDigits: false };
+    const parsed = JSON.parse(raw) as {
+      mode?: ThemeMode;
+      color?: ThemeColor | "sunset";
+      hideTimer?: boolean;
+      outlineDigits?: boolean;
+    };
     const mode: ThemeMode = parsed.mode === "light" || parsed.mode === "dark" ? parsed.mode : "dark";
     const mappedColor = parsed.color === "sunset" ? "sepia" : parsed.color;
     const color: ThemeColor = ["bw", "ocean", "forest", "sepia", "berry"].includes(mappedColor ?? "")
       ? (mappedColor as ThemeColor)
       : "ocean";
-    return { mode, color };
+    const hideTimer = typeof parsed.hideTimer === "boolean" ? parsed.hideTimer : false;
+    const outlineDigits = typeof parsed.outlineDigits === "boolean" ? parsed.outlineDigits : false;
+    return { mode, color, hideTimer, outlineDigits };
   } catch {
-    return { mode: "dark", color: "ocean" };
+    return { mode: "dark", color: "ocean", hideTimer: false, outlineDigits: false };
   }
 }
 
@@ -34,6 +45,8 @@ export function ThemeProvider(props: { children: ReactNode }) {
   const initialTheme = readInitialTheme();
   const [mode, setMode] = useState<ThemeMode>(initialTheme.mode);
   const [color, setColor] = useState<ThemeColor>(initialTheme.color);
+  const [hideTimer, setHideTimer] = useState<boolean>(initialTheme.hideTimer);
+  const [outlineDigits, setOutlineDigits] = useState<boolean>(initialTheme.outlineDigits);
 
   useEffect(() => {
     document.documentElement.dataset.mode = mode;
@@ -52,10 +65,13 @@ export function ThemeProvider(props: { children: ReactNode }) {
     document.documentElement.style.backgroundColor = bg;
     document.body.style.backgroundColor = bg;
 
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ mode, color }));
-  }, [mode, color]);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ mode, color, hideTimer, outlineDigits }));
+  }, [mode, color, hideTimer, outlineDigits]);
 
-  const value = useMemo(() => ({ mode, color, setMode, setColor }), [mode, color]);
+  const value = useMemo(
+    () => ({ mode, color, hideTimer, outlineDigits, setMode, setColor, setHideTimer, setOutlineDigits }),
+    [mode, color, hideTimer, outlineDigits],
+  );
   return <ThemeContext.Provider value={value}>{props.children}</ThemeContext.Provider>;
 }
 

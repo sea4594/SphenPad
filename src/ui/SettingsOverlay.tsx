@@ -11,7 +11,7 @@ const themeChoices: Array<{ key: ThemeColor; label: string; preview: string[] }>
 
 export function SettingsOverlay(props: { onClose: () => void; onRestartRequest?: () => void }) {
   const { onClose, onRestartRequest } = props;
-  const { mode, color, setMode, setColor } = useTheme();
+  const { mode, color, hideTimer, outlineDigits, setMode, setColor, setHideTimer, setOutlineDigits } = useTheme();
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
@@ -59,6 +59,28 @@ export function SettingsOverlay(props: { onClose: () => void; onRestartRequest?:
                 </span>
               </button>
             ))}
+          </div>
+
+          <div className="settingsRow" style={{ marginTop: 4 }}>
+            <div className="muted">Hide live timer</div>
+            <button
+              className={"switch" + (hideTimer ? " is-on" : "")}
+              onClick={() => setHideTimer(!hideTimer)}
+              aria-label="Toggle live timer visibility"
+            >
+              <span className="switchThumb" />
+            </button>
+          </div>
+
+          <div className="settingsRow" style={{ marginTop: 4 }}>
+            <div className="muted">Outline digits</div>
+            <button
+              className={"switch" + (outlineDigits ? " is-on" : "")}
+              onClick={() => setOutlineDigits(!outlineDigits)}
+              aria-label="Toggle digit outline"
+            >
+              <span className="switchThumb" />
+            </button>
           </div>
 
           {onRestartRequest ? (

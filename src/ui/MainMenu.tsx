@@ -13,7 +13,37 @@ type SortOrder = "recent" | "az";
 type FilterStatus = "all" | "not_started" | "in_progress" | "complete";
 type StoredPuzzle = Awaited<ReturnType<typeof listPuzzles>>[number];
 
+type MainMenuFilterPrefs = {
+  sortOrder: SortOrder;
+  filterStatus: FilterStatus;
+};
+
+const MAIN_MENU_FILTER_PREFS_KEY = "sphenpad-main-menu-filters-v1";
+
 const NOOP = () => {};
+
+function readInitialMainMenuFilterPrefs(): MainMenuFilterPrefs {
+  try {
+    const raw = localStorage.getItem(MAIN_MENU_FILTER_PREFS_KEY);
+    if (!raw) return { sortOrder: "recent", filterStatus: "all" };
+
+    const parsed = JSON.parse(raw) as {
+      sortOrder?: SortOrder;
+      filterStatus?: FilterStatus;
+    };
+
+    const sortOrder: SortOrder = parsed.sortOrder === "az" || parsed.sortOrder === "recent"
+      ? parsed.sortOrder
+      : "recent";
+    const filterStatus: FilterStatus = ["all", "not_started", "in_progress", "complete"].includes(parsed.filterStatus ?? "")
+      ? (parsed.filterStatus as FilterStatus)
+      : "all";
+
+    return { sortOrder, filterStatus };
+  } catch {
+    return { sortOrder: "recent", filterStatus: "all" };
+  }
+}
 
 function hasBorderClues(clues: { top?: string[]; bottom?: string[]; left?: string[]; right?: string[] } | undefined): boolean {
   if (!clues) return false;
@@ -86,17 +116,25 @@ function extractConstraintBullets(def: StoredPuzzle["def"]): string[] {
 
 export function MainMenu() {
   const nav = useNavigate();
+  const initialFilterPrefs = useMemo(readInitialMainMenuFilterPrefs, []);
   const [url, setUrl] = useState("");
   const [rows, setRows] = useState<StoredPuzzle[]>([]);
   const [busy, setBusy] = useState<string>("");
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [sortOrder, setSortOrder] = useState<SortOrder>("recent");
-  const [filterStatus, setFilterStatus] = useState<FilterStatus>("all");
+  const [sortOrder, setSortOrder] = useState<SortOrder>(initialFilterPrefs.sortOrder);
+  const [filterStatus, setFilterStatus] = useState<FilterStatus>(initialFilterPrefs.filterStatus);
 
   async function refresh() {
     setRows(await listPuzzles());
   }
   useEffect(() => { refresh(); }, []);
+
+  useEffect(() => {
+    localStorage.setItem(
+      MAIN_MENU_FILTER_PREFS_KEY,
+      JSON.stringify({ sortOrder, filterStatus } satisfies MainMenuFilterPrefs),
+    );
+  }, [sortOrder, filterStatus]);
 
   const totals = useMemo(() => {
     const ms = rows.reduce((a, r) => a + (r.progress?.totalMillis ?? 0), 0);

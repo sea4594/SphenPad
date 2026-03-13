@@ -31,6 +31,7 @@ import {
 import { auth, firebaseEnabled, pullPuzzle, pushPuzzle } from "../firebase/client";
 import { deleteCloudPuzzle } from "../firebase/client";
 import { SettingsOverlay } from "./SettingsOverlay";
+import { useTheme } from "../app/theme";
 
 function rcKey(rc: CellRC) {
   return `${rc.r},${rc.c}`;
@@ -331,6 +332,7 @@ export function PuzzlePage() {
   const { puzzleId } = useParams();
   const key = decodeURIComponent(puzzleId ?? "");
   const nav = useNavigate();
+  const { hideTimer } = useTheme();
 
   const [data, setData] = useState<PersistedPuzzle | null>(null);
   const [pauseMenuOpen, setPauseMenuOpen] = useState(false);
@@ -1357,7 +1359,7 @@ export function PuzzlePage() {
       <div className="topbar puzzleTopbar">
         <button className="btn" onClick={() => nav("/")}>← Menu</button>
         <div className="puzzleTopbarRight">
-          <div className="puzzleTimer">{timeStr}</div>
+          {!hideTimer ? <div className="puzzleTimer">{timeStr}</div> : null}
           <button className="btn" onClick={onPausePlayClick} title="Pause or resume" disabled={data.progress.status === "complete"}>
             {data.progress.status === "complete" ? <IconPause /> : data.progress.paused ? <IconPlay /> : <IconPause />}
           </button>
