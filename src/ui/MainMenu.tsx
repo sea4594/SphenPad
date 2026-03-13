@@ -1,6 +1,5 @@
 import { useDeferredValue, useEffect, useMemo, useState, type MouseEvent } from "react";
 import { useNavigate } from "react-router-dom";
-import { loadFromSudokuPad } from "../core/sudokupad";
 import {
   addPuzzleToFolder,
   createFolder,
@@ -11,11 +10,10 @@ import {
   type PuzzleFolder,
   upsertPuzzle,
 } from "../core/storage";
-import { makeInitialProgress } from "../core/scl";
 import { fmtHMS } from "../core/time";
 import { firebaseEnabled, googleLogin, googleLogout } from "../firebase/client";
 import { GridCanvas } from "./GridCanvas";
-import { IconFolder, IconSettings } from "./icons";
+import { IconFolder, IconHome, IconSettings } from "./icons";
 import { SettingsOverlay } from "./SettingsOverlay";
 
 type SortOrder = "recent" | "az";
@@ -304,10 +302,8 @@ export function MainMenu() {
   const initialFilterPrefs = useMemo(readInitialMainMenuFilterPrefs, []);
   const initialFolderPrefs = useMemo(readInitialFolderMenuPrefs, []);
 
-  const [url, setUrl] = useState("");
   const [rows, setRows] = useState<StoredPuzzle[]>([]);
   const [folders, setFolders] = useState<PuzzleFolder[]>([]);
-  const [busy, setBusy] = useState<string>("");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [sortOrder, setSortOrder] = useState<SortOrder>(initialFilterPrefs.sortOrder);
   const [filterStatus, setFilterStatus] = useState<FilterStatus>(initialFilterPrefs.filterStatus);
@@ -567,23 +563,6 @@ export function MainMenu() {
   const canAddToCurrentFolder = Boolean(addFolderNav);
   const isCurrentFolderAlreadyAdded = addFolderNav ? selectedPuzzleFolderIds.has(addFolderNav.id) : false;
 
-  async function onLoad() {
-    setBusy("Loading puzzle...");
-    try {
-      const { key, def } = await loadFromSudokuPad(url);
-      const progress = makeInitialProgress(def);
-      const now = Date.now();
-      await upsertPuzzle(key, { def, progress, undo: [], redo: [], updatedAt: now, createdAt: now });
-      await refreshPuzzles();
-      nav(`/p/${encodeURIComponent(key)}`);
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : String(e);
-      alert(msg);
-    } finally {
-      setBusy("");
-    }
-  }
-
   async function onConfirmDeletePuzzle() {
     if (!deleteCandidate || deleteBusy) return;
     setDeleteBusy(true);
@@ -598,10 +577,6 @@ export function MainMenu() {
     } finally {
       setDeleteBusy(false);
     }
-  }
-
-  function onOpenFolders() {
-    nav("/folders");
   }
 
   function openPuzzle(key: string) {
@@ -762,23 +737,19 @@ export function MainMenu() {
       <div className="page">
         <div className="mainMenuWrap">
           <div className="card">
-            <div className="menuSectionTitle">Load Puzzle</div>
-            <div className="muted" style={{ marginTop: 2 }}>Paste a sudokupad.app link or a puzzle id</div>
-            <div className="row" style={{ marginTop: 10 }}>
-              <button className="btn" onClick={() => nav("/archive")} type="button">
-                Import from CtC archive
+            <div className="row menuModeTabs" style={{ marginTop: 2 }}>
+              <button className="btn primary menuModeTab" onClick={() => nav("/")} type="button">
+                <IconHome />
+                <span>My Puzzles</span>
               </button>
-              <input
-                className="url"
-                placeholder="https://sudokupad.app/..."
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-              />
-              <button className="btn primary" onClick={onLoad} disabled={!url || !!busy} type="button">
-                Load
+              <button className="btn menuModeTab" onClick={() => nav("/folders")} type="button">
+                <IconFolder />
+                <span>Folders</span>
+              </button>
+              <button className="btn menuModeTab" onClick={() => nav("/archive")} type="button">
+                <span>Import</span>
               </button>
             </div>
-            {busy ? <div className="muted" style={{ marginTop: 10 }}>{busy}</div> : null}
           </div>
 
           <div className="card">
@@ -885,7 +856,7 @@ export function MainMenu() {
             </div>
 
             <div className="menuSecondaryControls">
-              <div className="row" style={{ justifyContent: "space-between", alignItems: "flex-end" }}>
+              <div className="row" style={{ justifyContent: "flex-start", alignItems: "flex-end" }}>
                 <select
                   className="btn menuControlSelect"
                   value={sortOrder}
@@ -895,11 +866,6 @@ export function MainMenu() {
                   <option value="recent">Recent</option>
                   <option value="az">A - Z</option>
                 </select>
-
-                <button className="btn menuFolderButton" onClick={onOpenFolders} type="button">
-                  <IconFolder />
-                  <span>Folders</span>
-                </button>
               </div>
 
               <div className="menuStatusTabs">

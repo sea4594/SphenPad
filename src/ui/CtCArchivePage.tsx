@@ -305,6 +305,8 @@ export function CtCArchivePage() {
   const [rows, setRows] = useState<PreparedArchiveEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [url, setUrl] = useState("");
+  const [busy, setBusy] = useState("");
   const [importingId, setImportingId] = useState("");
   const [completedKeys, setCompletedKeys] = useState<Set<string>>(new Set());
   const [uiMessage, setUiMessage] = useState("");
@@ -515,6 +517,32 @@ export function CtCArchivePage() {
     ));
   }, []);
 
+  async function onLoad() {
+    setBusy("Loading puzzle...");
+    try {
+      const { key, def } = await loadFromSudokuPad(url);
+      const now = Date.now();
+      const existing = await getPuzzle(key);
+      const nextProgress = existing?.progress ?? makeInitialProgress(def);
+
+      await upsertPuzzle(key, {
+        def,
+        progress: nextProgress,
+        undo: existing?.undo ?? [],
+        redo: existing?.redo ?? [],
+        updatedAt: now,
+        createdAt: existing?.createdAt ?? now,
+      });
+
+      nav(`/p/${encodeURIComponent(key)}`);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      alert(msg);
+    } finally {
+      setBusy("");
+    }
+  }
+
   async function onImport(entry: PreparedArchiveEntry) {
     const importSource = clean(entry.sourceId || entry.sudokuPadUrl);
     if (!importSource) {
@@ -589,6 +617,23 @@ export function CtCArchivePage() {
 
       <div className="page">
         <div className="mainMenuWrap">
+          <div className="card">
+            <div className="menuSectionTitle">Load Puzzle</div>
+            <div className="muted" style={{ marginTop: 2 }}>Paste a sudokupad.app link or a puzzle id</div>
+            <div className="row" style={{ marginTop: 10 }}>
+              <input
+                className="url"
+                placeholder="https://sudokupad.app/..."
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+              />
+              <button className="btn primary" onClick={() => void onLoad()} disabled={!url || !!busy} type="button">
+                Load
+              </button>
+            </div>
+            {busy ? <div className="muted" style={{ marginTop: 10 }}>{busy}</div> : null}
+          </div>
+
           <div className="card archiveControls">
             <div className="row">
               <input

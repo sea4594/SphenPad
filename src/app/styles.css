@@ -373,6 +373,22 @@ input.url {
   font-weight: 700;
 }
 
+.menuModeTabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  align-items: stretch;
+}
+
+.menuModeTab {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  text-align: center;
+}
+
 .menuPuzzleList {
   display: grid;
   gap: 8px;

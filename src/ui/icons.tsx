@@ -57,6 +57,13 @@ export const IconFolder = () => (
 	</svg>
 );
 
+export const IconHome = () => (
+	<svg width="18" height="18" viewBox="0 0 20 20" aria-hidden>
+		<path d="M2.6 9.4 10 3.3l7.4 6.1" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+		<path d="M4.5 8.7v7.2h4.2v-4.4h2.6v4.4h4.2V8.7" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+	</svg>
+);
+
 export const IconFolderAdd = () => (
 	<svg width="18" height="18" viewBox="0 0 20 20" aria-hidden>
 		<path
