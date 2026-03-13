@@ -543,6 +543,20 @@ export function GridCanvas(props: {
     const hasImportedRegionBoundaries = regionByCell.size > 0;
     const subgrid = def.cosmetics.subgrid;
 
+    const conflictDomainByCell: boolean[][] = Array.from(
+      { length: rows },
+      () => Array.from({ length: cols }, () => !hasImportedRegionBoundaries),
+    );
+    if (hasImportedRegionBoundaries) {
+      for (const key of regionByCell.keys()) {
+        const [rRaw, cRaw] = key.split(",");
+        const r = Number(rRaw);
+        const c = Number(cRaw);
+        if (!Number.isFinite(r) || !Number.isFinite(c) || !inBounds(r, c)) continue;
+        conflictDomainByCell[r][c] = true;
+      }
+    }
+
     const normalizeSymbol = (symbol: string | undefined): string | null => {
       const trimmed = symbol?.trim() ?? "";
       return trimmed.length ? trimmed : null;
@@ -579,6 +593,7 @@ export function GridCanvas(props: {
     const boxValueCounts = new Map<string, Map<string, number>>();
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
+        if (!conflictDomainByCell[r][c]) continue;
         const symbol = normalizeSymbol(progress.cells[r][c].value);
         if (!symbol) continue;
         addCount(rowValueCounts[r], symbol);
@@ -596,6 +611,7 @@ export function GridCanvas(props: {
 
     const hasBigValuePeer = (r: number, c: number, symbol: string): boolean => {
       if (!conflictChecker) return false;
+      if (!conflictDomainByCell[r][c]) return false;
 
       const selfSymbol = normalizeSymbol(progress.cells[r][c].value);
       const subtractSelf = selfSymbol === symbol ? 1 : 0;
