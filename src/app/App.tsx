@@ -29,9 +29,8 @@ export function App() {
     const getLandscapeDirection = (): "cw" | "ccw" => {
       const legacyAngle = (window as LegacyOrientationWindow).orientation;
       if (typeof legacyAngle === "number" && Math.abs(legacyAngle) === 90) {
-        // iOS +90: left side down (landscape-left) → rotate content CW to correct.
-        // iOS -90: right side down (landscape-right) → rotate content CCW.
-        lastLandscapeDirection = legacyAngle > 0 ? "cw" : "ccw";
+        // iOS +90 / -90 needs opposite cw/ccw mapping from ScreenOrientation.angle.
+        lastLandscapeDirection = legacyAngle > 0 ? "ccw" : "cw";
         return lastLandscapeDirection;
       }
 
@@ -39,11 +38,11 @@ export function App() {
       if (typeof angle === "number") {
         const normalized = ((angle % 360) + 360) % 360;
         if (normalized === 90) {
-          lastLandscapeDirection = "cw";
+          lastLandscapeDirection = "ccw";
           return lastLandscapeDirection;
         }
         if (normalized === 270) {
-          lastLandscapeDirection = "ccw";
+          lastLandscapeDirection = "cw";
           return lastLandscapeDirection;
         }
       }

@@ -150,9 +150,10 @@ body,
 }
 
 #root {
-  /* Cap #root to the visual viewport so there is no blank strip below .shell */
-  height: var(--app-vh, 100dvh);
-  max-height: var(--app-vh, 100dvh);
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   overflow: hidden;
 }
 
@@ -193,20 +194,6 @@ html[data-force-portrait="cw"] {
   --force-safe-inline-end: env(safe-area-inset-bottom);
 }
 
-html[data-force-portrait] #root {
-  /*
-   * Fill the visual screen with a fixed overlay. All content and transforms
-   * live inside .shell below. Keeping #root untransformed means that
-   * getBoundingClientRect and pointer events share the same coordinate space,
-   * which is required for correct tap calibration on the canvas.
-   */
-  position: fixed;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-}
-
 html[data-force-portrait] .shell {
   /*
    * Portrait-sized, centered, then rotated to fill the landscape screen.
@@ -216,8 +203,8 @@ html[data-force-portrait] .shell {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: var(--screen-h, 100dvh);
-  height: var(--screen-w, 100dvw);
+  width: var(--screen-h, 100%);
+  height: var(--screen-w, 100%);
   min-height: 0;
   transform-origin: center center;
   transform: translate(-50%, -50%) rotate(var(--force-rotate, 0deg));
@@ -251,8 +238,8 @@ button,
 .shell {
   display: grid;
   grid-template-rows: auto 1fr;
-  height: var(--app-vh, 100dvh);
-  min-height: var(--app-vh, 100dvh);
+  height: 100%;
+  min-height: 0;
   width: 100%;
   max-width: 100%;
   overflow: hidden;
