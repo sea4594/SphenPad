@@ -15,7 +15,7 @@ import { makeInitialProgress } from "../core/scl";
 import { fmtHMS } from "../core/time";
 import { firebaseEnabled, googleLogin, googleLogout } from "../firebase/client";
 import { GridCanvas } from "./GridCanvas";
-import { IconFolder, IconFolderAdd, IconSettings } from "./icons";
+import { IconFolder, IconSettings } from "./icons";
 import { SettingsOverlay } from "./SettingsOverlay";
 
 type SortOrder = "recent" | "az";
@@ -242,6 +242,7 @@ export function MainMenu() {
 
   const [deleteCandidate, setDeleteCandidate] = useState<StoredPuzzle | null>(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
+  const [mainPuzzleMenuKey, setMainPuzzleMenuKey] = useState<string | null>(null);
 
   const [addToFolderPuzzle, setAddToFolderPuzzle] = useState<StoredPuzzle | null>(null);
   const [addFolderNavId, setAddFolderNavId] = useState<string | null>(null);
@@ -290,11 +291,6 @@ export function MainMenu() {
   useEffect(() => {
     setFolderPuzzleMenu(null);
   }, [activeFolderId, foldersOpen]);
-
-  const totals = useMemo(() => {
-    const ms = rows.reduce((a, r) => a + (r.progress?.totalMillis ?? 0), 0);
-    return fmtHMS(ms);
-  }, [rows]);
 
   const statusCounts = useMemo(() => {
     const counts: Record<FilterStatus, number> = {
@@ -449,7 +445,25 @@ export function MainMenu() {
     nav(`/p/${encodeURIComponent(key)}`);
   }
 
+  function sudokuPadUrlFor(row: StoredPuzzle): string | null {
+    const source = (row.def?.sourceId ?? row.key).trim();
+    if (!source) return null;
+    if (/^https?:\/\//i.test(source)) return source;
+    return `https://sudokupad.app/${encodeURI(source.replace(/^\/+/, ""))}`;
+  }
+
+  function onOpenPuzzleInSudokuPad(row: StoredPuzzle) {
+    const url = sudokuPadUrlFor(row);
+    if (!url) {
+      alert("No SudokuPad source URL found for this puzzle.");
+      return;
+    }
+    window.open(url, "_blank", "noopener,noreferrer");
+    setMainPuzzleMenuKey(null);
+  }
+
   function onOpenAddToFolder(puzzle: StoredPuzzle) {
+    setMainPuzzleMenuKey(null);
     setAddToFolderPuzzle(puzzle);
     setAddFolderNavId(null);
     setAddToFolderBusy("");
@@ -531,7 +545,6 @@ export function MainMenu() {
     <div className="shell">
       <div className="topbar">
         <div className="brand">SphenPad</div>
-        <div className="muted">Total time: {totals}</div>
         <div className="spacer" />
         <button className="btn" onClick={() => setSettingsOpen(true)} title="Settings" type="button">
           <IconSettings />
@@ -664,17 +677,45 @@ export function MainMenu() {
                       </div>
 
                       <div className="row menuPuzzleActions">
+                        {mainPuzzleMenuKey === row.key ? (
+                          <div
+                            className="card menuPuzzleMoreMenu"
+                            onClick={(event) => event.stopPropagation()}
+                          >
+                            <button
+                              className="btn menuPuzzleMoreItem"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                onOpenAddToFolder(row);
+                              }}
+                              type="button"
+                            >
+                              Add to folder
+                            </button>
+                            <button
+                              className="btn menuPuzzleMoreItem"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                onOpenPuzzleInSudokuPad(row);
+                              }}
+                              type="button"
+                            >
+                              Open in SudokuPad
+                            </button>
+                          </div>
+                        ) : null}
+
                         <button
-                          className="btn menuPuzzleIconButton"
+                          className="btn menuPuzzleIconButton menuPuzzleMoreButton"
                           onClick={(event) => {
                             event.stopPropagation();
-                            onOpenAddToFolder(row);
+                            setMainPuzzleMenuKey((current) => (current === row.key ? null : row.key));
                           }}
-                          title="Add to folder"
-                          aria-label={`Add ${row.def?.meta?.title || "puzzle"} to folder`}
+                          title="Puzzle options"
+                          aria-label={`Options for ${row.def?.meta?.title || "puzzle"}`}
                           type="button"
                         >
-                          <IconFolderAdd />
+                          <span aria-hidden>...</span>
                         </button>
 
                         <button
@@ -1013,7 +1054,7 @@ export function MainMenu() {
               {addToFolderPuzzle.def?.meta?.title || "(untitled)"}
             </div>
 
-            <div className="row folderBreadcrumbRow" style={{ marginTop: 10 }}>
+            <div className="row folderBreadcrumbRow addFolderBreadcrumbRow" style={{ marginTop: 10 }}>
               <button
                 className={`btn ${addFolderNavId === null ? "primary" : ""}`}
                 onClick={() => setAddFolderNavId(null)}
@@ -1033,91 +1074,93 @@ export function MainMenu() {
               ))}
             </div>
 
-            <div className="row" style={{ marginTop: 10, justifyContent: "space-between", alignItems: "center" }}>
-              <div className="muted" style={{ fontSize: 13 }}>
-                {addFolderNav
-                  ? `Current folder: ${buildFolderPath(addFolderNav, folderById)}`
-                  : "Current folder: Top-level folders"}
-              </div>
-              <button
-                className="btn primary"
-                onClick={() => {
-                  if (!addFolderNav) return;
-                  void onAddPuzzleToExistingFolder(addFolderNav.id);
-                }}
-                disabled={!canAddToCurrentFolder || isCurrentFolderAlreadyAdded || !!addToFolderBusy}
-                type="button"
-              >
-                {!canAddToCurrentFolder
-                  ? "Select Folder"
-                  : isCurrentFolderAlreadyAdded
-                    ? "Already Added"
-                    : addToFolderBusy
-                      ? "Adding..."
-                      : "Add Here"}
-              </button>
-            </div>
-
-            <div className="menuPuzzleList addFolderNavigatorList" style={{ marginTop: 10 }}>
-              {addDialogChildFolders.map((folder) => {
-                const childCount = folderChildCounts.get(folder.id) ?? 0;
-                const puzzleCount = folder.puzzleKeys.length;
-                const alreadyAdded = selectedPuzzleFolderIds.has(folder.id);
-                return (
-                  <button
-                    key={`add-folder-nav-${folder.id}`}
-                    className="card folderBrowserItem"
-                    onClick={() => setAddFolderNavId(folder.id)}
-                    type="button"
-                  >
-                    <div className="row" style={{ justifyContent: "space-between", alignItems: "flex-start" }}>
-                      <div className="row" style={{ gap: 6 }}>
-                        <IconFolder />
-                        <div style={{ fontWeight: 700, overflowWrap: "anywhere" }}>{folder.name}</div>
-                      </div>
-                    </div>
-                    <div className="muted" style={{ fontSize: 13 }}>
-                      {puzzleCount} puzzle{puzzleCount === 1 ? "" : "s"} | {childCount} subfolder{childCount === 1 ? "" : "s"}
-                      {alreadyAdded ? " | already added" : ""}
-                    </div>
-                  </button>
-                );
-              })}
-              {!addDialogChildFolders.length ? (
-                <div className="muted">No folders in this location.</div>
-              ) : null}
-            </div>
-
-            <div className="card" style={{ marginTop: 12 }}>
-              <div style={{ fontWeight: 700 }}>Create new folder in current location</div>
-              <div className="muted" style={{ marginTop: 6, fontSize: 13 }}>
-                {addFolderNav
-                  ? `Location: ${buildFolderPath(addFolderNav, folderById)}`
-                  : "Location: Top-level folders"}
-              </div>
-              <div className="row" style={{ marginTop: 8 }}>
-                <input
-                  className="url"
-                  placeholder="Folder name"
-                  value={addFolderName}
-                  onChange={(event) => setAddFolderName(event.target.value)}
-                />
-              </div>
-              <div className="row" style={{ marginTop: 8, justifyContent: "flex-end" }}>
+            <div className="addFolderDialogBody">
+              <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
+                <div className="muted" style={{ fontSize: 13 }}>
+                  {addFolderNav
+                    ? `Current folder: ${buildFolderPath(addFolderNav, folderById)}`
+                    : "Current folder: Top-level folders"}
+                </div>
                 <button
                   className="btn primary"
                   onClick={() => {
-                    void onCreateFolderAndAddPuzzle();
+                    if (!addFolderNav) return;
+                    void onAddPuzzleToExistingFolder(addFolderNav.id);
                   }}
-                  disabled={!addFolderName.trim() || !!addToFolderBusy}
+                  disabled={!canAddToCurrentFolder || isCurrentFolderAlreadyAdded || !!addToFolderBusy}
                   type="button"
                 >
-                  Create + Add
+                  {!canAddToCurrentFolder
+                    ? "Select Folder"
+                    : isCurrentFolderAlreadyAdded
+                      ? "Already Added"
+                      : addToFolderBusy
+                        ? "Adding..."
+                        : "Add Here"}
                 </button>
               </div>
-            </div>
 
-            {addToFolderBusy ? <div className="muted" style={{ marginTop: 10 }}>{addToFolderBusy}</div> : null}
+              <div className="menuPuzzleList addFolderNavigatorList" style={{ marginTop: 10 }}>
+                {addDialogChildFolders.map((folder) => {
+                  const childCount = folderChildCounts.get(folder.id) ?? 0;
+                  const puzzleCount = folder.puzzleKeys.length;
+                  const alreadyAdded = selectedPuzzleFolderIds.has(folder.id);
+                  return (
+                    <button
+                      key={`add-folder-nav-${folder.id}`}
+                      className="card folderBrowserItem"
+                      onClick={() => setAddFolderNavId(folder.id)}
+                      type="button"
+                    >
+                      <div className="row" style={{ justifyContent: "space-between", alignItems: "flex-start" }}>
+                        <div className="row" style={{ gap: 6 }}>
+                          <IconFolder />
+                          <div style={{ fontWeight: 700, overflowWrap: "anywhere" }}>{folder.name}</div>
+                        </div>
+                      </div>
+                      <div className="muted" style={{ fontSize: 13 }}>
+                        {puzzleCount} puzzle{puzzleCount === 1 ? "" : "s"} | {childCount} subfolder{childCount === 1 ? "" : "s"}
+                        {alreadyAdded ? " | already added" : ""}
+                      </div>
+                    </button>
+                  );
+                })}
+                {!addDialogChildFolders.length ? (
+                  <div className="muted">No folders in this location.</div>
+                ) : null}
+              </div>
+
+              <div className="card addFolderCreateCard">
+                <div style={{ fontWeight: 700 }}>Create new folder in current location</div>
+                <div className="muted" style={{ marginTop: 6, fontSize: 13 }}>
+                  {addFolderNav
+                    ? `Location: ${buildFolderPath(addFolderNav, folderById)}`
+                    : "Location: Top-level folders"}
+                </div>
+                <div className="row" style={{ marginTop: 8 }}>
+                  <input
+                    className="url"
+                    placeholder="Folder name"
+                    value={addFolderName}
+                    onChange={(event) => setAddFolderName(event.target.value)}
+                  />
+                </div>
+                <div className="row" style={{ marginTop: 8, justifyContent: "flex-end" }}>
+                  <button
+                    className="btn primary"
+                    onClick={() => {
+                      void onCreateFolderAndAddPuzzle();
+                    }}
+                    disabled={!addFolderName.trim() || !!addToFolderBusy}
+                    type="button"
+                  >
+                    Create + Add
+                  </button>
+                </div>
+              </div>
+
+              <div className="muted addFolderBusyLine">{addToFolderBusy || "\u00A0"}</div>
+            </div>
           </div>
         </div>
       ) : null}

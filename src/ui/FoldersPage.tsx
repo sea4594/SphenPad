@@ -2,10 +2,12 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   createFolder,
+  deleteFolder as deleteFolderById,
   deletePuzzle,
   listFolders,
   listPuzzles,
   removePuzzleFromFolder,
+  renameFolder,
   type PuzzleFolder,
 } from "../core/storage";
 import { fmtHMS } from "../core/time";
@@ -200,6 +202,12 @@ export function FoldersPage() {
 
   const [folderPuzzleMenu, setFolderPuzzleMenu] = useState<{ folderId: string; puzzleKey: string } | null>(null);
   const [folderActionBusyKey, setFolderActionBusyKey] = useState<string | null>(null);
+  const [folderRowMenuId, setFolderRowMenuId] = useState<string | null>(null);
+  const [renameFolderTarget, setRenameFolderTarget] = useState<PuzzleFolder | null>(null);
+  const [renameFolderValue, setRenameFolderValue] = useState("");
+  const [renameFolderBusy, setRenameFolderBusy] = useState(false);
+  const [deleteFolderTarget, setDeleteFolderTarget] = useState<PuzzleFolder | null>(null);
+  const [deleteFolderBusy, setDeleteFolderBusy] = useState(false);
 
   const [deleteCandidate, setDeleteCandidate] = useState<StoredPuzzle | null>(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
@@ -230,12 +238,8 @@ export function FoldersPage() {
 
   useEffect(() => {
     setFolderPuzzleMenu(null);
+    setFolderRowMenuId(null);
   }, [activeFolderId]);
-
-  const totals = useMemo(() => {
-    const totalMillis = rows.reduce((sum, row) => sum + (row.progress?.totalMillis ?? 0), 0);
-    return fmtHMS(totalMillis);
-  }, [rows]);
 
   const folderById = useMemo(() => {
     return new Map(folders.map((folder) => [folder.id, folder]));
@@ -340,6 +344,42 @@ export function FoldersPage() {
     }
   }
 
+  async function onConfirmRenameFolder() {
+    if (!renameFolderTarget || renameFolderBusy) return;
+    const nextName = renameFolderValue.trim();
+    if (!nextName) return;
+
+    setRenameFolderBusy(true);
+    try {
+      await renameFolder(renameFolderTarget.id, nextName);
+      await refresh();
+      setRenameFolderTarget(null);
+      setRenameFolderValue("");
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      alert(msg);
+    } finally {
+      setRenameFolderBusy(false);
+    }
+  }
+
+  async function onConfirmDeleteFolder() {
+    if (!deleteFolderTarget || deleteFolderBusy) return;
+
+    setDeleteFolderBusy(true);
+    try {
+      await deleteFolderById(deleteFolderTarget.id);
+      await refresh();
+      setDeleteFolderTarget(null);
+      setFolderRowMenuId(null);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      alert(msg);
+    } finally {
+      setDeleteFolderBusy(false);
+    }
+  }
+
   function openPuzzle(key: string) {
     nav(`/p/${encodeURIComponent(key)}`);
   }
@@ -351,7 +391,6 @@ export function FoldersPage() {
         <div className="brand">SphenPad</div>
         <div className="muted">Folders</div>
         <div className="spacer" />
-        <div className="muted">Total time: {totals}</div>
         <button className="btn" onClick={() => setSettingsOpen(true)} title="Settings" type="button">
           <IconSettings />
         </button>
@@ -430,22 +469,66 @@ export function FoldersPage() {
                 const childCount = folderChildCounts.get(folder.id) ?? 0;
                 const puzzleCount = folder.puzzleKeys.length;
                 return (
-                  <button
-                    key={folder.id}
-                    className="card folderBrowserItem"
-                    onClick={() => setActiveFolderId(folder.id)}
-                    type="button"
-                  >
-                    <div className="row" style={{ justifyContent: "space-between", alignItems: "flex-start" }}>
-                      <div className="row" style={{ gap: 6 }}>
-                        <IconFolder />
-                        <div style={{ fontWeight: 700, overflowWrap: "anywhere" }}>{folder.name}</div>
+                  <div key={folder.id} className="card folderBrowserItem folderBrowserItemWithMenu">
+                    <button
+                      className="folderBrowserMainButton"
+                      onClick={() => setActiveFolderId(folder.id)}
+                      type="button"
+                    >
+                      <div className="row" style={{ justifyContent: "space-between", alignItems: "flex-start" }}>
+                        <div className="row" style={{ gap: 6 }}>
+                          <IconFolder />
+                          <div style={{ fontWeight: 700, overflowWrap: "anywhere" }}>{folder.name}</div>
+                        </div>
                       </div>
+                      <div className="muted" style={{ fontSize: 13 }}>
+                        {puzzleCount} puzzle{puzzleCount === 1 ? "" : "s"} | {childCount} subfolder{childCount === 1 ? "" : "s"}
+                      </div>
+                    </button>
+
+                    <div className="row menuPuzzleActions folderBrowserActions">
+                      <button
+                        className="btn menuPuzzleIconButton menuPuzzleMoreButton"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          setFolderRowMenuId((current) => (current === folder.id ? null : folder.id));
+                        }}
+                        title="Folder options"
+                        aria-label={`Options for folder ${folder.name}`}
+                        type="button"
+                      >
+                        <span aria-hidden>...</span>
+                      </button>
+
+                      {folderRowMenuId === folder.id ? (
+                        <div className="card menuPuzzleMoreMenu" onClick={(event) => event.stopPropagation()}>
+                          <button
+                            className="btn menuPuzzleMoreItem"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setFolderRowMenuId(null);
+                              setRenameFolderTarget(folder);
+                              setRenameFolderValue(folder.name);
+                            }}
+                            type="button"
+                          >
+                            Rename folder
+                          </button>
+                          <button
+                            className="btn danger menuPuzzleMoreItem"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setFolderRowMenuId(null);
+                              setDeleteFolderTarget(folder);
+                            }}
+                            type="button"
+                          >
+                            Delete folder
+                          </button>
+                        </div>
+                      ) : null}
                     </div>
-                    <div className="muted" style={{ fontSize: 13 }}>
-                      {puzzleCount} puzzle{puzzleCount === 1 ? "" : "s"} | {childCount} subfolder{childCount === 1 ? "" : "s"}
-                    </div>
-                  </button>
+                  </div>
                 );
               })}
 
@@ -655,6 +738,94 @@ export function FoldersPage() {
                 type="button"
               >
                 {deleteBusy ? "Deleting..." : "Delete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {renameFolderTarget ? (
+        <div className="overlayBackdrop" onClick={() => (!renameFolderBusy ? setRenameFolderTarget(null) : null)}>
+          <div
+            className="card confirmDialogCard"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Rename folder"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div style={{ fontSize: 22, fontWeight: 800 }}>Rename folder</div>
+            <div className="muted" style={{ marginTop: 6, overflowWrap: "anywhere" }}>
+              {buildFolderPath(renameFolderTarget, folderById)}
+            </div>
+            <div className="row" style={{ marginTop: 10 }}>
+              <input
+                className="url"
+                placeholder="Folder name"
+                value={renameFolderValue}
+                onChange={(event) => setRenameFolderValue(event.target.value)}
+                autoFocus
+              />
+            </div>
+            <div className="row" style={{ marginTop: 14, justifyContent: "flex-end" }}>
+              <button
+                className="btn"
+                onClick={() => setRenameFolderTarget(null)}
+                disabled={renameFolderBusy}
+                type="button"
+              >
+                Cancel
+              </button>
+              <button
+                className="btn primary"
+                onClick={() => {
+                  void onConfirmRenameFolder();
+                }}
+                disabled={!renameFolderValue.trim() || renameFolderBusy}
+                type="button"
+              >
+                {renameFolderBusy ? "Renaming..." : "Rename"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {deleteFolderTarget ? (
+        <div className="overlayBackdrop" onClick={() => (!deleteFolderBusy ? setDeleteFolderTarget(null) : null)}>
+          <div
+            className="card confirmDialogCard"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Delete folder"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div style={{ fontSize: 22, fontWeight: 800 }}>Delete folder?</div>
+            <div style={{ marginTop: 8 }}>Are you sure you want to delete this folder?</div>
+            <div className="muted" style={{ marginTop: 6, overflowWrap: "anywhere" }}>
+              {buildFolderPath(deleteFolderTarget, folderById)}
+            </div>
+            <div className="muted" style={{ marginTop: 6 }}>
+              Any subfolders inside it will also be removed.
+            </div>
+
+            <div className="row" style={{ marginTop: 14, justifyContent: "flex-end" }}>
+              <button
+                className="btn"
+                onClick={() => setDeleteFolderTarget(null)}
+                disabled={deleteFolderBusy}
+                type="button"
+              >
+                Cancel
+              </button>
+              <button
+                className="btn danger"
+                onClick={() => {
+                  void onConfirmDeleteFolder();
+                }}
+                disabled={deleteFolderBusy}
+                type="button"
+              >
+                {deleteFolderBusy ? "Deleting..." : "Delete Folder"}
               </button>
             </div>
           </div>

@@ -109,6 +109,50 @@ export async function removePuzzleFromFolder(folderId: string, puzzleKey: string
   });
 }
 
+export async function renameFolder(folderId: string, name: string) {
+  const trimmed = name.trim();
+  if (!trimmed) throw new Error("Folder name is required.");
+
+  await db.transaction("rw", db.folders, async () => {
+    const folder = await db.folders.get(folderId);
+    if (!folder) throw new Error("Folder not found.");
+    await db.folders.put({
+      ...folder,
+      name: trimmed,
+      updatedAt: Date.now(),
+    });
+  });
+}
+
+export async function deleteFolder(folderId: string) {
+  await db.transaction("rw", db.folders, async () => {
+    const folders = await db.folders.toArray();
+    if (!folders.some((folder) => folder.id === folderId)) {
+      throw new Error("Folder not found.");
+    }
+
+    const byParent = new Map<string | null, PuzzleFolder[]>();
+    for (const folder of folders) {
+      const parentKey = folder.parentId ?? null;
+      const current = byParent.get(parentKey) ?? [];
+      current.push(folder);
+      byParent.set(parentKey, current);
+    }
+
+    const toDelete = new Set<string>();
+    const stack = [folderId];
+    while (stack.length) {
+      const currentId = stack.pop();
+      if (!currentId || toDelete.has(currentId)) continue;
+      toDelete.add(currentId);
+      const children = byParent.get(currentId) ?? [];
+      for (const child of children) stack.push(child.id);
+    }
+
+    await db.folders.bulkDelete(Array.from(toDelete));
+  });
+}
+
 export async function deletePuzzle(key: string) {
   await db.transaction("rw", db.puzzles, db.folders, async () => {
     await db.puzzles.delete(key);

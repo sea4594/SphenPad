@@ -583,16 +583,72 @@ input.url {
   gap: 6px;
 }
 
+.folderBrowserItemWithMenu {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: start;
+}
+
+.folderBrowserMainButton {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  padding: 0;
+  cursor: pointer;
+  width: 100%;
+  display: grid;
+  gap: 6px;
+}
+
+.folderBrowserActions {
+  justify-content: flex-end;
+  align-self: start;
+}
+
 .folderPickerCard {
   width: min(760px, 100%);
-  max-height: min(92dvh, calc(100vh - 24px));
-  overflow: auto;
+  height: min(86dvh, 760px);
+  max-height: calc(100vh - 24px);
+  overflow: hidden;
+  display: grid;
+  grid-template-rows: auto auto auto minmax(0, 1fr);
+}
+
+.addFolderDialogBody {
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
+  gap: 10px;
+}
+
+.addFolderBreadcrumbRow {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  align-items: center;
+  padding-bottom: 2px;
+}
+
+.addFolderBreadcrumbRow .btn {
+  flex: 0 0 auto;
 }
 
 .addFolderNavigatorList {
-  max-height: min(40dvh, 380px);
+  max-height: none;
   overflow: auto;
   padding-right: 2px;
+  min-height: 0;
+  margin-top: 0 !important;
+}
+
+.addFolderCreateCard {
+  margin-top: 0 !important;
+}
+
+.addFolderBusyLine {
+  min-height: 18px;
 }
 
 .menuFolderPickButton {
