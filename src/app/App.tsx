@@ -21,8 +21,10 @@ export function App() {
     const getViewportSize = () => {
       const layoutW = Math.max(1, Math.round(window.innerWidth));
       const layoutH = Math.max(1, Math.round(window.innerHeight));
-      const vw = Math.max(1, Math.round(visualViewport?.width ?? layoutW));
-      const vh = Math.max(1, Math.round(visualViewport?.height ?? layoutH));
+      const visualW = Math.max(1, Math.round(visualViewport?.width ?? layoutW));
+      const visualH = Math.max(1, Math.round(visualViewport?.height ?? layoutH));
+      const vw = Math.max(layoutW, visualW);
+      const vh = Math.max(layoutH, visualH);
       return { vw, vh };
     };
 
@@ -53,7 +55,6 @@ export function App() {
 
     const updateForcedPortraitMode = () => {
       const { vw, vh } = getViewportSize();
-      root.style.setProperty("--app-vh", `${vh}px`);
       const rotatedLandscape = vw > vh;
       if (onMobileDevice && rotatedLandscape) {
         // vw = landscape visual width (long side = maps to portrait height after rotation)
@@ -113,7 +114,6 @@ export function App() {
       visualViewport?.removeEventListener("resize", onViewportChange);
       coarsePointer.removeEventListener?.("change", onViewportChange);
       root.removeAttribute("data-force-portrait");
-      root.style.removeProperty("--app-vh");
       root.style.removeProperty("--screen-w");
       root.style.removeProperty("--screen-h");
     };
