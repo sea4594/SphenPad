@@ -68,7 +68,7 @@ export function GridCanvas(props: {
   previewMode?: boolean;
 }) {
   const { def, progress, interactive = true, previewMode = false } = props;
-  const { outlineDigits } = useTheme();
+  const { outlineDigits, conflictChecker } = useTheme();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const dragRef = useRef<DragState | null>(null);
@@ -542,6 +542,75 @@ export function GridCanvas(props: {
     });
     const hasImportedRegionBoundaries = regionByCell.size > 0;
     const subgrid = def.cosmetics.subgrid;
+
+    const normalizeSymbol = (symbol: string | undefined): string | null => {
+      const trimmed = symbol?.trim() ?? "";
+      return trimmed.length ? trimmed : null;
+    };
+
+    const boxKeyByCell: Array<Array<string | null>> = Array.from(
+      { length: rows },
+      () => Array.from({ length: cols }, () => null),
+    );
+    if (regionByCell.size > 0) {
+      for (const [key, regionIndex] of regionByCell.entries()) {
+        const [rRaw, cRaw] = key.split(",");
+        const r = Number(rRaw);
+        const c = Number(cRaw);
+        if (!Number.isFinite(r) || !Number.isFinite(c) || !inBounds(r, c)) continue;
+        boxKeyByCell[r][c] = `region:${regionIndex}`;
+      }
+    } else if (subgrid && subgrid.r > 0 && subgrid.c > 0) {
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const br = Math.floor(r / subgrid.r);
+          const bc = Math.floor(c / subgrid.c);
+          boxKeyByCell[r][c] = `subgrid:${br},${bc}`;
+        }
+      }
+    }
+
+    const addCount = (map: Map<string, number>, symbol: string) => {
+      map.set(symbol, (map.get(symbol) ?? 0) + 1);
+    };
+
+    const rowValueCounts = Array.from({ length: rows }, () => new Map<string, number>());
+    const colValueCounts = Array.from({ length: cols }, () => new Map<string, number>());
+    const boxValueCounts = new Map<string, Map<string, number>>();
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const symbol = normalizeSymbol(progress.cells[r][c].value);
+        if (!symbol) continue;
+        addCount(rowValueCounts[r], symbol);
+        addCount(colValueCounts[c], symbol);
+        const boxKey = boxKeyByCell[r][c];
+        if (!boxKey) continue;
+        let boxCounts = boxValueCounts.get(boxKey);
+        if (!boxCounts) {
+          boxCounts = new Map<string, number>();
+          boxValueCounts.set(boxKey, boxCounts);
+        }
+        addCount(boxCounts, symbol);
+      }
+    }
+
+    const hasBigValuePeer = (r: number, c: number, symbol: string): boolean => {
+      if (!conflictChecker) return false;
+
+      const selfSymbol = normalizeSymbol(progress.cells[r][c].value);
+      const subtractSelf = selfSymbol === symbol ? 1 : 0;
+
+      const rowPeers = (rowValueCounts[r].get(symbol) ?? 0) - subtractSelf;
+      if (rowPeers > 0) return true;
+
+      const colPeers = (colValueCounts[c].get(symbol) ?? 0) - subtractSelf;
+      if (colPeers > 0) return true;
+
+      const boxKey = boxKeyByCell[r][c];
+      if (!boxKey) return false;
+      const boxPeers = (boxValueCounts.get(boxKey)?.get(symbol) ?? 0) - subtractSelf;
+      return boxPeers > 0;
+    };
 
     const drawRegionBoundaries = (thickGridLine: number) => {
       if (!hasImportedRegionBoundaries) return;
@@ -1213,6 +1282,33 @@ export function GridCanvas(props: {
       }
       ctx.fillText(text, x, y);
     };
+    const noteColor = "#1e2633";
+    const conflictColor = "#d93025";
+    const drawSymbolRun = (
+      symbols: string[],
+      x: number,
+      y: number,
+      opts: { align: "left" | "center"; isConflict: (symbol: string) => boolean }
+    ) => {
+      const values = symbols.map((symbol) => normalizeSymbol(symbol)).filter(Boolean) as string[];
+      if (!values.length) return;
+
+      const widths = values.map((symbol) => Math.max(0.001, ctx.measureText(symbol).width));
+      const spacing = Math.max(0.2, noteFontPx * 0.05);
+      const totalWidth =
+        widths.reduce((sum, width) => sum + width, 0) +
+        Math.max(0, values.length - 1) * spacing;
+      let cursor = opts.align === "center" ? x - totalWidth / 2 : x;
+
+      ctx.textAlign = "center";
+      for (let i = 0; i < values.length; i++) {
+        const symbol = values[i] as string;
+        const width = widths[i] as number;
+        ctx.fillStyle = opts.isConflict(symbol) ? conflictColor : noteColor;
+        drawDigitText(symbol, cursor + width / 2, y);
+        cursor += width + spacing;
+      }
+    };
     if (fogDefined) {
       const addLight = (rc: CellRC) => {
         if (!inBounds(rc.r, rc.c)) return;
@@ -1253,14 +1349,18 @@ export function GridCanvas(props: {
         const x0 = cellX(c);
         const y0 = cellY(r);
 
-        if (cell.value) {
-          ctx.fillStyle = cell.given ? "#111111" : "#123f9a";
+        const valueSymbol = normalizeSymbol(cell.value);
+        if (valueSymbol) {
+          ctx.fillStyle = hasBigValuePeer(r, c, valueSymbol)
+            ? conflictColor
+            : cell.given
+              ? "#111111"
+              : "#123f9a";
           ctx.font = cell.given ? `700 ${valueFontPx}px ${gridTextFont}, ${emojiTextFont}` : `650 ${valueFontPx}px ${gridTextFont}, ${emojiTextFont}`;
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";
-          drawDigitText(cell.value, x0 + cellPx / 2, y0 + cellPx / 2 + 1);
+          drawDigitText(valueSymbol, x0 + cellPx / 2, y0 + cellPx / 2 + 1);
         } else {
-          ctx.fillStyle = "#1e2633";
           ctx.font = `${noteFontPx}px ${gridTextFont}, ${emojiTextFont}`;
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";
@@ -1268,14 +1368,18 @@ export function GridCanvas(props: {
           const corner = [...cell.notes.corner].sort();
           if (corner.length) {
             const hasCageLabel = cageLabelCells.has(`${r},${c}`);
-            ctx.textAlign = "left";
-            drawDigitText(corner.join(""), x0 + cornerInsetX, y0 + (hasCageLabel ? cornerBaseY * 2 : cornerBaseY));
+            drawSymbolRun(corner, x0 + cornerInsetX, y0 + (hasCageLabel ? cornerBaseY * 2 : cornerBaseY), {
+              align: "left",
+              isConflict: (symbol) => hasBigValuePeer(r, c, symbol),
+            });
           }
 
           const center = [...cell.notes.center].sort();
           if (center.length) {
-            ctx.textAlign = "center";
-            drawDigitText(center.join(""), x0 + cellPx / 2, y0 + cellPx / 2);
+            drawSymbolRun(center, x0 + cellPx / 2, y0 + cellPx / 2, {
+              align: "center",
+              isConflict: (symbol) => hasBigValuePeer(r, c, symbol),
+            });
           }
 
           const cand = new Set(cell.notes.candidates);
@@ -1283,12 +1387,15 @@ export function GridCanvas(props: {
             ctx.font = `${candidateFontPx}px ${gridTextFont}, ${emojiTextFont}`;
             ctx.textAlign = "center";
             const sym = Array.from(cand).sort();
-            for (const s of sym) {
-              const idx = Number.isFinite(Number(s)) ? Number(s) : s.charCodeAt(0) - 64;
+            for (const rawSymbol of sym) {
+              const symbol = normalizeSymbol(rawSymbol);
+              if (!symbol) continue;
+              const idx = Number.isFinite(Number(symbol)) ? Number(symbol) : symbol.charCodeAt(0) - 64;
               if (!idx) continue;
               const rr = Math.floor((idx - 1) / 3);
               const cc = (idx - 1) % 3;
-              ctx.fillText(s, x0 + (cc + 0.5) * (cellPx / 3), y0 + (rr + 0.5) * (cellPx / 3));
+              ctx.fillStyle = hasBigValuePeer(r, c, symbol) ? conflictColor : noteColor;
+              ctx.fillText(symbol, x0 + (cc + 0.5) * (cellPx / 3), y0 + (rr + 0.5) * (cellPx / 3));
             }
           }
         }
@@ -1343,32 +1450,40 @@ export function GridCanvas(props: {
           const x0 = cellX(c);
           const y0 = cellY(r);
 
-          if (cell.value) {
+          const valueSymbol = normalizeSymbol(cell.value);
+          if (valueSymbol) {
             if (cell.given && !lit[r][c]) continue;
-            ctx.fillStyle = cell.given ? "#111111" : "#123f9a";
+            ctx.fillStyle = hasBigValuePeer(r, c, valueSymbol)
+              ? conflictColor
+              : cell.given
+                ? "#111111"
+                : "#123f9a";
             ctx.font = cell.given ? `700 ${valueFontPx}px ${gridTextFont}, ${emojiTextFont}` : `650 ${valueFontPx}px ${gridTextFont}, ${emojiTextFont}`;
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
-            drawDigitText(cell.value, x0 + cellPx / 2, y0 + cellPx / 2 + 1);
+            drawDigitText(valueSymbol, x0 + cellPx / 2, y0 + cellPx / 2 + 1);
             continue;
           }
 
           if (cell.given) continue;
-          ctx.fillStyle = "#1e2633";
           ctx.font = `${noteFontPx}px ${gridTextFont}, ${emojiTextFont}`;
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";
 
           const corner = [...cell.notes.corner].sort();
           if (corner.length) {
-            ctx.textAlign = "left";
-            drawDigitText(corner.join(""), x0 + cornerInsetX, y0 + cornerBaseY);
+            drawSymbolRun(corner, x0 + cornerInsetX, y0 + cornerBaseY, {
+              align: "left",
+              isConflict: (symbol) => hasBigValuePeer(r, c, symbol),
+            });
           }
 
           const center = [...cell.notes.center].sort();
           if (center.length) {
-            ctx.textAlign = "center";
-            drawDigitText(center.join(""), x0 + cellPx / 2, y0 + cellPx / 2);
+            drawSymbolRun(center, x0 + cellPx / 2, y0 + cellPx / 2, {
+              align: "center",
+              isConflict: (symbol) => hasBigValuePeer(r, c, symbol),
+            });
           }
         }
       }
@@ -1405,6 +1520,7 @@ export function GridCanvas(props: {
     highlightRotationRad,
     linePreview,
     outlineDigits,
+    conflictChecker,
     cols,
     originX,
     originY,

@@ -11,7 +11,18 @@ const themeChoices: Array<{ key: ThemeColor; label: string; preview: string[] }>
 
 export function SettingsOverlay(props: { onClose: () => void }) {
   const { onClose } = props;
-  const { mode, color, hideTimer, outlineDigits, setMode, setColor, setHideTimer, setOutlineDigits } = useTheme();
+  const {
+    mode,
+    color,
+    hideTimer,
+    outlineDigits,
+    conflictChecker,
+    setMode,
+    setColor,
+    setHideTimer,
+    setOutlineDigits,
+    setConflictChecker,
+  } = useTheme();
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
@@ -78,6 +89,17 @@ export function SettingsOverlay(props: { onClose: () => void }) {
               className={"switch" + (outlineDigits ? " is-on" : "")}
               onClick={() => setOutlineDigits(!outlineDigits)}
               aria-label="Toggle digit outline"
+            >
+              <span className="switchThumb" />
+            </button>
+          </div>
+
+          <div className="settingsRow" style={{ marginTop: 4 }}>
+            <div className="muted">Conflict checker</div>
+            <button
+              className={"switch" + (conflictChecker ? " is-on" : "")}
+              onClick={() => setConflictChecker(!conflictChecker)}
+              aria-label="Toggle conflict checker"
             >
               <span className="switchThumb" />
             </button>

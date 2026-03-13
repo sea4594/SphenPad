@@ -8,25 +8,28 @@ type ThemeContextValue = {
   color: ThemeColor;
   hideTimer: boolean;
   outlineDigits: boolean;
+  conflictChecker: boolean;
   setMode: (mode: ThemeMode) => void;
   setColor: (color: ThemeColor) => void;
   setHideTimer: (hideTimer: boolean) => void;
   setOutlineDigits: (outlineDigits: boolean) => void;
+  setConflictChecker: (conflictChecker: boolean) => void;
 };
 
 const STORAGE_KEY = "sphenpad-theme-v1";
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
-function readInitialTheme(): { mode: ThemeMode; color: ThemeColor; hideTimer: boolean; outlineDigits: boolean } {
+function readInitialTheme(): { mode: ThemeMode; color: ThemeColor; hideTimer: boolean; outlineDigits: boolean; conflictChecker: boolean } {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return { mode: "dark", color: "ocean", hideTimer: false, outlineDigits: false };
+    if (!raw) return { mode: "dark", color: "ocean", hideTimer: false, outlineDigits: false, conflictChecker: true };
     const parsed = JSON.parse(raw) as {
       mode?: ThemeMode;
       color?: ThemeColor | "sunset";
       hideTimer?: boolean;
       outlineDigits?: boolean;
+      conflictChecker?: boolean;
     };
     const mode: ThemeMode = parsed.mode === "light" || parsed.mode === "dark" ? parsed.mode : "dark";
     const mappedColor = parsed.color === "sunset" ? "sepia" : parsed.color;
@@ -35,9 +38,10 @@ function readInitialTheme(): { mode: ThemeMode; color: ThemeColor; hideTimer: bo
       : "ocean";
     const hideTimer = typeof parsed.hideTimer === "boolean" ? parsed.hideTimer : false;
     const outlineDigits = typeof parsed.outlineDigits === "boolean" ? parsed.outlineDigits : false;
-    return { mode, color, hideTimer, outlineDigits };
+    const conflictChecker = typeof parsed.conflictChecker === "boolean" ? parsed.conflictChecker : true;
+    return { mode, color, hideTimer, outlineDigits, conflictChecker };
   } catch {
-    return { mode: "dark", color: "ocean", hideTimer: false, outlineDigits: false };
+    return { mode: "dark", color: "ocean", hideTimer: false, outlineDigits: false, conflictChecker: true };
   }
 }
 
@@ -47,6 +51,7 @@ export function ThemeProvider(props: { children: ReactNode }) {
   const [color, setColor] = useState<ThemeColor>(initialTheme.color);
   const [hideTimer, setHideTimer] = useState<boolean>(initialTheme.hideTimer);
   const [outlineDigits, setOutlineDigits] = useState<boolean>(initialTheme.outlineDigits);
+  const [conflictChecker, setConflictChecker] = useState<boolean>(initialTheme.conflictChecker);
 
   useEffect(() => {
     document.documentElement.dataset.mode = mode;
@@ -65,12 +70,12 @@ export function ThemeProvider(props: { children: ReactNode }) {
     document.documentElement.style.backgroundColor = bg;
     document.body.style.backgroundColor = bg;
 
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ mode, color, hideTimer, outlineDigits }));
-  }, [mode, color, hideTimer, outlineDigits]);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ mode, color, hideTimer, outlineDigits, conflictChecker }));
+  }, [mode, color, hideTimer, outlineDigits, conflictChecker]);
 
   const value = useMemo(
-    () => ({ mode, color, hideTimer, outlineDigits, setMode, setColor, setHideTimer, setOutlineDigits }),
-    [mode, color, hideTimer, outlineDigits],
+    () => ({ mode, color, hideTimer, outlineDigits, conflictChecker, setMode, setColor, setHideTimer, setOutlineDigits, setConflictChecker }),
+    [mode, color, hideTimer, outlineDigits, conflictChecker],
   );
   return <ThemeContext.Provider value={value}>{props.children}</ThemeContext.Provider>;
 }
