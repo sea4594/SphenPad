@@ -922,6 +922,17 @@ export async function loadFromSudokuPad(
     inlineMeta.author,
   ) ?? "";
 
+  const collection = firstNonEmptyString(
+    sclObj?.metadata?.collection,
+    sclObj?.metadata?.series,
+    sclObj?.metadata?.playlist,
+    sclObj?.metadata?.set,
+    sclObj?.collection,
+    sclObj?.series,
+    sclObj?.playlist,
+    sclObj?.set,
+  );
+
   const rules =
     extractRulesText(
       sclObj?.metadata?.rules ??
@@ -959,6 +970,7 @@ export async function loadFromSudokuPad(
   const meta = {
     title,
     author,
+    ...(collection ? { collection } : {}),
     rules,
     postSolveMessage:
       sclObj?.metadata?.postSolveMessage ??

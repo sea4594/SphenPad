@@ -36,6 +36,7 @@ export type LineEdgeMark = {
 export type PuzzleMeta = {
   title?: string;
   author?: string;
+  collection?: string;
   rules?: string;
   postSolveMessage?: string;
   solveCount?: number;

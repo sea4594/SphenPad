@@ -538,12 +538,23 @@ export function CtCArchivePage() {
         skipCounterFetch: true,
       });
 
+      const fallbackAuthor = clean(entry.puzzleAuthor);
+      const collection = clean(entry.collection);
+      const importedDef = {
+        ...def,
+        meta: {
+          ...def.meta,
+          ...(fallbackAuthor && !clean(def.meta?.author) ? { author: fallbackAuthor } : {}),
+          ...(collection ? { collection } : {}),
+        },
+      };
+
       const now = Date.now();
       const existing = await getPuzzle(key);
-      const nextProgress = existing?.progress ?? makeInitialProgress(def);
+      const nextProgress = existing?.progress ?? makeInitialProgress(importedDef);
 
       await upsertPuzzle(key, {
-        def,
+        def: importedDef,
         progress: nextProgress,
         undo: existing?.undo ?? [],
         redo: existing?.redo ?? [],
@@ -558,7 +569,7 @@ export function CtCArchivePage() {
         return next;
       });
 
-      setUiMessage(`Imported: ${def.meta?.title ?? key}`);
+      setUiMessage(`Imported: ${importedDef.meta?.title ?? key}`);
     } catch (e: unknown) {
       setUiMessage(e instanceof Error ? e.message : String(e));
     } finally {
