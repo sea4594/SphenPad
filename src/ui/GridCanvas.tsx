@@ -1385,9 +1385,23 @@ export function GridCanvas(props: {
           const corner = [...cell.notes.corner].sort();
           if (corner.length) {
             const hasCageLabel = cageLabelCells.has(`${r},${c}`);
+            let cornerFontPx = noteFontPx;
+            ctx.font = `${cornerFontPx}px ${gridTextFont}, ${emojiTextFont}`;
+            if (corner.length > 1) {
+              const cornerVals = corner.map((s) => normalizeSymbol(s)).filter(Boolean) as string[];
+              const sp0 = Math.max(0.2, cornerFontPx * 0.05);
+              const totalW0 = cornerVals.reduce((a, s) => a + Math.max(0.001, ctx.measureText(s).width), 0)
+                + (cornerVals.length - 1) * sp0;
+              const maxW = cellPx - cornerInsetX * 2;
+              if (totalW0 > maxW) {
+                cornerFontPx = Math.max(1, (cornerFontPx * maxW) / totalW0);
+                ctx.font = `${cornerFontPx}px ${gridTextFont}, ${emojiTextFont}`;
+              }
+            }
             drawSymbolRun(corner, x0 + cornerInsetX, y0 + (hasCageLabel ? cornerBaseY * 2 : cornerBaseY), {
               align: "left",
               isConflict: (symbol) => hasBigValuePeer(r, c, symbol),
+              fontPxOverride: cornerFontPx,
             });
           }
 
@@ -1503,9 +1517,23 @@ export function GridCanvas(props: {
 
           const corner = [...cell.notes.corner].sort();
           if (corner.length) {
+            let cornerFontPx = noteFontPx;
+            ctx.font = `${cornerFontPx}px ${gridTextFont}, ${emojiTextFont}`;
+            if (corner.length > 1) {
+              const cornerVals = corner.map((s) => normalizeSymbol(s)).filter(Boolean) as string[];
+              const sp0 = Math.max(0.2, cornerFontPx * 0.05);
+              const totalW0 = cornerVals.reduce((a, s) => a + Math.max(0.001, ctx.measureText(s).width), 0)
+                + (cornerVals.length - 1) * sp0;
+              const maxW = cellPx - cornerInsetX * 2;
+              if (totalW0 > maxW) {
+                cornerFontPx = Math.max(1, (cornerFontPx * maxW) / totalW0);
+                ctx.font = `${cornerFontPx}px ${gridTextFont}, ${emojiTextFont}`;
+              }
+            }
             drawSymbolRun(corner, x0 + cornerInsetX, y0 + cornerBaseY, {
               align: "left",
               isConflict: (symbol) => hasBigValuePeer(r, c, symbol),
+              fontPxOverride: cornerFontPx,
             });
           }
 
