@@ -1265,7 +1265,7 @@ export function GridCanvas(props: {
       cageLabelCells.add(`${first.r},${first.c}`);
     }
     const valueFontPx = Math.max(previewMode ? 4.5 : 11, Math.min(previewMode ? 30 : 42, Math.round(cellPx * 0.58)));
-    const noteFontPx = Math.max(previewMode ? 3 : 6, Math.min(previewMode ? 10 : 16, Math.round(cellPx * 0.22)));
+    const noteFontPx = Math.max(previewMode ? 3 : 6, Math.min(previewMode ? 10 : 19, Math.round(cellPx * 0.26)));
     const candidateFontPx = Math.max(previewMode ? 2.2 : 5, Math.min(previewMode ? 8 : 12, Math.round(cellPx * 0.18)));
     const cornerInsetX = Math.max(previewMode ? 0.8 : 2, Math.round(cellPx * 0.08));
     const cornerBaseY = Math.max(previewMode ? 2.2 : 7, Math.round(cellPx * 0.22));
@@ -1288,13 +1288,14 @@ export function GridCanvas(props: {
       symbols: string[],
       x: number,
       y: number,
-      opts: { align: "left" | "center"; isConflict: (symbol: string) => boolean }
+      opts: { align: "left" | "center"; isConflict: (symbol: string) => boolean; fontPxOverride?: number }
     ) => {
       const values = symbols.map((symbol) => normalizeSymbol(symbol)).filter(Boolean) as string[];
       if (!values.length) return;
 
+      const useFontPx = opts.fontPxOverride ?? noteFontPx;
       const widths = values.map((symbol) => Math.max(0.001, ctx.measureText(symbol).width));
-      const spacing = Math.max(0.2, noteFontPx * 0.05);
+      const spacing = Math.max(0.2, useFontPx * 0.05);
       const totalWidth =
         widths.reduce((sum, width) => sum + width, 0) +
         Math.max(0, values.length - 1) * spacing;
@@ -1376,9 +1377,23 @@ export function GridCanvas(props: {
 
           const center = [...cell.notes.center].sort();
           if (center.length) {
+            let centerFontPx = noteFontPx;
+            ctx.font = `${centerFontPx}px ${gridTextFont}, ${emojiTextFont}`;
+            const centerVals = center.map((s) => normalizeSymbol(s)).filter(Boolean) as string[];
+            if (centerVals.length > 1) {
+              const sp0 = Math.max(0.2, centerFontPx * 0.05);
+              const totalW0 = centerVals.reduce((a, s) => a + Math.max(0.001, ctx.measureText(s).width), 0)
+                + (centerVals.length - 1) * sp0;
+              const maxW = cellPx * 0.9;
+              if (totalW0 > maxW) {
+                centerFontPx = Math.max(1, (centerFontPx * maxW) / totalW0);
+                ctx.font = `${centerFontPx}px ${gridTextFont}, ${emojiTextFont}`;
+              }
+            }
             drawSymbolRun(center, x0 + cellPx / 2, y0 + cellPx / 2, {
               align: "center",
               isConflict: (symbol) => hasBigValuePeer(r, c, symbol),
+              fontPxOverride: centerFontPx,
             });
           }
 
@@ -1480,9 +1495,23 @@ export function GridCanvas(props: {
 
           const center = [...cell.notes.center].sort();
           if (center.length) {
+            let centerFontPx = noteFontPx;
+            ctx.font = `${centerFontPx}px ${gridTextFont}, ${emojiTextFont}`;
+            const centerVals = center.map((s) => normalizeSymbol(s)).filter(Boolean) as string[];
+            if (centerVals.length > 1) {
+              const sp0 = Math.max(0.2, centerFontPx * 0.05);
+              const totalW0 = centerVals.reduce((a, s) => a + Math.max(0.001, ctx.measureText(s).width), 0)
+                + (centerVals.length - 1) * sp0;
+              const maxW = cellPx * 0.9;
+              if (totalW0 > maxW) {
+                centerFontPx = Math.max(1, (centerFontPx * maxW) / totalW0);
+                ctx.font = `${centerFontPx}px ${gridTextFont}, ${emojiTextFont}`;
+              }
+            }
             drawSymbolRun(center, x0 + cellPx / 2, y0 + cellPx / 2, {
               align: "center",
               isConflict: (symbol) => hasBigValuePeer(r, c, symbol),
+              fontPxOverride: centerFontPx,
             });
           }
         }
