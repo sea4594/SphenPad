@@ -16,8 +16,6 @@
   --safe-left: env(safe-area-inset-left);
   --safe-right: env(safe-area-inset-right);
   --safe-inline: max(var(--safe-left), var(--safe-right));
-  --device-bottom-strip: env(safe-area-inset-bottom, 0px);
-  --measured-viewport-gap: 0px;
   font-family: Barlow, "Trebuchet MS", "Segoe UI", sans-serif;
 }
 
@@ -150,6 +148,15 @@ body,
   color: var(--text);
 }
 
+@supports (-webkit-touch-callout: none) {
+  html,
+  body,
+  #root {
+    height: -webkit-fill-available;
+    min-height: -webkit-fill-available;
+  }
+}
+
 #root {
   overflow: hidden;
 }
@@ -199,9 +206,9 @@ html[data-force-portrait] #root {
    * which is required for correct tap calibration on the canvas.
    */
   position: fixed;
-  inset: 0 0 calc(max(var(--device-bottom-strip), var(--measured-viewport-gap)) * -1) 0;
+  inset: 0;
   width: 100%;
-  height: auto;
+  height: 100%;
   overflow: hidden;
 }
 
@@ -247,12 +254,11 @@ button,
 }
 
 .shell {
-  position: fixed;
-  inset: 0 0 calc(max(var(--device-bottom-strip), var(--measured-viewport-gap)) * -1) 0;
+  position: relative;
   display: grid;
   grid-template-rows: auto 1fr;
-  height: auto;
-  min-height: 0;
+  height: 100%;
+  min-height: 100%;
   width: 100%;
   max-width: 100%;
   overflow: hidden;

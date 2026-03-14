@@ -15,23 +15,7 @@ export function App() {
     const mobilePlatform = /android|iphone|ipad|ipod/i.test(navigator.userAgent);
     const touchPrimaryInput = coarsePointer.matches && navigator.maxTouchPoints > 1;
     const onMobileDevice = mobilePlatform || touchPrimaryInput;
-    const visualViewport = window.visualViewport;
     let lastLandscapeDirection: "cw" | "ccw" = "ccw";
-
-    const getViewportBottomGap = () => {
-      const screenW = Math.max(1, Math.round(window.screen?.width ?? window.innerWidth));
-      const screenH = Math.max(1, Math.round(window.screen?.height ?? window.innerHeight));
-      const viewportW = Math.max(1, Math.round(window.innerWidth));
-      const viewportH = Math.max(1, Math.round(window.innerHeight));
-      const visualW = Math.max(1, Math.round(visualViewport?.width ?? viewportW));
-      const visualH = Math.max(1, Math.round(visualViewport?.height ?? viewportH));
-      const screenLong = Math.max(screenW, screenH);
-      const screenShort = Math.min(screenW, screenH);
-      const isLandscape = viewportW > viewportH || visualW > visualH;
-      const expectedHeight = isLandscape ? screenShort : screenLong;
-      const actualHeight = Math.max(viewportH, visualH);
-      return Math.max(0, expectedHeight - actualHeight);
-    };
 
     const getLandscapeDirection = (): "cw" | "ccw" => {
       const legacyAngle = (window as LegacyOrientationWindow).orientation;
@@ -61,8 +45,6 @@ export function App() {
     const updateForcedPortraitMode = () => {
       const vw = Math.max(1, Math.round(window.innerWidth));
       const vh = Math.max(1, Math.round(window.innerHeight));
-      const viewportGap = onMobileDevice ? getViewportBottomGap() : 0;
-      root.style.setProperty("--measured-viewport-gap", `${viewportGap}px`);
       const rotatedLandscape = vw > vh;
       if (onMobileDevice && rotatedLandscape) {
         root.setAttribute("data-force-portrait", getLandscapeDirection());
@@ -104,8 +86,6 @@ export function App() {
     window.addEventListener("pointerdown", onFirstInteraction, { passive: true });
     window.addEventListener("resize", onViewportChange);
     window.addEventListener("orientationchange", onViewportChange);
-    visualViewport?.addEventListener("resize", onViewportChange);
-    visualViewport?.addEventListener("scroll", onViewportChange);
     coarsePointer.addEventListener?.("change", onViewportChange);
 
     return () => {
@@ -114,11 +94,8 @@ export function App() {
       window.removeEventListener("pointerdown", onFirstInteraction);
       window.removeEventListener("resize", onViewportChange);
       window.removeEventListener("orientationchange", onViewportChange);
-      visualViewport?.removeEventListener("resize", onViewportChange);
-      visualViewport?.removeEventListener("scroll", onViewportChange);
       coarsePointer.removeEventListener?.("change", onViewportChange);
       root.removeAttribute("data-force-portrait");
-      root.style.removeProperty("--measured-viewport-gap");
     };
   }, []);
 
