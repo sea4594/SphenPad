@@ -17,6 +17,7 @@
   --safe-right: env(safe-area-inset-right);
   --safe-inline: max(var(--safe-left), var(--safe-right));
   --device-bottom-strip: env(safe-area-inset-bottom, 0px);
+  --measured-viewport-gap: 0px;
   font-family: Barlow, "Trebuchet MS", "Segoe UI", sans-serif;
 }
 
@@ -198,7 +199,7 @@ html[data-force-portrait] #root {
    * which is required for correct tap calibration on the canvas.
    */
   position: fixed;
-  inset: 0 0 calc(var(--device-bottom-strip) * -1) 0;
+  inset: 0 0 calc(max(var(--device-bottom-strip), var(--measured-viewport-gap)) * -1) 0;
   width: 100%;
   height: auto;
   overflow: hidden;
@@ -247,7 +248,7 @@ button,
 
 .shell {
   position: fixed;
-  inset: 0 0 calc(var(--device-bottom-strip) * -1) 0;
+  inset: 0 0 calc(max(var(--device-bottom-strip), var(--measured-viewport-gap)) * -1) 0;
   display: grid;
   grid-template-rows: auto 1fr;
   height: auto;
