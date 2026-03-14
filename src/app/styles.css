@@ -16,16 +16,7 @@
   --safe-left: env(safe-area-inset-left);
   --safe-right: env(safe-area-inset-right);
   --safe-inline: max(var(--safe-left), var(--safe-right));
-  --app-screen-w: 100vw;
-  --app-screen-h: 100vh;
   font-family: Barlow, "Trebuchet MS", "Segoe UI", sans-serif;
-}
-
-@supports (height: 100lvh) {
-  :root {
-    --app-screen-w: 100lvw;
-    --app-screen-h: 100lvh;
-  }
 }
 
 *,
@@ -158,10 +149,6 @@ body,
 }
 
 #root {
-  width: var(--app-screen-w);
-  min-width: var(--app-screen-w);
-  height: var(--app-screen-h);
-  min-height: var(--app-screen-h);
   overflow: hidden;
 }
 
@@ -211,8 +198,8 @@ html[data-force-portrait] #root {
    */
   position: fixed;
   inset: 0;
-  width: var(--app-screen-w);
-  height: var(--app-screen-h);
+  width: 100%;
+  height: 100%;
   overflow: hidden;
 }
 
@@ -225,8 +212,8 @@ html[data-force-portrait] .shell {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: var(--app-screen-h);
-  height: var(--app-screen-w);
+  width: 100dvh;
+  height: 100dvw;
   min-height: 0;
   transform-origin: center center;
   transform: translate(-50%, -50%) rotate(var(--force-rotate, 0deg));
@@ -258,10 +245,12 @@ button,
 }
 
 .shell {
+  position: fixed;
+  inset: 0;
   display: grid;
   grid-template-rows: auto 1fr;
-  height: 100%;
-  min-height: 100%;
+  height: auto;
+  min-height: 0;
   width: 100%;
   max-width: 100%;
   overflow: hidden;
