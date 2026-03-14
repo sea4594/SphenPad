@@ -262,7 +262,7 @@ button,
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 12px;
-  padding: max(8px, var(--safe-top)) max(14px, var(--safe-right)) 10px max(14px, var(--safe-left));
+  padding: max(8px, var(--safe-top)) 14px 10px 14px;
   background: color-mix(in oklab, var(--bg) 88%, transparent);
   backdrop-filter: blur(8px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
@@ -326,7 +326,7 @@ button,
 }
 
 .page {
-  padding: 14px max(14px, var(--safe-right)) max(14px, var(--safe-bottom)) max(14px, var(--safe-left));
+  padding: 14px;
   display: grid;
   gap: 12px;
   min-height: 0;
@@ -1350,7 +1350,7 @@ input.url {
 
 @media (max-width: 760px), ((hover: none) and (pointer: coarse)) {
   .topbar {
-    padding: max(6px, var(--safe-top)) max(10px, var(--safe-right)) 8px max(10px, var(--safe-left));
+    padding: max(6px, var(--safe-top)) 10px 8px 10px;
     gap: 8px;
     backdrop-filter: none;
   }
@@ -1365,7 +1365,7 @@ input.url {
   }
 
   .puzzleTopbar {
-    padding: max(4px, var(--safe-top)) max(10px, var(--safe-right)) 6px max(10px, var(--safe-left));
+    padding: max(4px, var(--safe-top)) 10px 6px 10px;
     gap: 4px;
   }
 
@@ -1393,7 +1393,7 @@ input.url {
   }
 
   .page {
-    padding: 10px max(10px, var(--safe-right)) var(--safe-bottom) max(10px, var(--safe-left));
+    padding: 10px;
   }
 
   input.url {
