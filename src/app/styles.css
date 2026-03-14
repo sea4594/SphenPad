@@ -16,7 +16,16 @@
   --safe-left: env(safe-area-inset-left);
   --safe-right: env(safe-area-inset-right);
   --safe-inline: max(var(--safe-left), var(--safe-right));
+  --app-screen-w: 100vw;
+  --app-screen-h: 100vh;
   font-family: Barlow, "Trebuchet MS", "Segoe UI", sans-serif;
+}
+
+@supports (height: 100lvh) {
+  :root {
+    --app-screen-w: 100lvw;
+    --app-screen-h: 100lvh;
+  }
 }
 
 *,
@@ -149,8 +158,10 @@ body,
 }
 
 #root {
-  height: 100dvh;
-  min-height: 100svh;
+  width: var(--app-screen-w);
+  min-width: var(--app-screen-w);
+  height: var(--app-screen-h);
+  min-height: var(--app-screen-h);
   overflow: hidden;
 }
 
@@ -200,22 +211,22 @@ html[data-force-portrait] #root {
    */
   position: fixed;
   inset: 0;
-  width: 100%;
-  height: 100%;
+  width: var(--app-screen-w);
+  height: var(--app-screen-h);
   overflow: hidden;
 }
 
 html[data-force-portrait] .shell {
   /*
-   * Portrait-sized, centered, then rotated to fill the landscape screen.
-   * width  = --screen-h (landscape visual height = portrait width after rotation)
-   * height = --screen-w (landscape visual width  = portrait height after rotation)
+  * Portrait-sized, centered, then rotated to fill the landscape screen.
+  * width  = app screen height (portrait width after rotation)
+  * height = app screen width (portrait height after rotation)
    */
   position: absolute;
   top: 50%;
   left: 50%;
-  width: var(--screen-h, 100dvh);
-  height: var(--screen-w, 100dvw);
+  width: var(--app-screen-h);
+  height: var(--app-screen-w);
   min-height: 0;
   transform-origin: center center;
   transform: translate(-50%, -50%) rotate(var(--force-rotate, 0deg));

@@ -15,18 +15,7 @@ export function App() {
     const mobilePlatform = /android|iphone|ipad|ipod/i.test(navigator.userAgent);
     const touchPrimaryInput = coarsePointer.matches && navigator.maxTouchPoints > 1;
     const onMobileDevice = mobilePlatform || touchPrimaryInput;
-    const visualViewport = window.visualViewport;
     let lastLandscapeDirection: "cw" | "ccw" = "ccw";
-
-    const getViewportSize = () => {
-      const layoutW = Math.max(1, Math.round(window.innerWidth));
-      const layoutH = Math.max(1, Math.round(window.innerHeight));
-      const visualW = Math.max(1, Math.round(visualViewport?.width ?? layoutW));
-      const visualH = Math.max(1, Math.round(visualViewport?.height ?? layoutH));
-      const vw = Math.max(layoutW, visualW);
-      const vh = Math.max(layoutH, visualH);
-      return { vw, vh };
-    };
 
     const getLandscapeDirection = (): "cw" | "ccw" => {
       const legacyAngle = (window as LegacyOrientationWindow).orientation;
@@ -54,18 +43,13 @@ export function App() {
     };
 
     const updateForcedPortraitMode = () => {
-      const { vw, vh } = getViewportSize();
+      const vw = Math.max(1, Math.round(window.innerWidth));
+      const vh = Math.max(1, Math.round(window.innerHeight));
       const rotatedLandscape = vw > vh;
       if (onMobileDevice && rotatedLandscape) {
-        // vw = landscape visual width (long side = maps to portrait height after rotation)
-        // vh = landscape visual height (short side = maps to portrait width after rotation)
-        root.style.setProperty("--screen-w", `${vw}px`);
-        root.style.setProperty("--screen-h", `${vh}px`);
         root.setAttribute("data-force-portrait", getLandscapeDirection());
       } else {
         root.removeAttribute("data-force-portrait");
-        root.style.removeProperty("--screen-w");
-        root.style.removeProperty("--screen-h");
       }
     };
 
@@ -102,7 +86,6 @@ export function App() {
     window.addEventListener("pointerdown", onFirstInteraction, { passive: true });
     window.addEventListener("resize", onViewportChange);
     window.addEventListener("orientationchange", onViewportChange);
-    visualViewport?.addEventListener("resize", onViewportChange);
     coarsePointer.addEventListener?.("change", onViewportChange);
 
     return () => {
@@ -111,11 +94,8 @@ export function App() {
       window.removeEventListener("pointerdown", onFirstInteraction);
       window.removeEventListener("resize", onViewportChange);
       window.removeEventListener("orientationchange", onViewportChange);
-      visualViewport?.removeEventListener("resize", onViewportChange);
       coarsePointer.removeEventListener?.("change", onViewportChange);
       root.removeAttribute("data-force-portrait");
-      root.style.removeProperty("--screen-w");
-      root.style.removeProperty("--screen-h");
     };
   }, []);
 
