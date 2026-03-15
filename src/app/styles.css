@@ -148,16 +148,9 @@ body,
   color: var(--text);
 }
 
-@supports (-webkit-touch-callout: none) {
-  html,
-  body,
-  #root {
-    height: -webkit-fill-available;
-    min-height: -webkit-fill-available;
-  }
-}
-
 #root {
+  height: 100dvh;
+  min-height: 100svh;
   overflow: hidden;
 }
 
@@ -214,15 +207,15 @@ html[data-force-portrait] #root {
 
 html[data-force-portrait] .shell {
   /*
-  * Portrait-sized, centered, then rotated to fill the landscape screen.
-  * width  = app screen height (portrait width after rotation)
-  * height = app screen width (portrait height after rotation)
+   * Portrait-sized, centered, then rotated to fill the landscape screen.
+   * width  = --screen-h (landscape visual height = portrait width after rotation)
+   * height = --screen-w (landscape visual width  = portrait height after rotation)
    */
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 100dvh;
-  height: 100dvw;
+  width: var(--screen-h, 100dvh);
+  height: var(--screen-w, 100dvw);
   min-height: 0;
   transform-origin: center center;
   transform: translate(-50%, -50%) rotate(var(--force-rotate, 0deg));
@@ -254,7 +247,6 @@ button,
 }
 
 .shell {
-  position: relative;
   display: grid;
   grid-template-rows: auto 1fr;
   height: 100%;
