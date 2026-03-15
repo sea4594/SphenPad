@@ -149,9 +149,18 @@ body,
 }
 
 #root {
-  height: 100dvh;
-  min-height: 100svh;
+  height: 100%;
+  min-height: 100%;
   overflow: hidden;
+}
+
+@supports (-webkit-touch-callout: none) {
+  html,
+  body,
+  #root {
+    height: -webkit-fill-available;
+    min-height: -webkit-fill-available;
+  }
 }
 
 html {
