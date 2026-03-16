@@ -758,7 +758,18 @@ export function GridCanvas(props: {
           }
         } else {
           ctx.strokeStyle = item.borderColor as string;
-          const borderWidth = (item.borderThickness ?? 1.4) * (cellPx / cosmeticUnit);
+          const explicitBorderThickness = Number.isFinite(item.borderThickness)
+            ? Number(item.borderThickness)
+            : undefined;
+          if (explicitBorderThickness != null && explicitBorderThickness <= 0) {
+            ctx.restore();
+            return;
+          }
+          const borderWidth = (explicitBorderThickness ?? 1.4) * (cellPx / cosmeticUnit);
+          if (!(borderWidth > 0)) {
+            ctx.restore();
+            return;
+          }
           // SudokuPad-exported layer thickness behaves like an inset (inner) border.
           // Canvas strokes are centered by default, so inset the path by half width.
           ctx.lineWidth = borderWidth;
@@ -1115,8 +1126,11 @@ export function GridCanvas(props: {
         const dotOpacity = Number.isFinite(d.opacity) ? Math.max(0, Math.min(1, Number(d.opacity))) : 1;
         const fillColor = d.color ?? (d.kind === "white" ? "#ffffff" : "#1b1b1b");
         const borderColor = d.borderColor ?? "#111111";
-        const borderWidth = Number.isFinite(d.borderThickness)
-          ? scaledCosmeticPx(Number(d.borderThickness), { previewMin: 0.5, normalMin: 1 })
+        const explicitBorderThickness = Number.isFinite(d.borderThickness)
+          ? Number(d.borderThickness)
+          : undefined;
+        const borderWidth = explicitBorderThickness != null
+          ? scaledCosmeticPx(explicitBorderThickness, { previewMin: 0, normalMin: 0 })
           : scaledCosmeticPx(2, { previewMin: 0.5, normalMin: 1 });
         ctx.save();
         ctx.globalAlpha *= dotOpacity;
@@ -1124,9 +1138,11 @@ export function GridCanvas(props: {
         ctx.arc(x, y, dotRadius, 0, Math.PI * 2);
         ctx.fillStyle = fillColor;
         ctx.fill();
-        ctx.strokeStyle = borderColor;
-        ctx.lineWidth = borderWidth;
-        ctx.stroke();
+        if (borderWidth > 0) {
+          ctx.strokeStyle = borderColor;
+          ctx.lineWidth = borderWidth;
+          ctx.stroke();
+        }
         ctx.restore();
       }
     };
