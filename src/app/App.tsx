@@ -16,7 +16,9 @@ export function App() {
     const touchPrimaryInput = coarsePointer.matches && navigator.maxTouchPoints > 1;
     const onMobileDevice = mobilePlatform || touchPrimaryInput;
     const visualViewport = window.visualViewport;
+    const screenOrientation = window.screen?.orientation;
     let lastLandscapeDirection: "cw" | "ccw" = "ccw";
+    let orientationRefreshTimeout: number | null = null;
 
     const getViewportSize = () => {
       const layoutW = Math.max(1, Math.round(window.innerWidth));
@@ -29,25 +31,27 @@ export function App() {
     };
 
     const getLandscapeDirection = (): "cw" | "ccw" => {
-      const legacyAngle = (window as LegacyOrientationWindow).orientation;
-      if (typeof legacyAngle === "number" && Math.abs(legacyAngle) === 90) {
-        // iOS +90: left side down (landscape-left) → rotate content CW to correct.
-        // iOS -90: right side down (landscape-right) → rotate content CCW.
-        lastLandscapeDirection = legacyAngle > 0 ? "cw" : "ccw";
-        return lastLandscapeDirection;
-      }
-
-      const angle = window.screen?.orientation?.angle;
+      const angle = screenOrientation?.angle;
       if (typeof angle === "number") {
         const normalized = ((angle % 360) + 360) % 360;
         if (normalized === 90) {
-          lastLandscapeDirection = "cw";
-          return lastLandscapeDirection;
-        }
-        if (normalized === 270) {
+          // screen.orientation.angle uses clockwise-positive rotation.
           lastLandscapeDirection = "ccw";
           return lastLandscapeDirection;
         }
+        if (normalized === 270) {
+          lastLandscapeDirection = "cw";
+          return lastLandscapeDirection;
+        }
+      }
+
+      const legacyAngle = (window as LegacyOrientationWindow).orientation;
+      if (typeof legacyAngle === "number" && Math.abs(legacyAngle) === 90) {
+        // window.orientation uses opposite sign from screen.orientation.angle.
+        // iOS +90: left side down (landscape-left) -> rotate content CW to correct.
+        // iOS -90: right side down (landscape-right) -> rotate content CCW.
+        lastLandscapeDirection = legacyAngle > 0 ? "cw" : "ccw";
+        return lastLandscapeDirection;
       }
 
       return lastLandscapeDirection;
@@ -93,6 +97,13 @@ export function App() {
 
     const onViewportChange = () => {
       updateForcedPortraitMode();
+      if (orientationRefreshTimeout != null) {
+        window.clearTimeout(orientationRefreshTimeout);
+      }
+      // Safari can report old orientation values briefly after rotating.
+      orientationRefreshTimeout = window.setTimeout(() => {
+        updateForcedPortraitMode();
+      }, 140);
     };
 
     updateForcedPortraitMode();
@@ -102,6 +113,7 @@ export function App() {
     window.addEventListener("pointerdown", onFirstInteraction, { passive: true });
     window.addEventListener("resize", onViewportChange);
     window.addEventListener("orientationchange", onViewportChange);
+    screenOrientation?.addEventListener?.("change", onViewportChange);
     visualViewport?.addEventListener("resize", onViewportChange);
     coarsePointer.addEventListener?.("change", onViewportChange);
 
@@ -111,8 +123,12 @@ export function App() {
       window.removeEventListener("pointerdown", onFirstInteraction);
       window.removeEventListener("resize", onViewportChange);
       window.removeEventListener("orientationchange", onViewportChange);
+      screenOrientation?.removeEventListener?.("change", onViewportChange);
       visualViewport?.removeEventListener("resize", onViewportChange);
       coarsePointer.removeEventListener?.("change", onViewportChange);
+      if (orientationRefreshTimeout != null) {
+        window.clearTimeout(orientationRefreshTimeout);
+      }
       root.removeAttribute("data-force-portrait");
       root.style.removeProperty("--screen-w");
       root.style.removeProperty("--screen-h");

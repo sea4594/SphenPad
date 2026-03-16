@@ -6,6 +6,7 @@ import { getPuzzle, listCompletedPuzzleKeys, upsertPuzzle } from "../core/storag
 import { loadFromSudokuPad } from "../core/sudokupad";
 import { AppBrand } from "./AppBrand";
 import { IconFolder, IconHome, IconImport, IconSettings } from "./icons";
+import { SelectControl } from "./SelectControl";
 import { SettingsOverlay } from "./SettingsOverlay";
 
 type ArchiveEntry = {
@@ -664,7 +665,7 @@ export function CtCArchivePage() {
                 onChange={(e) => setQuery(e.target.value)}
               />
 
-              <select
+              <SelectControl
                 className="btn menuControlSelect"
                 value={searchField}
                 onChange={(e) => {
@@ -679,13 +680,13 @@ export function CtCArchivePage() {
                 <option value="author">Puzzle author</option>
                 <option value="host">Video host</option>
                 <option value="collection">Collection</option>
-              </select>
+              </SelectControl>
             </div>
 
             <div className="archiveFilterRow">
               <label className="archiveFilterControl">
                 <span className="muted archiveFilterLabel">Host</span>
-                <select
+                <SelectControl
                   className="btn menuControlSelect"
                   value={hostFilter}
                   onChange={(e) => setHostFilter(e.target.value)}
@@ -695,12 +696,12 @@ export function CtCArchivePage() {
                       {v === "all" ? "All" : v}
                     </option>
                   ))}
-                </select>
+                </SelectControl>
               </label>
 
               <label className="archiveFilterControl">
                 <span className="muted archiveFilterLabel">Author</span>
-                <select
+                <SelectControl
                   className="btn menuControlSelect"
                   value={authorFilter}
                   onChange={(e) => setAuthorFilter(e.target.value)}
@@ -710,12 +711,12 @@ export function CtCArchivePage() {
                       {v === "all" ? "All" : v}
                     </option>
                   ))}
-                </select>
+                </SelectControl>
               </label>
 
               <label className="archiveFilterControl">
                 <span className="muted archiveFilterLabel">Collection</span>
-                <select
+                <SelectControl
                   className="btn menuControlSelect"
                   value={collectionFilter}
                   onChange={(e) => setCollectionFilter(e.target.value)}
@@ -725,7 +726,7 @@ export function CtCArchivePage() {
                       {v === "all" ? "All" : displayCollection(v) || "None"}
                     </option>
                   ))}
-                </select>
+                </SelectControl>
               </label>
 
               <label className="archiveFilterControl">
@@ -788,7 +789,7 @@ export function CtCArchivePage() {
               <div className="menuSectionTitle">CtC Archive Puzzles</div>
 
               <div className="row">
-                <select
+                <SelectControl
                   className="btn menuControlSelect"
                   value={sortField}
                   onChange={(e) => {
@@ -799,7 +800,7 @@ export function CtCArchivePage() {
                   <option value="date">Sort: Video date</option>
                   <option value="title">Sort: Puzzle title</option>
                   <option value="video_length">Sort: Video length</option>
-                </select>
+                </SelectControl>
 
                 <div className="muted">{visibleRows.length} of {filteredRows.length} shown</div>
               </div>

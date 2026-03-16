@@ -15,6 +15,7 @@ import { firebaseEnabled, googleLogin, googleLogout } from "../firebase/client";
 import { GridCanvas } from "./GridCanvas";
 import { AppBrand } from "./AppBrand";
 import { IconFolder, IconHome, IconImport, IconSettings } from "./icons";
+import { SelectControl } from "./SelectControl";
 import { SettingsOverlay } from "./SettingsOverlay";
 
 type SortOrder = "recent" | "az";
@@ -764,7 +765,7 @@ export function MainMenu() {
                   onChange={(event) => setQuery(event.target.value)}
                 />
 
-                <select
+                <SelectControl
                   className="btn menuControlSelect"
                   value={searchField}
                   onChange={(event) => {
@@ -777,13 +778,13 @@ export function MainMenu() {
                   <option value="constraints">Constraints</option>
                   <option value="author">Author</option>
                   <option value="collection">Collection</option>
-                </select>
+                </SelectControl>
               </div>
 
               <div className="archiveFilterRow">
                 <label className="archiveFilterControl">
                   <span className="muted archiveFilterLabel">Author</span>
-                  <select
+                  <SelectControl
                     className="btn menuControlSelect"
                     value={authorFilter}
                     onChange={(event) => setAuthorFilter(event.target.value)}
@@ -793,12 +794,12 @@ export function MainMenu() {
                         {value === "all" ? "All" : value}
                       </option>
                     ))}
-                  </select>
+                  </SelectControl>
                 </label>
 
                 <label className="archiveFilterControl">
                   <span className="muted archiveFilterLabel">Collection</span>
-                  <select
+                  <SelectControl
                     className="btn menuControlSelect"
                     value={collectionFilter}
                     onChange={(event) => setCollectionFilter(event.target.value)}
@@ -808,7 +809,7 @@ export function MainMenu() {
                         {value === "all" ? "All" : value}
                       </option>
                     ))}
-                  </select>
+                  </SelectControl>
                 </label>
 
                 <label className="archiveFilterControl">
@@ -861,7 +862,7 @@ export function MainMenu() {
 
             <div className="menuSecondaryControls">
               <div className="row" style={{ justifyContent: "flex-start", alignItems: "flex-end" }}>
-                <select
+                <SelectControl
                   className="btn menuControlSelect"
                   value={sortOrder}
                   onChange={(e) => setSortOrder(e.target.value as SortOrder)}
@@ -869,7 +870,7 @@ export function MainMenu() {
                 >
                   <option value="recent">Recent</option>
                   <option value="az">A - Z</option>
-                </select>
+                </SelectControl>
               </div>
 
               <div className="menuStatusTabs">
@@ -1097,18 +1098,18 @@ export function MainMenu() {
             <div className="row" style={{ marginTop: 8 }}>
               <label className="menuControlLabel">
                 <span className="muted" style={{ fontSize: 13 }}>Sort</span>
-                <select
+                <SelectControl
                   className="btn menuControlSelect"
                   value={folderSortOrder}
                   onChange={(e) => setFolderSortOrder(e.target.value as SortOrder)}
                 >
                   <option value="recent">Recent</option>
                   <option value="az">A - Z</option>
-                </select>
+                </SelectControl>
               </label>
               <label className="menuControlLabel">
                 <span className="muted" style={{ fontSize: 13 }}>Filter</span>
-                <select
+                <SelectControl
                   className="btn menuControlSelect"
                   value={folderFilterStatus}
                   onChange={(e) => setFolderFilterStatus(e.target.value as FilterStatus)}
@@ -1117,7 +1118,7 @@ export function MainMenu() {
                   <option value="not_started">Not Started</option>
                   <option value="in_progress">In Progress</option>
                   <option value="complete">Complete</option>
-                </select>
+                </SelectControl>
               </label>
             </div>
 

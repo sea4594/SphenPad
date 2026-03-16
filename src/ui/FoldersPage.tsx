@@ -15,6 +15,7 @@ import { fmtHMS } from "../core/time";
 import { AppBrand } from "./AppBrand";
 import { GridCanvas } from "./GridCanvas";
 import { IconFolder, IconHome, IconImport, IconSettings } from "./icons";
+import { SelectControl } from "./SelectControl";
 import { SettingsOverlay } from "./SettingsOverlay";
 
 type SortOrder = "recent" | "az";
@@ -548,7 +549,7 @@ export function FoldersPage() {
 
               {activeFolder ? (
                 <div className="row" style={{ marginTop: 4 }}>
-                  <select
+                  <SelectControl
                     className="btn menuControlSelect"
                     value={sortOrder}
                     onChange={(e) => setSortOrder(e.target.value as SortOrder)}
@@ -556,8 +557,8 @@ export function FoldersPage() {
                   >
                     <option value="recent">Recent</option>
                     <option value="az">A - Z</option>
-                  </select>
-                  <select
+                  </SelectControl>
+                  <SelectControl
                     className="btn menuControlSelect"
                     value={filterStatus}
                     onChange={(e) => setFilterStatus(e.target.value as FilterStatus)}
@@ -567,7 +568,7 @@ export function FoldersPage() {
                     <option value="not_started">Not Started</option>
                     <option value="in_progress">In Progress</option>
                     <option value="complete">Complete</option>
-                  </select>
+                  </SelectControl>
                 </div>
               ) : null}
 
