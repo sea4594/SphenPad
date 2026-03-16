@@ -5,6 +5,8 @@ import {
   useMemo,
   useState,
   type ChangeEvent,
+  type MouseEvent as ReactMouseEvent,
+  type PointerEvent as ReactPointerEvent,
   type ReactNode,
   type SelectHTMLAttributes,
 } from "react";
@@ -68,6 +70,25 @@ function useForcedPortraitMode(): boolean {
   }, []);
 
   return forcedPortrait;
+}
+
+function pointerTapAction(
+  event: ReactPointerEvent<HTMLElement>,
+  action: () => void
+) {
+  event.preventDefault();
+  event.stopPropagation();
+  action();
+}
+
+function keyboardClickAction(
+  event: ReactMouseEvent<HTMLElement>,
+  action: () => void
+) {
+  // detail===0 indicates keyboard/synthetic activation, not pointer tap.
+  if (event.detail !== 0) return;
+  event.preventDefault();
+  action();
 }
 
 export function SelectControl({
@@ -172,7 +193,8 @@ export function SelectControl({
         id={id}
         type="button"
         className={triggerClassName}
-        onClick={() => setOpen(true)}
+        onPointerUp={(event) => pointerTapAction(event, () => setOpen(true))}
+        onClick={(event) => keyboardClickAction(event, () => setOpen(true))}
         disabled={disabled}
         aria-haspopup="dialog"
         aria-expanded={open}
@@ -185,12 +207,16 @@ export function SelectControl({
       {name && !multiple ? <input type="hidden" name={name} value={controlledValue} /> : null}
 
       {open ? (
-        <div className="overlayBackdrop selectControlBackdrop" onClick={() => setOpen(false)}>
+        <div
+          className="overlayBackdrop selectControlBackdrop"
+          onPointerUp={(event) => pointerTapAction(event, () => setOpen(false))}
+        >
           <div
             className="card selectControlSheet"
             role="dialog"
             aria-modal="true"
             aria-label={dialogLabel}
+            onPointerUp={(event) => event.stopPropagation()}
             onClick={(event) => event.stopPropagation()}
           >
             <div className="row selectControlHeader">
@@ -200,13 +226,21 @@ export function SelectControl({
                   <button
                     type="button"
                     className="btn"
-                    onClick={() => commitValues([])}
+                    onPointerUp={(event) => pointerTapAction(event, () => commitValues([]))}
+                    onClick={(event) => keyboardClickAction(event, () => commitValues([]))}
                     disabled={selectedValues.length < 1}
                   >
                     Clear
                   </button>
                 ) : null}
-                <button type="button" className="btn" onClick={() => setOpen(false)}>Done</button>
+                <button
+                  type="button"
+                  className="btn"
+                  onPointerUp={(event) => pointerTapAction(event, () => setOpen(false))}
+                  onClick={(event) => keyboardClickAction(event, () => setOpen(false))}
+                >
+                  Done
+                </button>
               </div>
             </div>
 
@@ -225,14 +259,22 @@ export function SelectControl({
                     type="button"
                     key={option.value}
                     className={`btn selectControlOptionButton ${isSelected ? "primary" : ""}`}
-                    onClick={() => {
+                    onPointerUp={(event) => pointerTapAction(event, () => {
                       if (multiple) {
                         toggleMultiValue(option.value);
                         return;
                       }
                       commitValue(option.value);
                       setOpen(false);
-                    }}
+                    })}
+                    onClick={(event) => keyboardClickAction(event, () => {
+                      if (multiple) {
+                        toggleMultiValue(option.value);
+                        return;
+                      }
+                      commitValue(option.value);
+                      setOpen(false);
+                    })}
                     disabled={option.disabled}
                     role="option"
                     aria-selected={isSelected}

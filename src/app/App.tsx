@@ -31,6 +31,17 @@ export function App() {
     };
 
     const getLandscapeDirection = (): "cw" | "ccw" => {
+      const orientationType = screenOrientation?.type;
+      if (orientationType === "landscape-primary") {
+        // landscape-primary is 90deg clockwise from portrait-primary.
+        lastLandscapeDirection = "ccw";
+        return lastLandscapeDirection;
+      }
+      if (orientationType === "landscape-secondary") {
+        lastLandscapeDirection = "cw";
+        return lastLandscapeDirection;
+      }
+
       const legacyAngle = (window as LegacyOrientationWindow).orientation;
       if (typeof legacyAngle === "number" && Math.abs(legacyAngle) === 90) {
         // On iOS, window.orientation exposes left/right-side-down directly.
@@ -61,7 +72,7 @@ export function App() {
       for (const timeoutId of orientationRefreshTimeouts) {
         window.clearTimeout(timeoutId);
       }
-      orientationRefreshTimeouts = [120, 320].map((delay) => (
+      orientationRefreshTimeouts = [120, 320, 620].map((delay) => (
         window.setTimeout(() => {
           updateForcedPortraitMode();
         }, delay)
