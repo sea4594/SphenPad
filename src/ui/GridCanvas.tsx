@@ -8,7 +8,8 @@ type LineKindStored = LineKindResolved | "both";
 type EdgeTrack = "top" | "bottom" | "left" | "right";
 type LineSegmentDraft = { a: CellRC; b: CellRC; edgeTrack?: EdgeTrack };
 type LayerItem = NonNullable<PuzzleDefinition["cosmetics"]["underlays"]>[number];
-const LINE_NODE_RADIUS = 0.5;
+const LINE_NODE_DIAMETER = 1;
+const LINE_NODE_RADIUS = LINE_NODE_DIAMETER / 2;
 
 function isLikelyMobileDevice(): boolean {
   if (typeof window === "undefined") return false;
@@ -1187,7 +1188,7 @@ export function GridCanvas(props: {
       for (const seg of segments) {
         const dr = Math.abs(seg.b.r - seg.a.r);
         const dc = Math.abs(seg.b.c - seg.a.c);
-        if (dr + dc !== 1) continue;
+        if (dr > 1 || dc > 1 || (dr === 0 && dc === 0)) continue;
         const x0 = cellX(seg.a.c);
         const y0 = cellY(seg.a.r);
         const x1 = cellX(seg.b.c);
@@ -1736,16 +1737,13 @@ export function GridCanvas(props: {
     fromClientY: number,
     toClientX: number,
     toClientY: number,
-    opts?: { hotZoneRadius?: number; hotZoneHalfSize?: number; samplesPerCell?: number; maxHops?: number }
+    opts?: { samplesPerCell?: number; maxHops?: number }
   ): CellRC[] {
     const start = eventGridPoint(fromClientX, fromClientY) ?? eventGridPoint(toClientX, toClientY);
     const end = eventGridPoint(toClientX, toClientY);
     if (!start || !end) return [];
 
-    const hotZoneRadius = Math.max(
-      0.2,
-      Math.min(LINE_NODE_RADIUS, opts?.hotZoneRadius ?? opts?.hotZoneHalfSize ?? LINE_NODE_RADIUS)
-    );
+    const hotZoneRadius = LINE_NODE_RADIUS;
     const samplesPerCell = Math.max(8, Math.min(40, opts?.samplesPerCell ?? 24));
     const maxHops = Math.max(1, Math.min(20, opts?.maxHops ?? 12));
 
@@ -1769,6 +1767,10 @@ export function GridCanvas(props: {
         { r: cur.r + 1, c: cur.c },
         { r: cur.r, c: cur.c - 1 },
         { r: cur.r, c: cur.c + 1 },
+        { r: cur.r - 1, c: cur.c - 1 },
+        { r: cur.r - 1, c: cur.c + 1 },
+        { r: cur.r + 1, c: cur.c - 1 },
+        { r: cur.r + 1, c: cur.c + 1 },
       ];
 
       for (const cand of candidates) {
@@ -1789,13 +1791,13 @@ export function GridCanvas(props: {
     return hops;
   }
 
-  function nearestCornerNodeCircle(clientX: number, clientY: number, radius = LINE_NODE_RADIUS): CellRC | null {
+  function nearestCornerNodeCircle(clientX: number, clientY: number): CellRC | null {
     const gp = eventGridPoint(clientX, clientY);
     if (!gp) return null;
     const c = Math.round(gp.gx);
     const r = Math.round(gp.gy);
     if (r < 0 || c < 0 || r > rows || c > cols) return null;
-    if (Math.hypot(gp.gx - c, gp.gy - r) > radius) return null;
+    if (Math.hypot(gp.gx - c, gp.gy - r) > LINE_NODE_RADIUS) return null;
     return { r, c };
   }
 
@@ -1883,7 +1885,7 @@ export function GridCanvas(props: {
       const kind = resolveInitialLineKind(pt);
       const edgeTapCandidate = kind === "edge" ? pickEdgeByPointer(e.clientX, e.clientY, 0.47) ?? undefined : undefined;
       const start = kind === "edge"
-        ? nearestCornerNodeCircle(e.clientX, e.clientY, LINE_NODE_RADIUS) ?? nearestCornerNodeLoose(e.clientX, e.clientY)
+        ? nearestCornerNodeCircle(e.clientX, e.clientY) ?? nearestCornerNodeLoose(e.clientX, e.clientY)
         : nearestCellCenter(e.clientX, e.clientY) ?? rc;
       if (!start) return;
       dragRef.current = {
@@ -1962,7 +1964,7 @@ export function GridCanvas(props: {
             drag.lastClientY ?? e.clientY,
             e.clientX,
             e.clientY,
-            { hotZoneRadius: LINE_NODE_RADIUS, samplesPerCell: 24, maxHops: 12 }
+            { samplesPerCell: 24, maxHops: 12 }
           )
         : centerLineHopsFromPointer(
             drag.last,
@@ -1980,7 +1982,6 @@ export function GridCanvas(props: {
         const dr = hop.r - drag.last.r;
         const dc = hop.c - drag.last.c;
         if (Math.abs(dr) > 1 || Math.abs(dc) > 1) continue;
-        if (kind === "edge" && Math.abs(dr) + Math.abs(dc) !== 1) continue;
 
         const previous = drag.path[drag.path.length - 2] ?? prevCell;
         const stepKey = segKey(drag.last, hop);

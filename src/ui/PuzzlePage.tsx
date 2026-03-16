@@ -108,33 +108,23 @@ function sharesSelectedCell(a: CellRC, b: CellRC, selected: Set<string>) {
   return selected.has(rcKey(a)) || selected.has(rcKey(b));
 }
 
-function selectedCellEdgeKeys(selected: CellRC[]): Set<string> {
-  const keys = new Set<string>();
-  for (const rc of selected) {
-    const topA = { r: rc.r, c: rc.c };
-    const topB = { r: rc.r, c: rc.c + 1 };
-    const bottomA = { r: rc.r + 1, c: rc.c };
-    const bottomB = { r: rc.r + 1, c: rc.c + 1 };
-    const leftA = { r: rc.r, c: rc.c };
-    const leftB = { r: rc.r + 1, c: rc.c };
-    const rightA = { r: rc.r, c: rc.c + 1 };
-    const rightB = { r: rc.r + 1, c: rc.c + 1 };
-
-    keys.add(segKey(topA, topB));
-    keys.add(segKey(bottomA, bottomB));
-    keys.add(segKey(leftA, leftB));
-    keys.add(segKey(rightA, rightB));
-  }
-  return keys;
-}
-
-function cellsTouchedByNodeEdge(a: CellRC, b: CellRC, rows: number, cols: number): CellRC[] {
+function cellsTouchedByNodeSegment(a: CellRC, b: CellRC, rows: number, cols: number): CellRC[] {
   const dr = b.r - a.r;
   const dc = b.c - a.c;
-  if (Math.abs(dr) + Math.abs(dc) !== 1) return [];
+  const absDr = Math.abs(dr);
+  const absDc = Math.abs(dc);
+  if (absDr > 1 || absDc > 1 || (absDr === 0 && absDc === 0)) return [];
+
+  if (absDr === 1 && absDc === 1) {
+    const diagonalCell = { r: Math.min(a.r, b.r), c: Math.min(a.c, b.c) };
+    if (diagonalCell.r >= 0 && diagonalCell.r < rows && diagonalCell.c >= 0 && diagonalCell.c < cols) {
+      return [diagonalCell];
+    }
+    return [];
+  }
 
   const out: CellRC[] = [];
-  if (dc === 0) {
+  if (absDc === 0) {
     const r = Math.min(a.r, b.r);
     const c = a.c;
     const left = { r, c: c - 1 };
@@ -164,7 +154,7 @@ function edgeLikeTouchesSelection(
   const bIsCell = b.r >= 0 && b.r < rows && b.c >= 0 && b.c < cols;
   if (aIsCell && bIsCell) return sharesSelectedCell(a, b, selected);
 
-  const touchedCells = cellsTouchedByNodeEdge(a, b, rows, cols);
+  const touchedCells = cellsTouchedByNodeSegment(a, b, rows, cols);
   return touchedCells.some((rc) => selected.has(rcKey(rc)));
 }
 
@@ -935,13 +925,15 @@ export function PuzzlePage() {
 
   function clearLinesForSelection(progress: PuzzleProgress, selected: CellRC[]): { lines: LineStroke[]; changed: boolean } {
     const selectedSet = new Set(selected.map(rcKey));
-    const selectedEdgeKeys = selectedCellEdgeKeys(selected);
+    const rows = progress.cells.length;
+    const cols = progress.cells[0]?.length ?? 0;
     let changed = false;
     const nextLines: LineStroke[] = [];
     for (const stroke of progress.lines) {
       const nextSegments = stroke.segments.filter((seg) => {
         if (stroke.kind !== "edge") return !sharesSelectedCell(seg.a, seg.b, selectedSet);
-        return !selectedEdgeKeys.has(segKey(seg.a, seg.b));
+        const touchedCells = cellsTouchedByNodeSegment(seg.a, seg.b, rows, cols);
+        return !touchedCells.some((rc) => selectedSet.has(rcKey(rc)));
       });
       if (nextSegments.length !== stroke.segments.length) changed = true;
       if (nextSegments.length) nextLines.push({ ...stroke, segments: nextSegments });
@@ -1054,7 +1046,6 @@ export function PuzzlePage() {
     const segments = segmentsInput.filter((seg) => {
       const dr = Math.abs(seg.a.r - seg.b.r);
       const dc = Math.abs(seg.a.c - seg.b.c);
-      if (resolvedKind === "edge" && dr + dc !== 1) return false;
       return dr <= 1 && dc <= 1 && dr + dc > 0;
     });
     if (!segments.length) return;
