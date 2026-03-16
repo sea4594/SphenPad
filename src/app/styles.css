@@ -265,6 +265,18 @@ button,
   overflow: hidden;
 }
 
+#root:has(.shell-scroll) {
+  height: auto;
+  min-height: 100%;
+  overflow: visible;
+}
+
+.shell-scroll {
+  height: auto;
+  min-height: 100%;
+  overflow: visible;
+}
+
 .topbar {
   display: flex;
   align-items: center;
@@ -343,6 +355,10 @@ button,
   max-width: 100%;
   overflow: auto;
   overflow-x: hidden;
+}
+
+.page-scroll {
+  overflow: visible;
 }
 
 .row {
