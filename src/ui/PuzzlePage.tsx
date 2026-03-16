@@ -242,71 +242,13 @@ function migrateProgressToDefinition(oldData: PersistedPuzzle, nextDef: PuzzleDe
 function normalizePersistedDefinition(p: PersistedPuzzle): PersistedPuzzle {
   const rowsFromProgress = p.progress.cells.length;
   const colsFromProgress = p.progress.cells[0]?.length ?? p.def.size;
-  const hasGridShape = p.def.rows === rowsFromProgress && p.def.cols === colsFromProgress;
-  const overlays = p.def.cosmetics.overlays ?? [];
-  let changed = false;
-  const normalizeLayerItem = (item: NonNullable<PuzzleDefinition["cosmetics"]["overlays"]>[number]) => {
-    const text = item.text == null ? "" : String(item.text).trim();
-    const width = typeof item.width === "number" ? item.width : NaN;
-    const height = typeof item.height === "number" ? item.height : NaN;
-    const tinyTextAnchor =
-      text.length > 0 &&
-      Number.isFinite(width) &&
-      Number.isFinite(height) &&
-      width <= 0.35 &&
-      height <= 0.35;
-    const zeroSpanTextAnchor =
-      text.length > 0 &&
-      ((Number.isFinite(width) && width <= 0.001) || (Number.isFinite(height) && height <= 0.001));
-    const slenderTextAnchor =
-      text.length > 0 &&
-      Number.isFinite(width) &&
-      Number.isFinite(height) &&
-      Math.min(width, height) <= 0.2 &&
-      Math.max(width, height) >= 0.45;
-    const currentSize = typeof item.textSize === "number" ? item.textSize : undefined;
-    let next = item;
-
-    if (tinyTextAnchor && (currentSize == null || currentSize < 9)) {
-      changed = true;
-      const minSpan = Math.min(width, height);
-      const inferred = Math.max(9, Math.min(14, minSpan * 56 * 2.0));
-      next = { ...next, textSize: inferred };
-    }
-
-    if (zeroSpanTextAnchor || slenderTextAnchor) {
-      const hasShape = next.color != null || next.borderColor != null || next.rounded === true;
-      if (hasShape) {
-        changed = true;
-        next = {
-          ...next,
-          rounded: false,
-          color: undefined,
-          borderColor: undefined,
-          borderThickness: undefined,
-        };
-      }
-    }
-
-    return next;
-  };
-
-  const nextOverlays = overlays.map(normalizeLayerItem);
-  const underlays = p.def.cosmetics.underlays ?? [];
-  const nextUnderlays = underlays.map(normalizeLayerItem);
-
-  if (!changed && hasGridShape) return p;
+  if (p.def.rows === rowsFromProgress && p.def.cols === colsFromProgress) return p;
   return {
     ...p,
     def: {
       ...p.def,
       rows: rowsFromProgress,
       cols: colsFromProgress,
-      cosmetics: {
-        ...p.def.cosmetics,
-        overlays: nextOverlays,
-        underlays: nextUnderlays,
-      },
     },
   };
 }

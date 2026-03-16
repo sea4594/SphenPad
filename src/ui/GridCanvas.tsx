@@ -716,6 +716,9 @@ export function GridCanvas(props: {
     ) => {
       const drawShapes = opts?.drawShapes ?? true;
       const drawText = opts?.drawText ?? true;
+      const orderedItems = [...items].sort(
+        (a, b) => (a.renderOrder ?? Number.MAX_SAFE_INTEGER) - (b.renderOrder ?? Number.MAX_SAFE_INTEGER)
+      );
 
       const drawShape = (item: NonNullable<PuzzleDefinition["cosmetics"]["underlays"]>[number], mode: "fill" | "stroke") => {
         const w = Number.isFinite(item.width) ? item.width! : 1;
@@ -782,15 +785,13 @@ export function GridCanvas(props: {
       };
 
       if (drawShapes) {
-        // Preserve source item ordering (SudokuPad semantics): each shape paints
-        // its own fill and stroke before moving to the next item.
-        for (const item of items) {
+        for (const item of orderedItems) {
           if (item.color) drawShape(item, "fill");
           if (item.borderColor) drawShape(item, "stroke");
         }
       }
 
-      for (const item of items) {
+      for (const item of orderedItems) {
         if (drawText && item.text != null && String(item.text).length) {
           const angleRad = (Number(item.angle) || 0) * (Math.PI / 180);
           const itemOpacity = Number.isFinite(item.opacity) ? Math.max(0, Math.min(1, Number(item.opacity))) : 1;
@@ -804,14 +805,7 @@ export function GridCanvas(props: {
             ctx.translate(-cx, -cy);
           }
           ctx.fillStyle = item.textColor ?? "#111111";
-          const pxRaw = (item.textSize ?? 16) * (cellPx / cosmeticUnit);
-          const tinyAnchorText =
-            typeof item.width === "number" &&
-            typeof item.height === "number" &&
-            item.width <= 0.35 &&
-            item.height <= 0.35 &&
-            String(item.text).trim().length <= 2;
-          const px = tinyAnchorText ? Math.max(pxRaw, previewMode ? 4.5 : 8.5) : pxRaw;
+          const px = (item.textSize ?? 16) * (cellPx / cosmeticUnit);
           const text = String(item.text);
           const hasEmoji = /\p{Extended_Pictographic}/u.test(text);
           const textPx = Math.max(previewMode ? 4.5 : 10, px);
@@ -822,32 +816,10 @@ export function GridCanvas(props: {
           ctx.textBaseline = "middle";
           const tx = worldX(item.center.x);
           const ty = worldY(item.center.y);
-          const onOrOutsideGridBorder =
-            item.center.x <= 0.02 ||
-            item.center.x >= cols - 0.02 ||
-            item.center.y <= 0.02 ||
-            item.center.y >= rows - 0.02 ||
-            item.center.x < 0 ||
-            item.center.x > cols ||
-            item.center.y < 0 ||
-            item.center.y > rows;
-
-          const isTightNumberLabel = /^\d{2,}$/.test(text) && !onOrOutsideGridBorder;
           const twemoji = hasEmoji ? getTwemojiImage(text) : null;
           if (twemoji) {
             const sz = textPx;
             ctx.drawImage(twemoji, tx - sz / 2, ty - sz / 2, sz, sz);
-          } else if (isTightNumberLabel) {
-            const chars = Array.from(text);
-            const widths = chars.map((ch) => ctx.measureText(ch).width);
-            const kerning = Math.max(0.6, px * 0.22);
-            const total = widths.reduce((a, b) => a + b, 0) - kerning * (chars.length - 1);
-            let cursor = tx - total / 2;
-            for (let i = 0; i < chars.length; i++) {
-              const w = widths[i] as number;
-              ctx.fillText(chars[i] as string, cursor + w / 2, ty);
-              cursor += w - kerning;
-            }
           } else {
             ctx.fillText(text, tx, ty);
           }
@@ -856,19 +828,20 @@ export function GridCanvas(props: {
       }
     };
 
+    const classifyRenderTarget = (target?: string): "under" | "over" => {
+      const t = (target ?? "").toLowerCase();
+      if (/(^|[^a-z])(under|underlay|back|background|behind|below|bottom)([^a-z]|$)/.test(t)) return "under";
+      return "over";
+    };
+
     const drawConstraintLines = (layer: "under" | "over") => {
       if (!def.cosmetics.lines) return;
-      const classifyLineTarget = (ln: NonNullable<PuzzleDefinition["cosmetics"]["lines"]>[number]): "under" | "over" => {
-        const t = (ln.target ?? "").toLowerCase();
-        if (/(^|[^a-z])(under|underlay|back|background|behind|below|bottom)([^a-z]|$)/.test(t)) return "under";
-        if (/(^|[^a-z])(over|overlay|front|foreground|above|top)([^a-z]|$)/.test(t)) return "over";
-        // Un-targeted filled paths are typically background shapes, while
-        // un-targeted strokes are usually clue lines drawn above those shapes.
-        return ln.fillColor ? "under" : "over";
-      };
-      for (const ln of def.cosmetics.lines) {
+      const orderedLines = [...def.cosmetics.lines].sort(
+        (a, b) => (a.renderOrder ?? Number.MAX_SAFE_INTEGER) - (b.renderOrder ?? Number.MAX_SAFE_INTEGER)
+      );
+      for (const ln of orderedLines) {
         if (ln.wayPoints.length < 2) continue;
-        const isUnder = classifyLineTarget(ln) === "under";
+        const isUnder = classifyRenderTarget(ln.target) === "under";
         if (layer === "under" ? !isUnder : isUnder) continue;
         const lineOpacity = Number.isFinite(ln.opacity) ? Math.max(0, Math.min(1, Number(ln.opacity))) : 1;
 
@@ -927,21 +900,7 @@ export function GridCanvas(props: {
       }
     };
 
-    const underlayItems = def.cosmetics.underlays ?? [];
-
-    // Draw underlay polygon/line art first.
-    drawConstraintLines("under");
-    if (underlayItems.length) drawLayer(underlayItems, { drawShapes: true, drawText: true });
-
-    // Highlights sit above puzzle artwork but below grid/features and values.
-    for (let r = 0; r < rows; r++) {
-      for (let c = 0; c < cols; c++) {
-        const colors = progress.cells[r][c].highlights ?? [];
-        drawCellHighlights(r, c, colors);
-      }
-    }
-
-    const drawCages = () => {
+    const drawCages = (layer: "under" | "over") => {
       if (!def.cosmetics.cages) return;
       const hasMatchingCornerLabel = (cageCells: CellRC[], sum: string) => {
         const labels = [...(def.cosmetics.overlays ?? []), ...(def.cosmetics.underlays ?? [])];
@@ -958,7 +917,11 @@ export function GridCanvas(props: {
           return cageSet.has(`${cellR},${cellC}`);
         });
       };
-      for (const cage of def.cosmetics.cages) {
+      const orderedCages = [...def.cosmetics.cages].sort(
+        (a, b) => (a.renderOrder ?? Number.MAX_SAFE_INTEGER) - (b.renderOrder ?? Number.MAX_SAFE_INTEGER)
+      );
+      for (const cage of orderedCages) {
+        if (classifyRenderTarget(cage.target) !== layer) continue;
         const cageOpacity = Number.isFinite(cage.opacity) ? Math.max(0, Math.min(1, Number(cage.opacity))) : 1;
         const cageStroke = cage.color ?? "#000000";
         const cageLineWidth = scaledCosmeticPx(cage.thickness ?? 1.25, { previewMin: 0.5, normalMin: 0.9 });
@@ -1028,9 +991,13 @@ export function GridCanvas(props: {
       }
     };
 
-    const drawArrows = () => {
+    const drawArrows = (layer: "under" | "over") => {
       if (!def.cosmetics.arrows) return;
-      for (const a of def.cosmetics.arrows) {
+      const orderedArrows = [...def.cosmetics.arrows].sort(
+        (a, b) => (a.renderOrder ?? Number.MAX_SAFE_INTEGER) - (b.renderOrder ?? Number.MAX_SAFE_INTEGER)
+      );
+      for (const a of orderedArrows) {
+        if (classifyRenderTarget(a.target) !== layer) continue;
         const stroke = a.color ?? "#59606b";
         const lineW = scaledCosmeticPx(a.thickness ?? 4.2, { previewMin: 0.8, normalMin: 1.5 });
         const bulbRadius = scaledCellPx(0.18, { previewMin: 1.8, normalMin: 5, max: cellPx * 0.28 });
@@ -1121,9 +1088,13 @@ export function GridCanvas(props: {
       }
     };
 
-    const drawDots = () => {
+    const drawDots = (layer: "under" | "over") => {
       if (!def.cosmetics.dots) return;
-      for (const d of def.cosmetics.dots) {
+      const orderedDots = [...def.cosmetics.dots].sort(
+        (a, b) => (a.renderOrder ?? Number.MAX_SAFE_INTEGER) - (b.renderOrder ?? Number.MAX_SAFE_INTEGER)
+      );
+      for (const d of orderedDots) {
+        if (classifyRenderTarget(d.target) !== layer) continue;
         const a = normalizeDotRc(d.a);
         const b = normalizeDotRc(d.b);
         if (!a || !b) continue;
@@ -1133,24 +1104,53 @@ export function GridCanvas(props: {
         const by = cellY(b.r) + cellPx / 2;
         const x = (ax + bx) / 2;
         const y = (ay + by) / 2;
-        const dotRadius = scaledCellPx(0.125, { previewMin: 1.5, normalMin: 3.5 });
+        const dotRadius = Number.isFinite(d.radius)
+          ? scaledCosmeticPx(Number(d.radius), { previewMin: 1.5, normalMin: 3.5 })
+          : scaledCellPx(0.125, { previewMin: 1.5, normalMin: 3.5 });
+        const dotOpacity = Number.isFinite(d.opacity) ? Math.max(0, Math.min(1, Number(d.opacity))) : 1;
+        const fillColor = d.color ?? (d.kind === "white" ? "#ffffff" : "#1b1b1b");
+        const borderColor = d.borderColor ?? "#111111";
+        const borderWidth = Number.isFinite(d.borderThickness)
+          ? scaledCosmeticPx(Number(d.borderThickness), { previewMin: 0.5, normalMin: 1 })
+          : scaledCosmeticPx(2, { previewMin: 0.5, normalMin: 1 });
+        ctx.save();
+        ctx.globalAlpha *= dotOpacity;
         ctx.beginPath();
         ctx.arc(x, y, dotRadius, 0, Math.PI * 2);
-        ctx.fillStyle = d.kind === "white" ? "#ffffff" : "#1b1b1b";
+        ctx.fillStyle = fillColor;
         ctx.fill();
-        ctx.strokeStyle = "#111111";
-        ctx.lineWidth = scaledCosmeticPx(2, { previewMin: 0.5, normalMin: 1 });
+        ctx.strokeStyle = borderColor;
+        ctx.lineWidth = borderWidth;
         ctx.stroke();
+        ctx.restore();
       }
     };
 
+    const underlayItems = def.cosmetics.underlays ?? [];
+
+    // Draw underlay-targeted puzzle features first.
+    drawConstraintLines("under");
+    drawCages("under");
+    drawArrows("under");
+    drawDots("under");
+    if (underlayItems.length) drawLayer(underlayItems, { drawShapes: true, drawText: true });
+
+    // Highlights sit above puzzle artwork but below grid/features and values.
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const colors = progress.cells[r][c].highlights ?? [];
+        drawCellHighlights(r, c, colors);
+      }
+    }
+
     const drawTopPuzzleFeatures = () => {
-      drawCages();
+      drawCages("over");
       drawConstraintLines("over");
       if (def.cosmetics.overlays?.length) {
         drawLayer(def.cosmetics.overlays as NonNullable<PuzzleDefinition["cosmetics"]["underlays"]>);
       }
-      drawArrows();
+      drawArrows("over");
+      drawDots("over");
     };
 
     const fogDefined = (def.cosmetics.fogLights?.length ?? 0) > 0 || (def.cosmetics.fogTriggerEffects?.length ?? 0) > 0;
@@ -1534,23 +1534,6 @@ export function GridCanvas(props: {
           }
         }
       }
-    }
-
-    // Dots should sit above grid/user lines.
-    if (fogDefined) {
-      ctx.save();
-      ctx.beginPath();
-      for (let r = 0; r < rows; r++) {
-        for (let c = 0; c < cols; c++) {
-          if (!lit[r][c]) continue;
-          ctx.rect(cellX(c), cellY(r), cellPx, cellPx);
-        }
-      }
-      ctx.clip();
-      drawDots();
-      ctx.restore();
-    } else {
-      drawDots();
     }
 
     drawSelectionOutlines();

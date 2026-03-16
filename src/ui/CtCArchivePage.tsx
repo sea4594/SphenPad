@@ -294,8 +294,8 @@ async function loadCachedPuzzlePayload(entry: ArchiveEntry): Promise<string | nu
     if (!res.ok) return null;
 
     const data = (await res.json()) as CachedPuzzlePayload;
-    const payload = typeof data.payload === "string" ? data.payload.trim() : "";
-    return payload || null;
+    const payload = typeof data.payload === "string" ? data.payload : "";
+    return payload.length ? payload : null;
   } catch {
     return null;
   }

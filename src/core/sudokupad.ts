@@ -16,7 +16,7 @@ const COUNTER_API_BASE = "https://api.sudokupad.com/counter";
 const COUNTER_PROXY_A = "https://api.codetabs.com/v1/proxy/?quest=https://api.sudokupad.com/counter";
 const COUNTER_PROXY_B = "https://api.allorigins.win/raw?url=https://api.sudokupad.com/counter";
 
-export const SUDOKUPAD_IMPORT_REVISION = 6;
+export const SUDOKUPAD_IMPORT_REVISION = 7;
 
 function timeout(ms: number) {
   return new Promise<never>((_, rej) => setTimeout(() => rej(new Error("Timeout")), ms));
@@ -784,91 +784,6 @@ function inferredRulesFromCosmetics(cosmetics: PuzzleCosmetics): string {
   return lines.join("\n\n");
 }
 
-function isVeryLightColorToken(token: unknown): boolean {
-  if (typeof token !== "string") return false;
-  const s = token.trim().toLowerCase();
-  if (s === "#fff" || s === "#ffff" || s === "#ffffff" || s === "#ffffffff") return true;
-  const m = s.match(/^#([0-9a-f]{6}|[0-9a-f]{8})$/i);
-  if (!m) return false;
-  const rgb = m[1].slice(0, 6);
-  const r = Number.parseInt(rgb.slice(0, 2), 16);
-  const g = Number.parseInt(rgb.slice(2, 4), 16);
-  const b = Number.parseInt(rgb.slice(4, 6), 16);
-  return r >= 245 && g >= 245 && b >= 245;
-}
-
-function normalizeLayerCosmeticsToGrid(
-  cosmetics: PuzzleCosmetics,
-  rows: number,
-  cols: number,
-): PuzzleCosmetics {
-  const normalizeLayerArray = (
-    items: PuzzleCosmetics["underlays"] | PuzzleCosmetics["overlays"] | undefined,
-  ) => {
-    if (!Array.isArray(items) || !items.length) return items;
-
-    return items
-      .map((item) => {
-        if (!item || !item.center) return null;
-        const text = item.text == null ? "" : String(item.text).trim();
-        const hasText = text.length > 0;
-        const hasFill = Boolean(item.color);
-        const hasBorder = Boolean(item.borderColor) && (item.borderThickness ?? 1.4) > 0;
-        const width = Number.isFinite(item.width) ? Number(item.width) : 0;
-        const height = Number.isFinite(item.height) ? Number(item.height) : 0;
-        const cx = Number(item.center.x);
-        const cy = Number(item.center.y);
-        if (!Number.isFinite(cx) || !Number.isFinite(cy)) return null;
-
-        const halfW = Math.max(0, width / 2);
-        const halfH = Math.max(0, height / 2);
-        const right = cx + halfW;
-        const left = cx - halfW;
-        const top = cy - halfH;
-        const bottom = cy + halfH;
-        const fullyOutside = right <= 0 || left >= cols || bottom <= 0 || top >= rows;
-
-        // Ignore tiny anti-alias crumbs fully outside the puzzle bounds.
-        const outsideBothAxes = (cx < 0 || cx > cols) && (cy < 0 || cy > rows);
-        const angle = Math.abs(Number(item.angle ?? 0));
-        const isRotatedMarker = angle >= 1 && Math.abs((angle % 90) - 45) <= 1.5;
-        const tinyCornerArtifact =
-          !hasText &&
-          (hasFill || hasBorder) &&
-          Math.max(width, height) <= 0.22 &&
-          fullyOutside &&
-          outsideBothAxes &&
-          !isRotatedMarker;
-        if (tinyCornerArtifact) return null;
-
-        // Drop oversized border-only light frames that create white halos.
-        const centeredOnGrid = Math.abs(cx - cols / 2) <= 0.25 && Math.abs(cy - rows / 2) <= 0.25;
-        const oversizedByOneCell =
-          width >= cols + 0.75 &&
-          width <= cols + 1.25 &&
-          height >= rows + 0.75 &&
-          height <= rows + 1.25;
-        const whiteHaloFrame =
-          !hasText &&
-          !hasFill &&
-          hasBorder &&
-          centeredOnGrid &&
-          oversizedByOneCell &&
-          isVeryLightColorToken(item.borderColor);
-        if (whiteHaloFrame) return null;
-
-        return item;
-      })
-      .filter(Boolean) as typeof items;
-  };
-
-  return {
-    ...cosmetics,
-    underlays: normalizeLayerArray(cosmetics.underlays),
-    overlays: normalizeLayerArray(cosmetics.overlays),
-  };
-}
-
 export async function loadFromSudokuPad(
   inputUrlOrId: string,
   options: { preloadedPayload?: string; skipCounterFetch?: boolean } = {}
@@ -877,10 +792,10 @@ export async function loadFromSudokuPad(
   const sourceIdRaw = sourceDetails.sourceId;
   const sourceId = fixURIComponentish(sourceIdRaw);
 
-  let payloadText: string | null = null;
+  let payloadText = "";
   let raw: any = null;
 
-  if (options.preloadedPayload?.trim()) {
+  if (typeof options.preloadedPayload === "string" && options.preloadedPayload.length > 0) {
     // Use the pre-fetched payload (from local archive cache) directly.
     payloadText = options.preloadedPayload;
   } else if (/^(scl|ctc|fpuz|fpuzzles)/.test(sourceId)) {
@@ -987,26 +902,13 @@ export async function loadFromSudokuPad(
   const shape = inferPuzzleShape(sclObj, givens);
   const size = Math.max(shape.rows, shape.cols, inferPuzzleSize(sclObj, givens));
   const subgrid = shape.rows === shape.cols ? detectStandardSubgrid(sclObj, size) : undefined;
-  const normalizedCosmetics = normalizeLayerCosmeticsToGrid(cosmetics, shape.rows, shape.cols);
-
-  if (normalizedCosmetics.gridVisible == null && Array.isArray(sclObj?.regions)) {
-    const regionCells = sclObj.regions.flatMap((region: any) => parseCellRefs(region));
-    if (regionCells.length) {
-      const regionRows = Math.max(...regionCells.map((rc: CellRC) => rc.r)) + 1;
-      const regionCols = Math.max(...regionCells.map((rc: CellRC) => rc.c)) + 1;
-      const hasDenseCustomArtwork =
-        (normalizedCosmetics.lines?.length ?? 0) > 0 ||
-        ((normalizedCosmetics.overlays?.length ?? 0) + (normalizedCosmetics.underlays?.length ?? 0)) >= 20;
-      if (hasDenseCustomArtwork && (regionRows < shape.rows || regionCols < shape.cols)) {
-        normalizedCosmetics.gridVisible = false;
-      }
-    }
-  }
 
   const key = normalizePuzzleKey(sourceId);
   const def: PuzzleDefinition = {
     id: key,
     sourceId,
+    sourcePayload: payloadText,
+    sourceData: raw,
     importRevision: SUDOKUPAD_IMPORT_REVISION,
     size,
     rows: shape.rows,
@@ -1014,7 +916,7 @@ export async function loadFromSudokuPad(
     meta,
     givens,
     cosmetics: {
-      ...normalizedCosmetics,
+      ...cosmetics,
       ...(subgrid ? { subgrid } : {}),
     },
   };
@@ -1093,6 +995,12 @@ function extractGivens(scl: any): Array<{ rc: CellRC; v: string }> {
 
 function extractCosmetics(scl: any): PuzzleCosmetics {
   const cosmetics: PuzzleCosmetics = {};
+  let renderOrder = 0;
+  const nextRenderOrder = () => {
+    const order = renderOrder;
+    renderOrder += 1;
+    return order;
+  };
   const sourceCellSize = Number(scl?.cellSize);
   cosmetics.sourceCellSize = Number.isFinite(sourceCellSize) && sourceCellSize > 0 ? sourceCellSize : 64;
   const sourceUnitsPerCell = Number.isFinite(sourceCellSize) && sourceCellSize > 0 ? sourceCellSize : 64;
@@ -1135,6 +1043,7 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
           rounded: false,
           color,
           opacity: parseOpacityToken(cell?.alpha ?? cell?.opacity) ?? 1,
+          renderOrder: nextRenderOrder(),
         });
       }
     }
@@ -1194,6 +1103,8 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
           thickness: parseFiniteNumberToken(cg?.thickness ?? cg?.borderThickness ?? cg?.th),
           dashArray: dashArray?.length ? dashArray : undefined,
           opacity: parseOpacityToken(cg?.opacity ?? cg?.alpha),
+          target: typeof cg?.target === "string" ? cg.target : undefined,
+          renderOrder: nextRenderOrder(),
         };
       })
       .filter(Boolean) as any;
@@ -1229,6 +1140,8 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
           bulbFill: normalizeColorToken(a?.bulbColor ?? a?.baseC ?? "#ffffff"),
           bulbStroke: normalizeColorToken(a?.bulbBorderColor ?? a?.outlineC ?? a?.color ?? a?.lineColor ?? a?.c ?? "#222222"),
           bulbStrokeThickness: parseFiniteNumberToken(a?.bulbBorderThickness),
+          target: typeof a?.target === "string" ? a.target : undefined,
+          renderOrder: nextRenderOrder(),
         };
       })
       .filter(Boolean) as any;
@@ -1247,8 +1160,20 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
       .map((d: any) => {
         const cells = parseCellRefs(d?.cells ?? d?.ce ?? [d?.a, d?.b]);
         if (cells.length !== 2) return null;
-        const kind = d?.type === "white" || d?.color === "white" ? "white" : "black";
-        return { a: cells[0], b: cells[1], kind };
+        const typeToken = String(d?.type ?? d?.color ?? "").trim().toLowerCase();
+        const kind = typeToken === "white" ? "white" : "black";
+        return {
+          a: cells[0],
+          b: cells[1],
+          kind,
+          color: normalizeColorToken(d?.fill ?? d?.backgroundColor ?? d?.c2 ?? d?.color),
+          borderColor: normalizeColorToken(d?.borderColor ?? d?.outlineC ?? d?.stroke ?? d?.c1),
+          radius: parseFiniteNumberToken(d?.radius ?? d?.r ?? d?.size),
+          borderThickness: parseFiniteNumberToken(d?.thickness ?? d?.th ?? d?.borderThickness),
+          opacity: parseOpacityToken(d?.opacity ?? d?.alpha),
+          target: typeof d?.target === "string" ? d.target : undefined,
+          renderOrder: nextRenderOrder(),
+        };
       })
       .filter(Boolean) as any;
   }
@@ -1310,6 +1235,7 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
           lineJoin,
           dashArray: dashArray?.length ? dashArray : undefined,
           opacity: parseOpacityToken(ln?.opacity ?? ln?.alpha),
+          renderOrder: nextRenderOrder(),
         };
       })
       .filter(Boolean) as any;
@@ -1348,6 +1274,7 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
           lineJoin,
           dashArray: dashArray?.length ? dashArray : undefined,
           opacity: parseOpacityToken(item?.opacity ?? item?.alpha),
+          renderOrder: nextRenderOrder(),
         };
       })
       .filter(Boolean) as NonNullable<PuzzleCosmetics["lines"]>;
@@ -1367,6 +1294,7 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
           color: normalizeColorToken(item?.bulbColor ?? item?.baseC) ?? lineColor,
           borderColor: normalizeColorToken(item?.borderColor ?? item?.outlineC),
           borderThickness: parseFiniteNumberToken(item?.borderThickness ?? item?.thickness ?? item?.th),
+          renderOrder: nextRenderOrder(),
         };
       })
       .filter(Boolean) as NonNullable<PuzzleCosmetics["underlays"]>;
@@ -1382,83 +1310,29 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
     const height = parseFiniteNumberToken(rawHeight);
     const rounded = Boolean(item?.rounded ?? item?.r);
     const text = item?.text ?? item?.te;
-    const textStr = text == null ? "" : String(text).trim();
     const explicitTextSize = parseFiniteNumberToken(item?.textSize ?? item?.fontSize ?? item?.fs);
-    const minSpan = Math.min(
-      Number.isFinite(width) ? Number(width) : Number.POSITIVE_INFINITY,
-      Number.isFinite(height) ? Number(height) : Number.POSITIVE_INFINITY,
-    );
-    const inferredTinyTextSize =
-      explicitTextSize == null && text != null && Number.isFinite(minSpan) && minSpan <= 0.35
-        ? Math.max(9, Math.min(14, minSpan * 56 * 2.0))
-        : undefined;
-    const isTinyTextMarker =
-      textStr.length === 1 &&
-      typeof width === "number" &&
-      typeof height === "number" &&
-      width <= 0.42 &&
-      height <= 0.42;
-
-    const hasExplicitBorderColor = item?.borderColor != null || item?.outlineC != null || item?.c1 != null;
-    const hasExplicitFillColor = item?.backgroundColor != null || item?.fill != null || item?.baseC != null;
-    // Keep explicit border channels (`borderColor`/`outlineC`/`c1`) authoritative.
-    // Compact exports commonly use `c1: #0` to mean a black outline.
     const rawExplicitBorder = item?.borderColor ?? item?.outlineC ?? item?.c1;
     const explicitBorderToken = normalizeColorToken(rawExplicitBorder);
     const rawStroke = item?.stroke;
     const strokeToken = normalizeColorToken(rawStroke);
-    const isTinyRoundedTextMarker =
-      textStr.length > 0 &&
-      rounded &&
-      Number.isFinite(width) &&
-      Number.isFinite(height) &&
-      Number(width) <= 0.5 &&
-      Number(height) <= 0.5;
-    const hasZeroSpan =
-      (Number.isFinite(width) && Number(width) <= 0.001) ||
-      (Number.isFinite(height) && Number(height) <= 0.001);
-    const strokeActsAsTextColor = isTinyRoundedTextMarker && !hasExplicitBorderColor && item?.stroke != null;
-    const borderColor = strokeActsAsTextColor
-      ? undefined
-      : explicitBorderToken ?? (isNoStrokeToken(rawStroke) ? undefined : strokeToken);
+    const borderColor = explicitBorderToken ?? (isNoStrokeToken(rawStroke) ? undefined : strokeToken);
     const fillColor = normalizeColorToken(item?.backgroundColor ?? item?.c2 ?? item?.fill);
-    const isSlenderTextAnchor =
-      textStr.length > 0 &&
-      Number.isFinite(width) &&
-      Number.isFinite(height) &&
-      Number(Math.min(width as number, height as number)) <= 0.2 &&
-      Number(Math.max(width as number, height as number)) >= 0.45;
-    const shouldTreatAsTextOnly =
-      hasZeroSpan ||
-      isSlenderTextAnchor &&
-      !hasExplicitFillColor;
-    const noVisibleStroke = !borderColor;
-    const isRoundedTextMarker = textStr.length > 0 && rounded && noVisibleStroke;
-    const tinyMarkerShouldKeepShape = isTinyTextMarker && rounded && (Boolean(fillColor) || Boolean(borderColor));
-    const suppressShape =
-      shouldTreatAsTextOnly ||
-      (!tinyMarkerShouldKeepShape && isTinyTextMarker) ||
-      (isRoundedTextMarker && !fillColor);
 
     return {
       center: ct,
       width,
       height,
-      rounded: suppressShape ? false : rounded,
-      color: suppressShape ? undefined : fillColor,
-      borderColor: suppressShape ? undefined : borderColor,
+      rounded,
+      color: fillColor,
+      borderColor,
       borderThickness: parseFiniteNumberToken(item?.thickness ?? item?.th),
       text,
-      textColor: normalizeColorToken(
-        item?.color ??
-        item?.textColor ??
-        item?.c ??
-        (strokeActsAsTextColor || shouldTreatAsTextOnly ? item?.stroke : undefined)
-      ),
-      textSize: explicitTextSize ?? inferredTinyTextSize,
+      textColor: normalizeColorToken(item?.color ?? item?.textColor ?? item?.c),
+      textSize: explicitTextSize,
       angle: parseFiniteNumberToken(item?.angle),
       target: typeof item?.target === "string" ? item.target : undefined,
       opacity: parseOpacityToken(item?.opacity ?? item?.alpha),
+      renderOrder: nextRenderOrder(),
     };
   };
 
@@ -1506,6 +1380,8 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
         textColor: normalizeColorToken(item?.textColor ?? item?.fontC ?? item?.color),
         textSize: typeof item?.size === "number" ? Math.max(8, item.size * 28) : undefined,
         angle: typeof item?.angle === "number" ? item.angle : undefined,
+        target: typeof item?.target === "string" ? item.target : undefined,
+        renderOrder: nextRenderOrder(),
       };
     })
     .filter(Boolean) as NonNullable<PuzzleCosmetics["overlays"]>;
@@ -1517,7 +1393,13 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
         .map((d: any) => {
           const cells = parseCellRefs(d?.cells ?? d?.ce);
           if (cells.length !== 2) return null;
-          return { a: cells[0] as CellRC, b: cells[1] as CellRC, kind: "black" as const };
+          return {
+            a: cells[0] as CellRC,
+            b: cells[1] as CellRC,
+            kind: "black" as const,
+            target: typeof d?.target === "string" ? d.target : undefined,
+            renderOrder: nextRenderOrder(),
+          };
         })
         .filter(Boolean)
     : [];
@@ -1526,7 +1408,13 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
         .map((d: any) => {
           const cells = parseCellRefs(d?.cells ?? d?.ce);
           if (cells.length !== 2) return null;
-          return { a: cells[0] as CellRC, b: cells[1] as CellRC, kind: "white" as const };
+          return {
+            a: cells[0] as CellRC,
+            b: cells[1] as CellRC,
+            kind: "white" as const,
+            target: typeof d?.target === "string" ? d.target : undefined,
+            renderOrder: nextRenderOrder(),
+          };
         })
         .filter(Boolean)
     : [];
@@ -1553,6 +1441,8 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
           textColor: normalizeColorToken(t?.fontC ?? t?.color ?? t?.textColor),
           textSize: Math.max(9, 28 * sizeScale),
           angle: typeof t?.angle === "number" ? t.angle : undefined,
+          target: typeof t?.target === "string" ? t.target : undefined,
+          renderOrder: nextRenderOrder(),
         };
       })
       .filter(Boolean) as NonNullable<PuzzleCosmetics["overlays"]>;
@@ -1599,6 +1489,7 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
           lineJoin,
           dashArray: dashArray?.length ? dashArray : undefined,
           opacity: parseOpacityToken(item?.opacity ?? item?.alpha),
+          renderOrder: nextRenderOrder(),
         };
       })
       .filter(Boolean) as NonNullable<PuzzleCosmetics["lines"]>;
@@ -1618,6 +1509,8 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
           color: normalizeColorToken(item?.endFillColor ?? item?.baseC) ?? "#ffffff",
           borderColor: normalizeColorToken(item?.endBorderColor ?? item?.outlineC) ?? "#9f9f9f",
           borderThickness: parseFiniteNumberToken(item?.endBorderThickness ?? item?.borderThickness ?? item?.thickness ?? item?.th) ?? 1.8,
+          target: typeof item?.target === "string" ? item.target : "underlay",
+          renderOrder: nextRenderOrder(),
         }));
       }) as NonNullable<PuzzleCosmetics["underlays"]>;
     if (betweenEndpointCircles.length) cosmetics.underlays = [...(cosmetics.underlays ?? []), ...betweenEndpointCircles];
@@ -1652,6 +1545,8 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
         color: isOdd ? "rgba(0,0,0,0.16)" : "rgba(255,255,255,0.6)",
         borderColor: isOdd ? "#000000" : "#222222",
         borderThickness: 1.1,
+        target: typeof item?.target === "string" ? item.target : "underlay",
+        renderOrder: nextRenderOrder(),
       };
     })
     .filter(Boolean) as NonNullable<PuzzleCosmetics["underlays"]>;

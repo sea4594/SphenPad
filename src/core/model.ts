@@ -55,6 +55,8 @@ export type PuzzleCosmetics = {
     thickness?: number;
     dashArray?: number[];
     opacity?: number;
+    target?: string;
+    renderOrder?: number;
   }>;
   arrows?: Array<{
     bulb?: CellRC;
@@ -66,8 +68,21 @@ export type PuzzleCosmetics = {
     bulbFill?: string;
     bulbStroke?: string;
     bulbStrokeThickness?: number;
+    target?: string;
+    renderOrder?: number;
   }>;
-  dots?: Array<{ a: CellRC; b: CellRC; kind: "black" | "white" }>;
+  dots?: Array<{
+    a: CellRC;
+    b: CellRC;
+    kind: "black" | "white";
+    color?: string;
+    borderColor?: string;
+    radius?: number;
+    borderThickness?: number;
+    opacity?: number;
+    target?: string;
+    renderOrder?: number;
+  }>;
   lines?: Array<{
     wayPoints: Array<{ x: number; y: number }>;
     color?: string;
@@ -81,6 +96,7 @@ export type PuzzleCosmetics = {
     lineJoin?: CanvasLineJoin;
     dashArray?: number[];
     opacity?: number;
+    renderOrder?: number;
   }>;
   underlays?: Array<{
     center: { x: number; y: number };
@@ -95,6 +111,8 @@ export type PuzzleCosmetics = {
     textSize?: number;
     angle?: number;
     opacity?: number;
+    target?: string;
+    renderOrder?: number;
   }>;
   overlays?: Array<{
     center: { x: number; y: number };
@@ -109,6 +127,8 @@ export type PuzzleCosmetics = {
     textSize?: number;
     angle?: number;
     opacity?: number;
+    target?: string;
+    renderOrder?: number;
   }>;
   
   // Line constraints
@@ -149,6 +169,8 @@ export type PuzzleCosmetics = {
 export type PuzzleDefinition = {
   id: string;
   sourceId: string;
+  sourcePayload?: string;
+  sourceData?: unknown;
   importRevision?: number;
   size: number;
   rows: number;
