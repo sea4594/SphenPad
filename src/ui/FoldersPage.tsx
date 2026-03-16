@@ -427,7 +427,7 @@ export function FoldersPage() {
   }
 
   return (
-    <div className="shell shell-scroll">
+    <div className="shell">
       <div className="topbar">
         <AppBrand />
         <div className="spacer" />
@@ -436,7 +436,7 @@ export function FoldersPage() {
         </button>
       </div>
 
-      <div className="page page-scroll">
+      <div className="page">
         <div className="mainMenuWrap foldersPageWrap">
           <div className="card">
             <div className="row menuModeTabs" style={{ marginTop: 2 }}>
