@@ -4,6 +4,14 @@ import { MainMenu } from "../ui/MainMenu";
 import { PuzzlePage } from "../ui/PuzzlePage";
 import { CtCArchivePage } from "../ui/CtCArchivePage";
 import { FoldersPage } from "../ui/FoldersPage";
+import {
+  applyForcedPortrait,
+  clearForcedPortrait,
+  detectLandscapeDirection,
+  FORCED_PORTRAIT_REFRESH_DELAYS,
+  getViewportSize,
+  type ForcedPortraitDirection,
+} from "./forcedPortrait";
 import { ThemeProvider } from "./theme";
 
 export function App() {
@@ -11,88 +19,41 @@ export function App() {
     type LegacyOrientationWindow = Window & { orientation?: number };
     type LockableOrientation = ScreenOrientation & { lock?: (kind: string) => Promise<void> };
     const root = document.documentElement;
-    const coarsePointer = window.matchMedia("(hover: none) and (pointer: coarse)");
-    const mobilePlatform = /android|iphone|ipad|ipod/i.test(navigator.userAgent);
-    const touchPrimaryInput = coarsePointer.matches && navigator.maxTouchPoints > 1;
-    const onMobileDevice = mobilePlatform || touchPrimaryInput;
+    const onMobileDevice =
+      /android|iphone|ipad|ipod/i.test(navigator.userAgent) ||
+      (navigator.maxTouchPoints > 0 && window.matchMedia("(hover: none) and (pointer: coarse)").matches);
     const visualViewport = window.visualViewport;
     const screenOrientation = window.screen?.orientation;
-    let lastLandscapeDirection: "cw" | "ccw" = "ccw";
+    let lastLandscapeDirection: ForcedPortraitDirection = "ccw";
     let orientationRefreshTimeouts: number[] = [];
 
-    const getViewportSize = () => {
-      const layoutW = Math.max(1, Math.round(window.innerWidth));
-      const layoutH = Math.max(1, Math.round(window.innerHeight));
-      const visualW = Math.max(1, Math.round(visualViewport?.width ?? layoutW));
-      const visualH = Math.max(1, Math.round(visualViewport?.height ?? layoutH));
-      const vw = Math.max(layoutW, visualW);
-      const vh = Math.max(layoutH, visualH);
-      return { vw, vh };
-    };
-
-    const getLandscapeDirection = (): "cw" | "ccw" => {
-      const orientationType = screenOrientation?.type;
-      if (orientationType === "landscape-primary") {
-        // landscape-primary is 90deg clockwise from portrait-primary.
-        lastLandscapeDirection = "ccw";
-        return lastLandscapeDirection;
-      }
-      if (orientationType === "landscape-secondary") {
-        lastLandscapeDirection = "cw";
-        return lastLandscapeDirection;
-      }
-
-      const legacyAngle = (window as LegacyOrientationWindow).orientation;
-      if (typeof legacyAngle === "number" && Math.abs(legacyAngle) === 90) {
-        // On iOS, window.orientation exposes left/right-side-down directly.
-        // +90: left side down -> rotate content CW.
-        // -90: right side down -> rotate content CCW.
-        lastLandscapeDirection = legacyAngle > 0 ? "cw" : "ccw";
-        return lastLandscapeDirection;
-      }
-
-      const angle = screenOrientation?.angle;
-      if (typeof angle === "number") {
-        const normalized = ((angle % 360) + 360) % 360;
-        if (normalized === 90) {
-          // screen.orientation.angle uses clockwise-positive rotation.
-          lastLandscapeDirection = "ccw";
-          return lastLandscapeDirection;
-        }
-        if (normalized === 270) {
-          lastLandscapeDirection = "cw";
-          return lastLandscapeDirection;
-        }
-      }
-
-      return lastLandscapeDirection;
-    };
-
-    const scheduleOrientationRefresh = () => {
+    const clearRefreshTimeouts = () => {
       for (const timeoutId of orientationRefreshTimeouts) {
         window.clearTimeout(timeoutId);
       }
-      orientationRefreshTimeouts = [120, 320, 620].map((delay) => (
-        window.setTimeout(() => {
-          updateForcedPortraitMode();
-        }, delay)
-      ));
+      orientationRefreshTimeouts = [];
     };
 
-    const updateForcedPortraitMode = () => {
-      const { vw, vh } = getViewportSize();
-      const rotatedLandscape = vw > vh;
-      if (onMobileDevice && rotatedLandscape) {
-        // vw = landscape visual width (long side = maps to portrait height after rotation)
-        // vh = landscape visual height (short side = maps to portrait width after rotation)
-        root.style.setProperty("--screen-w", `${vw}px`);
-        root.style.setProperty("--screen-h", `${vh}px`);
-        root.setAttribute("data-force-portrait", getLandscapeDirection());
-      } else {
-        root.removeAttribute("data-force-portrait");
-        root.style.removeProperty("--screen-w");
-        root.style.removeProperty("--screen-h");
+    const syncForcedPortraitMode = () => {
+      const viewport = getViewportSize(visualViewport);
+      if (onMobileDevice && viewport.vw > viewport.vh) {
+        lastLandscapeDirection = detectLandscapeDirection(
+          screenOrientation,
+          (window as LegacyOrientationWindow).orientation,
+          lastLandscapeDirection,
+        );
+        applyForcedPortrait(root, lastLandscapeDirection, viewport);
+        return;
       }
+
+      clearForcedPortrait(root);
+    };
+
+    const scheduleOrientationRefresh = () => {
+      clearRefreshTimeouts();
+      orientationRefreshTimeouts = FORCED_PORTRAIT_REFRESH_DELAYS.map((delay) => (
+        window.setTimeout(syncForcedPortraitMode, delay)
+      ));
     };
 
     const lockPortrait = async () => {
@@ -107,7 +68,7 @@ export function App() {
 
     const relockIfVisible = () => {
       if (document.visibilityState === "visible") {
-        updateForcedPortraitMode();
+        syncForcedPortraitMode();
         void lockPortrait();
       }
     };
@@ -118,12 +79,11 @@ export function App() {
     };
 
     const onViewportChange = () => {
-      updateForcedPortraitMode();
-      // Safari can report stale orientation values briefly after rotating.
+      syncForcedPortraitMode();
       scheduleOrientationRefresh();
     };
 
-    updateForcedPortraitMode();
+    syncForcedPortraitMode();
     void lockPortrait();
     window.addEventListener("focus", relockIfVisible);
     document.addEventListener("visibilitychange", relockIfVisible);
@@ -132,7 +92,6 @@ export function App() {
     window.addEventListener("orientationchange", onViewportChange);
     screenOrientation?.addEventListener?.("change", onViewportChange);
     visualViewport?.addEventListener("resize", onViewportChange);
-    coarsePointer.addEventListener?.("change", onViewportChange);
 
     return () => {
       window.removeEventListener("focus", relockIfVisible);
@@ -142,14 +101,8 @@ export function App() {
       window.removeEventListener("orientationchange", onViewportChange);
       screenOrientation?.removeEventListener?.("change", onViewportChange);
       visualViewport?.removeEventListener("resize", onViewportChange);
-      coarsePointer.removeEventListener?.("change", onViewportChange);
-      for (const timeoutId of orientationRefreshTimeouts) {
-        window.clearTimeout(timeoutId);
-      }
-      orientationRefreshTimeouts = [];
-      root.removeAttribute("data-force-portrait");
-      root.style.removeProperty("--screen-w");
-      root.style.removeProperty("--screen-h");
+      clearRefreshTimeouts();
+      clearForcedPortrait(root);
     };
   }, []);
 

@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { mapForcedPortraitPoint, readForcedPortraitDirection } from "../app/forcedPortrait";
 import type { CellRC, PuzzleDefinition, PuzzleProgress } from "../core/model";
 import { useTheme } from "../app/theme";
 
@@ -1588,31 +1589,13 @@ export function GridCanvas(props: {
     const canvas = canvasRef.current;
     if (!canvas) return null;
     const rect = canvas.getBoundingClientRect();
-    const relX = clientX - rect.left;
-    const relY = clientY - rect.top;
-    const forcedPortrait = document.documentElement.getAttribute("data-force-portrait");
-
-    if (forcedPortrait === "cw") {
-      // In cw mode the canvas is visually rotated +90deg, so map viewport
-      // coordinates back into unrotated canvas-local coordinates.
-      return {
-        x: Math.max(0, Math.min(canvas.clientWidth, canvas.clientWidth - relY)),
-        y: Math.max(0, Math.min(canvas.clientHeight, relX)),
-      };
-    }
-
-    if (forcedPortrait === "ccw") {
-      // In ccw mode the canvas is visually rotated -90deg.
-      return {
-        x: Math.max(0, Math.min(canvas.clientWidth, relY)),
-        y: Math.max(0, Math.min(canvas.clientHeight, canvas.clientHeight - relX)),
-      };
-    }
-
-    return {
-      x: Math.max(0, Math.min(canvas.clientWidth, relX)),
-      y: Math.max(0, Math.min(canvas.clientHeight, relY)),
-    };
+    return mapForcedPortraitPoint(
+      readForcedPortraitDirection(),
+      canvas.clientWidth,
+      canvas.clientHeight,
+      clientX - rect.left,
+      clientY - rect.top,
+    );
   }
 
   function eventPoint(clientX: number, clientY: number) {

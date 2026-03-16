@@ -10,6 +10,7 @@ import {
   type ReactNode,
   type SelectHTMLAttributes,
 } from "react";
+import { hasForcedPortrait, observeForcedPortrait } from "../app/forcedPortrait";
 
 type SelectControlProps = SelectHTMLAttributes<HTMLSelectElement> & {
   children: ReactNode;
@@ -21,13 +22,9 @@ type OptionEntry = {
   disabled: boolean;
 };
 
-function toValueArray(
-  value: SelectHTMLAttributes<HTMLSelectElement>["value"],
-  multiple: boolean | undefined
-): string[] {
+function toValueArray(value: SelectHTMLAttributes<HTMLSelectElement>["value"]): string[] {
   if (value == null) return [];
   if (Array.isArray(value)) return value.map((entry) => String(entry));
-  if (multiple) return [String(value)];
   return [String(value)];
 }
 
@@ -54,19 +51,13 @@ function readOptionEntries(children: ReactNode): OptionEntry[] {
 function useForcedPortraitMode(): boolean {
   const [forcedPortrait, setForcedPortrait] = useState(() => {
     if (typeof document === "undefined") return false;
-    return document.documentElement.hasAttribute("data-force-portrait");
+    return hasForcedPortrait();
   });
 
   useEffect(() => {
-    const root = document.documentElement;
-    const sync = () => setForcedPortrait(root.hasAttribute("data-force-portrait"));
+    const sync = () => setForcedPortrait(hasForcedPortrait());
     sync();
-    const observer = new MutationObserver(sync);
-    observer.observe(root, {
-      attributes: true,
-      attributeFilter: ["data-force-portrait"],
-    });
-    return () => observer.disconnect();
+    return observeForcedPortrait(sync);
   }, []);
 
   return forcedPortrait;
@@ -91,6 +82,13 @@ function keyboardClickAction(
   action();
 }
 
+function pressHandlers(action: () => void) {
+  return {
+    onPointerUp: (event: ReactPointerEvent<HTMLElement>) => pointerTapAction(event, action),
+    onClick: (event: ReactMouseEvent<HTMLElement>) => keyboardClickAction(event, action),
+  };
+}
+
 export function SelectControl({
   children,
   className,
@@ -107,7 +105,7 @@ export function SelectControl({
   const forcedPortrait = useForcedPortraitMode();
   const [open, setOpen] = useState(false);
   const options = useMemo(() => readOptionEntries(children), [children]);
-  const selectedValues = useMemo(() => toValueArray(value, multiple), [multiple, value]);
+  const selectedValues = useMemo(() => toValueArray(value), [value]);
   const selectedValueSet = useMemo(() => new Set(selectedValues), [selectedValues]);
   const controlledValue = selectedValues[0] ?? "";
   const selectedOption = options.find((entry) => entry.value === controlledValue) ?? options[0] ?? null;
@@ -187,14 +185,26 @@ export function SelectControl({
     commitValues(nextValues);
   };
 
+  const closeMenu = () => setOpen(false);
+  const openMenu = () => setOpen(true);
+  const clearValues = () => commitValues([]);
+  const selectOptionValue = (nextValue: string) => {
+    if (multiple) {
+      toggleMultiValue(nextValue);
+      return;
+    }
+
+    commitValue(nextValue);
+    closeMenu();
+  };
+
   return (
     <>
       <button
         id={id}
         type="button"
         className={triggerClassName}
-        onPointerUp={(event) => pointerTapAction(event, () => setOpen(true))}
-        onClick={(event) => keyboardClickAction(event, () => setOpen(true))}
+        {...pressHandlers(openMenu)}
         disabled={disabled}
         aria-haspopup="dialog"
         aria-expanded={open}
@@ -209,7 +219,7 @@ export function SelectControl({
       {open ? (
         <div
           className="overlayBackdrop selectControlBackdrop"
-          onPointerUp={(event) => pointerTapAction(event, () => setOpen(false))}
+          onPointerUp={(event) => pointerTapAction(event, closeMenu)}
         >
           <div
             className="card selectControlSheet"
@@ -226,8 +236,7 @@ export function SelectControl({
                   <button
                     type="button"
                     className="btn"
-                    onPointerUp={(event) => pointerTapAction(event, () => commitValues([]))}
-                    onClick={(event) => keyboardClickAction(event, () => commitValues([]))}
+                    {...pressHandlers(clearValues)}
                     disabled={selectedValues.length < 1}
                   >
                     Clear
@@ -236,8 +245,7 @@ export function SelectControl({
                 <button
                   type="button"
                   className="btn"
-                  onPointerUp={(event) => pointerTapAction(event, () => setOpen(false))}
-                  onClick={(event) => keyboardClickAction(event, () => setOpen(false))}
+                  {...pressHandlers(closeMenu)}
                 >
                   Done
                 </button>
@@ -259,22 +267,7 @@ export function SelectControl({
                     type="button"
                     key={option.value}
                     className={`btn selectControlOptionButton ${isSelected ? "primary" : ""}`}
-                    onPointerUp={(event) => pointerTapAction(event, () => {
-                      if (multiple) {
-                        toggleMultiValue(option.value);
-                        return;
-                      }
-                      commitValue(option.value);
-                      setOpen(false);
-                    })}
-                    onClick={(event) => keyboardClickAction(event, () => {
-                      if (multiple) {
-                        toggleMultiValue(option.value);
-                        return;
-                      }
-                      commitValue(option.value);
-                      setOpen(false);
-                    })}
+                    {...pressHandlers(() => selectOptionValue(option.value))}
                     disabled={option.disabled}
                     role="option"
                     aria-selected={isSelected}
