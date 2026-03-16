@@ -19,6 +19,16 @@ type OptionEntry = {
   disabled: boolean;
 };
 
+function toValueArray(
+  value: SelectHTMLAttributes<HTMLSelectElement>["value"],
+  multiple: boolean | undefined
+): string[] {
+  if (value == null) return [];
+  if (Array.isArray(value)) return value.map((entry) => String(entry));
+  if (multiple) return [String(value)];
+  return [String(value)];
+}
+
 function readOptionEntries(children: ReactNode): OptionEntry[] {
   const entries: OptionEntry[] = [];
   Children.forEach(children, (child) => {
@@ -76,9 +86,11 @@ export function SelectControl({
   const forcedPortrait = useForcedPortraitMode();
   const [open, setOpen] = useState(false);
   const options = useMemo(() => readOptionEntries(children), [children]);
-  const controlledValue = value == null ? "" : String(value);
+  const selectedValues = useMemo(() => toValueArray(value, multiple), [multiple, value]);
+  const selectedValueSet = useMemo(() => new Set(selectedValues), [selectedValues]);
+  const controlledValue = selectedValues[0] ?? "";
   const selectedOption = options.find((entry) => entry.value === controlledValue) ?? options[0] ?? null;
-  const canUseCustomMenu = forcedPortrait && !multiple && (size == null || size <= 1);
+  const canUseCustomMenu = forcedPortrait;
 
   useEffect(() => {
     if (!canUseCustomMenu) setOpen(false);
@@ -115,6 +127,10 @@ export function SelectControl({
   const triggerClassName = `${className ?? ""} selectControlButton`.trim();
   const dialogLabel = ariaLabel || "Choose an option";
 
+  const selectedLabel = multiple
+    ? (selectedValues.length ? `${selectedValues.length} selected` : "All")
+    : (selectedOption?.label ?? controlledValue);
+
   const commitValue = (nextValue: string) => {
     if (!onChange || nextValue === controlledValue) return;
     const syntheticEvent = {
@@ -122,6 +138,32 @@ export function SelectControl({
       currentTarget: { value: nextValue },
     } as unknown as ChangeEvent<HTMLSelectElement>;
     onChange(syntheticEvent);
+  };
+
+  const commitValues = (nextValues: string[]) => {
+    if (!onChange) return;
+    const selectedOptions = nextValues.map((entry) => ({ value: entry }));
+    const syntheticEvent = {
+      target: {
+        value: nextValues[0] ?? "",
+        selectedOptions,
+      },
+      currentTarget: {
+        value: nextValues[0] ?? "",
+        selectedOptions,
+      },
+    } as unknown as ChangeEvent<HTMLSelectElement>;
+    onChange(syntheticEvent);
+  };
+
+  const toggleMultiValue = (nextValue: string) => {
+    const nextSet = new Set(selectedValueSet);
+    if (nextSet.has(nextValue)) nextSet.delete(nextValue);
+    else nextSet.add(nextValue);
+    const nextValues = options
+      .map((entry) => entry.value)
+      .filter((entry) => nextSet.has(entry));
+    commitValues(nextValues);
   };
 
   return (
@@ -136,11 +178,11 @@ export function SelectControl({
         aria-expanded={open}
         aria-label={ariaLabel}
       >
-        <span className="selectControlTriggerLabel">{selectedOption?.label ?? controlledValue}</span>
+        <span className="selectControlTriggerLabel">{selectedLabel}</span>
         <span className="selectControlCaret" aria-hidden="true">v</span>
       </button>
 
-      {name ? <input type="hidden" name={name} value={controlledValue} /> : null}
+      {name && !multiple ? <input type="hidden" name={name} value={controlledValue} /> : null}
 
       {open ? (
         <div className="overlayBackdrop selectControlBackdrop" onClick={() => setOpen(false)}>
@@ -153,18 +195,41 @@ export function SelectControl({
           >
             <div className="row selectControlHeader">
               <div className="menuSectionTitle selectControlTitle">{dialogLabel}</div>
-              <button type="button" className="btn" onClick={() => setOpen(false)}>Close</button>
+              <div className="row" style={{ justifyContent: "flex-end", flexWrap: "nowrap" }}>
+                {multiple ? (
+                  <button
+                    type="button"
+                    className="btn"
+                    onClick={() => commitValues([])}
+                    disabled={selectedValues.length < 1}
+                  >
+                    Clear
+                  </button>
+                ) : null}
+                <button type="button" className="btn" onClick={() => setOpen(false)}>Done</button>
+              </div>
             </div>
 
-            <div className="selectControlOptionList" role="listbox" aria-label={dialogLabel}>
+            <div
+              className="selectControlOptionList"
+              role="listbox"
+              aria-label={dialogLabel}
+              aria-multiselectable={multiple ? true : undefined}
+            >
               {options.map((option) => {
-                const isSelected = option.value === controlledValue;
+                const isSelected = multiple
+                  ? selectedValueSet.has(option.value)
+                  : option.value === controlledValue;
                 return (
                   <button
                     type="button"
                     key={option.value}
                     className={`btn selectControlOptionButton ${isSelected ? "primary" : ""}`}
                     onClick={() => {
+                      if (multiple) {
+                        toggleMultiValue(option.value);
+                        return;
+                      }
                       commitValue(option.value);
                       setOpen(false);
                     }}
@@ -172,10 +237,16 @@ export function SelectControl({
                     role="option"
                     aria-selected={isSelected}
                   >
-                    {option.label}
+                    {multiple ? (
+                      <span className="selectControlOptionBody">
+                        <span className={`selectControlOptionState ${isSelected ? "is-selected" : ""}`} aria-hidden="true" />
+                        <span>{option.label}</span>
+                      </span>
+                    ) : option.label}
                   </button>
                 );
               })}
+              {!options.length ? <div className="muted">No options</div> : null}
             </div>
           </div>
         </div>

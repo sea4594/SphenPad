@@ -18,7 +18,7 @@ export function App() {
     const visualViewport = window.visualViewport;
     const screenOrientation = window.screen?.orientation;
     let lastLandscapeDirection: "cw" | "ccw" = "ccw";
-    let orientationRefreshTimeout: number | null = null;
+    let orientationRefreshTimeouts: number[] = [];
 
     const getViewportSize = () => {
       const layoutW = Math.max(1, Math.round(window.innerWidth));
@@ -31,6 +31,15 @@ export function App() {
     };
 
     const getLandscapeDirection = (): "cw" | "ccw" => {
+      const legacyAngle = (window as LegacyOrientationWindow).orientation;
+      if (typeof legacyAngle === "number" && Math.abs(legacyAngle) === 90) {
+        // On iOS, window.orientation exposes left/right-side-down directly.
+        // +90: left side down -> rotate content CW.
+        // -90: right side down -> rotate content CCW.
+        lastLandscapeDirection = legacyAngle > 0 ? "cw" : "ccw";
+        return lastLandscapeDirection;
+      }
+
       const angle = screenOrientation?.angle;
       if (typeof angle === "number") {
         const normalized = ((angle % 360) + 360) % 360;
@@ -45,16 +54,18 @@ export function App() {
         }
       }
 
-      const legacyAngle = (window as LegacyOrientationWindow).orientation;
-      if (typeof legacyAngle === "number" && Math.abs(legacyAngle) === 90) {
-        // window.orientation uses opposite sign from screen.orientation.angle.
-        // iOS +90: left side down (landscape-left) -> rotate content CW to correct.
-        // iOS -90: right side down (landscape-right) -> rotate content CCW.
-        lastLandscapeDirection = legacyAngle > 0 ? "cw" : "ccw";
-        return lastLandscapeDirection;
-      }
-
       return lastLandscapeDirection;
+    };
+
+    const scheduleOrientationRefresh = () => {
+      for (const timeoutId of orientationRefreshTimeouts) {
+        window.clearTimeout(timeoutId);
+      }
+      orientationRefreshTimeouts = [120, 320].map((delay) => (
+        window.setTimeout(() => {
+          updateForcedPortraitMode();
+        }, delay)
+      ));
     };
 
     const updateForcedPortraitMode = () => {
@@ -97,13 +108,8 @@ export function App() {
 
     const onViewportChange = () => {
       updateForcedPortraitMode();
-      if (orientationRefreshTimeout != null) {
-        window.clearTimeout(orientationRefreshTimeout);
-      }
-      // Safari can report old orientation values briefly after rotating.
-      orientationRefreshTimeout = window.setTimeout(() => {
-        updateForcedPortraitMode();
-      }, 140);
+      // Safari can report stale orientation values briefly after rotating.
+      scheduleOrientationRefresh();
     };
 
     updateForcedPortraitMode();
@@ -126,9 +132,10 @@ export function App() {
       screenOrientation?.removeEventListener?.("change", onViewportChange);
       visualViewport?.removeEventListener("resize", onViewportChange);
       coarsePointer.removeEventListener?.("change", onViewportChange);
-      if (orientationRefreshTimeout != null) {
-        window.clearTimeout(orientationRefreshTimeout);
+      for (const timeoutId of orientationRefreshTimeouts) {
+        window.clearTimeout(timeoutId);
       }
+      orientationRefreshTimeouts = [];
       root.removeAttribute("data-force-portrait");
       root.style.removeProperty("--screen-w");
       root.style.removeProperty("--screen-h");

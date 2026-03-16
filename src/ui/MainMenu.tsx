@@ -814,7 +814,7 @@ export function MainMenu() {
 
                 <label className="archiveFilterControl">
                   <span className="muted archiveFilterLabel">Constraints</span>
-                  <select
+                  <SelectControl
                     className="archiveConstraintSelect"
                     multiple
                     size={Math.min(8, Math.max(4, constraintOptions.length || 4))}
@@ -831,7 +831,7 @@ export function MainMenu() {
                         {value}
                       </option>
                     ))}
-                  </select>
+                  </SelectControl>
                   <span className="muted archiveFilterHint">
                     {constraintOptions.length
                       ? (constraintFilters.length ? `${constraintFilters.length} selected` : "All")

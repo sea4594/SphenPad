@@ -731,7 +731,7 @@ export function CtCArchivePage() {
 
               <label className="archiveFilterControl">
                 <span className="muted archiveFilterLabel">Constraints</span>
-                <select
+                <SelectControl
                   className="archiveConstraintSelect"
                   multiple
                   size={Math.min(8, Math.max(4, constraintOptions.length || 4))}
@@ -748,7 +748,7 @@ export function CtCArchivePage() {
                       {value}
                     </option>
                   ))}
-                </select>
+                </SelectControl>
                 <span className="muted archiveFilterHint">
                   {constraintFilters.length ? `${constraintFilters.length} selected` : "All"}
                 </span>

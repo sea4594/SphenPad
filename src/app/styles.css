@@ -469,6 +469,16 @@ input.url {
   opacity: 0.8;
 }
 
+.archiveConstraintSelect.selectControlButton {
+  width: 100%;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.archiveConstraintSelect.selectControlButton .selectControlTriggerLabel {
+  white-space: normal;
+}
+
 .menuStatusTabs {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -1267,6 +1277,25 @@ input.url {
 .selectControlOptionButton {
   width: 100%;
   text-align: left;
+}
+
+.selectControlOptionBody {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.selectControlOptionState {
+  width: 16px;
+  height: 16px;
+  border: 1px solid color-mix(in oklab, var(--text) 34%, transparent);
+  background: transparent;
+  display: inline-block;
+}
+
+.selectControlOptionState.is-selected {
+  background: color-mix(in oklab, var(--accent) 80%, transparent);
+  border-color: color-mix(in oklab, var(--accent) 90%, transparent);
 }
 
 .folderCreateOverlayBackdrop {
