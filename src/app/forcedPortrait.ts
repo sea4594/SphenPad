@@ -96,16 +96,18 @@ export function mapForcedPortraitPoint(
   y: number
 ) {
   if (direction === "cw") {
+    // CSS rotate(90deg) is visually clockwise, so the inverse map uses
+    // the screen-space ccw transform.
     return {
-      x: clamp(width - y, 0, width),
-      y: clamp(x, 0, height),
+      x: clamp(y, 0, width),
+      y: clamp(height - x, 0, height),
     };
   }
 
   if (direction === "ccw") {
     return {
-      x: clamp(y, 0, width),
-      y: clamp(height - x, 0, height),
+      x: clamp(width - y, 0, width),
+      y: clamp(x, 0, height),
     };
   }
 
