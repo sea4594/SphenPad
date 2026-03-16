@@ -95,6 +95,7 @@ export type PuzzleCosmetics = {
     lineCap?: CanvasLineCap;
     lineJoin?: CanvasLineJoin;
     dashArray?: number[];
+    dashOffset?: number;
     opacity?: number;
     renderOrder?: number;
   }>;
@@ -109,6 +110,8 @@ export type PuzzleCosmetics = {
     text?: string;
     textColor?: string;
     textSize?: number;
+    textAlign?: CanvasTextAlign;
+    textBaseline?: CanvasTextBaseline;
     angle?: number;
     opacity?: number;
     target?: string;
@@ -125,6 +128,8 @@ export type PuzzleCosmetics = {
     text?: string;
     textColor?: string;
     textSize?: number;
+    textAlign?: CanvasTextAlign;
+    textBaseline?: CanvasTextBaseline;
     angle?: number;
     opacity?: number;
     target?: string;

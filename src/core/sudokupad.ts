@@ -348,6 +348,31 @@ function parseFiniteNumberToken(v: unknown): number | undefined {
   return Number.isFinite(n) ? n : undefined;
 }
 
+function parseTextAlignToken(v: unknown): CanvasTextAlign | undefined {
+  if (typeof v !== "string") return undefined;
+  const s = v.trim().toLowerCase();
+  if (!s) return undefined;
+  if (s === "left" || s === "right" || s === "center" || s === "start" || s === "end") return s;
+  if (s === "middle") return "center";
+  return undefined;
+}
+
+function parseTextBaselineToken(v: unknown): CanvasTextBaseline | undefined {
+  if (typeof v !== "string") return undefined;
+  const s = v.trim().toLowerCase();
+  if (!s) return undefined;
+  if (
+    s === "top" ||
+    s === "hanging" ||
+    s === "middle" ||
+    s === "alphabetic" ||
+    s === "ideographic" ||
+    s === "bottom"
+  ) return s;
+  if (s === "central" || s === "center") return "middle";
+  return undefined;
+}
+
 function categorizeTarget(raw: unknown): "under" | "over" | undefined {
   if (typeof raw !== "string") return undefined;
   const t = raw.trim().toLowerCase();
@@ -1276,6 +1301,7 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
           lineCap,
           lineJoin,
           dashArray: dashArray?.length ? dashArray : undefined,
+          dashOffset: parseFiniteNumberToken(ln?.["stroke-dashoffset"] ?? ln?.dashOffset),
           opacity: parseOpacityToken(ln?.opacity ?? ln?.alpha),
           renderOrder: nextRenderOrder(),
         };
@@ -1367,10 +1393,14 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
       rounded,
       color: fillColor,
       borderColor,
-      borderThickness: parseFiniteNumberToken(item?.thickness ?? item?.th),
+      borderThickness: parseFiniteNumberToken(
+        item?.thickness ?? item?.th ?? item?.borderSize ?? item?.["stroke-width"]
+      ),
       text,
       textColor: normalizeColorToken(item?.color ?? item?.textColor ?? item?.c),
       textSize: explicitTextSize,
+      textAlign: parseTextAlignToken(item?.textAlign ?? item?.["text-anchor"]),
+      textBaseline: parseTextBaselineToken(item?.textBaseline ?? item?.["dominant-baseline"]),
       angle: parseFiniteNumberToken(item?.angle),
       target: typeof item?.target === "string" ? item.target : undefined,
       opacity: parseOpacityToken(item?.opacity ?? item?.alpha),
@@ -1530,6 +1560,7 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
           lineCap,
           lineJoin,
           dashArray: dashArray?.length ? dashArray : undefined,
+          dashOffset: parseFiniteNumberToken(item?.["stroke-dashoffset"] ?? item?.dashOffset),
           opacity: parseOpacityToken(item?.opacity ?? item?.alpha),
           renderOrder: nextRenderOrder(),
         };

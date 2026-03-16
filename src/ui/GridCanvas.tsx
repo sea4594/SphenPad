@@ -812,8 +812,8 @@ export function GridCanvas(props: {
           ctx.font = hasEmoji
             ? `${textPx}px ${emojiTextFont}`
             : `600 ${textPx}px ${gridTextFont}, ${emojiTextFont}`;
-          ctx.textAlign = "center";
-          ctx.textBaseline = "middle";
+          ctx.textAlign = item.textAlign ?? "center";
+          ctx.textBaseline = item.textBaseline ?? "middle";
           const tx = worldX(item.center.x);
           const ty = worldY(item.center.y);
           const twemoji = hasEmoji ? getTwemojiImage(text) : null;
@@ -831,6 +831,7 @@ export function GridCanvas(props: {
     const classifyRenderTarget = (target?: string): "under" | "over" => {
       const t = (target ?? "").toLowerCase();
       if (/(^|[^a-z])(under|underlay|back|background|behind|below|bottom)([^a-z]|$)/.test(t)) return "under";
+      if (/(^|[^a-z])(cell-?grids?|gridlayer)([^a-z]|$)/.test(t)) return "under";
       return "over";
     };
 
@@ -854,6 +855,7 @@ export function GridCanvas(props: {
           ctx.translate(originX, originY);
           ctx.scale(cellPx / units, cellPx / units);
           if (ln.dashArray?.length) ctx.setLineDash(ln.dashArray);
+          if (Number.isFinite(ln.dashOffset)) ctx.lineDashOffset = Number(ln.dashOffset);
           if (ln.fillColor) {
             ctx.fillStyle = ln.fillColor;
             ctx.fill(path);
@@ -872,6 +874,9 @@ export function GridCanvas(props: {
           ctx.globalAlpha *= lineOpacity;
           if (ln.dashArray?.length) {
             ctx.setLineDash(ln.dashArray.map((value) => scaledCosmeticPx(value, { previewMin: 0.5, normalMin: 1 })));
+          }
+          if (Number.isFinite(ln.dashOffset)) {
+            ctx.lineDashOffset = scaledCosmeticPx(Number(ln.dashOffset), { previewMin: 0, normalMin: 0 });
           }
           ctx.beginPath();
           ln.wayPoints.forEach((p, i) => {
