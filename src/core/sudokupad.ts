@@ -126,6 +126,39 @@ function parseSourceDetails(input: string): { sourceId: string; noGrid: boolean 
   }
 }
 
+function isSudokuPadHost(hostname: string): boolean {
+  const host = hostname.trim().toLowerCase();
+  return host === "sudokupad.app" || host === "app.crackingthecryptic.com";
+}
+
+function isHttpUrlString(value: string): boolean {
+  return /^https?:\/\//i.test(value.trim());
+}
+
+function isSudokuPadUrlString(value: string): boolean {
+  try {
+    return isSudokuPadHost(new URL(value.trim()).hostname);
+  } catch {
+    return false;
+  }
+}
+
+async function resolveImportInputUrl(input: string): Promise<string> {
+  const raw = input.trim();
+  if (!isHttpUrlString(raw)) return raw;
+  if (isSudokuPadUrlString(raw)) return raw;
+
+  try {
+    const res = await Promise.race([fetch(raw), timeout(8000)]) as Response;
+    const finalUrl = res.url?.trim();
+    if (finalUrl) return finalUrl;
+  } catch {
+    // Keep original input when redirect resolution fails.
+  }
+
+  return raw;
+}
+
 function fixURIComponentish(s: string): string {
   // SudokuPad links sometimes embed percent-escapes inconsistently.
   try {
@@ -788,9 +821,18 @@ export async function loadFromSudokuPad(
   inputUrlOrId: string,
   options: { preloadedPayload?: string; skipCounterFetch?: boolean } = {}
 ): Promise<{ key: string; def: PuzzleDefinition; raw: any }> {
-  const sourceDetails = parseSourceDetails(inputUrlOrId);
+  const resolvedInput = await resolveImportInputUrl(inputUrlOrId);
+  const sourceDetails = parseSourceDetails(resolvedInput);
   const sourceIdRaw = sourceDetails.sourceId;
   const sourceId = fixURIComponentish(sourceIdRaw);
+
+  if (
+    isHttpUrlString(inputUrlOrId) &&
+    !isSudokuPadUrlString(resolvedInput) &&
+    !/^(scl|ctc|fpuz|fpuzzles)/i.test(sourceId)
+  ) {
+    throw new Error("Input URL does not resolve to a SudokuPad puzzle link.");
+  }
 
   let payloadText = "";
   let raw: any = null;
