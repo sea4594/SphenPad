@@ -549,7 +549,7 @@ export function CtCArchivePage() {
   }
 
   async function onImport(entry: PreparedArchiveEntry) {
-    const importSource = clean(entry.sourceId || entry.sudokuPadUrl);
+    const importSource = clean(entry.sudokuPadUrl || entry.sourceId);
     if (!importSource) {
       setUiMessage("No puzzle source ID found in archive metadata.");
       return;
