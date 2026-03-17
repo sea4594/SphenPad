@@ -237,6 +237,12 @@ export function GridCanvas(props: {
     return null;
   }, [twemojiCodepointVariants, twemojiVariantKey]);
 
+  const dotOffset = useMemo(() => {
+    const dots = def.cosmetics.dots ?? [];
+    const maxCoord = dots.reduce((acc, d) => Math.max(acc, d.a.r, d.a.c, d.b.r, d.b.c), -Infinity);
+    return maxCoord >= Math.max(rows, cols) ? 1 : 0;
+  }, [cols, def.cosmetics.dots, rows]);
+
   const highlightRotationRad = (20 * Math.PI) / 180;
   const highlightAlpha = 0.82;
   const gridTextFont = '"Lato", "Noto Sans", "Segoe UI", ui-sans-serif, sans-serif';
@@ -285,6 +291,13 @@ export function GridCanvas(props: {
   const inBounds = useCallback((r: number, c: number) => {
     return r >= 0 && c >= 0 && r < rows && c < cols;
   }, [cols, rows]);
+
+  const normalizeDotRc = useCallback((rc: CellRC): CellRC | null => {
+    const shifted = dotOffset ? { r: rc.r - dotOffset, c: rc.c - dotOffset } : rc;
+    if (inBounds(shifted.r, shifted.c)) return shifted;
+    if (inBounds(rc.r, rc.c)) return rc;
+    return null;
+  }, [dotOffset, inBounds]);
 
   function keyToRc(key: string): CellRC {
     const [r, c] = key.split(",").map((v) => Number(v));
@@ -415,18 +428,18 @@ export function GridCanvas(props: {
     ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
     ctx.clearRect(0, 0, widthPx, heightPx);
 
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, widthPx, heightPx);
-
-    // Keep the full Sudoku grid area pure white before drawing imported board imagery.
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(cellX(0), cellY(0), cellPx * cols, cellPx * rows);
-
     if (bgImage) {
       ctx.globalAlpha = 0.3;
       ctx.drawImage(bgImage, cellX(0), cellY(0), cellPx * cols, cellPx * rows);
       ctx.globalAlpha = 1;
     }
+
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, widthPx, heightPx);
+
+    // Keep the full Sudoku grid area pure white regardless of global theme.
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(cellX(0), cellY(0), cellPx * cols, cellPx * rows);
 
     const unitScale = cellPx / cosmeticUnit;
     const scaledCosmeticPx = (
@@ -733,11 +746,6 @@ export function GridCanvas(props: {
       const angleRad = (Number(item.angle) || 0) * (Math.PI / 180);
       const itemOpacity = Number.isFinite(item.opacity) ? Math.max(0, Math.min(1, Number(item.opacity))) : 1;
       const nearlyCircle = Math.abs(rw - rh) <= Math.max(1, cellPx * 0.02);
-      const defaultCornerRadiusPx = Math.min(14, cellPx * 0.25);
-      const sourceCornerRadiusPx = Number.isFinite(item.cornerRadius)
-        ? Number(item.cornerRadius) * cellPx
-        : defaultCornerRadiusPx;
-      const shapeCornerRadiusPx = Math.max(0, Math.min(Math.min(rw, rh) / 2, sourceCornerRadiusPx));
 
       const withItemTransform = (draw: () => void) => {
         ctx.save();
@@ -761,7 +769,7 @@ export function GridCanvas(props: {
               ctx.fill();
             } else {
               ctx.beginPath();
-              ctx.roundRect(x, y, rw, rh, shapeCornerRadiusPx);
+              ctx.roundRect(x, y, rw, rh, Math.min(14, cellPx * 0.25));
               ctx.fill();
             }
           } else {
@@ -787,7 +795,6 @@ export function GridCanvas(props: {
               const sy = y + inset;
               const sw = Math.max(0, rw - borderWidth);
               const sh = Math.max(0, rh - borderWidth);
-              const strokeCornerRadiusPx = Math.max(0, Math.min(Math.min(sw, sh) / 2, shapeCornerRadiusPx - inset));
               if (item.rounded) {
                 if (nearlyCircle) {
                   ctx.beginPath();
@@ -795,7 +802,7 @@ export function GridCanvas(props: {
                   ctx.stroke();
                 } else {
                   ctx.beginPath();
-                  ctx.roundRect(sx, sy, sw, sh, strokeCornerRadiusPx);
+                  ctx.roundRect(sx, sy, sw, sh, Math.min(14, cellPx * 0.25));
                   ctx.stroke();
                 }
               } else {
@@ -810,7 +817,7 @@ export function GridCanvas(props: {
         const px = (item.textSize ?? 16) * (cellPx / cosmeticUnit);
         const text = String(item.text);
         const hasEmoji = /\p{Extended_Pictographic}/u.test(text);
-        const textPx = Math.max(1, px);
+        const textPx = Math.max(previewMode ? 4.5 : 10, px);
         const tx = worldX(item.center.x);
         const ty = worldY(item.center.y);
         const twemoji = hasEmoji ? getTwemojiImage(text) : null;
@@ -854,6 +861,22 @@ export function GridCanvas(props: {
       return defaultLayer;
     };
 
+    const hasMatchingCornerLabel = (cageCells: CellRC[], sum: string) => {
+      const labels = [...(def.cosmetics.overlays ?? []), ...(def.cosmetics.underlays ?? [])];
+      const expected = String(sum).trim();
+      const cageSet = new Set(cageCells.map((cell) => `${cell.r},${cell.c}`));
+      return labels.some((item) => {
+        const txt = item.text == null ? "" : String(item.text).trim();
+        if (!txt || txt !== expected) return false;
+        const cx = item?.center?.x;
+        const cy = item?.center?.y;
+        if (!Number.isFinite(cx) || !Number.isFinite(cy)) return false;
+        const cellC = Math.floor(Number(cx));
+        const cellR = Math.floor(Number(cy));
+        return cageSet.has(`${cellR},${cellC}`);
+      });
+    };
+
     const drawConstraintLine = (ln: NonNullable<PuzzleDefinition["cosmetics"]["lines"]>[number]) => {
       if (ln.wayPoints.length < 2) return;
       const lineOpacity = Number.isFinite(ln.opacity) ? Math.max(0, Math.min(1, Number(ln.opacity))) : 1;
@@ -887,7 +910,7 @@ export function GridCanvas(props: {
       ctx.save();
       ctx.globalAlpha *= lineOpacity;
       if (ln.dashArray?.length) {
-        ctx.setLineDash(ln.dashArray.map((value) => scaledCosmeticPx(value, { previewMin: 0, normalMin: 0 })));
+        ctx.setLineDash(ln.dashArray.map((value) => scaledCosmeticPx(value, { previewMin: 0.5, normalMin: 1 })));
       }
       if (Number.isFinite(ln.dashOffset)) {
         ctx.lineDashOffset = scaledCosmeticPx(Number(ln.dashOffset), { previewMin: 0, normalMin: 0 });
@@ -920,9 +943,9 @@ export function GridCanvas(props: {
     const drawCage = (cage: NonNullable<PuzzleDefinition["cosmetics"]["cages"]>[number]) => {
       const cageOpacity = Number.isFinite(cage.opacity) ? Math.max(0, Math.min(1, Number(cage.opacity))) : 1;
       const cageStroke = cage.color ?? "#000000";
-      const cageLineWidth = scaledCosmeticPx(cage.thickness ?? 1.25, { previewMin: 0, normalMin: 0 });
+      const cageLineWidth = scaledCosmeticPx(cage.thickness ?? 1.25, { previewMin: 0.5, normalMin: 0.9 });
       const cageDash = (cage.dashArray?.length ? cage.dashArray : [5, 3])
-        .map((value) => scaledCosmeticPx(value, { previewMin: 0, normalMin: 0 }));
+        .map((value) => scaledCosmeticPx(value, { previewMin: 0.5, normalMin: 1 }));
       const set = new Set(cage.cells.map((rc) => `${rc.r},${rc.c}`));
       for (const rc of cage.cells) {
         if (cage.fillColor) {
@@ -934,7 +957,7 @@ export function GridCanvas(props: {
         }
         const x = cellX(rc.c);
         const y = cellY(rc.r);
-        const inset = cellPx * 0.055;
+        const inset = scaledCellPx(0.055, { previewMin: 0.8, normalMin: 2, max: 3 });
         const neighbors = {
           up: `${rc.r - 1},${rc.c}`,
           right: `${rc.r},${rc.c + 1}`,
@@ -974,21 +997,23 @@ export function GridCanvas(props: {
       }
       if (cage.sum) {
         const first = cage.cells[0];
-        ctx.fillStyle = cage.textColor ?? cage.color ?? "#111111";
-        ctx.font = `${scaledCosmeticPx(12, { previewMin: 0, normalMin: 0 })}px ${gridTextFont}, ${emojiTextFont}`;
-        ctx.fillText(
-          cage.sum,
-          cellX(first.c) + cellPx * 0.11,
-          cellY(first.r) + cellPx * 0.24,
-        );
+        if (!hasMatchingCornerLabel(cage.cells, cage.sum)) {
+          ctx.fillStyle = cage.textColor ?? cage.color ?? "#111111";
+          ctx.font = `${scaledCosmeticPx(12, { previewMin: 4.5, normalMin: 8, max: 14 })}px ${gridTextFont}, ${emojiTextFont}`;
+          ctx.fillText(
+            cage.sum,
+            cellX(first.c) + scaledCellPx(0.11, { previewMin: 1.2, normalMin: 4, max: 6 }),
+            cellY(first.r) + scaledCellPx(0.24, { previewMin: 4.2, normalMin: 12, max: 14 }),
+          );
+        }
       }
     };
 
     const drawArrow = (a: NonNullable<PuzzleDefinition["cosmetics"]["arrows"]>[number]) => {
       const stroke = a.color ?? "#59606b";
-      const lineW = scaledCosmeticPx(a.thickness ?? 4.2, { previewMin: 0, normalMin: 0 });
-      const bulbRadius = scaledCellPx(0.18, { previewMin: 0, normalMin: 0, max: cellPx * 0.28 });
-      const bulbStrokeWidth = scaledCosmeticPx(a.bulbStrokeThickness ?? 1.6, { previewMin: 0, normalMin: 0 });
+      const lineW = scaledCosmeticPx(a.thickness ?? 4.2, { previewMin: 0.8, normalMin: 1.5 });
+      const bulbRadius = scaledCellPx(0.18, { previewMin: 1.8, normalMin: 5, max: cellPx * 0.28 });
+      const bulbStrokeWidth = scaledCosmeticPx(a.bulbStrokeThickness ?? 1.6, { previewMin: 0.5, normalMin: 0.9 });
       const waypointPath = Array.isArray(a.wayPoints) && a.wayPoints.length >= 2
         ? a.wayPoints
         : null;
@@ -1048,8 +1073,8 @@ export function GridCanvas(props: {
         const nx = -uy;
         const ny = ux;
         const headLen = Number.isFinite(a.headLength)
-          ? scaledCellPx(Number(a.headLength), { previewMin: 0, normalMin: 0 })
-          : scaledCellPx(0.3, { previewMin: 0, normalMin: 0 });
+          ? scaledCellPx(Number(a.headLength), { previewMin: 1.6, normalMin: 6 })
+          : scaledCellPx(0.3, { previewMin: 2.2, normalMin: 8 });
         const headWidth = Math.max(lineW * 1.15, headLen * 0.66);
         const bx = ex - ux * headLen;
         const by = ey - uy * headLen;
@@ -1078,9 +1103,9 @@ export function GridCanvas(props: {
     };
 
     const drawDot = (d: NonNullable<PuzzleDefinition["cosmetics"]["dots"]>[number]) => {
-      if (!inBounds(d.a.r, d.a.c) || !inBounds(d.b.r, d.b.c)) return;
-      const a = d.a;
-      const b = d.b;
+      const a = normalizeDotRc(d.a);
+      const b = normalizeDotRc(d.b);
+      if (!a || !b) return;
       const ax = cellX(a.c) + cellPx / 2;
       const ay = cellY(a.r) + cellPx / 2;
       const bx = cellX(b.c) + cellPx / 2;
@@ -1088,8 +1113,8 @@ export function GridCanvas(props: {
       const x = (ax + bx) / 2;
       const y = (ay + by) / 2;
       const dotRadius = Number.isFinite(d.radius)
-        ? scaledCosmeticPx(Number(d.radius), { previewMin: 0, normalMin: 0 })
-        : scaledCellPx(0.125, { previewMin: 0, normalMin: 0 });
+        ? scaledCosmeticPx(Number(d.radius), { previewMin: 1.5, normalMin: 3.5 })
+        : scaledCellPx(0.125, { previewMin: 1.5, normalMin: 3.5 });
       const dotOpacity = Number.isFinite(d.opacity) ? Math.max(0, Math.min(1, Number(d.opacity))) : 1;
       const fillColor = d.color ?? (d.kind === "white" ? "#ffffff" : "#1b1b1b");
       const borderColor = d.borderColor ?? "#111111";
@@ -1098,7 +1123,7 @@ export function GridCanvas(props: {
         : undefined;
       const borderWidth = explicitBorderThickness != null
         ? scaledCosmeticPx(explicitBorderThickness, { previewMin: 0, normalMin: 0 })
-        : scaledCosmeticPx(2, { previewMin: 0, normalMin: 0 });
+        : scaledCosmeticPx(2, { previewMin: 0.5, normalMin: 1 });
       ctx.save();
       ctx.globalAlpha *= dotOpacity;
       ctx.beginPath();
@@ -1136,7 +1161,7 @@ export function GridCanvas(props: {
     let featureSerial = 0;
     for (const item of def.cosmetics.lines ?? []) {
       orderedFeatureEntries.push({
-        layer: classifyRenderTarget(item.target, "over"),
+        layer: classifyRenderTarget(item.target, "under"),
         order: renderOrderValue(item.renderOrder),
         serial: featureSerial++,
         kind: "line",
@@ -1635,6 +1660,7 @@ export function GridCanvas(props: {
     boardW,
     cellPx,
     def,
+    dotOffset,
     emojiRenderVersion,
     getTwemojiImage,
     heightPx,
@@ -1643,7 +1669,6 @@ export function GridCanvas(props: {
     outlineDigits,
     conflictChecker,
     cols,
-    interactive,
     originX,
     originY,
     pad,
@@ -1655,6 +1680,7 @@ export function GridCanvas(props: {
     cosmeticUnit,
     emojiTextFont,
     inBounds,
+    normalizeDotRc,
     worldX,
     worldY,
     widthPx,

@@ -104,7 +104,6 @@ export type PuzzleCosmetics = {
     width?: number;
     height?: number;
     rounded?: boolean;
-    cornerRadius?: number;
     color?: string;
     borderColor?: string;
     borderThickness?: number;
@@ -127,7 +126,6 @@ export type PuzzleCosmetics = {
     width?: number;
     height?: number;
     rounded?: boolean;
-    cornerRadius?: number;
     color?: string;
     borderColor?: string;
     borderThickness?: number;
@@ -185,7 +183,6 @@ export type PuzzleCosmetics = {
 export type PuzzleDefinition = {
   id: string;
   sourceId: string;
-  sourceUrl?: string;
   sourcePayload?: string;
   sourceData?: unknown;
   importRevision?: number;

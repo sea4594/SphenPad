@@ -343,7 +343,7 @@ export function FoldersPage() {
   }
 
   function sudokuPadUrlFor(row: StoredPuzzle): string | null {
-    const source = (row.def?.sourceUrl ?? row.def?.sourceId ?? row.key).trim();
+    const source = (row.def?.sourceId ?? row.key).trim();
     if (!source) return null;
     if (/^https?:\/\//i.test(source)) return source;
     return `https://sudokupad.app/${encodeURI(source.replace(/^\/+/, ""))}`;

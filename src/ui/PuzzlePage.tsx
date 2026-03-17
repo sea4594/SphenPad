@@ -366,7 +366,7 @@ export function PuzzlePage() {
   useEffect(() => {
     if (!data) return;
     if (!hasIncompleteMeta(data)) return;
-    const source = (data.def.sourceUrl ?? data.def.sourceId ?? key ?? "").trim();
+    const source = (data.def.sourceId ?? key ?? "").trim();
     if (!source) return;
 
     const refreshKey = `${key}::${source}`;
@@ -416,7 +416,7 @@ export function PuzzlePage() {
     const currentRevision = data.def.importRevision ?? 0;
     if (currentRevision >= SUDOKUPAD_IMPORT_REVISION) return;
 
-    const source = (data.def.sourceUrl ?? data.def.sourceId ?? key ?? "").trim();
+    const source = (data.def.sourceId ?? key ?? "").trim();
     if (!source) return;
 
     const refreshKey = `${key}::${source}::defv${currentRevision}`;
@@ -729,7 +729,7 @@ export function PuzzlePage() {
 
   async function onReloadPuzzleClick() {
     if (!data || reloadingPuzzle) return;
-    const source = (data.def.sourceUrl ?? data.def.sourceId ?? key).trim();
+    const source = (data.def.sourceId ?? key).trim();
     if (!source) {
       alert("Unable to reload this puzzle because its source id is missing.");
       return;
@@ -783,7 +783,7 @@ export function PuzzlePage() {
 
   async function onCopySudokuPadLinkClick() {
     if (!data) return;
-    const source = (data.def.sourceUrl ?? data.def.sourceId ?? key).trim();
+    const source = (data.def.sourceId ?? key).trim();
     if (!source) return;
     const url = /^https?:\/\//i.test(source) ? source : `https://sudokupad.app/${source}`;
     if (!navigator?.clipboard?.writeText) return;
@@ -1413,7 +1413,7 @@ export function PuzzlePage() {
       {pauseMenuOpen && (
         <PauseOverlay
           meta={meta}
-          source={data.def.sourceUrl ?? data.def.sourceId}
+          sourceId={data.def.sourceId}
           started={Boolean(data.progress.startedAt)}
           onStart={startOrResume}
           onResume={startOrResume}

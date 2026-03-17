@@ -3,7 +3,7 @@ import type { PuzzleMeta } from "../core/model";
 
 export function PauseOverlay(props: {
   meta?: PuzzleMeta;
-  source?: string;
+  sourceId?: string;
   started: boolean;
   onStart: () => void;
   onResume: () => void;
@@ -11,12 +11,8 @@ export function PauseOverlay(props: {
   onRestart: () => void;
 }) {
   const { meta, started, onResume, onStart } = props;
-  const source = (props.source ?? "").trim();
-  const sudokuPadUrl = source
-    ? (/^https?:\/\//i.test(source)
-      ? source
-      : `https://sudokupad.app/${encodeURI(source.replace(/^\/+/, ""))}`)
-    : "";
+  const sourcePath = (props.sourceId ?? "").trim().replace(/^\/+/, "");
+  const sudokuPadUrl = sourcePath ? `https://sudokupad.app/${encodeURI(sourcePath)}` : "";
   const onBackdropClick = useCallback(() => {
     if (started) onResume();
     else onStart();
