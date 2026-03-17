@@ -751,15 +751,15 @@ function firstNonEmptyString(...values: unknown[]): string | undefined {
   return undefined;
 }
 
-function extractInlineMetadata(sclObj: any): { title?: string; author?: string; rules?: string } {
-  const out: { title?: string; author?: string; rules?: string } = {};
+function extractInlineMetadata(sclObj: any): { title?: string; author?: string; rules?: string; solution?: string } {
+  const out: { title?: string; author?: string; rules?: string; solution?: string } = {};
   const entries = [sclObj?.ca, sclObj?.cages].filter(Array.isArray).flat() as any[];
   for (const item of entries) {
     const raw =
       typeof item?.v === "string" ? item.v
       : typeof item?.value === "string" ? item.value
       : "";
-    const m = raw.match(/^\s*(title|author|rules?)\s*:\s*([\s\S]+)$/i);
+    const m = raw.match(/^\s*(title|author|rules?|solution)\s*:\s*([\s\S]+)$/i);
     if (!m) continue;
     const k = m[1].toLowerCase();
     const v = m[2].trim();
@@ -767,6 +767,7 @@ function extractInlineMetadata(sclObj: any): { title?: string; author?: string; 
     if (k === "title" && !out.title) out.title = v;
     if (k === "author" && !out.author) out.author = v;
     if ((k === "rule" || k === "rules") && !out.rules) out.rules = v;
+    if (k === "solution" && !out.solution) out.solution = v;
   }
   return out;
 }
@@ -1691,6 +1692,8 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
   if (scl?.antiKing || scl?.antiking) cosmetics.antiKing = true;
   if (scl?.antiRook || scl?.antirook) cosmetics.antiRook = true;
 
+  const inlineMetadata = extractInlineMetadata(scl);
+
   // Fog of war: common SCL keys include foglight/fogLight/fogLights.
   const rawFogLights = scl?.foglight ?? scl?.fogLight ?? scl?.fogLights ?? scl?.fog?.lights ?? scl?.fog?.light;
   if (Array.isArray(rawFogLights)) {
@@ -1730,9 +1733,74 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
       .filter(Boolean) as any;
   }
 
+  // Legacy compact format uses a marker cage value "FOGLIGHT" and relies on
+  // default reveal behavior (correct entries reveal a local neighborhood).
+  const hasLegacyFogMarker = cagesSrc.some((cg: any) => {
+    const label = firstNonEmptyString(cg?.value, cg?.sum, cg?.v);
+    return typeof label === "string" && /(?:^|\b)foglight(?:\b|$)/i.test(label);
+  });
+  if (hasLegacyFogMarker) {
+    if (!(cosmetics.fogLights?.length)) {
+      const givenCells = extractGivens(scl).map((entry) => entry.rc);
+      if (givenCells.length) cosmetics.fogLights = givenCells;
+    }
+
+    if (!(cosmetics.fogTriggerEffects?.length)) {
+      const gridLike = Array.isArray(scl?.cells)
+        ? scl.cells
+        : Array.isArray(scl?.grid)
+          ? scl.grid
+          : null;
+      const gridRows = Array.isArray(gridLike) ? gridLike.length : 0;
+      const gridCols = Array.isArray(gridLike)
+        ? Math.max(0, ...gridLike.map((row: unknown) => (Array.isArray(row) ? row.length : 0)))
+        : 0;
+      const explicitRows =
+        Number(scl?.rows) ||
+        Number(scl?.height) ||
+        Number(scl?.metadata?.rows) ||
+        Number(scl?.metadata?.height) ||
+        0;
+      const explicitCols =
+        Number(scl?.cols) ||
+        Number(scl?.columns) ||
+        Number(scl?.width) ||
+        Number(scl?.metadata?.cols) ||
+        Number(scl?.metadata?.columns) ||
+        Number(scl?.metadata?.width) ||
+        0;
+      const solutionForSize = firstNonEmptyString(scl?.metadata?.solution, inlineMetadata.solution)?.replace(/\s+/g, "") ?? "";
+      const squareFromSolution = solutionForSize.length > 0 ? Math.sqrt(solutionForSize.length) : 0;
+      const normalizedSquareSize = Number.isInteger(squareFromSolution) ? squareFromSolution : 0;
+
+      const rows = Math.max(gridRows, explicitRows, normalizedSquareSize);
+      const cols = Math.max(gridCols, explicitCols, normalizedSquareSize);
+
+      if (rows > 0 && cols > 0) {
+        const legacyEffects: NonNullable<PuzzleCosmetics["fogTriggerEffects"]> = [];
+        for (let r = 0; r < rows; r++) {
+          for (let c = 0; c < cols; c++) {
+            const revealCells: CellRC[] = [];
+            for (let rr = Math.max(0, r - 1); rr <= Math.min(rows - 1, r + 1); rr++) {
+              for (let cc = Math.max(0, c - 1); cc <= Math.min(cols - 1, c + 1); cc++) {
+                revealCells.push({ r: rr, c: cc });
+              }
+            }
+            legacyEffects.push({
+              triggerCells: [{ r, c }],
+              revealCells,
+              triggerMode: "or",
+            });
+          }
+        }
+        if (legacyEffects.length) cosmetics.fogTriggerEffects = legacyEffects;
+      }
+    }
+  }
+
   // Keep solution if present so fog can reveal based on correct entries.
-  const solution = scl?.metadata?.solution;
-  if (typeof solution === "string") cosmetics.solution = solution;
+  const solution = firstNonEmptyString(scl?.metadata?.solution, inlineMetadata.solution);
+  if (typeof solution === "string") cosmetics.solution = solution.replace(/\s+/g, "");
 
   const noGridFromData =
     parseBoolish(scl?.settings?.nogrid) ||
