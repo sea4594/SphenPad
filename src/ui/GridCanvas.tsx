@@ -1139,11 +1139,11 @@ export function GridCanvas(props: {
     };
 
     type FeatureEntry =
-      | { layer: "under" | "over"; order: number; hasExplicitOrder: boolean; serial: number; kind: "line"; item: NonNullable<PuzzleDefinition["cosmetics"]["lines"]>[number] }
-      | { layer: "under" | "over"; order: number; hasExplicitOrder: boolean; serial: number; kind: "cage"; item: NonNullable<PuzzleDefinition["cosmetics"]["cages"]>[number] }
-      | { layer: "under" | "over"; order: number; hasExplicitOrder: boolean; serial: number; kind: "arrow"; item: NonNullable<PuzzleDefinition["cosmetics"]["arrows"]>[number] }
-      | { layer: "under" | "over"; order: number; hasExplicitOrder: boolean; serial: number; kind: "dot"; item: NonNullable<PuzzleDefinition["cosmetics"]["dots"]>[number] }
-      | { layer: "under" | "over"; order: number; hasExplicitOrder: boolean; serial: number; kind: "layer-item"; item: NonNullable<PuzzleDefinition["cosmetics"]["underlays"]>[number] };
+      | { layer: "under" | "over"; order: number; serial: number; kind: "line"; item: NonNullable<PuzzleDefinition["cosmetics"]["lines"]>[number] }
+      | { layer: "under" | "over"; order: number; serial: number; kind: "cage"; item: NonNullable<PuzzleDefinition["cosmetics"]["cages"]>[number] }
+      | { layer: "under" | "over"; order: number; serial: number; kind: "arrow"; item: NonNullable<PuzzleDefinition["cosmetics"]["arrows"]>[number] }
+      | { layer: "under" | "over"; order: number; serial: number; kind: "dot"; item: NonNullable<PuzzleDefinition["cosmetics"]["dots"]>[number] }
+      | { layer: "under" | "over"; order: number; serial: number; kind: "layer-item"; item: NonNullable<PuzzleDefinition["cosmetics"]["underlays"]>[number] };
 
     const renderOrderValue = (value: number | undefined) => (
       Number.isFinite(value) ? Number(value) : Number.MAX_SAFE_INTEGER
@@ -1163,7 +1163,6 @@ export function GridCanvas(props: {
       orderedFeatureEntries.push({
         layer: classifyRenderTarget(item.target, "under"),
         order: renderOrderValue(item.renderOrder),
-        hasExplicitOrder: Number.isFinite(item.renderOrder),
         serial: featureSerial++,
         kind: "line",
         item,
@@ -1173,7 +1172,6 @@ export function GridCanvas(props: {
       orderedFeatureEntries.push({
         layer: classifyRenderTarget(item.target),
         order: renderOrderValue(item.renderOrder),
-        hasExplicitOrder: Number.isFinite(item.renderOrder),
         serial: featureSerial++,
         kind: "cage",
         item,
@@ -1183,7 +1181,6 @@ export function GridCanvas(props: {
       orderedFeatureEntries.push({
         layer: classifyRenderTarget(item.target),
         order: renderOrderValue(item.renderOrder),
-        hasExplicitOrder: Number.isFinite(item.renderOrder),
         serial: featureSerial++,
         kind: "arrow",
         item,
@@ -1193,7 +1190,6 @@ export function GridCanvas(props: {
       orderedFeatureEntries.push({
         layer: classifyRenderTarget(item.target),
         order: renderOrderValue(item.renderOrder),
-        hasExplicitOrder: Number.isFinite(item.renderOrder),
         serial: featureSerial++,
         kind: "dot",
         item,
@@ -1203,7 +1199,6 @@ export function GridCanvas(props: {
       orderedFeatureEntries.push({
         layer: resolveLayerForLayerItem(item.target, "under"),
         order: renderOrderValue(item.renderOrder),
-        hasExplicitOrder: Number.isFinite(item.renderOrder),
         serial: featureSerial++,
         kind: "layer-item",
         item,
@@ -1213,23 +1208,12 @@ export function GridCanvas(props: {
       orderedFeatureEntries.push({
         layer: resolveLayerForLayerItem(item.target, "over"),
         order: renderOrderValue(item.renderOrder),
-        hasExplicitOrder: Number.isFinite(item.renderOrder),
         serial: featureSerial++,
         kind: "layer-item",
         item: item as NonNullable<PuzzleDefinition["cosmetics"]["underlays"]>[number],
       });
     }
-
-    const implicitLayerPriority = (entry: FeatureEntry): number => {
-      if (entry.layer === "under") return entry.kind === "layer-item" ? 0 : 1;
-      return entry.kind === "layer-item" ? 1 : 0;
-    };
-
-    orderedFeatureEntries.sort((a, b) => {
-      if (a.hasExplicitOrder && b.hasExplicitOrder) return a.order - b.order || a.serial - b.serial;
-      if (a.hasExplicitOrder !== b.hasExplicitOrder) return a.hasExplicitOrder ? -1 : 1;
-      return implicitLayerPriority(a) - implicitLayerPriority(b) || a.serial - b.serial;
-    });
+    orderedFeatureEntries.sort((a, b) => a.order - b.order || a.serial - b.serial);
 
     const drawFeatureEntries = (layer: "under" | "over") => {
       for (const entry of orderedFeatureEntries) {

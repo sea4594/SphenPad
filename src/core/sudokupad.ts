@@ -16,7 +16,7 @@ const COUNTER_API_BASE = "https://api.sudokupad.com/counter";
 const COUNTER_PROXY_A = "https://api.codetabs.com/v1/proxy/?quest=https://api.sudokupad.com/counter";
 const COUNTER_PROXY_B = "https://api.allorigins.win/raw?url=https://api.sudokupad.com/counter";
 
-export const SUDOKUPAD_IMPORT_REVISION = 12;
+export const SUDOKUPAD_IMPORT_REVISION = 11;
 
 function timeout(ms: number) {
   return new Promise<never>((_, rej) => setTimeout(() => rej(new Error("Timeout")), ms));
@@ -450,10 +450,11 @@ function collectArrayAliases<T = any>(source: any, keys: string[]): T[] {
   return out;
 }
 
-function resolveRenderOrder(item: any, _nextRenderOrder: () => number): number | undefined {
-  return parseFiniteNumberToken(
+function resolveRenderOrder(item: any, nextRenderOrder: () => number): number {
+  const explicit = parseFiniteNumberToken(
     item?.renderOrder ?? item?.renderorder ?? item?.zIndex ?? item?.zindex ?? item?.z,
   );
+  return explicit ?? nextRenderOrder();
 }
 
 function pointsAlmostEqual(a: { x: number; y: number }, b: { x: number; y: number }, eps = 1e-6) {
@@ -1126,18 +1127,6 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
   const sourceUnitsPerCell = Number.isFinite(sourceCellSize) && sourceCellSize > 0 ? sourceCellSize : 64;
   const defaultThermoThickness = sourceUnitsPerCell * 0.26;
   const defaultBetweenLineThickness = sourceUnitsPerCell * 0.10;
-  const defaultDiagonalThickness = sourceUnitsPerCell * 0.10;
-
-  const isConstraintEnabled = (value: unknown): boolean => {
-    const parsed = parseOptionalBoolish(value);
-    if (typeof parsed === "boolean") return parsed;
-    if (value && typeof value === "object") {
-      const nested = parseOptionalBoolish((value as any)?.enabled ?? (value as any)?.value ?? (value as any)?.on);
-      if (typeof nested === "boolean") return nested;
-      return true;
-    }
-    return false;
-  };
 
   // background image / underlay aliases
   cosmetics.backgroundImageUrl =
@@ -1324,8 +1313,8 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
         const lineCap = lineCapRaw === "round" || lineCapRaw === "square" || lineCapRaw === "butt" ? lineCapRaw : undefined;
         const lineJoin = lineJoinRaw === "round" || lineJoinRaw === "bevel" || lineJoinRaw === "miter" ? lineJoinRaw : undefined;
         const thicknessToken = parseFiniteNumberToken(ln?.thickness ?? ln?.th ?? ln?.["stroke-width"]);
-        const widthUnits = parseFiniteNumberToken(ln?.width ?? ln?.w);
-        const inferredThickness = widthUnits != null ? widthUnits * defaultBetweenLineThickness : undefined;
+        const widthUnits = parseFiniteNumberToken(ln?.width);
+        const sourceUnitsPerCell = Number(scl?.cellSize) || 64;
         return {
           wayPoints,
           color: strokeToken === "#0" ? undefined : strokeToken,
@@ -1333,7 +1322,7 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
           closePath: Boolean(ln?.closed ?? ln?.closePath ?? ln?.fill) || closedByShape,
           svgPathData,
           svgUnitsPerCell: sourceUnitsPerCell,
-          thickness: thicknessToken ?? inferredThickness,
+          thickness: thicknessToken ?? (widthUnits != null ? widthUnits * sourceUnitsPerCell : undefined),
           target: typeof ln?.target === "string" ? ln.target : undefined,
           lineCap,
           lineJoin,
@@ -1344,75 +1333,6 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
         };
       })
       .filter(Boolean) as any;
-  }
-
-  const gridRows = Array.isArray(scl?.cells)
-    ? scl.cells.length
-    : Array.isArray(scl?.grid)
-      ? scl.grid.length
-      : Number.isFinite(Number(scl?.size))
-        ? Number(scl.size)
-        : 0;
-  const gridCols = Array.isArray(scl?.cells) && Array.isArray(scl.cells[0])
-    ? scl.cells[0].length
-    : Array.isArray(scl?.grid) && Array.isArray(scl.grid[0])
-      ? scl.grid[0].length
-      : Number.isFinite(Number(scl?.size))
-        ? Number(scl.size)
-        : 0;
-
-  if (gridRows > 0 && gridCols > 0) {
-    const diagonalPlusRaw = scl?.["diagonal+"] ?? scl?.diagonalPlus ?? scl?.diagonalplus;
-    const diagonalMinusRaw = scl?.["diagonal-"] ?? scl?.diagonalMinus ?? scl?.diagonalminus;
-    const hasMainDiagonal = isConstraintEnabled(diagonalPlusRaw);
-    const hasAntiDiagonal = isConstraintEnabled(diagonalMinusRaw);
-
-    const resolveDiagonalStyle = (raw: any) => ({
-      color: normalizeColorToken(raw?.color ?? raw?.lineColor ?? raw?.stroke ?? raw?.c) ?? "#3a86ff",
-      thickness:
-        parseFiniteNumberToken(raw?.thickness ?? raw?.th ?? raw?.["stroke-width"]) ??
-        (parseFiniteNumberToken(raw?.width ?? raw?.w) != null
-          ? Number(parseFiniteNumberToken(raw?.width ?? raw?.w)) * defaultBetweenLineThickness
-          : defaultDiagonalThickness),
-      target: typeof raw?.target === "string" ? raw.target : "underlay",
-      renderOrder: resolveRenderOrder(raw, nextRenderOrder),
-    });
-
-    const diagonalLines: NonNullable<PuzzleCosmetics["lines"]> = [];
-    if (hasMainDiagonal) {
-      const style = resolveDiagonalStyle(diagonalPlusRaw);
-      diagonalLines.push({
-        wayPoints: [
-          { x: 0.5, y: 0.5 },
-          { x: gridCols - 0.5, y: gridRows - 0.5 },
-        ],
-        color: style.color,
-        thickness: style.thickness,
-        target: style.target,
-        lineCap: "round",
-        lineJoin: "round",
-        renderOrder: style.renderOrder,
-      });
-    }
-    if (hasAntiDiagonal) {
-      const style = resolveDiagonalStyle(diagonalMinusRaw);
-      diagonalLines.push({
-        wayPoints: [
-          { x: gridCols - 0.5, y: 0.5 },
-          { x: 0.5, y: gridRows - 0.5 },
-        ],
-        color: style.color,
-        thickness: style.thickness,
-        target: style.target,
-        lineCap: "round",
-        lineJoin: "round",
-        renderOrder: style.renderOrder,
-      });
-    }
-
-    if (diagonalLines.length) {
-      cosmetics.lines = [...(cosmetics.lines ?? []), ...diagonalLines];
-    }
   }
 
   // Thermometer variants: modern `thermos` and legacy `thermometer` with nested `lines`.
