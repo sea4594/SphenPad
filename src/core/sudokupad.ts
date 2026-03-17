@@ -16,7 +16,7 @@ const COUNTER_API_BASE = "https://api.sudokupad.com/counter";
 const COUNTER_PROXY_A = "https://api.codetabs.com/v1/proxy/?quest=https://api.sudokupad.com/counter";
 const COUNTER_PROXY_B = "https://api.allorigins.win/raw?url=https://api.sudokupad.com/counter";
 
-export const SUDOKUPAD_IMPORT_REVISION = 12;
+export const SUDOKUPAD_IMPORT_REVISION = 11;
 
 function timeout(ms: number) {
   return new Promise<never>((_, rej) => setTimeout(() => rej(new Error("Timeout")), ms));
@@ -400,15 +400,7 @@ function categorizeTarget(raw: unknown): "under" | "over" | undefined {
 function isNoStrokeToken(v: unknown): boolean {
   if (typeof v !== "string") return false;
   const s = v.trim().replace(/^"+|"+$/g, "").toLowerCase();
-  return (
-    s === "none" ||
-    s === "transparent" ||
-    s === "#0" ||
-    s === "#0000" ||
-    s === "#00000000" ||
-    s === "rgba(0,0,0,0)" ||
-    s === "rgba(0, 0, 0, 0)"
-  );
+  return s === "none" || s === "transparent";
 }
 
 function parseRcString(value: any): CellRC[] {
@@ -726,7 +718,7 @@ function detectStandardSubgrid(sclObj: any, n: number): { r: number; c: number }
     : Array.isArray(sclObj?.re)
       ? sclObj.re
       : null;
-  if (!regionsRaw?.length) return candidate;
+  if (!regionsRaw?.length) return undefined;
 
   const parsedRegions = regionsRaw
     .map((region: any) => parseCellRefs(region))
@@ -783,225 +775,6 @@ function firstNonEmptyString(...values: unknown[]): string | undefined {
     if (s) return s;
   }
   return undefined;
-}
-
-type SideClues = NonNullable<PuzzleCosmetics["sandwich"]>;
-
-function normalizeSideClueMap(raw: unknown): SideClues | undefined {
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
-  const obj = raw as Record<string, unknown>;
-  const out: SideClues = {};
-  for (const side of ["top", "bottom", "left", "right"] as const) {
-    const src = obj[side];
-    if (!Array.isArray(src)) continue;
-    const values = src.map((v) => asValue(v) ?? "");
-    if (values.some((v) => v.trim().length > 0)) out[side] = values;
-  }
-  return Object.keys(out).length ? out : undefined;
-}
-
-function normalizeSideCluesFromCellList(raw: unknown, rows: number, cols: number): SideClues | undefined {
-  if (!Array.isArray(raw)) return undefined;
-
-  const top: string[] = [];
-  const bottom: string[] = [];
-  const left: string[] = [];
-  const right: string[] = [];
-
-  for (const entry of raw) {
-    const value = firstNonEmptyString(
-      asValue((entry as any)?.value),
-      asValue((entry as any)?.v),
-      asValue((entry as any)?.sum),
-      asValue((entry as any)?.text),
-      asValue((entry as any)?.label),
-    );
-    if (!value) continue;
-
-    const rc =
-      asRC((entry as any)?.cell ?? (entry as any)?.rc ?? (entry as any)?.ce) ??
-      parseCellRefs((entry as any)?.cell ?? (entry as any)?.rc ?? (entry as any)?.ce)[0] ??
-      null;
-    if (!rc) continue;
-
-    if (rc.r < 0 && rc.c >= 0 && rc.c < cols) {
-      top[rc.c] = value;
-      continue;
-    }
-    if (rc.r >= rows && rc.c >= 0 && rc.c < cols) {
-      bottom[rc.c] = value;
-      continue;
-    }
-    if (rc.c < 0 && rc.r >= 0 && rc.r < rows) {
-      left[rc.r] = value;
-      continue;
-    }
-    if (rc.c >= cols && rc.r >= 0 && rc.r < rows) {
-      right[rc.r] = value;
-      continue;
-    }
-  }
-
-  const out: SideClues = {};
-  if (top.some((v) => typeof v === "string" && v.trim().length > 0)) out.top = top;
-  if (bottom.some((v) => typeof v === "string" && v.trim().length > 0)) out.bottom = bottom;
-  if (left.some((v) => typeof v === "string" && v.trim().length > 0)) out.left = left;
-  if (right.some((v) => typeof v === "string" && v.trim().length > 0)) out.right = right;
-  return Object.keys(out).length ? out : undefined;
-}
-
-function mergeSideClues(base: SideClues | undefined, extra: SideClues | undefined): SideClues | undefined {
-  if (!base && !extra) return undefined;
-  const out: SideClues = {};
-  for (const side of ["top", "bottom", "left", "right"] as const) {
-    const a = base?.[side] ?? [];
-    const b = extra?.[side] ?? [];
-    const n = Math.max(a.length, b.length);
-    if (!n) continue;
-    const merged: string[] = Array.from({ length: n }, (_, i) => {
-      const leftVal = asValue(a[i]) ?? "";
-      const rightVal = asValue(b[i]) ?? "";
-      return leftVal.trim() || rightVal.trim();
-    });
-    if (merged.some((v) => v.trim().length > 0)) out[side] = merged;
-  }
-  return Object.keys(out).length ? out : undefined;
-}
-
-function normalizeDirectionalClues(
-  explicit: unknown,
-  listAlias: unknown,
-  rows: number,
-  cols: number,
-): SideClues | undefined {
-  const mapped = normalizeSideClueMap(explicit);
-  const listed = normalizeSideCluesFromCellList(listAlias, rows, cols);
-  return mergeSideClues(mapped, listed);
-}
-
-function appendDirectionalClueOverlays(
-  cosmetics: PuzzleCosmetics,
-  rows: number,
-  cols: number,
-) {
-  const clueSets: Array<{ clues?: SideClues; color: string }> = [
-    { clues: cosmetics.sandwich, color: "#111111" },
-    { clues: cosmetics.xsum, color: "#111111" },
-    { clues: cosmetics.skyscraper, color: "#111111" },
-  ];
-
-  const hasAny = clueSets.some(({ clues }) =>
-    Boolean(
-      clues?.top?.some((v) => (v ?? "").trim()) ||
-      clues?.bottom?.some((v) => (v ?? "").trim()) ||
-      clues?.left?.some((v) => (v ?? "").trim()) ||
-      clues?.right?.some((v) => (v ?? "").trim())
-    )
-  );
-  if (!hasAny) return;
-
-  const existingOrders = [
-    ...(cosmetics.lines ?? []),
-    ...(cosmetics.cages ?? []),
-    ...(cosmetics.arrows ?? []),
-    ...(cosmetics.dots ?? []),
-    ...(cosmetics.underlays ?? []),
-    ...(cosmetics.overlays ?? []),
-  ]
-    .map((item: any) => parseFiniteNumberToken(item?.renderOrder))
-    .filter((n): n is number => Number.isFinite(n));
-  let nextOrder = (existingOrders.length ? Math.max(...existingOrders) : -1) + 1;
-  const nextRenderOrder = () => nextOrder++;
-
-  const overlays = [...(cosmetics.overlays ?? [])];
-  const clueOffset = Math.max(0.42, Math.min(0.62, Math.min(rows, cols) * 0.05));
-
-  const pushClue = (
-    text: string,
-    center: { x: number; y: number },
-    align: CanvasTextAlign,
-    baseline: CanvasTextBaseline,
-    color: string,
-  ) => {
-    const t = text.trim();
-    if (!t) return;
-    const hasEquivalent = overlays.some((item: any) => {
-      const existingText = String(item?.text ?? "").trim();
-      if (!existingText || existingText !== t) return false;
-      const x = parseFiniteNumberToken(item?.center?.x);
-      const y = parseFiniteNumberToken(item?.center?.y);
-      if (x == null || y == null) return false;
-      return Math.abs(x - center.x) <= 0.05 && Math.abs(y - center.y) <= 0.05;
-    });
-    if (hasEquivalent) return;
-    overlays.push({
-      center,
-      width: 0,
-      height: 0,
-      text: t,
-      textColor: color,
-      textSize: 16,
-      textAlign: align,
-      textBaseline: baseline,
-      target: "overlay",
-      renderOrder: nextRenderOrder(),
-    });
-  };
-
-  for (const { clues, color } of clueSets) {
-    if (!clues) continue;
-    for (let c = 0; c < cols; c++) {
-      if (clues.top?.[c]) {
-        pushClue(clues.top[c] as string, { x: c + 0.5, y: -clueOffset }, "center", "middle", color);
-      }
-      if (clues.bottom?.[c]) {
-        pushClue(clues.bottom[c] as string, { x: c + 0.5, y: rows + clueOffset }, "center", "middle", color);
-      }
-    }
-    for (let r = 0; r < rows; r++) {
-      if (clues.left?.[r]) {
-        pushClue(clues.left[r] as string, { x: -clueOffset, y: r + 0.5 }, "center", "middle", color);
-      }
-      if (clues.right?.[r]) {
-        pushClue(clues.right[r] as string, { x: cols + clueOffset, y: r + 0.5 }, "center", "middle", color);
-      }
-    }
-  }
-
-  cosmetics.overlays = overlays;
-}
-
-function hydrateDirectionalClues(
-  scl: any,
-  cosmetics: PuzzleCosmetics,
-  rows: number,
-  cols: number,
-) {
-  const sandwich = normalizeDirectionalClues(
-    scl?.clues?.sandwich ?? scl?.sandwich,
-    scl?.sandwichsum ?? scl?.sandwichSum,
-    rows,
-    cols,
-  );
-  if (sandwich) cosmetics.sandwich = sandwich;
-
-  const xsum = normalizeDirectionalClues(
-    scl?.clues?.xsum ?? scl?.xsum,
-    scl?.xsumclue ?? scl?.xsumclues,
-    rows,
-    cols,
-  );
-  if (xsum) cosmetics.xsum = xsum;
-
-  const skyscraper = normalizeDirectionalClues(
-    scl?.clues?.skyscraper ?? scl?.skyscraper,
-    scl?.skyscraperclue ?? scl?.skyscraperclues,
-    rows,
-    cols,
-  );
-  if (skyscraper) cosmetics.skyscraper = skyscraper;
-
-  appendDirectionalClueOverlays(cosmetics, rows, cols);
 }
 
 function extractInlineMetadata(sclObj: any): { title?: string; author?: string; rules?: string; solution?: string } {
@@ -1251,8 +1024,6 @@ export async function loadFromSudokuPad(
   const size = Math.max(shape.rows, shape.cols, inferPuzzleSize(sclObj, givens, inlineMeta.solution));
   const subgrid = shape.rows === shape.cols ? detectStandardSubgrid(sclObj, size) : undefined;
 
-  hydrateDirectionalClues(sclObj, cosmetics, shape.rows, shape.cols);
-
   const key = normalizePuzzleKey(sourceId);
   const def: PuzzleDefinition = {
     id: key,
@@ -1469,10 +1240,10 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
           path: cellPath.length ? cellPath : undefined,
           wayPoints: wpPath.length ? wpPath : undefined,
           headLength: parseFiniteNumberToken(a?.headLength ?? a?.hl),
-          color: normalizeColorToken(a?.color ?? a?.lineColor ?? a?.c) ?? "#cfcfcf",
+          color: normalizeColorToken(a?.color ?? a?.lineColor ?? a?.c),
           thickness: parseFiniteNumberToken(a?.thickness ?? a?.th),
           bulbFill: normalizeColorToken(a?.bulbColor ?? a?.baseC ?? "#ffffff"),
-          bulbStroke: normalizeColorToken(a?.bulbBorderColor ?? a?.outlineC ?? a?.color ?? a?.lineColor ?? a?.c ?? "#9f9f9f"),
+          bulbStroke: normalizeColorToken(a?.bulbBorderColor ?? a?.outlineC ?? a?.color ?? a?.lineColor ?? a?.c ?? "#222222"),
           bulbStrokeThickness: parseFiniteNumberToken(a?.bulbBorderThickness),
           target: typeof a?.target === "string" ? a.target : undefined,
           renderOrder: resolveRenderOrder(a, nextRenderOrder),
@@ -1899,10 +1670,7 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
   if (littleKillerSrc.length) {
     cosmetics.littlekillers = littleKillerSrc
       .map((lk: any) => {
-        const rc =
-          asRC(lk?.cell ?? lk?.rc ?? lk?.ce) ??
-          parseCellRefs(lk?.cell ?? lk?.rc ?? lk?.ce)[0] ??
-          null;
+        const rc = asRC(lk?.cell ?? lk?.rc ?? lk?.ce);
         if (!rc) return null;
         return {
           rc,
