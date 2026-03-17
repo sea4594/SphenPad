@@ -401,17 +401,13 @@ input.url {
 }
 
 .btn:focus,
-.btn:focus-visible,
-.lineKindSelect:focus,
-.lineKindSelect:focus-visible {
+.btn:focus-visible {
   outline: none;
 }
 
-.btn:focus,
-.btn:focus-visible {
-  box-shadow:
-    inset 0 0 0 1px var(--btn-edge-color),
-    0 0 0 2px color-mix(in oklab, var(--text) 56%, transparent);
+.lineKindSelect:focus,
+.lineKindSelect:focus-visible {
+  outline: none;
 }
 
 .lineKindSelect:focus,
