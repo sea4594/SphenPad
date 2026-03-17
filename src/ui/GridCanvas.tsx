@@ -1161,7 +1161,7 @@ export function GridCanvas(props: {
     let featureSerial = 0;
     for (const item of def.cosmetics.lines ?? []) {
       orderedFeatureEntries.push({
-        layer: classifyRenderTarget(item.target, "under"),
+        layer: classifyRenderTarget(item.target, "over"),
         order: renderOrderValue(item.renderOrder),
         serial: featureSerial++,
         kind: "line",
@@ -1258,6 +1258,13 @@ export function GridCanvas(props: {
         if (!predicate(entry)) continue;
         drawFeatureEntry(entry);
       }
+    };
+
+    const isOutsideGridLayerItem = (item: NonNullable<PuzzleDefinition["cosmetics"]["underlays"]>[number]) => {
+      const x = Number(item?.center?.x);
+      const y = Number(item?.center?.y);
+      if (!Number.isFinite(x) || !Number.isFinite(y)) return false;
+      return x < 0 || x > cols || y < 0 || y > rows;
     };
 
     // Draw underlay-targeted puzzle features first.
@@ -1478,9 +1485,14 @@ export function GridCanvas(props: {
             const mode = effect.triggerMode;
             const triggerCells = effect.triggerCells.filter((rc) => inBounds(rc.r, rc.c));
             if (!triggerCells.length) continue;
+            const isTriggerSatisfied = (rc: CellRC) => {
+              if (!isCorrect(rc)) return false;
+              if (lit[rc.r][rc.c]) return true;
+              return !progress.cells[rc.r][rc.c].given;
+            };
             const satisfied = mode === "or"
-              ? triggerCells.some((rc) => lit[rc.r][rc.c] && isCorrect(rc))
-              : triggerCells.every((rc) => lit[rc.r][rc.c] && isCorrect(rc));
+              ? triggerCells.some(isTriggerSatisfied)
+              : triggerCells.every(isTriggerSatisfied);
             if (!satisfied) continue;
             for (const rc of effect.revealCells) {
               if (!inBounds(rc.r, rc.c)) continue;
@@ -1596,8 +1608,11 @@ export function GridCanvas(props: {
         drawGridLines();
       }
 
-      // Keep explicit overlay-style layer items visible above fog everywhere.
-      drawFeatureEntriesFiltered("over", (entry) => entry.kind === "layer-item");
+      // Keep outside-grid clue labels visible above fog.
+      drawFeatureEntriesFiltered(
+        "over",
+        (entry) => entry.kind === "layer-item" && isOutsideGridLayerItem(entry.item),
+      );
 
       // Keep non-layer puzzle features above fog only in lit cells.
       const hasAnyLit = lit.some((row) => row.some(Boolean));
@@ -1611,7 +1626,10 @@ export function GridCanvas(props: {
           }
         }
         ctx.clip();
-        drawFeatureEntriesFiltered("over", (entry) => entry.kind !== "layer-item");
+        drawFeatureEntriesFiltered(
+          "over",
+          (entry) => entry.kind !== "layer-item" || !isOutsideGridLayerItem(entry.item),
+        );
         ctx.restore();
       }
 
