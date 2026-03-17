@@ -611,8 +611,10 @@ export function GridCanvas(props: {
       }
     }
 
+    const conflictCheckerEnabled = conflictChecker && def.cosmetics.conflictChecker !== false;
+
     const hasBigValuePeer = (r: number, c: number, symbol: string): boolean => {
-      if (!conflictChecker) return false;
+      if (!conflictCheckerEnabled) return false;
       if (!conflictDomainByCell[r][c]) return false;
 
       const selfSymbol = normalizeSymbol(progress.cells[r][c].value);
@@ -1053,18 +1055,21 @@ export function GridCanvas(props: {
         const nx = -uy;
         const ny = ux;
         const headLen = Number.isFinite(a.headLength)
-          ? scaledCosmeticPx(Number(a.headLength), { previewMin: 1.6, normalMin: 6 })
-          : scaledCellPx(0.23, { previewMin: 2.2, normalMin: 8 });
-        const headWidth = scaledCellPx(0.15, { previewMin: 1.6, normalMin: 6 });
+          ? scaledCellPx(Number(a.headLength), { previewMin: 1.6, normalMin: 6 })
+          : scaledCellPx(0.3, { previewMin: 2.2, normalMin: 8 });
+        const headWidth = Math.max(lineW * 1.15, headLen * 0.66);
         const bx = ex - ux * headLen;
         const by = ey - uy * headLen;
-        ctx.fillStyle = stroke;
+        ctx.strokeStyle = stroke;
+        ctx.lineWidth = lineW;
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
         ctx.beginPath();
         ctx.moveTo(ex, ey);
         ctx.lineTo(bx + nx * headWidth, by + ny * headWidth);
+        ctx.moveTo(ex, ey);
         ctx.lineTo(bx - nx * headWidth, by - ny * headWidth);
-        ctx.closePath();
-        ctx.fill();
+        ctx.stroke();
       }
 
       if (a.bulb) {
@@ -1532,7 +1537,11 @@ export function GridCanvas(props: {
         }
       }
 
-      // Keep puzzle feature layers above highlights under fog, but only in lit cells.
+      if (def.cosmetics.gridVisible !== false) {
+        drawGridLines();
+      }
+
+      // Keep puzzle feature layers above the grid under fog, but only in lit cells.
       // Features positioned outside the core grid (e.g. border clues) should remain visible.
       const gridLeft = cellX(0);
       const gridTop = cellY(0);
@@ -1562,11 +1571,6 @@ export function GridCanvas(props: {
       ctx.clip();
       drawTopPuzzleFeatures();
       ctx.restore();
-
-      // Keep grid visible on top of fog when enabled.
-      if (def.cosmetics.gridVisible !== false) {
-        drawGridLines();
-      }
 
       // Keep lines/marks above highlights under fog, but behind values/letters.
       drawUserLines();

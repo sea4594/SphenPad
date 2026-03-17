@@ -16,7 +16,7 @@ const COUNTER_API_BASE = "https://api.sudokupad.com/counter";
 const COUNTER_PROXY_A = "https://api.codetabs.com/v1/proxy/?quest=https://api.sudokupad.com/counter";
 const COUNTER_PROXY_B = "https://api.allorigins.win/raw?url=https://api.sudokupad.com/counter";
 
-export const SUDOKUPAD_IMPORT_REVISION = 10;
+export const SUDOKUPAD_IMPORT_REVISION = 11;
 
 function timeout(ms: number) {
   return new Promise<never>((_, rej) => setTimeout(() => rej(new Error("Timeout")), ms));
@@ -111,7 +111,13 @@ function parseBoolish(v: unknown): boolean {
   return false;
 }
 
-function parseSourceDetails(input: string): { sourceId: string; noGrid: boolean } {
+function parseOptionalBoolish(v: unknown): boolean | undefined {
+  if (v == null) return undefined;
+  if (typeof v === "string" && !v.trim()) return undefined;
+  return parseBoolish(v);
+}
+
+function parseSourceDetails(input: string): { sourceId: string; noGrid: boolean; conflictChecker?: boolean } {
   const sourceId = parseSourceId(input);
   try {
     const u = new URL(input.trim());
@@ -120,7 +126,16 @@ function parseSourceDetails(input: string): { sourceId: string; noGrid: boolean 
       parseBoolish(u.searchParams.get("setting_nogrid")) ||
       parseBoolish(u.searchParams.get("nogrid")) ||
       parseBoolish(u.searchParams.get("noGrid"));
-    return { sourceId, noGrid };
+    const conflictChecker =
+      parseOptionalBoolish(u.searchParams.get("setting-conflictchecker")) ??
+      parseOptionalBoolish(u.searchParams.get("setting_conflictchecker")) ??
+      parseOptionalBoolish(u.searchParams.get("conflictchecker")) ??
+      parseOptionalBoolish(u.searchParams.get("conflictChecker"));
+    return {
+      sourceId,
+      noGrid,
+      ...(typeof conflictChecker === "boolean" ? { conflictChecker } : {}),
+    };
   } catch {
     return { sourceId, noGrid: false };
   }
@@ -917,6 +932,9 @@ export async function loadFromSudokuPad(
 
   const cosmetics = extractCosmetics(sclObj);
   if (sourceDetails.noGrid) cosmetics.gridVisible = false;
+  if (typeof sourceDetails.conflictChecker === "boolean") {
+    cosmetics.conflictChecker = sourceDetails.conflictChecker;
+  }
   const inlineMeta = extractInlineMetadata(sclObj);
 
   const title = firstNonEmptyString(
@@ -1812,6 +1830,15 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
   // Keep solution if present so fog can reveal based on correct entries.
   const solution = firstNonEmptyString(scl?.metadata?.solution, inlineMetadata.solution);
   if (typeof solution === "string") cosmetics.solution = solution.replace(/\s+/g, "");
+
+  const conflictCheckerSetting =
+    parseOptionalBoolish(scl?.settings?.conflictchecker) ??
+    parseOptionalBoolish(scl?.settings?.conflictChecker) ??
+    parseOptionalBoolish(scl?.metadata?.settings?.conflictchecker) ??
+    parseOptionalBoolish(scl?.metadata?.settings?.conflictChecker) ??
+    parseOptionalBoolish(scl?.metadata?.conflictchecker) ??
+    parseOptionalBoolish(scl?.metadata?.conflictChecker);
+  if (typeof conflictCheckerSetting === "boolean") cosmetics.conflictChecker = conflictCheckerSetting;
 
   const noGridFromData =
     parseBoolish(scl?.settings?.nogrid) ||

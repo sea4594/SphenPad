@@ -176,6 +176,7 @@ export type PuzzleCosmetics = {
   fogLights?: CellRC[];
   fogTriggerEffects?: Array<{ triggerCells: CellRC[]; revealCells: CellRC[]; triggerMode?: string }>;
   solution?: string;
+  conflictChecker?: boolean;
   gridVisible?: boolean;
 };
 
