@@ -1179,7 +1179,7 @@ export function GridCanvas(props: {
     }
     for (const item of def.cosmetics.arrows ?? []) {
       orderedFeatureEntries.push({
-        layer: classifyRenderTarget(item.target),
+        layer: classifyRenderTarget(item.target, "under"),
         order: renderOrderValue(item.renderOrder),
         serial: featureSerial++,
         kind: "arrow",
@@ -1213,28 +1213,50 @@ export function GridCanvas(props: {
         item: item as NonNullable<PuzzleDefinition["cosmetics"]["underlays"]>[number],
       });
     }
-    orderedFeatureEntries.sort((a, b) => a.order - b.order || a.serial - b.serial);
+    orderedFeatureEntries.sort((a, b) => {
+      if (a.layer === b.layer && a.layer === "under") {
+        const aPriority = a.kind === "layer-item" ? 0 : 1;
+        const bPriority = b.kind === "layer-item" ? 0 : 1;
+        if (aPriority !== bPriority) return aPriority - bPriority;
+      }
+      return a.order - b.order || a.serial - b.serial;
+    });
+
+    const drawFeatureEntry = (entry: FeatureEntry) => {
+      switch (entry.kind) {
+        case "line":
+          drawConstraintLine(entry.item);
+          break;
+        case "cage":
+          drawCage(entry.item);
+          break;
+        case "arrow":
+          drawArrow(entry.item);
+          break;
+        case "dot":
+          drawDot(entry.item);
+          break;
+        case "layer-item":
+          drawLayerItem(entry.item);
+          break;
+      }
+    };
 
     const drawFeatureEntries = (layer: "under" | "over") => {
       for (const entry of orderedFeatureEntries) {
         if (entry.layer !== layer) continue;
-        switch (entry.kind) {
-          case "line":
-            drawConstraintLine(entry.item);
-            break;
-          case "cage":
-            drawCage(entry.item);
-            break;
-          case "arrow":
-            drawArrow(entry.item);
-            break;
-          case "dot":
-            drawDot(entry.item);
-            break;
-          case "layer-item":
-            drawLayerItem(entry.item);
-            break;
-        }
+        drawFeatureEntry(entry);
+      }
+    };
+
+    const drawFeatureEntriesFiltered = (
+      layer: "under" | "over",
+      predicate: (entry: FeatureEntry) => boolean,
+    ) => {
+      for (const entry of orderedFeatureEntries) {
+        if (entry.layer !== layer) continue;
+        if (!predicate(entry)) continue;
+        drawFeatureEntry(entry);
       }
     };
 
@@ -1447,13 +1469,28 @@ export function GridCanvas(props: {
         return Boolean(given && progress.cells[rc.r][rc.c].value === given);
       };
 
-      for (const effect of def.cosmetics.fogTriggerEffects ?? []) {
-        const mode = effect.triggerMode;
-        const satisfied = mode === "or"
-          ? effect.triggerCells.some(isCorrect)
-          : effect.triggerCells.every(isCorrect);
-        if (!satisfied) continue;
-        for (const rc of effect.revealCells) addLight(rc);
+      const triggerEffects = def.cosmetics.fogTriggerEffects ?? [];
+      if (triggerEffects.length) {
+        const maxPasses = Math.max(1, rows * cols);
+        for (let pass = 0; pass < maxPasses; pass++) {
+          let changed = false;
+          for (const effect of triggerEffects) {
+            const mode = effect.triggerMode;
+            const triggerCells = effect.triggerCells.filter((rc) => inBounds(rc.r, rc.c));
+            if (!triggerCells.length) continue;
+            const satisfied = mode === "or"
+              ? triggerCells.some((rc) => lit[rc.r][rc.c] && isCorrect(rc))
+              : triggerCells.every((rc) => lit[rc.r][rc.c] && isCorrect(rc));
+            if (!satisfied) continue;
+            for (const rc of effect.revealCells) {
+              if (!inBounds(rc.r, rc.c)) continue;
+              if (lit[rc.r][rc.c]) continue;
+              lit[rc.r][rc.c] = true;
+              changed = true;
+            }
+          }
+          if (!changed) break;
+        }
       }
     }
 
@@ -1559,36 +1596,24 @@ export function GridCanvas(props: {
         drawGridLines();
       }
 
-      // Keep puzzle feature layers above the grid under fog, but only in lit cells.
-      // Features positioned outside the core grid (e.g. border clues) should remain visible.
-      const gridLeft = cellX(0);
-      const gridTop = cellY(0);
-      const gridWidthPx = cols * cellPx;
-      const gridHeightPx = rows * cellPx;
-      const gridRight = gridLeft + gridWidthPx;
-      const gridBottom = gridTop + gridHeightPx;
+      // Keep explicit overlay-style layer items visible above fog everywhere.
+      drawFeatureEntriesFiltered("over", (entry) => entry.kind === "layer-item");
 
-      ctx.save();
-      ctx.beginPath();
-      if (gridTop > 0) ctx.rect(0, 0, widthPx, gridTop);
-      if (gridLeft > 0) ctx.rect(0, gridTop, gridLeft, gridHeightPx);
-      if (gridRight < widthPx) ctx.rect(gridRight, gridTop, widthPx - gridRight, gridHeightPx);
-      if (gridBottom < heightPx) ctx.rect(0, gridBottom, widthPx, heightPx - gridBottom);
-      ctx.clip();
-      drawTopPuzzleFeatures();
-      ctx.restore();
-
-      ctx.save();
-      ctx.beginPath();
-      for (let r = 0; r < rows; r++) {
-        for (let c = 0; c < cols; c++) {
-          if (!lit[r][c]) continue;
-          ctx.rect(cellX(c), cellY(r), cellPx, cellPx);
+      // Keep non-layer puzzle features above fog only in lit cells.
+      const hasAnyLit = lit.some((row) => row.some(Boolean));
+      if (hasAnyLit) {
+        ctx.save();
+        ctx.beginPath();
+        for (let r = 0; r < rows; r++) {
+          for (let c = 0; c < cols; c++) {
+            if (!lit[r][c]) continue;
+            ctx.rect(cellX(c), cellY(r), cellPx, cellPx);
+          }
         }
+        ctx.clip();
+        drawFeatureEntriesFiltered("over", (entry) => entry.kind !== "layer-item");
+        ctx.restore();
       }
-      ctx.clip();
-      drawTopPuzzleFeatures();
-      ctx.restore();
 
       // Keep lines/marks above highlights under fog, but behind values/letters.
       drawUserLines();
