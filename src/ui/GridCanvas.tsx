@@ -1228,9 +1228,7 @@ export function GridCanvas(props: {
     orderedFeatureEntries.sort((a, b) => {
       if (a.hasExplicitOrder && b.hasExplicitOrder) return a.order - b.order || a.serial - b.serial;
       if (a.hasExplicitOrder !== b.hasExplicitOrder) return a.hasExplicitOrder ? -1 : 1;
-      const priorityDelta = implicitLayerPriority(a) - implicitLayerPriority(b);
-      if (priorityDelta !== 0) return priorityDelta;
-      return a.serial - b.serial;
+      return implicitLayerPriority(a) - implicitLayerPriority(b) || a.serial - b.serial;
     });
 
     const drawFeatureEntries = (layer: "under" | "over") => {

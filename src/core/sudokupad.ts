@@ -1375,6 +1375,7 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
           ? Number(parseFiniteNumberToken(raw?.width ?? raw?.w)) * defaultBetweenLineThickness
           : defaultDiagonalThickness),
       target: typeof raw?.target === "string" ? raw.target : "underlay",
+      renderOrder: resolveRenderOrder(raw, nextRenderOrder),
     });
 
     const diagonalLines: NonNullable<PuzzleCosmetics["lines"]> = [];
@@ -1390,7 +1391,7 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
         target: style.target,
         lineCap: "round",
         lineJoin: "round",
-        renderOrder: nextRenderOrder(),
+        renderOrder: style.renderOrder,
       });
     }
     if (hasAntiDiagonal) {
@@ -1405,7 +1406,7 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
         target: style.target,
         lineCap: "round",
         lineJoin: "round",
-        renderOrder: nextRenderOrder(),
+        renderOrder: style.renderOrder,
       });
     }
 
