@@ -16,7 +16,7 @@ const COUNTER_API_BASE = "https://api.sudokupad.com/counter";
 const COUNTER_PROXY_A = "https://api.codetabs.com/v1/proxy/?quest=https://api.sudokupad.com/counter";
 const COUNTER_PROXY_B = "https://api.allorigins.win/raw?url=https://api.sudokupad.com/counter";
 
-export const SUDOKUPAD_IMPORT_REVISION = 11;
+export const SUDOKUPAD_IMPORT_REVISION = 12;
 
 function timeout(ms: number) {
   return new Promise<never>((_, rej) => setTimeout(() => rej(new Error("Timeout")), ms));
@@ -306,6 +306,10 @@ function asRC(rc: any): CellRC | null {
     const c = Number(rc[1]);
     if (Number.isFinite(r) && Number.isFinite(c)) return { r, c };
   }
+  if (typeof rc === "string") {
+    const parsed = parseRcString(rc);
+    if (parsed.length) return parsed[0] as CellRC;
+  }
   if (rc && typeof rc === "object") {
     if (typeof rc.r === "number" && typeof rc.c === "number") return { r: rc.r, c: rc.c };
     if (typeof rc.row === "number" && typeof rc.col === "number") return { r: rc.row, c: rc.col };
@@ -414,6 +418,144 @@ function parseRcString(value: any): CellRC[] {
     if (Number.isFinite(r) && Number.isFinite(c)) out.push({ r, c });
   }
   return out;
+}
+
+type BorderClues = { top?: string[]; bottom?: string[]; left?: string[]; right?: string[] };
+
+function parseOneBasedRc(value: unknown): { r: number; c: number } | null {
+  if (typeof value === "string") {
+    const m = value.trim().match(/^r(-?\d+)c(-?\d+)$/i);
+    if (!m) return null;
+    const r = Number(m[1]);
+    const c = Number(m[2]);
+    if (!Number.isFinite(r) || !Number.isFinite(c)) return null;
+    return { r, c };
+  }
+  if (Array.isArray(value) && value.length >= 2) {
+    const r = Number(value[0]);
+    const c = Number(value[1]);
+    if (!Number.isFinite(r) || !Number.isFinite(c)) return null;
+    return { r, c };
+  }
+  if (value && typeof value === "object") {
+    const v = value as Record<string, unknown>;
+    const r = Number(v.r ?? v.row);
+    const c = Number(v.c ?? v.col);
+    if (!Number.isFinite(r) || !Number.isFinite(c)) return null;
+    return { r, c };
+  }
+  return null;
+}
+
+function normalizeBorderCluesObject(value: unknown): BorderClues | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const obj = value as Record<string, unknown>;
+  const normalizeSide = (raw: unknown): string[] | undefined => {
+    if (!Array.isArray(raw)) return undefined;
+    const vals = raw.map((v) => (v == null ? "" : String(v)));
+    return vals.some((v) => v.trim().length > 0) ? vals : undefined;
+  };
+  const top = normalizeSide(obj.top);
+  const bottom = normalizeSide(obj.bottom);
+  const left = normalizeSide(obj.left);
+  const right = normalizeSide(obj.right);
+  if (!top && !bottom && !left && !right) return undefined;
+  return { ...(top ? { top } : {}), ...(bottom ? { bottom } : {}), ...(left ? { left } : {}), ...(right ? { right } : {}) };
+}
+
+function parseBorderCluesFromEntries(entries: unknown, rows: number, cols: number): BorderClues | undefined {
+  if (!Array.isArray(entries) || rows <= 0 || cols <= 0) return undefined;
+  const top = Array.from({ length: cols }, () => "");
+  const bottom = Array.from({ length: cols }, () => "");
+  const left = Array.from({ length: rows }, () => "");
+  const right = Array.from({ length: rows }, () => "");
+  let found = false;
+
+  for (const item of entries) {
+    const value = asValue((item as any)?.value ?? (item as any)?.v ?? (item as any)?.sum ?? (item as any)?.text);
+    if (value == null) continue;
+    const rc = parseOneBasedRc((item as any)?.cell ?? (item as any)?.rc ?? (item as any)?.ce ?? item);
+    if (!rc) continue;
+
+    if (rc.r === 0 && rc.c >= 1 && rc.c <= cols) {
+      top[rc.c - 1] = value;
+      found = true;
+      continue;
+    }
+    if (rc.r === rows + 1 && rc.c >= 1 && rc.c <= cols) {
+      bottom[rc.c - 1] = value;
+      found = true;
+      continue;
+    }
+    if (rc.c === 0 && rc.r >= 1 && rc.r <= rows) {
+      left[rc.r - 1] = value;
+      found = true;
+      continue;
+    }
+    if (rc.c === cols + 1 && rc.r >= 1 && rc.r <= rows) {
+      right[rc.r - 1] = value;
+      found = true;
+      continue;
+    }
+  }
+
+  if (!found) return undefined;
+  const hasTop = top.some((v) => v.trim().length > 0);
+  const hasBottom = bottom.some((v) => v.trim().length > 0);
+  const hasLeft = left.some((v) => v.trim().length > 0);
+  const hasRight = right.some((v) => v.trim().length > 0);
+  return {
+    ...(hasTop ? { top } : {}),
+    ...(hasBottom ? { bottom } : {}),
+    ...(hasLeft ? { left } : {}),
+    ...(hasRight ? { right } : {}),
+  };
+}
+
+function mergeBorderClues(base: BorderClues | undefined, incoming: BorderClues | undefined): BorderClues | undefined {
+  if (!base) return incoming;
+  if (!incoming) return base;
+  const mergeSide = (a: string[] | undefined, b: string[] | undefined): string[] | undefined => {
+    if (!a && !b) return undefined;
+    const len = Math.max(a?.length ?? 0, b?.length ?? 0);
+    const out = Array.from({ length: len }, (_, i) => {
+      const leftVal = (a?.[i] ?? "").trim();
+      if (leftVal.length > 0) return a?.[i] ?? "";
+      return b?.[i] ?? "";
+    });
+    return out.some((v) => v.trim().length > 0) ? out : undefined;
+  };
+
+  const top = mergeSide(base.top, incoming.top);
+  const bottom = mergeSide(base.bottom, incoming.bottom);
+  const left = mergeSide(base.left, incoming.left);
+  const right = mergeSide(base.right, incoming.right);
+  if (!top && !bottom && !left && !right) return undefined;
+  return {
+    ...(top ? { top } : {}),
+    ...(bottom ? { bottom } : {}),
+    ...(left ? { left } : {}),
+    ...(right ? { right } : {}),
+  };
+}
+
+function applyLegacyBorderClues(scl: any, cosmetics: PuzzleCosmetics, rows: number, cols: number) {
+  const legacySandwich = mergeBorderClues(
+    normalizeBorderCluesObject(scl?.sandwich),
+    parseBorderCluesFromEntries(scl?.sandwichsum, rows, cols),
+  );
+  const legacyXsum = mergeBorderClues(
+    normalizeBorderCluesObject(scl?.xsum),
+    parseBorderCluesFromEntries(scl?.xsumclue ?? scl?.xsumclues, rows, cols),
+  );
+  const legacySkyscraper = mergeBorderClues(
+    normalizeBorderCluesObject(scl?.skyscraper),
+    parseBorderCluesFromEntries(scl?.skyscraperclue ?? scl?.skyscraperclues, rows, cols),
+  );
+
+  cosmetics.sandwich = mergeBorderClues(cosmetics.sandwich, legacySandwich);
+  cosmetics.xsum = mergeBorderClues(cosmetics.xsum, legacyXsum);
+  cosmetics.skyscraper = mergeBorderClues(cosmetics.skyscraper, legacySkyscraper);
 }
 
 function parseCellRefs(value: any): CellRC[] {
@@ -1023,6 +1165,7 @@ export async function loadFromSudokuPad(
   const shape = inferPuzzleShape(sclObj, givens, inlineMeta.solution);
   const size = Math.max(shape.rows, shape.cols, inferPuzzleSize(sclObj, givens, inlineMeta.solution));
   const subgrid = shape.rows === shape.cols ? detectStandardSubgrid(sclObj, size) : undefined;
+  applyLegacyBorderClues(sclObj, cosmetics, shape.rows, shape.cols);
 
   const key = normalizePuzzleKey(sourceId);
   const def: PuzzleDefinition = {
@@ -1199,6 +1342,8 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
         if (cg?.hidden === true) return null;
         const cells = parseCellRefs(cg?.cells ?? cg?.ce);
         if (!cells.length) return null;
+        const rawSum = asValue(cg?.value ?? cg?.sum ?? cg?.v);
+        const sum = typeof rawSum === "string" ? rawSum.trim() : rawSum;
         const rawDash = cg?.["stroke-dasharray"] ?? cg?.dashArray ?? cg?.dash;
         const dashArray = Array.isArray(rawDash)
           ? rawDash.map((n: unknown) => Number(n)).filter(Number.isFinite)
@@ -1207,7 +1352,7 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
             : undefined;
         return {
           cells,
-          sum: asValue(cg?.value ?? cg?.sum ?? cg?.v),
+          sum: typeof sum === "string" && sum.length ? sum : undefined,
           color: normalizeColorToken(cg?.outlineC ?? cg?.borderColor ?? cg?.stroke ?? cg?.color),
           textColor: normalizeColorToken(cg?.fontC ?? cg?.fontColor ?? cg?.textColor ?? cg?.labelColor ?? cg?.color),
           fillColor: normalizeColorToken(cg?.backgroundColor ?? cg?.fill ?? cg?.c2),
@@ -1364,8 +1509,8 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
           color: lineColor,
           thickness: parseFiniteNumberToken(item?.thickness ?? item?.th) ?? defaultThermoThickness,
           target: typeof item?.target === "string" ? item.target : "underlay",
-          lineCap,
-          lineJoin,
+          lineCap: lineCap ?? "round",
+          lineJoin: lineJoin ?? "round",
           dashArray: dashArray?.length ? dashArray : undefined,
           opacity: parseOpacityToken(item?.opacity ?? item?.alpha),
           renderOrder: resolveRenderOrder(item, nextRenderOrder),
@@ -1404,13 +1549,20 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
     const height = parseFiniteNumberToken(rawHeight);
     const rounded = Boolean(item?.rounded ?? item?.r);
     const text = item?.text ?? item?.te;
+    const hasText = text != null && String(text).length > 0;
     const explicitTextSize = parseFiniteNumberToken(item?.textSize ?? item?.fontSize ?? item?.fs);
     const rawExplicitBorder = item?.borderColor ?? item?.outlineC ?? item?.c1;
     const explicitBorderToken = normalizeColorToken(rawExplicitBorder);
+    const borderThickness = parseFiniteNumberToken(
+      item?.thickness ?? item?.th ?? item?.borderSize ?? item?.["stroke-width"]
+    );
     const rawStroke = item?.stroke;
     const strokeToken = normalizeColorToken(rawStroke);
-    const borderColor = explicitBorderToken ?? (isNoStrokeToken(rawStroke) ? undefined : strokeToken);
-    const textStrokeColor = normalizeColorToken(item?.textStrokeColor ?? item?.fontStrokeColor ?? item?.stroke);
+    const strokeUsableForBorder = !hasText || explicitBorderToken != null || borderThickness != null;
+    const borderColor = explicitBorderToken ?? (strokeUsableForBorder && !isNoStrokeToken(rawStroke) ? strokeToken : undefined);
+    const textStrokeColor = normalizeColorToken(
+      item?.textStrokeColor ?? item?.fontStrokeColor ?? (isNoStrokeToken(rawStroke) ? undefined : rawStroke)
+    );
     const fillColor = normalizeColorToken(item?.backgroundColor ?? item?.c2 ?? item?.fill);
 
     return {
@@ -1420,9 +1572,7 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
       rounded,
       color: fillColor,
       borderColor,
-      borderThickness: parseFiniteNumberToken(
-        item?.thickness ?? item?.th ?? item?.borderSize ?? item?.["stroke-width"]
-      ),
+      borderThickness,
       text,
       textColor: normalizeColorToken(item?.color ?? item?.textColor ?? item?.c),
       textStrokeColor: isNoStrokeToken(item?.stroke) ? undefined : textStrokeColor,
@@ -1589,8 +1739,8 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
           color: lineColor,
           thickness: parseFiniteNumberToken(item?.thickness ?? item?.th) ?? defaultBetweenLineThickness,
           target: typeof item?.target === "string" ? item.target : "underlay",
-          lineCap,
-          lineJoin,
+          lineCap: lineCap ?? "round",
+          lineJoin: lineJoin ?? "round",
           dashArray: dashArray?.length ? dashArray : undefined,
           dashOffset: parseFiniteNumberToken(item?.["stroke-dashoffset"] ?? item?.dashOffset),
           opacity: parseOpacityToken(item?.opacity ?? item?.alpha),
