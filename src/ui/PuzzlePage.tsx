@@ -286,6 +286,13 @@ export function PuzzlePage() {
 
   const userId = firebaseEnabled ? auth?.currentUser?.uid : null;
 
+  function blurButtonAfterPointerUp(event: React.PointerEvent<HTMLDivElement>) {
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+    const button = target.closest("button");
+    if (button instanceof HTMLButtonElement) button.blur();
+  }
+
   function normalizeProgress(progress: PuzzleProgress): PuzzleProgress {
     const cells = progress.cells.map((row) =>
       row.map((cell) => {
@@ -1289,7 +1296,7 @@ export function PuzzlePage() {
   }
 
   return (
-    <div className="shell">
+    <div className="shell" onPointerUpCapture={blurButtonAfterPointerUp}>
       <div className="topbar puzzleTopbar">
         <button className="btn" onClick={() => nav("/")}>← Menu</button>
         <div className="puzzleTopbarRight">

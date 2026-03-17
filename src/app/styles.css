@@ -385,7 +385,9 @@ input.url {
   overflow: visible;
 }
 
-.btn:hover { --btn-edge-color: rgba(255, 255, 255, 0.34); }
+@media (hover: hover) and (pointer: fine) {
+  .btn:hover { --btn-edge-color: rgba(255, 255, 255, 0.34); }
+}
 
 .btn:active,
 .keyButton:active {
