@@ -544,12 +544,25 @@ export function GridCanvas(props: {
     });
     const hasImportedRegionBoundaries = regionByCell.size > 0;
     const subgrid = def.cosmetics.subgrid;
+    const explicitRowColCells = def.cosmetics.rowColCells ?? [];
+    const hasExplicitRowColDomain = explicitRowColCells.length > 0;
+    const explicitRowColBounds = hasExplicitRowColDomain
+      ? {
+          minR: Math.min(...explicitRowColCells.map((rc) => rc.r)),
+          minC: Math.min(...explicitRowColCells.map((rc) => rc.c)),
+        }
+      : null;
 
     const conflictDomainByCell: boolean[][] = Array.from(
       { length: rows },
-      () => Array.from({ length: cols }, () => !hasImportedRegionBoundaries),
+      () => Array.from({ length: cols }, () => !hasImportedRegionBoundaries && !hasExplicitRowColDomain),
     );
-    if (hasImportedRegionBoundaries) {
+    if (hasExplicitRowColDomain) {
+      for (const rc of explicitRowColCells) {
+        if (!inBounds(rc.r, rc.c)) continue;
+        conflictDomainByCell[rc.r][rc.c] = true;
+      }
+    } else if (hasImportedRegionBoundaries) {
       for (const key of regionByCell.keys()) {
         const [rRaw, cRaw] = key.split(",");
         const r = Number(rRaw);
@@ -579,8 +592,12 @@ export function GridCanvas(props: {
     } else if (subgrid && subgrid.r > 0 && subgrid.c > 0) {
       for (let r = 0; r < rows; r++) {
         for (let c = 0; c < cols; c++) {
-          const br = Math.floor(r / subgrid.r);
-          const bc = Math.floor(c / subgrid.c);
+          if (!conflictDomainByCell[r][c]) continue;
+          const normalizedRow = explicitRowColBounds ? r - explicitRowColBounds.minR : r;
+          const normalizedCol = explicitRowColBounds ? c - explicitRowColBounds.minC : c;
+          if (normalizedRow < 0 || normalizedCol < 0) continue;
+          const br = Math.floor(normalizedRow / subgrid.r);
+          const bc = Math.floor(normalizedCol / subgrid.c);
           boxKeyByCell[r][c] = `subgrid:${br},${bc}`;
         }
       }
@@ -836,11 +853,12 @@ export function GridCanvas(props: {
       }
     };
 
-    const classifyRenderTarget = (target?: string): "under" | "over" => {
+    const classifyRenderTarget = (target?: string, defaultLayer: "under" | "over" = "over"): "under" | "over" => {
       const t = (target ?? "").toLowerCase();
       if (/(^|[^a-z])(under|underlay|back|background|behind|below|bottom)([^a-z]|$)/.test(t)) return "under";
       if (/(^|[^a-z])(cell-?grids?|gridlayer)([^a-z]|$)/.test(t)) return "under";
-      return "over";
+      if (/(^|[^a-z])(over|overlay|top|above|front|foreground)([^a-z]|$)/.test(t)) return "over";
+      return defaultLayer;
     };
 
     const hasMatchingCornerLabel = (cageCells: CellRC[], sum: string) => {
@@ -1143,7 +1161,7 @@ export function GridCanvas(props: {
     let featureSerial = 0;
     for (const item of def.cosmetics.lines ?? []) {
       orderedFeatureEntries.push({
-        layer: classifyRenderTarget(item.target),
+        layer: classifyRenderTarget(item.target, "under"),
         order: renderOrderValue(item.renderOrder),
         serial: featureSerial++,
         kind: "line",
