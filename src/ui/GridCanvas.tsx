@@ -710,29 +710,25 @@ export function GridCanvas(props: {
       }
     };
 
-    const drawLayer = (
-      items: NonNullable<PuzzleDefinition["cosmetics"]["underlays"]>,
+    const drawLayerItem = (
+      item: NonNullable<PuzzleDefinition["cosmetics"]["underlays"]>[number],
       opts?: { drawShapes?: boolean; drawText?: boolean }
     ) => {
       const drawShapes = opts?.drawShapes ?? true;
       const drawText = opts?.drawText ?? true;
-      const orderedItems = [...items].sort(
-        (a, b) => (a.renderOrder ?? Number.MAX_SAFE_INTEGER) - (b.renderOrder ?? Number.MAX_SAFE_INTEGER)
-      );
+      const w = Number.isFinite(item.width) ? item.width! : 1;
+      const h = Number.isFinite(item.height) ? item.height! : 1;
+      const x = worldX(item.center.x - w / 2);
+      const y = worldY(item.center.y - h / 2);
+      const rw = w * cellPx;
+      const rh = h * cellPx;
+      const cx = worldX(item.center.x);
+      const cy = worldY(item.center.y);
+      const angleRad = (Number(item.angle) || 0) * (Math.PI / 180);
+      const itemOpacity = Number.isFinite(item.opacity) ? Math.max(0, Math.min(1, Number(item.opacity))) : 1;
+      const nearlyCircle = Math.abs(rw - rh) <= Math.max(1, cellPx * 0.02);
 
-      const drawShape = (item: NonNullable<PuzzleDefinition["cosmetics"]["underlays"]>[number], mode: "fill" | "stroke") => {
-        const w = Number.isFinite(item.width) ? item.width! : 1;
-        const h = Number.isFinite(item.height) ? item.height! : 1;
-        const x = worldX(item.center.x - w / 2);
-        const y = worldY(item.center.y - h / 2);
-        const rw = w * cellPx;
-        const rh = h * cellPx;
-        const cx = worldX(item.center.x);
-        const cy = worldY(item.center.y);
-        const angleRad = (Number(item.angle) || 0) * (Math.PI / 180);
-        const itemOpacity = Number.isFinite(item.opacity) ? Math.max(0, Math.min(1, Number(item.opacity))) : 1;
-        const nearlyCircle = Math.abs(rw - rh) <= Math.max(1, cellPx * 0.02);
-
+      const withItemTransform = (draw: () => void) => {
         ctx.save();
         ctx.globalAlpha *= itemOpacity;
         if (angleRad) {
@@ -740,8 +736,12 @@ export function GridCanvas(props: {
           ctx.rotate(angleRad);
           ctx.translate(-cx, -cy);
         }
+        draw();
+        ctx.restore();
+      };
 
-        if (mode === "fill") {
+      if (drawShapes && item.color) {
+        withItemTransform(() => {
           ctx.fillStyle = item.color as string;
           if (item.rounded) {
             if (nearlyCircle) {
@@ -756,86 +756,81 @@ export function GridCanvas(props: {
           } else {
             ctx.fillRect(x, y, rw, rh);
           }
-        } else {
-          ctx.strokeStyle = item.borderColor as string;
-          const explicitBorderThickness = Number.isFinite(item.borderThickness)
-            ? Number(item.borderThickness)
-            : undefined;
-          if (explicitBorderThickness != null && explicitBorderThickness <= 0) {
-            ctx.restore();
-            return;
-          }
-          const borderWidth = (explicitBorderThickness ?? 1.4) * (cellPx / cosmeticUnit);
-          if (!(borderWidth > 0)) {
-            ctx.restore();
-            return;
-          }
-          // SudokuPad-exported layer thickness behaves like an inset (inner) border.
-          // Canvas strokes are centered by default, so inset the path by half width.
-          ctx.lineWidth = borderWidth;
-          const inset = borderWidth / 2;
-          const sx = x + inset;
-          const sy = y + inset;
-          const sw = Math.max(0, rw - borderWidth);
-          const sh = Math.max(0, rh - borderWidth);
-          if (item.rounded) {
-            if (nearlyCircle) {
-              ctx.beginPath();
-              ctx.ellipse(cx, cy, sw / 2, sh / 2, 0, 0, Math.PI * 2);
-              ctx.stroke();
-            } else {
-              ctx.beginPath();
-              ctx.roundRect(sx, sy, sw, sh, Math.min(14, cellPx * 0.25));
-              ctx.stroke();
-            }
-          } else {
-            ctx.strokeRect(sx, sy, sw, sh);
-          }
-        }
-        ctx.restore();
-      };
+        });
+      }
 
-      if (drawShapes) {
-        for (const item of orderedItems) {
-          if (item.color) drawShape(item, "fill");
-          if (item.borderColor) drawShape(item, "stroke");
+      if (drawShapes && item.borderColor) {
+        const explicitBorderThickness = Number.isFinite(item.borderThickness)
+          ? Number(item.borderThickness)
+          : undefined;
+        if (explicitBorderThickness == null || explicitBorderThickness > 0) {
+          const borderWidth = (explicitBorderThickness ?? 1.4) * (cellPx / cosmeticUnit);
+          if (borderWidth > 0) {
+            withItemTransform(() => {
+              ctx.strokeStyle = item.borderColor as string;
+              // SudokuPad-exported layer thickness behaves like an inset (inner) border.
+              // Canvas strokes are centered by default, so inset the path by half width.
+              ctx.lineWidth = borderWidth;
+              const inset = borderWidth / 2;
+              const sx = x + inset;
+              const sy = y + inset;
+              const sw = Math.max(0, rw - borderWidth);
+              const sh = Math.max(0, rh - borderWidth);
+              if (item.rounded) {
+                if (nearlyCircle) {
+                  ctx.beginPath();
+                  ctx.ellipse(cx, cy, sw / 2, sh / 2, 0, 0, Math.PI * 2);
+                  ctx.stroke();
+                } else {
+                  ctx.beginPath();
+                  ctx.roundRect(sx, sy, sw, sh, Math.min(14, cellPx * 0.25));
+                  ctx.stroke();
+                }
+              } else {
+                ctx.strokeRect(sx, sy, sw, sh);
+              }
+            });
+          }
         }
       }
 
-      for (const item of orderedItems) {
-        if (drawText && item.text != null && String(item.text).length) {
-          const angleRad = (Number(item.angle) || 0) * (Math.PI / 180);
-          const itemOpacity = Number.isFinite(item.opacity) ? Math.max(0, Math.min(1, Number(item.opacity))) : 1;
-          const cx = worldX(item.center.x);
-          const cy = worldY(item.center.y);
-          ctx.save();
-          ctx.globalAlpha *= itemOpacity;
-          if (angleRad) {
-            ctx.translate(cx, cy);
-            ctx.rotate(angleRad);
-            ctx.translate(-cx, -cy);
-          }
+      if (drawText && item.text != null && String(item.text).length) {
+        const px = (item.textSize ?? 16) * (cellPx / cosmeticUnit);
+        const text = String(item.text);
+        const hasEmoji = /\p{Extended_Pictographic}/u.test(text);
+        const textPx = Math.max(previewMode ? 4.5 : 10, px);
+        const tx = worldX(item.center.x);
+        const ty = worldY(item.center.y);
+        const twemoji = hasEmoji ? getTwemojiImage(text) : null;
+        withItemTransform(() => {
           ctx.fillStyle = item.textColor ?? "#111111";
-          const px = (item.textSize ?? 16) * (cellPx / cosmeticUnit);
-          const text = String(item.text);
-          const hasEmoji = /\p{Extended_Pictographic}/u.test(text);
-          const textPx = Math.max(previewMode ? 4.5 : 10, px);
           ctx.font = hasEmoji
             ? `${textPx}px ${emojiTextFont}`
             : `600 ${textPx}px ${gridTextFont}, ${emojiTextFont}`;
           ctx.textAlign = item.textAlign ?? "center";
           ctx.textBaseline = item.textBaseline ?? "middle";
-          const tx = worldX(item.center.x);
-          const ty = worldY(item.center.y);
-          const twemoji = hasEmoji ? getTwemojiImage(text) : null;
           if (twemoji) {
             const sz = textPx;
             ctx.drawImage(twemoji, tx - sz / 2, ty - sz / 2, sz, sz);
-          } else {
-            ctx.fillText(text, tx, ty);
+            return;
           }
-          ctx.restore();
-        }
+
+          const rawTextStrokeWidth = Number.isFinite(item.textStrokeWidth)
+            ? Number(item.textStrokeWidth)
+            : 0;
+          const textStrokeWidth = rawTextStrokeWidth > 0
+            ? scaledCosmeticPx(rawTextStrokeWidth, { previewMin: 0, normalMin: 0 })
+            : 0;
+          if (item.textStrokeColor && textStrokeWidth > 0) {
+            ctx.strokeStyle = item.textStrokeColor;
+            ctx.lineWidth = textStrokeWidth;
+            ctx.lineJoin = "round";
+            ctx.miterLimit = 2;
+            ctx.strokeText(text, tx, ty);
+          }
+
+          ctx.fillText(text, tx, ty);
+        });
       }
     };
 
@@ -846,315 +841,382 @@ export function GridCanvas(props: {
       return "over";
     };
 
-    const drawConstraintLines = (layer: "under" | "over") => {
-      if (!def.cosmetics.lines) return;
-      const orderedLines = [...def.cosmetics.lines].sort(
-        (a, b) => (a.renderOrder ?? Number.MAX_SAFE_INTEGER) - (b.renderOrder ?? Number.MAX_SAFE_INTEGER)
-      );
-      for (const ln of orderedLines) {
-        if (ln.wayPoints.length < 2) continue;
-        const isUnder = classifyRenderTarget(ln.target) === "under";
-        if (layer === "under" ? !isUnder : isUnder) continue;
-        const lineOpacity = Number.isFinite(ln.opacity) ? Math.max(0, Math.min(1, Number(ln.opacity))) : 1;
-
-        const hasSvgPath = typeof ln.svgPathData === "string" && ln.svgPathData.length > 0;
-        if (hasSvgPath) {
-          const units = Number(ln.svgUnitsPerCell) || cosmeticUnit;
-          const path = new Path2D(ln.svgPathData as string);
-          ctx.save();
-          ctx.globalAlpha *= lineOpacity;
-          ctx.translate(originX, originY);
-          ctx.scale(cellPx / units, cellPx / units);
-          if (ln.dashArray?.length) ctx.setLineDash(ln.dashArray);
-          if (Number.isFinite(ln.dashOffset)) ctx.lineDashOffset = Number(ln.dashOffset);
-          if (ln.fillColor) {
-            ctx.fillStyle = ln.fillColor;
-            ctx.fill(path);
-          }
-          const hasStroke = Boolean(ln.color) && (ln.thickness ?? 6) > 0;
-          if (hasStroke) {
-            ctx.strokeStyle = ln.color as string;
-            ctx.lineWidth = ln.thickness ?? 6;
-            ctx.lineCap = ln.lineCap ?? "round";
-            ctx.lineJoin = ln.lineJoin ?? "round";
-            ctx.stroke(path);
-          }
-          ctx.restore();
-        } else {
-          ctx.save();
-          ctx.globalAlpha *= lineOpacity;
-          if (ln.dashArray?.length) {
-            ctx.setLineDash(ln.dashArray.map((value) => scaledCosmeticPx(value, { previewMin: 0.5, normalMin: 1 })));
-          }
-          if (Number.isFinite(ln.dashOffset)) {
-            ctx.lineDashOffset = scaledCosmeticPx(Number(ln.dashOffset), { previewMin: 0, normalMin: 0 });
-          }
-          ctx.beginPath();
-          ln.wayPoints.forEach((p, i) => {
-            const x = worldX(p.x);
-            const y = worldY(p.y);
-            if (i === 0) ctx.moveTo(x, y);
-            else ctx.lineTo(x, y);
-          });
-          if (ln.closePath) ctx.closePath();
-
-          if (ln.fillColor) {
-            ctx.fillStyle = ln.fillColor;
-            ctx.fill();
-          }
-
-          const hasStroke = Boolean(ln.color) && (ln.thickness ?? 6) > 0;
-          if (hasStroke) {
-            ctx.strokeStyle = ln.color as string;
-            ctx.lineWidth = (ln.thickness ?? 6) * (cellPx / cosmeticUnit);
-            ctx.lineCap = ln.lineCap ?? "round";
-            ctx.lineJoin = ln.lineJoin ?? "round";
-            ctx.stroke();
-          }
-          ctx.restore();
-        }
-      }
+    const hasMatchingCornerLabel = (cageCells: CellRC[], sum: string) => {
+      const labels = [...(def.cosmetics.overlays ?? []), ...(def.cosmetics.underlays ?? [])];
+      const expected = String(sum).trim();
+      const cageSet = new Set(cageCells.map((cell) => `${cell.r},${cell.c}`));
+      return labels.some((item) => {
+        const txt = item.text == null ? "" : String(item.text).trim();
+        if (!txt || txt !== expected) return false;
+        const cx = item?.center?.x;
+        const cy = item?.center?.y;
+        if (!Number.isFinite(cx) || !Number.isFinite(cy)) return false;
+        const cellC = Math.floor(Number(cx));
+        const cellR = Math.floor(Number(cy));
+        return cageSet.has(`${cellR},${cellC}`);
+      });
     };
 
-    const drawCages = (layer: "under" | "over") => {
-      if (!def.cosmetics.cages) return;
-      const hasMatchingCornerLabel = (cageCells: CellRC[], sum: string) => {
-        const labels = [...(def.cosmetics.overlays ?? []), ...(def.cosmetics.underlays ?? [])];
-        const expected = String(sum).trim();
-        const cageSet = new Set(cageCells.map((cell) => `${cell.r},${cell.c}`));
-        return labels.some((item) => {
-          const txt = item.text == null ? "" : String(item.text).trim();
-          if (!txt || txt !== expected) return false;
-          const cx = item?.center?.x;
-          const cy = item?.center?.y;
-          if (!Number.isFinite(cx) || !Number.isFinite(cy)) return false;
-          const cellC = Math.floor(Number(cx));
-          const cellR = Math.floor(Number(cy));
-          return cageSet.has(`${cellR},${cellC}`);
-        });
-      };
-      const orderedCages = [...def.cosmetics.cages].sort(
-        (a, b) => (a.renderOrder ?? Number.MAX_SAFE_INTEGER) - (b.renderOrder ?? Number.MAX_SAFE_INTEGER)
-      );
-      for (const cage of orderedCages) {
-        if (classifyRenderTarget(cage.target) !== layer) continue;
-        const cageOpacity = Number.isFinite(cage.opacity) ? Math.max(0, Math.min(1, Number(cage.opacity))) : 1;
-        const cageStroke = cage.color ?? "#000000";
-        const cageLineWidth = scaledCosmeticPx(cage.thickness ?? 1.25, { previewMin: 0.5, normalMin: 0.9 });
-        const cageDash = (cage.dashArray?.length ? cage.dashArray : [5, 3])
-          .map((value) => scaledCosmeticPx(value, { previewMin: 0.5, normalMin: 1 }));
-        const set = new Set(cage.cells.map((rc) => `${rc.r},${rc.c}`));
-        for (const rc of cage.cells) {
-          if (cage.fillColor) {
-            ctx.save();
-            ctx.globalAlpha *= cageOpacity;
-            ctx.fillStyle = cage.fillColor;
-            ctx.fillRect(cellX(rc.c), cellY(rc.r), cellPx, cellPx);
-            ctx.restore();
-          }
-          const x = cellX(rc.c);
-          const y = cellY(rc.r);
-          const inset = scaledCellPx(0.055, { previewMin: 0.8, normalMin: 2, max: 3 });
-          const neighbors = {
-            up: `${rc.r - 1},${rc.c}`,
-            right: `${rc.r},${rc.c + 1}`,
-            down: `${rc.r + 1},${rc.c}`,
-            left: `${rc.r},${rc.c - 1}`,
-          };
+    const drawConstraintLine = (ln: NonNullable<PuzzleDefinition["cosmetics"]["lines"]>[number]) => {
+      if (ln.wayPoints.length < 2) return;
+      const lineOpacity = Number.isFinite(ln.opacity) ? Math.max(0, Math.min(1, Number(ln.opacity))) : 1;
+      const hasSvgPath = typeof ln.svgPathData === "string" && ln.svgPathData.length > 0;
+
+      if (hasSvgPath) {
+        const units = Number(ln.svgUnitsPerCell) || cosmeticUnit;
+        const path = new Path2D(ln.svgPathData as string);
+        ctx.save();
+        ctx.globalAlpha *= lineOpacity;
+        ctx.translate(originX, originY);
+        ctx.scale(cellPx / units, cellPx / units);
+        if (ln.dashArray?.length) ctx.setLineDash(ln.dashArray);
+        if (Number.isFinite(ln.dashOffset)) ctx.lineDashOffset = Number(ln.dashOffset);
+        if (ln.fillColor) {
+          ctx.fillStyle = ln.fillColor;
+          ctx.fill(path);
+        }
+        const hasStroke = Boolean(ln.color) && (ln.thickness ?? 6) > 0;
+        if (hasStroke) {
+          ctx.strokeStyle = ln.color as string;
+          ctx.lineWidth = ln.thickness ?? 6;
+          ctx.lineCap = ln.lineCap ?? "round";
+          ctx.lineJoin = ln.lineJoin ?? "round";
+          ctx.stroke(path);
+        }
+        ctx.restore();
+        return;
+      }
+
+      ctx.save();
+      ctx.globalAlpha *= lineOpacity;
+      if (ln.dashArray?.length) {
+        ctx.setLineDash(ln.dashArray.map((value) => scaledCosmeticPx(value, { previewMin: 0.5, normalMin: 1 })));
+      }
+      if (Number.isFinite(ln.dashOffset)) {
+        ctx.lineDashOffset = scaledCosmeticPx(Number(ln.dashOffset), { previewMin: 0, normalMin: 0 });
+      }
+      ctx.beginPath();
+      ln.wayPoints.forEach((p, i) => {
+        const x = worldX(p.x);
+        const y = worldY(p.y);
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      if (ln.closePath) ctx.closePath();
+
+      if (ln.fillColor) {
+        ctx.fillStyle = ln.fillColor;
+        ctx.fill();
+      }
+
+      const hasStroke = Boolean(ln.color) && (ln.thickness ?? 6) > 0;
+      if (hasStroke) {
+        ctx.strokeStyle = ln.color as string;
+        ctx.lineWidth = (ln.thickness ?? 6) * (cellPx / cosmeticUnit);
+        ctx.lineCap = ln.lineCap ?? "round";
+        ctx.lineJoin = ln.lineJoin ?? "round";
+        ctx.stroke();
+      }
+      ctx.restore();
+    };
+
+    const drawCage = (cage: NonNullable<PuzzleDefinition["cosmetics"]["cages"]>[number]) => {
+      const cageOpacity = Number.isFinite(cage.opacity) ? Math.max(0, Math.min(1, Number(cage.opacity))) : 1;
+      const cageStroke = cage.color ?? "#000000";
+      const cageLineWidth = scaledCosmeticPx(cage.thickness ?? 1.25, { previewMin: 0.5, normalMin: 0.9 });
+      const cageDash = (cage.dashArray?.length ? cage.dashArray : [5, 3])
+        .map((value) => scaledCosmeticPx(value, { previewMin: 0.5, normalMin: 1 }));
+      const set = new Set(cage.cells.map((rc) => `${rc.r},${rc.c}`));
+      for (const rc of cage.cells) {
+        if (cage.fillColor) {
           ctx.save();
           ctx.globalAlpha *= cageOpacity;
-          ctx.strokeStyle = cageStroke;
-          ctx.lineWidth = cageLineWidth;
-          ctx.setLineDash(cageDash);
-          if (!set.has(neighbors.up)) {
-            ctx.beginPath();
-            ctx.moveTo(x + inset, y + inset);
-            ctx.lineTo(x + cellPx - inset, y + inset);
-            ctx.stroke();
-          }
-          if (!set.has(neighbors.right)) {
-            ctx.beginPath();
-            ctx.moveTo(x + cellPx - inset, y + inset);
-            ctx.lineTo(x + cellPx - inset, y + cellPx - inset);
-            ctx.stroke();
-          }
-          if (!set.has(neighbors.down)) {
-            ctx.beginPath();
-            ctx.moveTo(x + inset, y + cellPx - inset);
-            ctx.lineTo(x + cellPx - inset, y + cellPx - inset);
-            ctx.stroke();
-          }
-          if (!set.has(neighbors.left)) {
-            ctx.beginPath();
-            ctx.moveTo(x + inset, y + inset);
-            ctx.lineTo(x + inset, y + cellPx - inset);
-            ctx.stroke();
-          }
+          ctx.fillStyle = cage.fillColor;
+          ctx.fillRect(cellX(rc.c), cellY(rc.r), cellPx, cellPx);
           ctx.restore();
         }
-        if (cage.sum) {
-          const first = cage.cells[0];
-          if (!hasMatchingCornerLabel(cage.cells, cage.sum)) {
-            ctx.fillStyle = cage.textColor ?? cage.color ?? "#111111";
-            ctx.font = `${scaledCosmeticPx(12, { previewMin: 4.5, normalMin: 8, max: 14 })}px ${gridTextFont}, ${emojiTextFont}`;
-            ctx.fillText(
-              cage.sum,
-              cellX(first.c) + scaledCellPx(0.11, { previewMin: 1.2, normalMin: 4, max: 6 }),
-              cellY(first.r) + scaledCellPx(0.24, { previewMin: 4.2, normalMin: 12, max: 14 }),
-            );
-          }
-        }
-      }
-    };
-
-    const drawArrows = (layer: "under" | "over") => {
-      if (!def.cosmetics.arrows) return;
-      const orderedArrows = [...def.cosmetics.arrows].sort(
-        (a, b) => (a.renderOrder ?? Number.MAX_SAFE_INTEGER) - (b.renderOrder ?? Number.MAX_SAFE_INTEGER)
-      );
-      for (const a of orderedArrows) {
-        if (classifyRenderTarget(a.target) !== layer) continue;
-        const stroke = a.color ?? "#59606b";
-        const lineW = scaledCosmeticPx(a.thickness ?? 4.2, { previewMin: 0.8, normalMin: 1.5 });
-        const bulbRadius = scaledCellPx(0.18, { previewMin: 1.8, normalMin: 5, max: cellPx * 0.28 });
-        const bulbStrokeWidth = scaledCosmeticPx(a.bulbStrokeThickness ?? 1.6, { previewMin: 0.5, normalMin: 0.9 });
-        const waypointPath = Array.isArray(a.wayPoints) && a.wayPoints.length >= 2
-          ? a.wayPoints
-          : null;
-
-        ctx.strokeStyle = stroke;
-        ctx.lineWidth = lineW;
-        ctx.lineCap = "round";
-        ctx.lineJoin = "round";
-        ctx.beginPath();
-        if (waypointPath) {
-          waypointPath.forEach((p, i) => {
-            const x = worldX(p.x);
-            const y = worldY(p.y);
-            if (i === 0) ctx.moveTo(x, y);
-            else ctx.lineTo(x, y);
-          });
-        } else {
-          const cellPath = Array.isArray(a.path) ? a.path : [];
-          cellPath.forEach((rc, i) => {
-            const x = cellX(rc.c) + cellPx / 2;
-            const y = cellY(rc.r) + cellPx / 2;
-            if (i === 0) {
-              if (cellPath.length > 1 && a.bulb) {
-                const n0 = cellPath[1] as CellRC;
-                const nx = cellX(n0.c) + cellPx / 2;
-                const ny = cellY(n0.r) + cellPx / 2;
-                const vx = nx - x;
-                const vy = ny - y;
-                const vl = Math.hypot(vx, vy) || 1;
-                ctx.moveTo(x + (vx / vl) * bulbRadius * 0.92, y + (vy / vl) * bulbRadius * 0.92);
-              } else {
-                ctx.moveTo(x, y);
-              }
-            } else {
-              ctx.lineTo(x, y);
-            }
-          });
-        }
-        ctx.stroke();
-
-        const pathPoints = waypointPath
-          ? waypointPath.map((p) => ({ x: worldX(p.x), y: worldY(p.y) }))
-          : (Array.isArray(a.path) ? a.path : []).map((rc) => ({ x: cellX(rc.c) + cellPx / 2, y: cellY(rc.r) + cellPx / 2 }));
-
-        if (pathPoints.length >= 2) {
-          const end = pathPoints[pathPoints.length - 1] as { x: number; y: number };
-          const prev = pathPoints[pathPoints.length - 2] as { x: number; y: number };
-          const ex = end.x;
-          const ey = end.y;
-          const px = prev.x;
-          const py = prev.y;
-          const vx = ex - px;
-          const vy = ey - py;
-          const vl = Math.hypot(vx, vy) || 1;
-          const ux = vx / vl;
-          const uy = vy / vl;
-          const nx = -uy;
-          const ny = ux;
-          const headLen = Number.isFinite(a.headLength)
-            ? scaledCosmeticPx(Number(a.headLength), { previewMin: 1.6, normalMin: 6 })
-            : scaledCellPx(0.23, { previewMin: 2.2, normalMin: 8 });
-          const headWidth = scaledCellPx(0.15, { previewMin: 1.6, normalMin: 6 });
-          const bx = ex - ux * headLen;
-          const by = ey - uy * headLen;
-          ctx.fillStyle = stroke;
+        const x = cellX(rc.c);
+        const y = cellY(rc.r);
+        const inset = scaledCellPx(0.055, { previewMin: 0.8, normalMin: 2, max: 3 });
+        const neighbors = {
+          up: `${rc.r - 1},${rc.c}`,
+          right: `${rc.r},${rc.c + 1}`,
+          down: `${rc.r + 1},${rc.c}`,
+          left: `${rc.r},${rc.c - 1}`,
+        };
+        ctx.save();
+        ctx.globalAlpha *= cageOpacity;
+        ctx.strokeStyle = cageStroke;
+        ctx.lineWidth = cageLineWidth;
+        ctx.setLineDash(cageDash);
+        if (!set.has(neighbors.up)) {
           ctx.beginPath();
-          ctx.moveTo(ex, ey);
-          ctx.lineTo(bx + nx * headWidth, by + ny * headWidth);
-          ctx.lineTo(bx - nx * headWidth, by - ny * headWidth);
-          ctx.closePath();
-          ctx.fill();
-        }
-
-        if (a.bulb) {
-          const b = a.bulb;
-          ctx.fillStyle = a.bulbFill ?? "#ffffff";
-          ctx.beginPath();
-          ctx.arc(cellX(b.c) + cellPx / 2, cellY(b.r) + cellPx / 2, bulbRadius, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.strokeStyle = a.bulbStroke ?? "#222222";
-          ctx.lineWidth = bulbStrokeWidth;
+          ctx.moveTo(x + inset, y + inset);
+          ctx.lineTo(x + cellPx - inset, y + inset);
           ctx.stroke();
         }
-      }
-    };
-
-    const drawDots = (layer: "under" | "over") => {
-      if (!def.cosmetics.dots) return;
-      const orderedDots = [...def.cosmetics.dots].sort(
-        (a, b) => (a.renderOrder ?? Number.MAX_SAFE_INTEGER) - (b.renderOrder ?? Number.MAX_SAFE_INTEGER)
-      );
-      for (const d of orderedDots) {
-        if (classifyRenderTarget(d.target) !== layer) continue;
-        const a = normalizeDotRc(d.a);
-        const b = normalizeDotRc(d.b);
-        if (!a || !b) continue;
-        const ax = cellX(a.c) + cellPx / 2;
-        const ay = cellY(a.r) + cellPx / 2;
-        const bx = cellX(b.c) + cellPx / 2;
-        const by = cellY(b.r) + cellPx / 2;
-        const x = (ax + bx) / 2;
-        const y = (ay + by) / 2;
-        const dotRadius = Number.isFinite(d.radius)
-          ? scaledCosmeticPx(Number(d.radius), { previewMin: 1.5, normalMin: 3.5 })
-          : scaledCellPx(0.125, { previewMin: 1.5, normalMin: 3.5 });
-        const dotOpacity = Number.isFinite(d.opacity) ? Math.max(0, Math.min(1, Number(d.opacity))) : 1;
-        const fillColor = d.color ?? (d.kind === "white" ? "#ffffff" : "#1b1b1b");
-        const borderColor = d.borderColor ?? "#111111";
-        const explicitBorderThickness = Number.isFinite(d.borderThickness)
-          ? Number(d.borderThickness)
-          : undefined;
-        const borderWidth = explicitBorderThickness != null
-          ? scaledCosmeticPx(explicitBorderThickness, { previewMin: 0, normalMin: 0 })
-          : scaledCosmeticPx(2, { previewMin: 0.5, normalMin: 1 });
-        ctx.save();
-        ctx.globalAlpha *= dotOpacity;
-        ctx.beginPath();
-        ctx.arc(x, y, dotRadius, 0, Math.PI * 2);
-        ctx.fillStyle = fillColor;
-        ctx.fill();
-        if (borderWidth > 0) {
-          ctx.strokeStyle = borderColor;
-          ctx.lineWidth = borderWidth;
+        if (!set.has(neighbors.right)) {
+          ctx.beginPath();
+          ctx.moveTo(x + cellPx - inset, y + inset);
+          ctx.lineTo(x + cellPx - inset, y + cellPx - inset);
+          ctx.stroke();
+        }
+        if (!set.has(neighbors.down)) {
+          ctx.beginPath();
+          ctx.moveTo(x + inset, y + cellPx - inset);
+          ctx.lineTo(x + cellPx - inset, y + cellPx - inset);
+          ctx.stroke();
+        }
+        if (!set.has(neighbors.left)) {
+          ctx.beginPath();
+          ctx.moveTo(x + inset, y + inset);
+          ctx.lineTo(x + inset, y + cellPx - inset);
           ctx.stroke();
         }
         ctx.restore();
       }
+      if (cage.sum) {
+        const first = cage.cells[0];
+        if (!hasMatchingCornerLabel(cage.cells, cage.sum)) {
+          ctx.fillStyle = cage.textColor ?? cage.color ?? "#111111";
+          ctx.font = `${scaledCosmeticPx(12, { previewMin: 4.5, normalMin: 8, max: 14 })}px ${gridTextFont}, ${emojiTextFont}`;
+          ctx.fillText(
+            cage.sum,
+            cellX(first.c) + scaledCellPx(0.11, { previewMin: 1.2, normalMin: 4, max: 6 }),
+            cellY(first.r) + scaledCellPx(0.24, { previewMin: 4.2, normalMin: 12, max: 14 }),
+          );
+        }
+      }
     };
 
-    const underlayItems = def.cosmetics.underlays ?? [];
+    const drawArrow = (a: NonNullable<PuzzleDefinition["cosmetics"]["arrows"]>[number]) => {
+      const stroke = a.color ?? "#59606b";
+      const lineW = scaledCosmeticPx(a.thickness ?? 4.2, { previewMin: 0.8, normalMin: 1.5 });
+      const bulbRadius = scaledCellPx(0.18, { previewMin: 1.8, normalMin: 5, max: cellPx * 0.28 });
+      const bulbStrokeWidth = scaledCosmeticPx(a.bulbStrokeThickness ?? 1.6, { previewMin: 0.5, normalMin: 0.9 });
+      const waypointPath = Array.isArray(a.wayPoints) && a.wayPoints.length >= 2
+        ? a.wayPoints
+        : null;
+
+      ctx.strokeStyle = stroke;
+      ctx.lineWidth = lineW;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.beginPath();
+      if (waypointPath) {
+        waypointPath.forEach((p, i) => {
+          const x = worldX(p.x);
+          const y = worldY(p.y);
+          if (i === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        });
+      } else {
+        const cellPath = Array.isArray(a.path) ? a.path : [];
+        cellPath.forEach((rc, i) => {
+          const x = cellX(rc.c) + cellPx / 2;
+          const y = cellY(rc.r) + cellPx / 2;
+          if (i === 0) {
+            if (cellPath.length > 1 && a.bulb) {
+              const n0 = cellPath[1] as CellRC;
+              const nx = cellX(n0.c) + cellPx / 2;
+              const ny = cellY(n0.r) + cellPx / 2;
+              const vx = nx - x;
+              const vy = ny - y;
+              const vl = Math.hypot(vx, vy) || 1;
+              ctx.moveTo(x + (vx / vl) * bulbRadius * 0.92, y + (vy / vl) * bulbRadius * 0.92);
+            } else {
+              ctx.moveTo(x, y);
+            }
+          } else {
+            ctx.lineTo(x, y);
+          }
+        });
+      }
+      ctx.stroke();
+
+      const pathPoints = waypointPath
+        ? waypointPath.map((p) => ({ x: worldX(p.x), y: worldY(p.y) }))
+        : (Array.isArray(a.path) ? a.path : []).map((rc) => ({ x: cellX(rc.c) + cellPx / 2, y: cellY(rc.r) + cellPx / 2 }));
+
+      if (pathPoints.length >= 2) {
+        const end = pathPoints[pathPoints.length - 1] as { x: number; y: number };
+        const prev = pathPoints[pathPoints.length - 2] as { x: number; y: number };
+        const ex = end.x;
+        const ey = end.y;
+        const px = prev.x;
+        const py = prev.y;
+        const vx = ex - px;
+        const vy = ey - py;
+        const vl = Math.hypot(vx, vy) || 1;
+        const ux = vx / vl;
+        const uy = vy / vl;
+        const nx = -uy;
+        const ny = ux;
+        const headLen = Number.isFinite(a.headLength)
+          ? scaledCosmeticPx(Number(a.headLength), { previewMin: 1.6, normalMin: 6 })
+          : scaledCellPx(0.23, { previewMin: 2.2, normalMin: 8 });
+        const headWidth = scaledCellPx(0.15, { previewMin: 1.6, normalMin: 6 });
+        const bx = ex - ux * headLen;
+        const by = ey - uy * headLen;
+        ctx.fillStyle = stroke;
+        ctx.beginPath();
+        ctx.moveTo(ex, ey);
+        ctx.lineTo(bx + nx * headWidth, by + ny * headWidth);
+        ctx.lineTo(bx - nx * headWidth, by - ny * headWidth);
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      if (a.bulb) {
+        const b = a.bulb;
+        ctx.fillStyle = a.bulbFill ?? "#ffffff";
+        ctx.beginPath();
+        ctx.arc(cellX(b.c) + cellPx / 2, cellY(b.r) + cellPx / 2, bulbRadius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = a.bulbStroke ?? "#222222";
+        ctx.lineWidth = bulbStrokeWidth;
+        ctx.stroke();
+      }
+    };
+
+    const drawDot = (d: NonNullable<PuzzleDefinition["cosmetics"]["dots"]>[number]) => {
+      const a = normalizeDotRc(d.a);
+      const b = normalizeDotRc(d.b);
+      if (!a || !b) return;
+      const ax = cellX(a.c) + cellPx / 2;
+      const ay = cellY(a.r) + cellPx / 2;
+      const bx = cellX(b.c) + cellPx / 2;
+      const by = cellY(b.r) + cellPx / 2;
+      const x = (ax + bx) / 2;
+      const y = (ay + by) / 2;
+      const dotRadius = Number.isFinite(d.radius)
+        ? scaledCosmeticPx(Number(d.radius), { previewMin: 1.5, normalMin: 3.5 })
+        : scaledCellPx(0.125, { previewMin: 1.5, normalMin: 3.5 });
+      const dotOpacity = Number.isFinite(d.opacity) ? Math.max(0, Math.min(1, Number(d.opacity))) : 1;
+      const fillColor = d.color ?? (d.kind === "white" ? "#ffffff" : "#1b1b1b");
+      const borderColor = d.borderColor ?? "#111111";
+      const explicitBorderThickness = Number.isFinite(d.borderThickness)
+        ? Number(d.borderThickness)
+        : undefined;
+      const borderWidth = explicitBorderThickness != null
+        ? scaledCosmeticPx(explicitBorderThickness, { previewMin: 0, normalMin: 0 })
+        : scaledCosmeticPx(2, { previewMin: 0.5, normalMin: 1 });
+      ctx.save();
+      ctx.globalAlpha *= dotOpacity;
+      ctx.beginPath();
+      ctx.arc(x, y, dotRadius, 0, Math.PI * 2);
+      ctx.fillStyle = fillColor;
+      ctx.fill();
+      if (borderWidth > 0) {
+        ctx.strokeStyle = borderColor;
+        ctx.lineWidth = borderWidth;
+        ctx.stroke();
+      }
+      ctx.restore();
+    };
+
+    type FeatureEntry =
+      | { layer: "under" | "over"; order: number; serial: number; kind: "line"; item: NonNullable<PuzzleDefinition["cosmetics"]["lines"]>[number] }
+      | { layer: "under" | "over"; order: number; serial: number; kind: "cage"; item: NonNullable<PuzzleDefinition["cosmetics"]["cages"]>[number] }
+      | { layer: "under" | "over"; order: number; serial: number; kind: "arrow"; item: NonNullable<PuzzleDefinition["cosmetics"]["arrows"]>[number] }
+      | { layer: "under" | "over"; order: number; serial: number; kind: "dot"; item: NonNullable<PuzzleDefinition["cosmetics"]["dots"]>[number] }
+      | { layer: "under" | "over"; order: number; serial: number; kind: "layer-item"; item: NonNullable<PuzzleDefinition["cosmetics"]["underlays"]>[number] };
+
+    const renderOrderValue = (value: number | undefined) => (
+      Number.isFinite(value) ? Number(value) : Number.MAX_SAFE_INTEGER
+    );
+
+    const resolveLayerForLayerItem = (
+      target: string | undefined,
+      defaultLayer: "under" | "over",
+    ): "under" | "over" => {
+      if (typeof target !== "string" || !target.trim()) return defaultLayer;
+      return classifyRenderTarget(target);
+    };
+
+    const orderedFeatureEntries: FeatureEntry[] = [];
+    let featureSerial = 0;
+    for (const item of def.cosmetics.lines ?? []) {
+      orderedFeatureEntries.push({
+        layer: classifyRenderTarget(item.target),
+        order: renderOrderValue(item.renderOrder),
+        serial: featureSerial++,
+        kind: "line",
+        item,
+      });
+    }
+    for (const item of def.cosmetics.cages ?? []) {
+      orderedFeatureEntries.push({
+        layer: classifyRenderTarget(item.target),
+        order: renderOrderValue(item.renderOrder),
+        serial: featureSerial++,
+        kind: "cage",
+        item,
+      });
+    }
+    for (const item of def.cosmetics.arrows ?? []) {
+      orderedFeatureEntries.push({
+        layer: classifyRenderTarget(item.target),
+        order: renderOrderValue(item.renderOrder),
+        serial: featureSerial++,
+        kind: "arrow",
+        item,
+      });
+    }
+    for (const item of def.cosmetics.dots ?? []) {
+      orderedFeatureEntries.push({
+        layer: classifyRenderTarget(item.target),
+        order: renderOrderValue(item.renderOrder),
+        serial: featureSerial++,
+        kind: "dot",
+        item,
+      });
+    }
+    for (const item of def.cosmetics.underlays ?? []) {
+      orderedFeatureEntries.push({
+        layer: resolveLayerForLayerItem(item.target, "under"),
+        order: renderOrderValue(item.renderOrder),
+        serial: featureSerial++,
+        kind: "layer-item",
+        item,
+      });
+    }
+    for (const item of def.cosmetics.overlays ?? []) {
+      orderedFeatureEntries.push({
+        layer: resolveLayerForLayerItem(item.target, "over"),
+        order: renderOrderValue(item.renderOrder),
+        serial: featureSerial++,
+        kind: "layer-item",
+        item: item as NonNullable<PuzzleDefinition["cosmetics"]["underlays"]>[number],
+      });
+    }
+    orderedFeatureEntries.sort((a, b) => a.order - b.order || a.serial - b.serial);
+
+    const drawFeatureEntries = (layer: "under" | "over") => {
+      for (const entry of orderedFeatureEntries) {
+        if (entry.layer !== layer) continue;
+        switch (entry.kind) {
+          case "line":
+            drawConstraintLine(entry.item);
+            break;
+          case "cage":
+            drawCage(entry.item);
+            break;
+          case "arrow":
+            drawArrow(entry.item);
+            break;
+          case "dot":
+            drawDot(entry.item);
+            break;
+          case "layer-item":
+            drawLayerItem(entry.item);
+            break;
+        }
+      }
+    };
 
     // Draw underlay-targeted puzzle features first.
-    drawConstraintLines("under");
-    drawCages("under");
-    drawArrows("under");
-    drawDots("under");
-    if (underlayItems.length) drawLayer(underlayItems, { drawShapes: true, drawText: true });
+    drawFeatureEntries("under");
 
     // Highlights sit above puzzle artwork but below grid/features and values.
     for (let r = 0; r < rows; r++) {
@@ -1165,13 +1227,7 @@ export function GridCanvas(props: {
     }
 
     const drawTopPuzzleFeatures = () => {
-      drawCages("over");
-      drawConstraintLines("over");
-      if (def.cosmetics.overlays?.length) {
-        drawLayer(def.cosmetics.overlays as NonNullable<PuzzleDefinition["cosmetics"]["underlays"]>);
-      }
-      drawArrows("over");
-      drawDots("over");
+      drawFeatureEntries("over");
     };
 
     const fogDefined = (def.cosmetics.fogLights?.length ?? 0) > 0 || (def.cosmetics.fogTriggerEffects?.length ?? 0) > 0;

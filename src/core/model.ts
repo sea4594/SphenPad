@@ -109,9 +109,13 @@ export type PuzzleCosmetics = {
     borderThickness?: number;
     text?: string;
     textColor?: string;
+    textStrokeColor?: string;
+    textStrokeWidth?: number;
     textSize?: number;
     textAlign?: CanvasTextAlign;
     textBaseline?: CanvasTextBaseline;
+    className?: string;
+    role?: string;
     angle?: number;
     opacity?: number;
     target?: string;
@@ -127,9 +131,13 @@ export type PuzzleCosmetics = {
     borderThickness?: number;
     text?: string;
     textColor?: string;
+    textStrokeColor?: string;
+    textStrokeWidth?: number;
     textSize?: number;
     textAlign?: CanvasTextAlign;
     textBaseline?: CanvasTextBaseline;
+    className?: string;
+    role?: string;
     angle?: number;
     opacity?: number;
     target?: string;

@@ -16,7 +16,7 @@ const COUNTER_API_BASE = "https://api.sudokupad.com/counter";
 const COUNTER_PROXY_A = "https://api.codetabs.com/v1/proxy/?quest=https://api.sudokupad.com/counter";
 const COUNTER_PROXY_B = "https://api.allorigins.win/raw?url=https://api.sudokupad.com/counter";
 
-export const SUDOKUPAD_IMPORT_REVISION = 7;
+export const SUDOKUPAD_IMPORT_REVISION = 9;
 
 function timeout(ms: number) {
   return new Promise<never>((_, rej) => setTimeout(() => rej(new Error("Timeout")), ms));
@@ -416,6 +416,30 @@ function parseCellRefs(value: any): CellRC[] {
   }
   if (typeof value === "string") return parseRcString(value);
   return [];
+}
+
+function collectArrayAliases<T = any>(source: any, keys: string[]): T[] {
+  const out: T[] = [];
+  const seenObjects = new Set<object>();
+  for (const key of keys) {
+    const arr = source?.[key];
+    if (!Array.isArray(arr)) continue;
+    for (const item of arr) {
+      if (item && typeof item === "object") {
+        if (seenObjects.has(item)) continue;
+        seenObjects.add(item);
+      }
+      out.push(item as T);
+    }
+  }
+  return out;
+}
+
+function resolveRenderOrder(item: any, nextRenderOrder: () => number): number {
+  const explicit = parseFiniteNumberToken(
+    item?.renderOrder ?? item?.renderorder ?? item?.zIndex ?? item?.zindex ?? item?.z,
+  );
+  return explicit ?? nextRenderOrder();
 }
 
 function pointsAlmostEqual(a: { x: number; y: number }, b: { x: number; y: number }, eps = 1e-6) {
@@ -975,7 +999,7 @@ export async function loadFromSudokuPad(
     id: key,
     sourceId,
     sourcePayload: payloadText,
-    sourceData: raw,
+    sourceData: sclObj ?? raw,
     importRevision: SUDOKUPAD_IMPORT_REVISION,
     size,
     rows: shape.rows,
@@ -1118,17 +1142,7 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
   if (cellBackgrounds.length) cosmetics.underlays = [...(cosmetics.underlays ?? []), ...cellBackgrounds];
 
   // cages
-  const cagesSrc = Array.isArray(scl?.cages)
-    ? scl.cages
-    : Array.isArray(scl?.cage)
-      ? scl.cage
-    : Array.isArray(scl?.killerCages)
-      ? scl.killerCages
-      : Array.isArray(scl?.killercage)
-        ? scl.killercage
-      : Array.isArray(scl?.killer)
-        ? scl.killer
-        : [];
+  const cagesSrc = collectArrayAliases(scl, ["cages", "cage", "killerCages", "killercage", "killer", "ca"]);
 
   // Collect cells from hidden 'rowcol' constraint areas — these identify the true conflict domain
   // in puzzles that have outer helper cells surrounding a smaller inner sudoku grid.
@@ -1171,20 +1185,14 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
           dashArray: dashArray?.length ? dashArray : undefined,
           opacity: parseOpacityToken(cg?.opacity ?? cg?.alpha),
           target: typeof cg?.target === "string" ? cg.target : undefined,
-          renderOrder: nextRenderOrder(),
+          renderOrder: resolveRenderOrder(cg, nextRenderOrder),
         };
       })
       .filter(Boolean) as any;
   }
 
   // arrows
-  const arrowsSrc = Array.isArray(scl?.arrow)
-    ? scl.arrow
-    : Array.isArray(scl?.arrows)
-      ? scl.arrows
-      : Array.isArray(scl?.a)
-        ? scl.a
-        : [];
+  const arrowsSrc = collectArrayAliases(scl, ["arrow", "arrows", "a"]);
   if (arrowsSrc.length) {
     cosmetics.arrows = arrowsSrc
       .map((a: any) => {
@@ -1208,20 +1216,14 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
           bulbStroke: normalizeColorToken(a?.bulbBorderColor ?? a?.outlineC ?? a?.color ?? a?.lineColor ?? a?.c ?? "#222222"),
           bulbStrokeThickness: parseFiniteNumberToken(a?.bulbBorderThickness),
           target: typeof a?.target === "string" ? a.target : undefined,
-          renderOrder: nextRenderOrder(),
+          renderOrder: resolveRenderOrder(a, nextRenderOrder),
         };
       })
       .filter(Boolean) as any;
   }
 
   // dots
-  const dotsSrc = Array.isArray(scl?.dots)
-    ? scl.dots
-    : Array.isArray(scl?.kropki)
-      ? scl.kropki
-      : Array.isArray(scl?.dot)
-        ? scl.dot
-        : [];
+  const dotsSrc = collectArrayAliases(scl, ["dots", "kropki", "dot", "d"]);
   if (dotsSrc.length) {
     cosmetics.dots = dotsSrc
       .map((d: any) => {
@@ -1239,20 +1241,14 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
           borderThickness: parseFiniteNumberToken(d?.thickness ?? d?.th ?? d?.borderThickness),
           opacity: parseOpacityToken(d?.opacity ?? d?.alpha),
           target: typeof d?.target === "string" ? d.target : undefined,
-          renderOrder: nextRenderOrder(),
+          renderOrder: resolveRenderOrder(d, nextRenderOrder),
         };
       })
       .filter(Boolean) as any;
   }
 
   // Native SudokuPad lines are often in `lines` with floating-point wayPoints.
-  const linesSrc = Array.isArray(scl?.lines)
-    ? scl.lines
-    : Array.isArray(scl?.line)
-      ? scl.line
-      : Array.isArray(scl?.l)
-        ? scl.l
-        : [];
+  const linesSrc = collectArrayAliases(scl, ["lines", "line", "l"]);
   if (linesSrc.length) {
     cosmetics.lines = linesSrc
       .map((ln: any) => {
@@ -1286,7 +1282,7 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
         const lineJoinRaw = String(ln?.["stroke-linejoin"] ?? ln?.lineJoin ?? "").toLowerCase();
         const lineCap = lineCapRaw === "round" || lineCapRaw === "square" || lineCapRaw === "butt" ? lineCapRaw : undefined;
         const lineJoin = lineJoinRaw === "round" || lineJoinRaw === "bevel" || lineJoinRaw === "miter" ? lineJoinRaw : undefined;
-        const thicknessToken = parseFiniteNumberToken(ln?.thickness ?? ln?.th);
+        const thicknessToken = parseFiniteNumberToken(ln?.thickness ?? ln?.th ?? ln?.["stroke-width"]);
         const widthUnits = parseFiniteNumberToken(ln?.width);
         const sourceUnitsPerCell = Number(scl?.cellSize) || 64;
         return {
@@ -1303,7 +1299,7 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
           dashArray: dashArray?.length ? dashArray : undefined,
           dashOffset: parseFiniteNumberToken(ln?.["stroke-dashoffset"] ?? ln?.dashOffset),
           opacity: parseOpacityToken(ln?.opacity ?? ln?.alpha),
-          renderOrder: nextRenderOrder(),
+          renderOrder: resolveRenderOrder(ln, nextRenderOrder),
         };
       })
       .filter(Boolean) as any;
@@ -1342,7 +1338,7 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
           lineJoin,
           dashArray: dashArray?.length ? dashArray : undefined,
           opacity: parseOpacityToken(item?.opacity ?? item?.alpha),
-          renderOrder: nextRenderOrder(),
+          renderOrder: resolveRenderOrder(item, nextRenderOrder),
         };
       })
       .filter(Boolean) as NonNullable<PuzzleCosmetics["lines"]>;
@@ -1362,7 +1358,7 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
           color: normalizeColorToken(item?.bulbColor ?? item?.baseC) ?? lineColor,
           borderColor: normalizeColorToken(item?.borderColor ?? item?.outlineC),
           borderThickness: parseFiniteNumberToken(item?.borderThickness ?? item?.thickness ?? item?.th),
-          renderOrder: nextRenderOrder(),
+          renderOrder: resolveRenderOrder(item, nextRenderOrder),
         };
       })
       .filter(Boolean) as NonNullable<PuzzleCosmetics["underlays"]>;
@@ -1384,6 +1380,7 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
     const rawStroke = item?.stroke;
     const strokeToken = normalizeColorToken(rawStroke);
     const borderColor = explicitBorderToken ?? (isNoStrokeToken(rawStroke) ? undefined : strokeToken);
+    const textStrokeColor = normalizeColorToken(item?.textStrokeColor ?? item?.fontStrokeColor ?? item?.stroke);
     const fillColor = normalizeColorToken(item?.backgroundColor ?? item?.c2 ?? item?.fill);
 
     return {
@@ -1398,17 +1395,21 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
       ),
       text,
       textColor: normalizeColorToken(item?.color ?? item?.textColor ?? item?.c),
+      textStrokeColor: isNoStrokeToken(item?.stroke) ? undefined : textStrokeColor,
+      textStrokeWidth: parseFiniteNumberToken(item?.textStrokeWidth ?? item?.fontStrokeWidth ?? item?.["stroke-width"]),
       textSize: explicitTextSize,
       textAlign: parseTextAlignToken(item?.textAlign ?? item?.["text-anchor"]),
       textBaseline: parseTextBaselineToken(item?.textBaseline ?? item?.["dominant-baseline"]),
+      className: typeof item?.class === "string" ? item.class : undefined,
+      role: typeof item?.role === "string" ? item.role : undefined,
       angle: parseFiniteNumberToken(item?.angle),
       target: typeof item?.target === "string" ? item.target : undefined,
       opacity: parseOpacityToken(item?.opacity ?? item?.alpha),
-      renderOrder: nextRenderOrder(),
+      renderOrder: resolveRenderOrder(item, nextRenderOrder),
     };
   };
 
-  const overlaysSrc = Array.isArray(scl?.overlays) ? scl.overlays : [];
+  const overlaysSrc = collectArrayAliases(scl, ["overlays", "overlay", "o"]);
   if (overlaysSrc.length) {
     const parsed = overlaysSrc.map(parseLayerItem).filter(Boolean) as Array<Record<string, unknown>>;
     const under = parsed.filter((item) => {
@@ -1421,7 +1422,7 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
     if (under.length) cosmetics.underlays = [...(cosmetics.underlays ?? []), ...(under as any)];
   }
 
-  const underlaysSrc = Array.isArray(scl?.underlays) ? scl.underlays : [];
+  const underlaysSrc = collectArrayAliases(scl, ["underlays", "underlay", "u"]);
   if (underlaysSrc.length) {
     const parsed = underlaysSrc.map(parseLayerItem).filter(Boolean) as Array<Record<string, unknown>>;
     const over = parsed.filter((item) => categorizeTarget(item.target) === "over");
@@ -1453,7 +1454,7 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
         textSize: typeof item?.size === "number" ? Math.max(8, item.size * 28) : undefined,
         angle: typeof item?.angle === "number" ? item.angle : undefined,
         target: typeof item?.target === "string" ? item.target : undefined,
-        renderOrder: nextRenderOrder(),
+        renderOrder: resolveRenderOrder(item, nextRenderOrder),
       };
     })
     .filter(Boolean) as NonNullable<PuzzleCosmetics["overlays"]>;
@@ -1470,7 +1471,7 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
             b: cells[1] as CellRC,
             kind: "black" as const,
             target: typeof d?.target === "string" ? d.target : undefined,
-            renderOrder: nextRenderOrder(),
+            renderOrder: resolveRenderOrder(d, nextRenderOrder),
           };
         })
         .filter(Boolean)
@@ -1485,7 +1486,7 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
             b: cells[1] as CellRC,
             kind: "white" as const,
             target: typeof d?.target === "string" ? d.target : undefined,
-            renderOrder: nextRenderOrder(),
+            renderOrder: resolveRenderOrder(d, nextRenderOrder),
           };
         })
         .filter(Boolean)
@@ -1514,7 +1515,7 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
           textSize: Math.max(9, 28 * sizeScale),
           angle: typeof t?.angle === "number" ? t.angle : undefined,
           target: typeof t?.target === "string" ? t.target : undefined,
-          renderOrder: nextRenderOrder(),
+          renderOrder: resolveRenderOrder(t, nextRenderOrder),
         };
       })
       .filter(Boolean) as NonNullable<PuzzleCosmetics["overlays"]>;
@@ -1532,8 +1533,9 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
       .filter((x): x is NonNullable<typeof x> => x !== null) ?? [];
 
   // Between lines are represented like thermos but with line-only semantics.
-  if (Array.isArray(scl?.betweenline)) {
-    const betweenEntries = scl.betweenline
+  const betweenLinesSrc = collectArrayAliases(scl, ["betweenline", "betweenLine"]);
+  if (betweenLinesSrc.length) {
+    const betweenEntries = betweenLinesSrc
       .flatMap((item: any) => (Array.isArray(item?.lines) ? item.lines.map((line: any) => ({ ...item, cells: line })) : [item]));
 
     const defaultBetweenLineColor = "#cfcfcf";
@@ -1562,7 +1564,7 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
           dashArray: dashArray?.length ? dashArray : undefined,
           dashOffset: parseFiniteNumberToken(item?.["stroke-dashoffset"] ?? item?.dashOffset),
           opacity: parseOpacityToken(item?.opacity ?? item?.alpha),
-          renderOrder: nextRenderOrder(),
+          renderOrder: resolveRenderOrder(item, nextRenderOrder),
         };
       })
       .filter(Boolean) as NonNullable<PuzzleCosmetics["lines"]>;
@@ -1583,7 +1585,7 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
           borderColor: normalizeColorToken(item?.endBorderColor ?? item?.outlineC) ?? "#9f9f9f",
           borderThickness: parseFiniteNumberToken(item?.endBorderThickness ?? item?.borderThickness ?? item?.thickness ?? item?.th) ?? 1.8,
           target: typeof item?.target === "string" ? item.target : "underlay",
-          renderOrder: nextRenderOrder(),
+          renderOrder: resolveRenderOrder(item, nextRenderOrder),
         }));
       }) as NonNullable<PuzzleCosmetics["underlays"]>;
     if (betweenEndpointCircles.length) cosmetics.underlays = [...(cosmetics.underlays ?? []), ...betweenEndpointCircles];
@@ -1599,8 +1601,8 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
   if (Array.isArray(scl?.modular)) cosmetics.modularlines = extractPathConstraint(scl.modular, "#ffb703") as any;
 
   // Odd/even markers (legacy fpuz fields).
-  const oddSrc = Array.isArray(scl?.odd) ? scl.odd : [];
-  const evenSrc = Array.isArray(scl?.even) ? scl.even : [];
+  const oddSrc = collectArrayAliases(scl, ["odd"]);
+  const evenSrc = collectArrayAliases(scl, ["even"]);
   const parityOverlays = [...oddSrc.map((v: any) => ({ ...v, __kind: "odd" })), ...evenSrc.map((v: any) => ({ ...v, __kind: "even" }))]
     .map((item: any) => {
       const rc =
@@ -1619,7 +1621,7 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
         borderColor: isOdd ? "#000000" : "#222222",
         borderThickness: 1.1,
         target: typeof item?.target === "string" ? item.target : "underlay",
-        renderOrder: nextRenderOrder(),
+        renderOrder: resolveRenderOrder(item, nextRenderOrder),
       };
     })
     .filter(Boolean) as NonNullable<PuzzleCosmetics["underlays"]>;
@@ -1634,8 +1636,9 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
   }
 
   // Little killer clues
-  if (Array.isArray(scl?.littlekillers)) {
-    cosmetics.littlekillers = scl.littlekillers
+  const littleKillerSrc = collectArrayAliases(scl, ["littlekillers", "littleKillers"]);
+  if (littleKillerSrc.length) {
+    cosmetics.littlekillers = littleKillerSrc
       .map((lk: any) => {
         const rc = asRC(lk?.cell ?? lk?.rc ?? lk?.ce);
         if (!rc) return null;
