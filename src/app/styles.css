@@ -364,6 +364,8 @@ input.url {
   border-radius: 0;
   border: 1px solid color-mix(in oklab, var(--text) 24%, transparent);
   background: var(--panel-soft);
+  appearance: none;
+  -webkit-appearance: none;
   cursor: pointer;
   min-height: 42px;
   touch-action: manipulation;
@@ -381,6 +383,29 @@ input.url {
 }
 
 .btn:hover { border-color: rgba(255, 255, 255, 0.34); }
+
+.btn:active,
+.keyButton:active {
+  border-color: color-mix(in oklab, var(--text) 24%, transparent);
+}
+
+.btn.primary:active {
+  border-color: color-mix(in oklab, var(--accent) 84%, transparent);
+}
+
+.btn.danger:active {
+  border-color: rgba(232, 100, 116, 0.65);
+}
+
+.btn:focus,
+.btn:focus-visible,
+.keyButton:focus,
+.keyButton:focus-visible,
+.lineKindSelect:focus,
+.lineKindSelect:focus-visible {
+  outline: 2px solid color-mix(in oklab, var(--text) 56%, transparent);
+  outline-offset: -2px;
+}
 
 .btn.primary {
   background: color-mix(in oklab, var(--accent) 28%, transparent);
@@ -1176,9 +1201,9 @@ input.url {
   border-radius: 0;
 }
 
-.panelUndo { grid-column: 1; grid-row: 1; }
-.panelRedo { grid-column: 2; grid-row: 1; }
-.panelSelectToggle { grid-column: 3; grid-row: 1; }
+.panelSelectToggle { grid-column: 1; grid-row: 1; }
+.panelUndo { grid-column: 2; grid-row: 1; }
+.panelRedo { grid-column: 3; grid-row: 1; }
 
 .panelTool1 { grid-column: 4; grid-row: 1; }
 .panelTool2 { grid-column: 4; grid-row: 2; }
