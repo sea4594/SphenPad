@@ -562,7 +562,11 @@ function centerFromCells(cells: CellRC[]): { x: number; y: number } | null {
   return { x: sx / cells.length, y: sy / cells.length };
 }
 
-function inferPuzzleShape(sclObj: any, givens: Array<{ rc: CellRC }>): { rows: number; cols: number } {
+function inferPuzzleShape(
+  sclObj: any,
+  givens: Array<{ rc: CellRC }>,
+  inlineSolution?: string,
+): { rows: number; cols: number } {
   const explicitRows =
     Number(sclObj?.rows) ||
     Number(sclObj?.height) ||
@@ -606,8 +610,10 @@ function inferPuzzleShape(sclObj: any, givens: Array<{ rc: CellRC }>): { rows: n
     Number(sclObj?.metadata?.n) ||
     0;
 
-  const solution = typeof sclObj?.metadata?.solution === "string" ? sclObj.metadata.solution : "";
-  const solutionSquare = solution.length > 0 ? Math.sqrt(solution.length) : 0;
+  const metadataSolution = typeof sclObj?.metadata?.solution === "string" ? sclObj.metadata.solution : "";
+  const normalizedInlineSolution = typeof inlineSolution === "string" ? inlineSolution.replace(/\s+/g, "") : "";
+  const normalizedSolution = metadataSolution || normalizedInlineSolution;
+  const solutionSquare = normalizedSolution.length > 0 ? Math.sqrt(normalizedSolution.length) : 0;
   const squareFromSolution = Number.isInteger(solutionSquare) ? solutionSquare : 0;
 
   const rows = Math.max(fromCellsRows, fromGridRows, fromGivenRows, fromRegionRows, explicitRows, sizeLike, squareFromSolution, 1);
@@ -626,11 +632,16 @@ function spanFromCells(cells: CellRC[]): { width: number; height: number } | nul
   return { width: Math.max(0.2, maxC - minC + 1), height: Math.max(0.2, maxR - minR + 1) };
 }
 
-function inferPuzzleSize(sclObj: any, givens: Array<{ rc: CellRC }>): number {
+function inferPuzzleSize(sclObj: any, givens: Array<{ rc: CellRC }>, inlineSolution?: string): number {
   const metadataSolution = sclObj?.metadata?.solution;
-  const fromSolution =
+  const normalizedInlineSolution = typeof inlineSolution === "string" ? inlineSolution.replace(/\s+/g, "") : "";
+  const solutionValue =
     typeof metadataSolution === "string" && metadataSolution.length > 0
-      ? Math.sqrt(metadataSolution.length)
+      ? metadataSolution
+      : normalizedInlineSolution;
+  const fromSolution =
+    typeof solutionValue === "string" && solutionValue.length > 0
+      ? Math.sqrt(solutionValue.length)
       : 0;
 
   const explicitSize =
@@ -991,8 +1002,8 @@ export async function loadFromSudokuPad(
   };
 
   const givens = extractGivens(sclObj);
-  const shape = inferPuzzleShape(sclObj, givens);
-  const size = Math.max(shape.rows, shape.cols, inferPuzzleSize(sclObj, givens));
+  const shape = inferPuzzleShape(sclObj, givens, inlineMeta.solution);
+  const size = Math.max(shape.rows, shape.cols, inferPuzzleSize(sclObj, givens, inlineMeta.solution));
   const subgrid = shape.rows === shape.cols ? detectStandardSubgrid(sclObj, size) : undefined;
 
   const key = normalizePuzzleKey(sourceId);

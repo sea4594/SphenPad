@@ -1533,6 +1533,24 @@ export function GridCanvas(props: {
       }
 
       // Keep puzzle feature layers above highlights under fog, but only in lit cells.
+      // Features positioned outside the core grid (e.g. border clues) should remain visible.
+      const gridLeft = cellX(0);
+      const gridTop = cellY(0);
+      const gridWidthPx = cols * cellPx;
+      const gridHeightPx = rows * cellPx;
+      const gridRight = gridLeft + gridWidthPx;
+      const gridBottom = gridTop + gridHeightPx;
+
+      ctx.save();
+      ctx.beginPath();
+      if (gridTop > 0) ctx.rect(0, 0, widthPx, gridTop);
+      if (gridLeft > 0) ctx.rect(0, gridTop, gridLeft, gridHeightPx);
+      if (gridRight < widthPx) ctx.rect(gridRight, gridTop, widthPx - gridRight, gridHeightPx);
+      if (gridBottom < heightPx) ctx.rect(0, gridBottom, widthPx, heightPx - gridBottom);
+      ctx.clip();
+      drawTopPuzzleFeatures();
+      ctx.restore();
+
       ctx.save();
       ctx.beginPath();
       for (let r = 0; r < rows; r++) {
