@@ -494,6 +494,7 @@ function categorizeTarget(raw: unknown): "under" | "over" | undefined {
   if (typeof raw !== "string") return undefined;
   const t = raw.trim().toLowerCase();
   if (!t) return undefined;
+  if (/(^|[^a-z])(cell-?grids?|gridlayer)([^a-z]|$)/.test(t)) return "over";
   if (/(^|[^a-z])(over|overlay|front|foreground|above|top)([^a-z]|$)/.test(t)) return "over";
   if (/(^|[^a-z])(under|underlay|back|background|behind|below|bottom)([^a-z]|$)/.test(t)) return "under";
   return undefined;

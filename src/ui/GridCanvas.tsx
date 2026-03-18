@@ -854,8 +854,8 @@ export function GridCanvas(props: {
           if (borderWidth > 0) {
             ctx.strokeStyle = item.borderColor;
             ctx.lineWidth = borderWidth;
-            ctx.lineCap = item.lineCap ?? "round";
-            ctx.lineJoin = item.lineJoin ?? "round";
+            ctx.lineCap = item.lineCap ?? "butt";
+            ctx.lineJoin = item.lineJoin ?? "miter";
             if (item.dashArray?.length) {
               ctx.setLineDash(item.dashArray.map((value) => scaledCosmeticPx(value, { previewMin: 0.5, normalMin: 1 })));
             }
@@ -902,14 +902,17 @@ export function GridCanvas(props: {
       ctx.restore();
     };
 
-    const classifyRenderTarget = (target?: string): "under" | "over" => {
+    const classifyRenderTarget = (target?: string): "under" | "grid" | "over" => {
       const t = (target ?? "").toLowerCase();
+      if (/(^|[^a-z])(cell-?grids?|gridlayer)([^a-z]|$)/.test(t)) return "grid";
       if (/(^|[^a-z])(under|underlay|back|background|behind|below|bottom)([^a-z]|$)/.test(t)) return "under";
-      if (/(^|[^a-z])(cell-?grids?|gridlayer)([^a-z]|$)/.test(t)) return "under";
       return "over";
     };
 
-    const classifyRenderTargetWithDefault = (target: string | undefined, fallback: "under" | "over") => {
+    const classifyRenderTargetWithDefault = (
+      target: string | undefined,
+      fallback: "under" | "grid" | "over",
+    ) => {
       if (typeof target !== "string" || !target.trim()) return fallback;
       return classifyRenderTarget(target);
     };
@@ -952,8 +955,8 @@ export function GridCanvas(props: {
         if (hasStroke) {
           ctx.strokeStyle = ln.color as string;
           ctx.lineWidth = ln.thickness ?? 6;
-          ctx.lineCap = ln.lineCap ?? "round";
-          ctx.lineJoin = ln.lineJoin ?? "round";
+          ctx.lineCap = ln.lineCap ?? "butt";
+          ctx.lineJoin = ln.lineJoin ?? "miter";
           ctx.stroke(path);
         }
         ctx.restore();
@@ -986,8 +989,8 @@ export function GridCanvas(props: {
       if (hasStroke) {
         ctx.strokeStyle = ln.color as string;
         ctx.lineWidth = (ln.thickness ?? 6) * (cellPx / cosmeticUnit);
-        ctx.lineCap = ln.lineCap ?? "round";
-        ctx.lineJoin = ln.lineJoin ?? "round";
+        ctx.lineCap = ln.lineCap ?? "butt";
+        ctx.lineJoin = ln.lineJoin ?? "miter";
         ctx.stroke();
       }
       ctx.restore();
@@ -1192,14 +1195,14 @@ export function GridCanvas(props: {
       | { kind: "dot"; item: NonNullable<PuzzleDefinition["cosmetics"]["dots"]>[number]; order: number; serial: number }
       | { kind: "layer"; item: NonNullable<PuzzleDefinition["cosmetics"]["underlays"]>[number]; order: number; serial: number };
 
-    const collectVisualLayerEntries = (layer: "under" | "over"): VisualLayerEntry[] => {
+    const collectVisualLayerEntries = (layer: "under" | "grid" | "over"): VisualLayerEntry[] => {
       const entries: VisualLayerEntry[] = [];
       let serial = 0;
       const maxOrder = Number.MAX_SAFE_INTEGER;
 
       for (const ln of def.cosmetics.lines ?? []) {
         if (ln.wayPoints.length < 2) continue;
-        if (classifyRenderTargetWithDefault(ln.target, "over") !== layer) continue;
+        if (classifyRenderTargetWithDefault(ln.target, "under") !== layer) continue;
         entries.push({ kind: "line", item: ln, order: ln.renderOrder ?? maxOrder, serial: serial++ });
       }
 
@@ -1232,7 +1235,7 @@ export function GridCanvas(props: {
       return entries;
     };
 
-    const drawVisualLayer = (layer: "under" | "over") => {
+    const drawVisualLayer = (layer: "under" | "grid" | "over") => {
       for (const entry of collectVisualLayerEntries(layer)) {
         if (entry.kind === "line") drawConstraintLine(entry.item);
         else if (entry.kind === "cage") drawCage(entry.item);
@@ -1253,6 +1256,10 @@ export function GridCanvas(props: {
       }
     }
 
+    const drawGridPuzzleFeatures = () => {
+      drawVisualLayer("grid");
+    };
+
     const drawTopPuzzleFeatures = () => {
       drawVisualLayer("over");
     };
@@ -1261,6 +1268,9 @@ export function GridCanvas(props: {
       def.cosmetics.fogEnabled === true ||
       (def.cosmetics.fogLights?.length ?? 0) > 0 ||
       (def.cosmetics.fogTriggerEffects?.length ?? 0) > 0;
+
+    // Keep a dedicated grid-target pass between highlights and the built-in grid.
+    drawGridPuzzleFeatures();
 
     // Grid below top puzzle artwork so features are not bisected by grid lines.
     drawGridLines();
@@ -1581,11 +1591,24 @@ export function GridCanvas(props: {
         }
       }
 
+      // Re-render grid-target features only in lit cells.
+      ctx.save();
+      ctx.beginPath();
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          if (!lit[r][c]) continue;
+          ctx.rect(cellX(c), cellY(r), cellPx, cellPx);
+        }
+      }
+      ctx.clip();
+      drawGridPuzzleFeatures();
+      ctx.restore();
+
       if (def.cosmetics.gridVisible !== false) {
         drawGridLines();
       }
 
-      // Keep puzzle feature layers above highlights under fog, but only in lit cells.
+      // Keep top puzzle feature layers above the grid under fog, but only in lit cells.
       ctx.save();
       ctx.beginPath();
       for (let r = 0; r < rows; r++) {
