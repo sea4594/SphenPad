@@ -375,6 +375,51 @@ function parseFiniteNumberToken(v: unknown): number | undefined {
   return Number.isFinite(n) ? n : undefined;
 }
 
+function mergeArrayAliases(...aliases: unknown[]): any[] {
+  const out: any[] = [];
+  for (const alias of aliases) {
+    if (!Array.isArray(alias)) continue;
+    out.push(...alias);
+  }
+  return out;
+}
+
+function parseDashArrayToken(...values: unknown[]): number[] | undefined {
+  for (const value of values) {
+    if (Array.isArray(value)) {
+      const parsed = value.map((n: unknown) => Number(n)).filter(Number.isFinite);
+      if (parsed.length) return parsed;
+      continue;
+    }
+    if (typeof value === "string") {
+      const parsed = value
+        .split(/[ ,]+/)
+        .map((n: string) => Number(n.trim()))
+        .filter(Number.isFinite);
+      if (parsed.length) return parsed;
+    }
+  }
+  return undefined;
+}
+
+function parseLineCapToken(...values: unknown[]): CanvasLineCap | undefined {
+  for (const value of values) {
+    if (typeof value !== "string") continue;
+    const cap = value.trim().toLowerCase();
+    if (cap === "round" || cap === "square" || cap === "butt") return cap;
+  }
+  return undefined;
+}
+
+function parseLineJoinToken(...values: unknown[]): CanvasLineJoin | undefined {
+  for (const value of values) {
+    if (typeof value !== "string") continue;
+    const join = value.trim().toLowerCase();
+    if (join === "round" || join === "bevel" || join === "miter") return join;
+  }
+  return undefined;
+}
+
 function parseTextAlignToken(v: unknown): CanvasTextAlign | undefined {
   if (typeof v !== "string") return undefined;
   const s = v.trim().toLowerCase();
@@ -1160,17 +1205,13 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
   if (cellBackgrounds.length) cosmetics.underlays = [...(cosmetics.underlays ?? []), ...cellBackgrounds];
 
   // cages
-  const cagesSrc = Array.isArray(scl?.cages)
-    ? scl.cages
-    : Array.isArray(scl?.cage)
-      ? scl.cage
-    : Array.isArray(scl?.killerCages)
-      ? scl.killerCages
-      : Array.isArray(scl?.killercage)
-        ? scl.killercage
-      : Array.isArray(scl?.killer)
-        ? scl.killer
-        : [];
+  const cagesSrc = mergeArrayAliases(
+    scl?.cages,
+    scl?.cage,
+    scl?.killerCages,
+    scl?.killercage,
+    scl?.killer,
+  );
 
   // Collect cells from hidden 'rowcol' constraint areas — these identify the true conflict domain
   // in puzzles that have outer helper cells surrounding a smaller inner sudoku grid.
@@ -1209,12 +1250,7 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
         if (cg?.hidden === true) return null;
         const cells = parseCellRefs(cg?.cells ?? cg?.ce);
         if (!cells.length) return null;
-        const rawDash = cg?.["stroke-dasharray"] ?? cg?.dashArray ?? cg?.dash;
-        const dashArray = Array.isArray(rawDash)
-          ? rawDash.map((n: unknown) => Number(n)).filter(Number.isFinite)
-          : typeof rawDash === "string"
-            ? rawDash.split(/[ ,]+/).map((n: string) => Number(n.trim())).filter(Number.isFinite)
-            : undefined;
+        const dashArray = parseDashArrayToken(cg?.["stroke-dasharray"], cg?.strokeDasharray, cg?.dashArray, cg?.dash);
         return {
           cells,
           sum: asValue(cg?.value ?? cg?.sum ?? cg?.v),
@@ -1222,7 +1258,7 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
           textColor: normalizeColorToken(cg?.fontC ?? cg?.fontColor ?? cg?.textColor ?? cg?.labelColor ?? cg?.color),
           fillColor: normalizeColorToken(cg?.backgroundColor ?? cg?.fill ?? cg?.c2),
           thickness: parseFiniteNumberToken(cg?.thickness ?? cg?.borderThickness ?? cg?.th),
-          dashArray: dashArray?.length ? dashArray : undefined,
+          dashArray,
           opacity: parseOpacityToken(cg?.opacity ?? cg?.alpha),
           target: typeof cg?.target === "string" ? cg.target : undefined,
           renderOrder: nextRenderOrder(),
@@ -1232,13 +1268,7 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
   }
 
   // arrows
-  const arrowsSrc = Array.isArray(scl?.arrow)
-    ? scl.arrow
-    : Array.isArray(scl?.arrows)
-      ? scl.arrows
-      : Array.isArray(scl?.a)
-        ? scl.a
-        : [];
+  const arrowsSrc = mergeArrayAliases(scl?.arrow, scl?.arrows, scl?.a);
   if (arrowsSrc.length) {
     cosmetics.arrows = arrowsSrc
       .map((a: any) => {
@@ -1269,13 +1299,7 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
   }
 
   // dots
-  const dotsSrc = Array.isArray(scl?.dots)
-    ? scl.dots
-    : Array.isArray(scl?.kropki)
-      ? scl.kropki
-      : Array.isArray(scl?.dot)
-        ? scl.dot
-        : [];
+  const dotsSrc = mergeArrayAliases(scl?.dots, scl?.kropki, scl?.dot);
   if (dotsSrc.length) {
     cosmetics.dots = dotsSrc
       .map((d: any) => {
@@ -1300,13 +1324,7 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
   }
 
   // Native SudokuPad lines are often in `lines` with floating-point wayPoints.
-  const linesSrc = Array.isArray(scl?.lines)
-    ? scl.lines
-    : Array.isArray(scl?.line)
-      ? scl.line
-      : Array.isArray(scl?.l)
-        ? scl.l
-        : [];
+  const linesSrc = mergeArrayAliases(scl?.lines, scl?.line, scl?.l);
   if (linesSrc.length) {
     cosmetics.lines = linesSrc
       .map((ln: any) => {
@@ -1330,16 +1348,9 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
         const strokeToken = normalizeColorToken(ln?.color ?? ln?.lineColor ?? ln?.stroke ?? ln?.outlineC ?? ln?.c);
         const fillToken = normalizeColorToken(ln?.fill ?? ln?.backgroundColor ?? ln?.c2);
         const closedByShape = wayPoints.length > 2 && pointsAlmostEqual(wayPoints[0] as { x: number; y: number }, wayPoints[wayPoints.length - 1] as { x: number; y: number });
-        const rawDash = ln?.["stroke-dasharray"] ?? ln?.dashArray ?? ln?.dash;
-        const dashArray = Array.isArray(rawDash)
-          ? rawDash.map((n: unknown) => Number(n)).filter(Number.isFinite)
-          : typeof rawDash === "string"
-            ? rawDash.split(/[ ,]+/).map((n: string) => Number(n.trim())).filter(Number.isFinite)
-            : undefined;
-        const lineCapRaw = String(ln?.["stroke-linecap"] ?? ln?.lineCap ?? "").toLowerCase();
-        const lineJoinRaw = String(ln?.["stroke-linejoin"] ?? ln?.lineJoin ?? "").toLowerCase();
-        const lineCap = lineCapRaw === "round" || lineCapRaw === "square" || lineCapRaw === "butt" ? lineCapRaw : undefined;
-        const lineJoin = lineJoinRaw === "round" || lineJoinRaw === "bevel" || lineJoinRaw === "miter" ? lineJoinRaw : undefined;
+        const dashArray = parseDashArrayToken(ln?.["stroke-dasharray"], ln?.strokeDasharray, ln?.dashArray, ln?.dash);
+        const lineCap = parseLineCapToken(ln?.["stroke-linecap"], ln?.strokeLinecap, ln?.lineCap);
+        const lineJoin = parseLineJoinToken(ln?.["stroke-linejoin"], ln?.strokeLinejoin, ln?.lineJoin);
         const thicknessToken = parseFiniteNumberToken(ln?.thickness ?? ln?.th);
         const widthUnits = parseFiniteNumberToken(ln?.width);
         const sourceUnitsPerCell = Number(scl?.cellSize) || 64;
@@ -1354,7 +1365,7 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
           target: typeof ln?.target === "string" ? ln.target : undefined,
           lineCap,
           lineJoin,
-          dashArray: dashArray?.length ? dashArray : undefined,
+          dashArray,
           dashOffset: parseFiniteNumberToken(ln?.["stroke-dashoffset"] ?? ln?.dashOffset),
           opacity: parseOpacityToken(ln?.opacity ?? ln?.alpha),
           renderOrder: nextRenderOrder(),
@@ -1377,16 +1388,9 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
         const path = parseCellRefs(item?.cells ?? item?.ce ?? item?.line ?? item);
         if (path.length < 2) return null;
         const lineColor = normalizeColorToken(item?.color ?? item?.lineColor ?? item?.c ?? item?.c1) ?? defaultThermoColor;
-        const rawDash = item?.["stroke-dasharray"] ?? item?.dashArray ?? item?.dash;
-        const dashArray = Array.isArray(rawDash)
-          ? rawDash.map((n: unknown) => Number(n)).filter(Number.isFinite)
-          : typeof rawDash === "string"
-            ? rawDash.split(/[ ,]+/).map((n: string) => Number(n.trim())).filter(Number.isFinite)
-            : undefined;
-        const lineCapRaw = String(item?.["stroke-linecap"] ?? item?.lineCap ?? "").toLowerCase();
-        const lineJoinRaw = String(item?.["stroke-linejoin"] ?? item?.lineJoin ?? "").toLowerCase();
-        const lineCap = lineCapRaw === "round" || lineCapRaw === "square" || lineCapRaw === "butt" ? lineCapRaw : undefined;
-        const lineJoin = lineJoinRaw === "round" || lineJoinRaw === "bevel" || lineJoinRaw === "miter" ? lineJoinRaw : undefined;
+        const dashArray = parseDashArrayToken(item?.["stroke-dasharray"], item?.strokeDasharray, item?.dashArray, item?.dash);
+        const lineCap = parseLineCapToken(item?.["stroke-linecap"], item?.strokeLinecap, item?.lineCap);
+        const lineJoin = parseLineJoinToken(item?.["stroke-linejoin"], item?.strokeLinejoin, item?.lineJoin);
         return {
           wayPoints: path.map((rc) => ({ x: rc.c + 0.5, y: rc.r + 0.5 })),
           color: lineColor,
@@ -1394,7 +1398,7 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
           target: typeof item?.target === "string" ? item.target : "underlay",
           lineCap,
           lineJoin,
-          dashArray: dashArray?.length ? dashArray : undefined,
+          dashArray,
           opacity: parseOpacityToken(item?.opacity ?? item?.alpha),
           renderOrder: nextRenderOrder(),
         };
@@ -1439,6 +1443,9 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
     const strokeToken = normalizeColorToken(rawStroke);
     const borderColor = explicitBorderToken ?? (isNoStrokeToken(rawStroke) ? undefined : strokeToken);
     const fillColor = normalizeColorToken(item?.backgroundColor ?? item?.c2 ?? item?.fill);
+    const dashArray = parseDashArrayToken(item?.["stroke-dasharray"], item?.strokeDasharray, item?.dashArray, item?.dash);
+    const lineCap = parseLineCapToken(item?.["stroke-linecap"], item?.strokeLinecap, item?.lineCap);
+    const lineJoin = parseLineJoinToken(item?.["stroke-linejoin"], item?.strokeLinejoin, item?.lineJoin);
 
     return {
       center: ct,
@@ -1450,11 +1457,19 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
       borderThickness: parseFiniteNumberToken(
         item?.thickness ?? item?.th ?? item?.borderSize ?? item?.["stroke-width"]
       ),
+      dashArray,
+      dashOffset: parseFiniteNumberToken(item?.["stroke-dashoffset"] ?? item?.strokeDashoffset ?? item?.dashOffset),
+      lineCap,
+      lineJoin,
       text,
       textColor: normalizeColorToken(item?.color ?? item?.textColor ?? item?.c),
+      textStrokeColor: normalizeColorToken(item?.textStrokeColor ?? item?.strokeTextColor ?? item?.fontOutline ?? item?.fontStrokeColor ?? item?.c1),
+      textStrokeWidth: parseFiniteNumberToken(item?.textStrokeWidth ?? item?.fontOutlineSize ?? item?.fontStrokeWidth),
       textSize: explicitTextSize,
       textAlign: parseTextAlignToken(item?.textAlign ?? item?.["text-anchor"]),
       textBaseline: parseTextBaselineToken(item?.textBaseline ?? item?.["dominant-baseline"]),
+      className: typeof item?.className === "string" ? item.className : typeof item?.class === "string" ? item.class : undefined,
+      role: typeof item?.role === "string" ? item.role : undefined,
       angle: parseFiniteNumberToken(item?.angle),
       target: typeof item?.target === "string" ? item.target : undefined,
       opacity: parseOpacityToken(item?.opacity ?? item?.alpha),
@@ -1462,7 +1477,7 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
     };
   };
 
-  const overlaysSrc = Array.isArray(scl?.overlays) ? scl.overlays : [];
+  const overlaysSrc = mergeArrayAliases(scl?.overlays, scl?.overlay, scl?.o);
   if (overlaysSrc.length) {
     const parsed = overlaysSrc.map(parseLayerItem).filter(Boolean) as Array<Record<string, unknown>>;
     const under = parsed.filter((item) => {
@@ -1475,7 +1490,7 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
     if (under.length) cosmetics.underlays = [...(cosmetics.underlays ?? []), ...(under as any)];
   }
 
-  const underlaysSrc = Array.isArray(scl?.underlays) ? scl.underlays : [];
+  const underlaysSrc = mergeArrayAliases(scl?.underlays, Array.isArray(scl?.underlay) ? scl.underlay : []);
   if (underlaysSrc.length) {
     const parsed = underlaysSrc.map(parseLayerItem).filter(Boolean) as Array<Record<string, unknown>>;
     const over = parsed.filter((item) => categorizeTarget(item.target) === "over");
@@ -1596,16 +1611,9 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
         const path = parseCellRefs(item?.cells ?? item?.ce ?? item?.line ?? item?.lines ?? item);
         if (path.length < 2) return null;
         const lineColor = normalizeColorToken(item?.color ?? item?.lineColor ?? item?.c ?? item?.c1) ?? defaultBetweenLineColor;
-        const rawDash = item?.["stroke-dasharray"] ?? item?.dashArray ?? item?.dash;
-        const dashArray = Array.isArray(rawDash)
-          ? rawDash.map((n: unknown) => Number(n)).filter(Number.isFinite)
-          : typeof rawDash === "string"
-            ? rawDash.split(/[ ,]+/).map((n: string) => Number(n.trim())).filter(Number.isFinite)
-            : undefined;
-        const lineCapRaw = String(item?.["stroke-linecap"] ?? item?.lineCap ?? "").toLowerCase();
-        const lineJoinRaw = String(item?.["stroke-linejoin"] ?? item?.lineJoin ?? "").toLowerCase();
-        const lineCap = lineCapRaw === "round" || lineCapRaw === "square" || lineCapRaw === "butt" ? lineCapRaw : undefined;
-        const lineJoin = lineJoinRaw === "round" || lineJoinRaw === "bevel" || lineJoinRaw === "miter" ? lineJoinRaw : undefined;
+        const dashArray = parseDashArrayToken(item?.["stroke-dasharray"], item?.strokeDasharray, item?.dashArray, item?.dash);
+        const lineCap = parseLineCapToken(item?.["stroke-linecap"], item?.strokeLinecap, item?.lineCap);
+        const lineJoin = parseLineJoinToken(item?.["stroke-linejoin"], item?.strokeLinejoin, item?.lineJoin);
         return {
           wayPoints: path.map((rc) => ({ x: rc.c + 0.5, y: rc.r + 0.5 })),
           color: lineColor,
@@ -1613,7 +1621,7 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
           target: typeof item?.target === "string" ? item.target : "underlay",
           lineCap,
           lineJoin,
-          dashArray: dashArray?.length ? dashArray : undefined,
+          dashArray,
           dashOffset: parseFiniteNumberToken(item?.["stroke-dashoffset"] ?? item?.dashOffset),
           opacity: parseOpacityToken(item?.opacity ?? item?.alpha),
           renderOrder: nextRenderOrder(),

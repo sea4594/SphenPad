@@ -107,6 +107,10 @@ export type PuzzleCosmetics = {
     color?: string;
     borderColor?: string;
     borderThickness?: number;
+    dashArray?: number[];
+    dashOffset?: number;
+    lineCap?: CanvasLineCap;
+    lineJoin?: CanvasLineJoin;
     text?: string;
     textColor?: string;
     textStrokeColor?: string;
@@ -129,6 +133,10 @@ export type PuzzleCosmetics = {
     color?: string;
     borderColor?: string;
     borderThickness?: number;
+    dashArray?: number[];
+    dashOffset?: number;
+    lineCap?: CanvasLineCap;
+    lineJoin?: CanvasLineJoin;
     text?: string;
     textColor?: string;
     textStrokeColor?: string;
