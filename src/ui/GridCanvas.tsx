@@ -907,16 +907,21 @@ export function GridCanvas(props: {
       ctx.restore();
     };
 
-    const classifyRenderTarget = (target?: string): "under" | "grid" | "over" => {
+    type VisualTargetLayer = "under" | "arrows" | "cages" | "grid" | "over";
+
+    const classifyRenderTarget = (target?: string): VisualTargetLayer => {
       const t = (target ?? "").toLowerCase();
       if (/(^|[^a-z])(cell-?grids?|gridlayer)([^a-z]|$)/.test(t)) return "grid";
+      if (/(^|[^a-z])(arrows?|line)([^a-z]|$)/.test(t)) return "arrows";
+      if (/(^|[^a-z])(cages?)([^a-z]|$)/.test(t)) return "cages";
       if (/(^|[^a-z])(under|underlay|back|background|behind|below|bottom)([^a-z]|$)/.test(t)) return "under";
+      if (/(^|[^a-z])(cell-?colors?)([^a-z]|$)/.test(t)) return "under";
       return "over";
     };
 
     const classifyRenderTargetWithDefault = (
       target: string | undefined,
-      fallback: "under" | "grid" | "over",
+      fallback: VisualTargetLayer,
     ) => {
       if (typeof target !== "string" || !target.trim()) return fallback;
       return classifyRenderTarget(target);
@@ -1219,24 +1224,24 @@ export function GridCanvas(props: {
       | { kind: "dot"; item: NonNullable<PuzzleDefinition["cosmetics"]["dots"]>[number]; order: number; serial: number }
       | { kind: "layer"; item: NonNullable<PuzzleDefinition["cosmetics"]["underlays"]>[number]; order: number; serial: number };
 
-    const collectVisualLayerEntries = (layer: "under" | "grid" | "over"): VisualLayerEntry[] => {
+    const collectVisualLayerEntries = (layer: VisualTargetLayer): VisualLayerEntry[] => {
       const entries: VisualLayerEntry[] = [];
       let serial = 0;
       const maxOrder = Number.MAX_SAFE_INTEGER;
 
       for (const ln of def.cosmetics.lines ?? []) {
         if (ln.wayPoints.length < 2) continue;
-        if (classifyRenderTargetWithDefault(ln.target, "over") !== layer) continue;
+        if (classifyRenderTargetWithDefault(ln.target, "arrows") !== layer) continue;
         entries.push({ kind: "line", item: ln, order: ln.renderOrder ?? maxOrder, serial: serial++ });
       }
 
       for (const cage of def.cosmetics.cages ?? []) {
-        if (classifyRenderTargetWithDefault(cage.target, "over") !== layer) continue;
+        if (classifyRenderTargetWithDefault(cage.target, "cages") !== layer) continue;
         entries.push({ kind: "cage", item: cage, order: cage.renderOrder ?? maxOrder, serial: serial++ });
       }
 
       for (const arrow of def.cosmetics.arrows ?? []) {
-        if (classifyRenderTargetWithDefault(arrow.target, "over") !== layer) continue;
+        if (classifyRenderTargetWithDefault(arrow.target, "arrows") !== layer) continue;
         entries.push({ kind: "arrow", item: arrow, order: arrow.renderOrder ?? maxOrder, serial: serial++ });
       }
 
@@ -1259,7 +1264,7 @@ export function GridCanvas(props: {
       return entries;
     };
 
-    const drawVisualLayer = (layer: "under" | "grid" | "over") => {
+    const drawVisualLayer = (layer: VisualTargetLayer) => {
       for (const entry of collectVisualLayerEntries(layer)) {
         if (entry.kind === "line") drawConstraintLine(entry.item);
         else if (entry.kind === "cage") drawCage(entry.item);
@@ -1269,10 +1274,12 @@ export function GridCanvas(props: {
       }
     };
 
-    // Draw underlay-targeted puzzle features first.
+    // Mirror SudokuPad's board SVG stack: underlay -> arrows -> cages -> highlights -> cell-grids -> overlay.
     drawVisualLayer("under");
+    drawVisualLayer("arrows");
+    drawVisualLayer("cages");
 
-    // Highlights sit above puzzle artwork but below grid/features and values.
+    // Highlights sit above arrows/cages and below the grid and overlays.
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
         const colors = progress.cells[r][c].highlights ?? [];
