@@ -727,16 +727,11 @@ export function GridCanvas(props: {
         const y = worldY(item.center.y - h / 2);
         const rw = w * cellPx;
         const rh = h * cellPx;
-        if (!(rw > 0) || !(rh > 0)) return;
         const cx = worldX(item.center.x);
         const cy = worldY(item.center.y);
         const angleRad = (Number(item.angle) || 0) * (Math.PI / 180);
         const itemOpacity = Number.isFinite(item.opacity) ? Math.max(0, Math.min(1, Number(item.opacity))) : 1;
         const nearlyCircle = Math.abs(rw - rh) <= Math.max(1, cellPx * 0.02);
-        const widthIsNonPositive = Number.isFinite(item.width) && Number(item.width) <= 0;
-        const heightIsNonPositive = Number.isFinite(item.height) && Number(item.height) <= 0;
-        const hasText = item.text != null && String(item.text).length > 0;
-        const textOutlineOnly = hasText && Boolean(item.borderColor) && (widthIsNonPositive || heightIsNonPositive);
 
         ctx.save();
         ctx.globalAlpha *= itemOpacity;
@@ -755,17 +750,13 @@ export function GridCanvas(props: {
               ctx.fill();
             } else {
               ctx.beginPath();
-              ctx.roundRect(x, y, rw, rh, Math.max(0, Math.min(rw, rh) / 2));
+              ctx.roundRect(x, y, rw, rh, Math.min(14, cellPx * 0.25));
               ctx.fill();
             }
           } else {
             ctx.fillRect(x, y, rw, rh);
           }
         } else {
-          if (textOutlineOnly) {
-            ctx.restore();
-            return;
-          }
           ctx.strokeStyle = item.borderColor as string;
           const explicitBorderThickness = Number.isFinite(item.borderThickness)
             ? Number(item.borderThickness)
@@ -782,10 +773,6 @@ export function GridCanvas(props: {
           // SudokuPad-exported layer thickness behaves like an inset (inner) border.
           // Canvas strokes are centered by default, so inset the path by half width.
           ctx.lineWidth = borderWidth;
-          if (item.lineCap) ctx.lineCap = item.lineCap as CanvasLineCap;
-          if (item.lineJoin) ctx.lineJoin = item.lineJoin as CanvasLineJoin;
-          if (item.dashArray?.length) ctx.setLineDash(item.dashArray);
-          if (Number.isFinite(item.dashOffset)) ctx.lineDashOffset = Number(item.dashOffset) ?? 0;
           const inset = borderWidth / 2;
           const sx = x + inset;
           const sy = y + inset;
@@ -798,7 +785,7 @@ export function GridCanvas(props: {
               ctx.stroke();
             } else {
               ctx.beginPath();
-              ctx.roundRect(sx, sy, sw, sh, Math.max(0, Math.min(sw, sh) / 2));
+              ctx.roundRect(sx, sy, sw, sh, Math.min(14, cellPx * 0.25));
               ctx.stroke();
             }
           } else {
@@ -819,9 +806,6 @@ export function GridCanvas(props: {
         if (drawText && item.text != null && String(item.text).length) {
           const angleRad = (Number(item.angle) || 0) * (Math.PI / 180);
           const itemOpacity = Number.isFinite(item.opacity) ? Math.max(0, Math.min(1, Number(item.opacity))) : 1;
-          const widthIsNonPositive = Number.isFinite(item.width) && Number(item.width) <= 0;
-          const heightIsNonPositive = Number.isFinite(item.height) && Number(item.height) <= 0;
-          const textOutlineOnly = Boolean(item.borderColor) && (widthIsNonPositive || heightIsNonPositive);
           const cx = worldX(item.center.x);
           const cy = worldY(item.center.y);
           ctx.save();
@@ -843,23 +827,11 @@ export function GridCanvas(props: {
           ctx.textBaseline = item.textBaseline ?? "middle";
           const tx = worldX(item.center.x);
           const ty = worldY(item.center.y);
-          const twemoji = hasEmoji && !textOutlineOnly ? getTwemojiImage(text) : null;
+          const twemoji = hasEmoji ? getTwemojiImage(text) : null;
           if (twemoji) {
             const sz = textPx;
             ctx.drawImage(twemoji, tx - sz / 2, ty - sz / 2, sz, sz);
           } else {
-            if (textOutlineOnly && item.borderColor) {
-              const explicitTextStroke = Number.isFinite(item.borderThickness)
-                ? Number(item.borderThickness) * (cellPx / cosmeticUnit)
-                : Math.max(1, textPx * 0.11);
-              if (explicitTextStroke > 0) {
-                ctx.strokeStyle = item.borderColor;
-                ctx.lineWidth = explicitTextStroke;
-                ctx.lineJoin = "round";
-                ctx.lineCap = "round";
-                ctx.strokeText(text, tx, ty);
-              }
-            }
             ctx.fillText(text, tx, ty);
           }
           ctx.restore();
