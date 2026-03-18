@@ -902,14 +902,14 @@ export function GridCanvas(props: {
       ctx.restore();
     };
 
-    const classifyRenderTarget = (target?: string): "under" | "grid" | "over" => {
+    const classifyRenderTarget = (target?: string): "under" | "over" => {
       const t = (target ?? "").toLowerCase();
       if (/(^|[^a-z])(under|underlay|back|background|behind|below|bottom)([^a-z]|$)/.test(t)) return "under";
-      if (/(^|[^a-z])(cell-?grids?|gridlayer)([^a-z]|$)/.test(t)) return "grid";
+      if (/(^|[^a-z])(cell-?grids?|gridlayer)([^a-z]|$)/.test(t)) return "under";
       return "over";
     };
 
-    const classifyRenderTargetWithDefault = (target: string | undefined, fallback: "under" | "grid" | "over") => {
+    const classifyRenderTargetWithDefault = (target: string | undefined, fallback: "under" | "over") => {
       if (typeof target !== "string" || !target.trim()) return fallback;
       return classifyRenderTarget(target);
     };
@@ -1192,14 +1192,14 @@ export function GridCanvas(props: {
       | { kind: "dot"; item: NonNullable<PuzzleDefinition["cosmetics"]["dots"]>[number]; order: number; serial: number }
       | { kind: "layer"; item: NonNullable<PuzzleDefinition["cosmetics"]["underlays"]>[number]; order: number; serial: number };
 
-    const collectVisualLayerEntries = (layer: "under" | "grid" | "over"): VisualLayerEntry[] => {
+    const collectVisualLayerEntries = (layer: "under" | "over"): VisualLayerEntry[] => {
       const entries: VisualLayerEntry[] = [];
       let serial = 0;
       const maxOrder = Number.MAX_SAFE_INTEGER;
 
       for (const ln of def.cosmetics.lines ?? []) {
         if (ln.wayPoints.length < 2) continue;
-        if (classifyRenderTargetWithDefault(ln.target, "under") !== layer) continue;
+        if (classifyRenderTargetWithDefault(ln.target, "over") !== layer) continue;
         entries.push({ kind: "line", item: ln, order: ln.renderOrder ?? maxOrder, serial: serial++ });
       }
 
@@ -1232,7 +1232,7 @@ export function GridCanvas(props: {
       return entries;
     };
 
-    const drawVisualLayer = (layer: "under" | "grid" | "over") => {
+    const drawVisualLayer = (layer: "under" | "over") => {
       for (const entry of collectVisualLayerEntries(layer)) {
         if (entry.kind === "line") drawConstraintLine(entry.item);
         else if (entry.kind === "cage") drawCage(entry.item);
@@ -1253,10 +1253,6 @@ export function GridCanvas(props: {
       }
     }
 
-    const drawGridPuzzleFeatures = () => {
-      drawVisualLayer("grid");
-    };
-
     const drawTopPuzzleFeatures = () => {
       drawVisualLayer("over");
     };
@@ -1266,10 +1262,7 @@ export function GridCanvas(props: {
       (def.cosmetics.fogLights?.length ?? 0) > 0 ||
       (def.cosmetics.fogTriggerEffects?.length ?? 0) > 0;
 
-    // Grid-target features sit above highlights but below the built-in grid.
-    drawGridPuzzleFeatures();
-
-    // Grid below top puzzle artwork so overlay-targeted features are not bisected by grid lines.
+    // Grid below top puzzle artwork so features are not bisected by grid lines.
     drawGridLines();
     if (!fogDefined) drawTopPuzzleFeatures();
 
@@ -1588,24 +1581,11 @@ export function GridCanvas(props: {
         }
       }
 
-      // Keep grid-targeted puzzle features above highlights under fog, but only in lit cells.
-      ctx.save();
-      ctx.beginPath();
-      for (let r = 0; r < rows; r++) {
-        for (let c = 0; c < cols; c++) {
-          if (!lit[r][c]) continue;
-          ctx.rect(cellX(c), cellY(r), cellPx, cellPx);
-        }
-      }
-      ctx.clip();
-      drawGridPuzzleFeatures();
-      ctx.restore();
-
       if (def.cosmetics.gridVisible !== false) {
         drawGridLines();
       }
 
-      // Keep overlay-targeted puzzle features above the grid under fog, but only in lit cells.
+      // Keep puzzle feature layers above highlights under fog, but only in lit cells.
       ctx.save();
       ctx.beginPath();
       for (let r = 0; r < rows; r++) {
