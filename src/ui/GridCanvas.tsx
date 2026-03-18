@@ -782,6 +782,10 @@ export function GridCanvas(props: {
           // SudokuPad-exported layer thickness behaves like an inset (inner) border.
           // Canvas strokes are centered by default, so inset the path by half width.
           ctx.lineWidth = borderWidth;
+          if (item.lineCap) ctx.lineCap = item.lineCap as CanvasLineCap;
+          if (item.lineJoin) ctx.lineJoin = item.lineJoin as CanvasLineJoin;
+          if (item.dashArray?.length) ctx.setLineDash(item.dashArray);
+          if (Number.isFinite(item.dashOffset)) ctx.lineDashOffset = Number(item.dashOffset) ?? 0;
           const inset = borderWidth / 2;
           const sx = x + inset;
           const sy = y + inset;
