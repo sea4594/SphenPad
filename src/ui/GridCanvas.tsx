@@ -544,12 +544,47 @@ export function GridCanvas(props: {
     });
     const hasImportedRegionBoundaries = regionByCell.size > 0;
     const subgrid = def.cosmetics.subgrid;
+    const puzzleConflictChecker = def.cosmetics.conflictChecker !== false;
+
+    // Hidden `rowcol` areas define custom row/column domains in many SudokuPad variants.
+    const rowColDomainKeys = new Set<string>();
+    for (const rc of def.cosmetics.rowColCells ?? []) {
+      if (!inBounds(rc.r, rc.c)) continue;
+      rowColDomainKeys.add(`${rc.r},${rc.c}`);
+    }
+    const rowColAreas = (def.cosmetics.rowColAreas ?? [])
+      .map((area) => {
+        const areaSeen = new Set<string>();
+        const areaCells: CellRC[] = [];
+        for (const rc of area) {
+          if (!inBounds(rc.r, rc.c)) continue;
+          const key = `${rc.r},${rc.c}`;
+          if (areaSeen.has(key)) continue;
+          areaSeen.add(key);
+          areaCells.push(rc);
+          rowColDomainKeys.add(key);
+        }
+        return areaCells;
+      })
+      .filter((area) => area.length > 0);
+
+    const hasCustomRowColAreas = rowColAreas.length > 0;
+    const hasExplicitRowColDomain = rowColDomainKeys.size > 0;
+    const hasDomainRestriction = hasExplicitRowColDomain || hasImportedRegionBoundaries;
 
     const conflictDomainByCell: boolean[][] = Array.from(
       { length: rows },
-      () => Array.from({ length: cols }, () => !hasImportedRegionBoundaries),
+      () => Array.from({ length: cols }, () => !hasDomainRestriction),
     );
-    if (hasImportedRegionBoundaries) {
+    if (hasExplicitRowColDomain) {
+      for (const key of rowColDomainKeys) {
+        const [rRaw, cRaw] = key.split(",");
+        const r = Number(rRaw);
+        const c = Number(cRaw);
+        if (!Number.isFinite(r) || !Number.isFinite(c) || !inBounds(r, c)) continue;
+        conflictDomainByCell[r][c] = true;
+      }
+    } else if (hasImportedRegionBoundaries) {
       for (const key of regionByCell.keys()) {
         const [rRaw, cRaw] = key.split(",");
         const r = Number(rRaw);
@@ -557,6 +592,23 @@ export function GridCanvas(props: {
         if (!Number.isFinite(r) || !Number.isFinite(c) || !inBounds(r, c)) continue;
         conflictDomainByCell[r][c] = true;
       }
+    }
+
+    let rowColDomainMinRow = 0;
+    let rowColDomainMinCol = 0;
+    if (hasExplicitRowColDomain) {
+      rowColDomainMinRow = rows;
+      rowColDomainMinCol = cols;
+      for (const key of rowColDomainKeys) {
+        const [rRaw, cRaw] = key.split(",");
+        const r = Number(rRaw);
+        const c = Number(cRaw);
+        if (!Number.isFinite(r) || !Number.isFinite(c)) continue;
+        rowColDomainMinRow = Math.min(rowColDomainMinRow, r);
+        rowColDomainMinCol = Math.min(rowColDomainMinCol, c);
+      }
+      if (!Number.isFinite(rowColDomainMinRow)) rowColDomainMinRow = 0;
+      if (!Number.isFinite(rowColDomainMinCol)) rowColDomainMinCol = 0;
     }
 
     const normalizeSymbol = (symbol: string | undefined): string | null => {
@@ -577,10 +629,13 @@ export function GridCanvas(props: {
         boxKeyByCell[r][c] = `region:${regionIndex}`;
       }
     } else if (subgrid && subgrid.r > 0 && subgrid.c > 0) {
+      const rowBase = hasExplicitRowColDomain ? rowColDomainMinRow : 0;
+      const colBase = hasExplicitRowColDomain ? rowColDomainMinCol : 0;
       for (let r = 0; r < rows; r++) {
         for (let c = 0; c < cols; c++) {
-          const br = Math.floor(r / subgrid.r);
-          const bc = Math.floor(c / subgrid.c);
+          if (hasExplicitRowColDomain && !conflictDomainByCell[r][c]) continue;
+          const br = Math.floor((r - rowBase) / subgrid.r);
+          const bc = Math.floor((c - colBase) / subgrid.c);
           boxKeyByCell[r][c] = `subgrid:${br},${bc}`;
         }
       }
@@ -590,6 +645,24 @@ export function GridCanvas(props: {
       map.set(symbol, (map.get(symbol) ?? 0) + 1);
     };
 
+    const rowColAreaIdsByCell = new Map<string, number[]>();
+    const rowColAreaValueCounts = rowColAreas.map(() => new Map<string, number>());
+    if (hasCustomRowColAreas) {
+      rowColAreas.forEach((area, idx) => {
+        for (const rc of area) {
+          if (!conflictDomainByCell[rc.r][rc.c]) continue;
+          const key = `${rc.r},${rc.c}`;
+          const ids = rowColAreaIdsByCell.get(key);
+          if (ids) ids.push(idx);
+          else rowColAreaIdsByCell.set(key, [idx]);
+
+          const symbol = normalizeSymbol(progress.cells[rc.r][rc.c].value);
+          if (!symbol) continue;
+          addCount(rowColAreaValueCounts[idx] as Map<string, number>, symbol);
+        }
+      });
+    }
+
     const rowValueCounts = Array.from({ length: rows }, () => new Map<string, number>());
     const colValueCounts = Array.from({ length: cols }, () => new Map<string, number>());
     const boxValueCounts = new Map<string, Map<string, number>>();
@@ -598,8 +671,12 @@ export function GridCanvas(props: {
         if (!conflictDomainByCell[r][c]) continue;
         const symbol = normalizeSymbol(progress.cells[r][c].value);
         if (!symbol) continue;
-        addCount(rowValueCounts[r], symbol);
-        addCount(colValueCounts[c], symbol);
+
+        if (!hasCustomRowColAreas) {
+          addCount(rowValueCounts[r], symbol);
+          addCount(colValueCounts[c], symbol);
+        }
+
         const boxKey = boxKeyByCell[r][c];
         if (!boxKey) continue;
         let boxCounts = boxValueCounts.get(boxKey);
@@ -612,17 +689,25 @@ export function GridCanvas(props: {
     }
 
     const hasBigValuePeer = (r: number, c: number, symbol: string): boolean => {
-      if (!conflictChecker) return false;
+      if (!conflictChecker || !puzzleConflictChecker) return false;
       if (!conflictDomainByCell[r][c]) return false;
 
       const selfSymbol = normalizeSymbol(progress.cells[r][c].value);
       const subtractSelf = selfSymbol === symbol ? 1 : 0;
 
-      const rowPeers = (rowValueCounts[r].get(symbol) ?? 0) - subtractSelf;
-      if (rowPeers > 0) return true;
+      if (hasCustomRowColAreas) {
+        const ids = rowColAreaIdsByCell.get(`${r},${c}`) ?? [];
+        for (const id of ids) {
+          const peers = (rowColAreaValueCounts[id]?.get(symbol) ?? 0) - subtractSelf;
+          if (peers > 0) return true;
+        }
+      } else {
+        const rowPeers = (rowValueCounts[r].get(symbol) ?? 0) - subtractSelf;
+        if (rowPeers > 0) return true;
 
-      const colPeers = (colValueCounts[c].get(symbol) ?? 0) - subtractSelf;
-      if (colPeers > 0) return true;
+        const colPeers = (colValueCounts[c].get(symbol) ?? 0) - subtractSelf;
+        if (colPeers > 0) return true;
+      }
 
       const boxKey = boxKeyByCell[r][c];
       if (!boxKey) return false;

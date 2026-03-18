@@ -166,6 +166,9 @@ export type PuzzleCosmetics = {
   // Set only when the puzzle uses custom row/col areas instead of the full standard grid,
   // e.g. puzzles with outer helper cells surrounding a smaller inner grid.
   rowColCells?: CellRC[];
+  // Explicit hidden row/col groups. When present, these groups are authoritative for row/column
+  // conflict checks and may not align with board-indexed rows/columns.
+  rowColAreas?: CellRC[][];
   
   // Anti-constraints
   antiKnight?: boolean;

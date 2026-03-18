@@ -111,7 +111,28 @@ function parseBoolish(v: unknown): boolean {
   return false;
 }
 
-function parseSourceDetails(input: string): { sourceId: string; noGrid: boolean } {
+function parseOptionalBoolish(v: unknown): boolean | undefined {
+  if (typeof v === "boolean") return v;
+  if (typeof v === "number") return v !== 0;
+  if (typeof v === "string") {
+    const s = v.trim().toLowerCase();
+    if (!s) return undefined;
+    if (s === "1" || s === "true" || s === "yes" || s === "y" || s === "on") return true;
+    if (s === "0" || s === "false" || s === "no" || s === "n" || s === "off") return false;
+  }
+  return undefined;
+}
+
+function readOptionalSearchParamBoolish(searchParams: URLSearchParams, keys: string[]): boolean | undefined {
+  for (const key of keys) {
+    if (!searchParams.has(key)) continue;
+    const parsed = parseOptionalBoolish(searchParams.get(key));
+    if (parsed != null) return parsed;
+  }
+  return undefined;
+}
+
+function parseSourceDetails(input: string): { sourceId: string; noGrid: boolean; conflictChecker?: boolean } {
   const sourceId = parseSourceId(input);
   try {
     const u = new URL(input.trim());
@@ -120,7 +141,13 @@ function parseSourceDetails(input: string): { sourceId: string; noGrid: boolean 
       parseBoolish(u.searchParams.get("setting_nogrid")) ||
       parseBoolish(u.searchParams.get("nogrid")) ||
       parseBoolish(u.searchParams.get("noGrid"));
-    return { sourceId, noGrid };
+    const conflictChecker = readOptionalSearchParamBoolish(u.searchParams, [
+      "setting-conflictchecker",
+      "setting_conflictchecker",
+      "conflictchecker",
+      "conflictChecker",
+    ]);
+    return { sourceId, noGrid, ...(conflictChecker == null ? {} : { conflictChecker }) };
   } catch {
     return { sourceId, noGrid: false };
   }
@@ -881,6 +908,9 @@ export async function loadFromSudokuPad(
 
   const cosmetics = extractCosmetics(sclObj);
   if (sourceDetails.noGrid) cosmetics.gridVisible = false;
+  if (typeof sourceDetails.conflictChecker === "boolean") {
+    cosmetics.conflictChecker = sourceDetails.conflictChecker;
+  }
   const inlineMeta = extractInlineMetadata(sclObj);
 
   const title = firstNonEmptyString(
@@ -1074,6 +1104,18 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
   const defaultThermoThickness = sourceUnitsPerCell * 0.26;
   const defaultBetweenLineThickness = sourceUnitsPerCell * 0.10;
 
+  // Puzzle-level conflict checker settings (SudokuPad supports disabling duplicate highlighting per puzzle).
+  const puzzleConflictChecker =
+    parseOptionalBoolish(scl?.settings?.conflictchecker) ??
+    parseOptionalBoolish(scl?.settings?.conflictChecker) ??
+    parseOptionalBoolish(scl?.conflictchecker) ??
+    parseOptionalBoolish(scl?.conflictChecker) ??
+    parseOptionalBoolish(scl?.metadata?.conflictchecker) ??
+    parseOptionalBoolish(scl?.metadata?.conflictChecker);
+  if (puzzleConflictChecker != null) {
+    cosmetics.conflictChecker = puzzleConflictChecker;
+  }
+
   // background image / underlay aliases
   cosmetics.backgroundImageUrl =
     (typeof scl?.underlay?.image === "string" ? scl.underlay.image : undefined) ??
@@ -1134,19 +1176,31 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
   // in puzzles that have outer helper cells surrounding a smaller inner sudoku grid.
   const rowColSeenKeys = new Set<string>();
   const rowColDomainCells: CellRC[] = [];
+  const rowColAreas: CellRC[][] = [];
   for (const cg of cagesSrc) {
     if (cg?.hidden !== true) continue;
     if (String(cg?.type ?? "").toLowerCase() !== "rowcol") continue;
+
+    const groupSeenKeys = new Set<string>();
+    const groupCells: CellRC[] = [];
     for (const rc of parseCellRefs(cg?.cells ?? cg?.ce)) {
       const key = `${rc.r},${rc.c}`;
+      if (groupSeenKeys.has(key)) continue;
+      groupSeenKeys.add(key);
+      groupCells.push(rc);
+
       if (!rowColSeenKeys.has(key)) {
         rowColSeenKeys.add(key);
         rowColDomainCells.push(rc);
       }
     }
+    if (groupCells.length) rowColAreas.push(groupCells);
   }
   if (rowColDomainCells.length > 0) {
     cosmetics.rowColCells = rowColDomainCells;
+  }
+  if (rowColAreas.length > 0) {
+    cosmetics.rowColAreas = rowColAreas;
   }
 
   if (cagesSrc.length) {
