@@ -63,6 +63,7 @@ export type PuzzleCosmetics = {
     path?: CellRC[];
     wayPoints?: Array<{ x: number; y: number }>;
     headLength?: number;
+    headLengthUnit?: "cell" | "cosmetic";
     color?: string;
     thickness?: number;
     bulbFill?: string;
@@ -184,6 +185,7 @@ export type PuzzleCosmetics = {
   antiRook?: boolean;
 
   // Fog of war
+  fogEnabled?: boolean;
   fogLights?: CellRC[];
   fogTriggerEffects?: Array<{ triggerCells: CellRC[]; revealCells: CellRC[]; triggerMode?: string }>;
   solution?: string;

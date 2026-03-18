@@ -279,21 +279,50 @@ function normalizeCompactScl(input: any): any {
   if (!scl.metadata) scl.metadata = {};
 
   // Some payloads encode title/author/rules as "key: value" strings inside cage-like arrays.
-  const metadataFromCageLikeArrays = [input?.ca, input?.cages, scl?.ca, scl?.cages]
-    .filter(Array.isArray)
-    .flat() as any[];
+  const metadataFromCageLikeArrays = mergeArrayAliases(input?.ca, input?.cages, scl?.ca, scl?.cages) as any[];
+  let legacyFogMarkerSeen = false;
+  const legacyFogLights: CellRC[] = [];
+  const legacyFogSeen = new Set<string>();
   for (const item of metadataFromCageLikeArrays) {
     const rawValue =
       typeof item?.v === "string" ? item.v
       : typeof item?.value === "string" ? item.value
       : "";
-    const m = rawValue.match(/^\s*(title|author|rules?)\s*:\s*([\s\S]+)$/i);
-    if (!m) continue;
-    const key = m[1].toLowerCase();
-    const value = m[2].trim();
-    if ((key === "rule" || key === "rules") && !scl.metadata.rules) scl.metadata.rules = value;
-    if (key === "title" && !scl.metadata.title) scl.metadata.title = value;
-    if (key === "author" && !scl.metadata.author) scl.metadata.author = value;
+    const m = rawValue.match(/^\s*(title|author|rules?|solution)\s*:\s*([\s\S]+)$/i);
+    if (m) {
+      const key = m[1].toLowerCase();
+      const value = m[2].trim();
+      if ((key === "rule" || key === "rules") && !scl.metadata.rules) scl.metadata.rules = value;
+      if (key === "title" && !scl.metadata.title) scl.metadata.title = value;
+      if (key === "author" && !scl.metadata.author) scl.metadata.author = value;
+      if (key === "solution" && !scl.metadata.solution) scl.metadata.solution = value;
+    }
+
+    const parsedLegacyFogLights = parseLegacyFogLightValue(rawValue);
+    const fogItemCells = parseCellRefs(item?.cells ?? item?.ce);
+    if (parsedLegacyFogLights.length > 0) {
+      legacyFogMarkerSeen = true;
+      for (const rc of [...parsedLegacyFogLights, ...fogItemCells]) {
+        const key = `${rc.r},${rc.c}`;
+        if (legacyFogSeen.has(key)) continue;
+        legacyFogSeen.add(key);
+        legacyFogLights.push(rc);
+      }
+    }
+
+    if (isStandaloneFogLightToken(rawValue)) {
+      legacyFogMarkerSeen = true;
+      for (const rc of fogItemCells) {
+        const key = `${rc.r},${rc.c}`;
+        if (legacyFogSeen.has(key)) continue;
+        legacyFogSeen.add(key);
+        legacyFogLights.push(rc);
+      }
+    }
+  }
+
+  if (legacyFogMarkerSeen && !Array.isArray(scl.foglight) && !Array.isArray(scl.fogLight) && !Array.isArray(scl.fogLights)) {
+    scl.fogLights = legacyFogLights;
   }
 
   return scl;
@@ -377,11 +406,27 @@ function parseFiniteNumberToken(v: unknown): number | undefined {
 
 function mergeArrayAliases(...aliases: unknown[]): any[] {
   const out: any[] = [];
+  const seen = new Set<any>();
   for (const alias of aliases) {
     if (!Array.isArray(alias)) continue;
-    out.push(...alias);
+    for (const item of alias) {
+      if (seen.has(item)) continue;
+      seen.add(item);
+      out.push(item);
+    }
   }
   return out;
+}
+
+function parseLegacyFogLightValue(value: unknown): CellRC[] {
+  if (typeof value !== "string") return [];
+  const match = value.match(/^foglight:\s*(.+)$/i);
+  if (!match) return [];
+  return parseRcString(match[1].replace(/,/g, ""));
+}
+
+function isStandaloneFogLightToken(value: unknown): boolean {
+  return typeof value === "string" && /^foglight$/i.test(value.trim());
 }
 
 function parseDashArrayToken(...values: unknown[]): number[] | undefined {
@@ -610,6 +655,26 @@ function centerFromCells(cells: CellRC[]): { x: number; y: number } | null {
   return { x: sx / cells.length, y: sy / cells.length };
 }
 
+function inferBoardPositionShape(sclObj: any): { rows: number; cols: number } | null {
+  const boardLayers = mergeArrayAliases(sclObj?.underlays, sclObj?.u, sclObj?.overlays, sclObj?.o);
+  let rows = 0;
+  let cols = 0;
+  for (const item of boardLayers) {
+    const className =
+      typeof item?.className === "string" ? item.className
+      : typeof item?.class === "string" ? item.class
+      : "";
+    if (className.toLowerCase() !== "board-position") continue;
+
+    const height = parseFiniteNumberToken(item?.h ?? item?.height);
+    const width = parseFiniteNumberToken(item?.w ?? item?.width);
+    if (height !== undefined) rows = Math.max(rows, Math.round(height - 1));
+    if (width !== undefined) cols = Math.max(cols, Math.round(width - 1));
+  }
+
+  return rows > 0 || cols > 0 ? { rows, cols } : null;
+}
+
 function inferPuzzleShape(sclObj: any, givens: Array<{ rc: CellRC }>): { rows: number; cols: number } {
   const explicitRows =
     Number(sclObj?.rows) ||
@@ -657,9 +722,12 @@ function inferPuzzleShape(sclObj: any, givens: Array<{ rc: CellRC }>): { rows: n
   const solution = typeof sclObj?.metadata?.solution === "string" ? sclObj.metadata.solution : "";
   const solutionSquare = solution.length > 0 ? Math.sqrt(solution.length) : 0;
   const squareFromSolution = Number.isInteger(solutionSquare) ? solutionSquare : 0;
+  const boardPositionShape = inferBoardPositionShape(sclObj);
+  const fromBoardPositionRows = boardPositionShape?.rows ?? 0;
+  const fromBoardPositionCols = boardPositionShape?.cols ?? 0;
 
-  const rows = Math.max(fromCellsRows, fromGridRows, fromGivenRows, fromRegionRows, explicitRows, sizeLike, squareFromSolution, 1);
-  const cols = Math.max(fromCellsCols, fromGridCols, fromGivenCols, fromRegionCols, explicitCols, sizeLike, squareFromSolution, 1);
+  const rows = Math.max(fromCellsRows, fromGridRows, fromGivenRows, fromRegionRows, fromBoardPositionRows, explicitRows, sizeLike, squareFromSolution, 1);
+  const cols = Math.max(fromCellsCols, fromGridCols, fromGivenCols, fromRegionCols, fromBoardPositionCols, explicitCols, sizeLike, squareFromSolution, 1);
   return { rows, cols };
 }
 
@@ -1281,11 +1349,14 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
           .filter(Boolean) as Array<{ x: number; y: number }>;
         if (cellPath.length < 2 && wpPath.length < 2) return null;
         const bulb = bulbCells[0];
+        const compactHeadLength = parseFiniteNumberToken(a?.hl);
+        const explicitHeadLength = parseFiniteNumberToken(a?.headLength);
         return {
           bulb,
           path: cellPath.length ? cellPath : undefined,
           wayPoints: wpPath.length ? wpPath : undefined,
-          headLength: parseFiniteNumberToken(a?.headLength ?? a?.hl),
+          headLength: compactHeadLength ?? explicitHeadLength,
+          headLengthUnit: compactHeadLength != null ? "cell" : explicitHeadLength != null ? "cosmetic" : undefined,
           color: normalizeColorToken(a?.color ?? a?.lineColor ?? a?.c),
           thickness: parseFiniteNumberToken(a?.thickness ?? a?.th),
           bulbFill: normalizeColorToken(a?.bulbColor ?? a?.baseC ?? "#ffffff"),
@@ -1752,6 +1823,7 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
 
   // Fog of war: common SCL keys include foglight/fogLight/fogLights.
   const rawFogLights = scl?.foglight ?? scl?.fogLight ?? scl?.fogLights ?? scl?.fog?.lights ?? scl?.fog?.light;
+  if (Array.isArray(rawFogLights)) cosmetics.fogEnabled = true;
   if (Array.isArray(rawFogLights)) {
     cosmetics.fogLights = rawFogLights.map(asRC).filter(Boolean) as CellRC[];
   } else if (Array.isArray(scl?.cells)) {
@@ -1764,11 +1836,15 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
         if (cell?.fogLight || cell?.foglight || cell?.light) fromCells.push({ r, c });
       }
     }
-    if (fromCells.length) cosmetics.fogLights = fromCells;
+    if (fromCells.length) {
+      cosmetics.fogEnabled = true;
+      cosmetics.fogLights = fromCells;
+    }
   }
 
   // Trigger-driven fog reveals (common in modern fog puzzles).
   if (Array.isArray(scl?.triggereffect)) {
+    cosmetics.fogEnabled = true;
     cosmetics.fogTriggerEffects = scl.triggereffect
       .map((te: any) => {
         if (te?.effect?.type !== "foglight") return null;

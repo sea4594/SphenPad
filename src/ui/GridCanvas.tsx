@@ -1124,7 +1124,9 @@ export function GridCanvas(props: {
         const nx = -uy;
         const ny = ux;
         const headLen = Number.isFinite(a.headLength)
-          ? scaledCosmeticPx(Number(a.headLength), { previewMin: 1.6, normalMin: 6 })
+          ? (a.headLengthUnit === "cell"
+            ? scaledCellPx(Number(a.headLength), { previewMin: 2.2, normalMin: 8 })
+            : scaledCosmeticPx(Number(a.headLength), { previewMin: 1.6, normalMin: 6 }))
           : scaledCellPx(0.23, { previewMin: 2.2, normalMin: 8 });
         const headWidth = scaledCellPx(0.15, { previewMin: 1.6, normalMin: 6 });
         const bx = ex - ux * headLen;
@@ -1255,7 +1257,10 @@ export function GridCanvas(props: {
       drawVisualLayer("over");
     };
 
-    const fogDefined = (def.cosmetics.fogLights?.length ?? 0) > 0 || (def.cosmetics.fogTriggerEffects?.length ?? 0) > 0;
+    const fogDefined =
+      def.cosmetics.fogEnabled === true ||
+      (def.cosmetics.fogLights?.length ?? 0) > 0 ||
+      (def.cosmetics.fogTriggerEffects?.length ?? 0) > 0;
 
     // Grid below top puzzle artwork so features are not bisected by grid lines.
     drawGridLines();
@@ -1435,27 +1440,46 @@ export function GridCanvas(props: {
         if (!inBounds(rc.r, rc.c)) return;
         lit[rc.r][rc.c] = true;
       };
+      const revealNeighborhood = (rc: CellRC) => {
+        for (let rr = rc.r - 1; rr <= rc.r + 1; rr++) {
+          for (let cc = rc.c - 1; cc <= rc.c + 1; cc++) addLight({ r: rr, c: cc });
+        }
+      };
 
       for (const rc of def.cosmetics.fogLights ?? []) addLight(rc);
 
       const solution = def.cosmetics.solution;
       const isCorrect = (rc: CellRC) => {
         if (!inBounds(rc.r, rc.c)) return false;
+        const value = progress.cells[rc.r][rc.c].value ?? "";
+        if (!value) return false;
         if (solution && solution.length >= rows * cols) {
           const idx = rc.r * cols + rc.c;
-          return (progress.cells[rc.r][rc.c].value ?? "") === solution[idx];
+          return value === solution[idx];
         }
         const given = progress.cells[rc.r][rc.c].given;
-        return Boolean(given && progress.cells[rc.r][rc.c].value === given);
+        return Boolean(given && value === given);
       };
 
-      for (const effect of def.cosmetics.fogTriggerEffects ?? []) {
-        const mode = effect.triggerMode;
-        const satisfied = mode === "or"
-          ? effect.triggerCells.some(isCorrect)
-          : effect.triggerCells.every(isCorrect);
-        if (!satisfied) continue;
-        for (const rc of effect.revealCells) addLight(rc);
+      const hasTriggerEffects = (def.cosmetics.fogTriggerEffects?.length ?? 0) > 0;
+      if (hasTriggerEffects) {
+        for (const effect of def.cosmetics.fogTriggerEffects ?? []) {
+          const mode = effect.triggerMode;
+          const satisfied = mode === "or"
+            ? effect.triggerCells.some(isCorrect)
+            : effect.triggerCells.every(isCorrect);
+          if (!satisfied) continue;
+          for (const rc of effect.revealCells) addLight(rc);
+        }
+      } else {
+        for (let r = 0; r < rows; r++) {
+          for (let c = 0; c < cols; c++) {
+            const rc = { r, c };
+            if (!isCorrect(rc)) continue;
+            if (progress.cells[r][c].given) addLight(rc);
+            else revealNeighborhood(rc);
+          }
+        }
       }
     }
 
@@ -1557,6 +1581,10 @@ export function GridCanvas(props: {
         }
       }
 
+      if (def.cosmetics.gridVisible !== false) {
+        drawGridLines();
+      }
+
       // Keep puzzle feature layers above highlights under fog, but only in lit cells.
       ctx.save();
       ctx.beginPath();
@@ -1569,11 +1597,6 @@ export function GridCanvas(props: {
       ctx.clip();
       drawTopPuzzleFeatures();
       ctx.restore();
-
-      // Keep grid visible on top of fog when enabled.
-      if (def.cosmetics.gridVisible !== false) {
-        drawGridLines();
-      }
 
       // Keep lines/marks above highlights under fog, but behind values/letters.
       drawUserLines();
