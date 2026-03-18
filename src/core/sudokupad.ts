@@ -1450,6 +1450,120 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
       .filter(Boolean) as any;
   }
 
+  // fpuz diagonal flags (diagonal+ / diagonal-) map to SudokuPad Sudoku-X overlay lines.
+  const diagonalByKind = new Map<"plus" | "minus", Record<string, unknown> | undefined>();
+  const recordDiagonal = (kind: "plus" | "minus", style?: Record<string, unknown>) => {
+    const prev = diagonalByKind.get(kind);
+    const prevHasStyle = Boolean(prev && Object.keys(prev).length > 0);
+    const nextHasStyle = Boolean(style && Object.keys(style).length > 0);
+    if (!prevHasStyle || nextHasStyle) diagonalByKind.set(kind, style);
+  };
+  const isDiagonalSpecEnabled = (raw: unknown) => parseBoolish(raw) || (raw != null && typeof raw === "object");
+
+  const diagonalPlusRaw = scl?.["diagonal+"];
+  const diagonalMinusRaw = scl?.["diagonal-"];
+  if (isDiagonalSpecEnabled(diagonalPlusRaw)) {
+    recordDiagonal("plus", diagonalPlusRaw && typeof diagonalPlusRaw === "object" ? diagonalPlusRaw as Record<string, unknown> : undefined);
+  }
+  if (isDiagonalSpecEnabled(diagonalMinusRaw)) {
+    recordDiagonal("minus", diagonalMinusRaw && typeof diagonalMinusRaw === "object" ? diagonalMinusRaw as Record<string, unknown> : undefined);
+  }
+
+  const sudokuXFeatures = mergeArrayAliases(scl?.sudokuX, scl?.sudokux);
+  for (const feature of sudokuXFeatures) {
+    const type = typeof feature?.type === "string" ? feature.type.trim().toLowerCase() : "";
+    if (!type) continue;
+    if (type === "sudokux+" || type === "sudokuxplus") {
+      recordDiagonal("plus", feature && typeof feature === "object" ? feature as Record<string, unknown> : undefined);
+    }
+    if (type === "sudokux-" || type === "sudokuxminus") {
+      recordDiagonal("minus", feature && typeof feature === "object" ? feature as Record<string, unknown> : undefined);
+    }
+  }
+
+  if (diagonalByKind.size > 0) {
+    const givensForShape = extractGivens(scl);
+    const inferredShape = inferPuzzleShape(scl, givensForShape);
+
+    let minR = 0;
+    let minC = 0;
+    let maxR = Math.max(0, inferredShape.rows - 1);
+    let maxC = Math.max(0, inferredShape.cols - 1);
+
+    const regionCells = Array.isArray(scl?.regions)
+      ? scl.regions.flatMap((region: any) => parseCellRefs(region?.cells ?? region?.ce ?? region))
+      : [];
+    if (regionCells.length) {
+      minR = Math.min(...regionCells.map((rc: CellRC) => rc.r));
+      minC = Math.min(...regionCells.map((rc: CellRC) => rc.c));
+      maxR = Math.max(...regionCells.map((rc: CellRC) => rc.r));
+      maxC = Math.max(...regionCells.map((rc: CellRC) => rc.c));
+    }
+
+    const existingLines = cosmetics.lines ?? [];
+    const hasMatchingSegment = (a: { x: number; y: number }, b: { x: number; y: number }) => {
+      return existingLines.some((line) => {
+        if (!Array.isArray(line.wayPoints) || line.wayPoints.length !== 2) return false;
+        const p0 = line.wayPoints[0] as { x: number; y: number };
+        const p1 = line.wayPoints[1] as { x: number; y: number };
+        return (
+          (pointsAlmostEqual(p0, a) && pointsAlmostEqual(p1, b)) ||
+          (pointsAlmostEqual(p0, b) && pointsAlmostEqual(p1, a))
+        );
+      });
+    };
+
+    const pushDiagonal = (kind: "plus" | "minus", style?: Record<string, unknown>) => {
+      const start = kind === "plus"
+        ? { x: maxC + 1, y: minR }
+        : { x: minC, y: minR };
+      const end = kind === "plus"
+        ? { x: minC, y: maxR + 1 }
+        : { x: maxC + 1, y: maxR + 1 };
+      if (hasMatchingSegment(start, end)) return;
+
+      const styleSource = (style?.line && typeof style.line === "object")
+        ? style.line as Record<string, unknown>
+        : style;
+      const dashArray = parseDashArrayToken(
+        styleSource?.["stroke-dasharray"],
+        styleSource?.strokeDasharray,
+        styleSource?.dashArray,
+        styleSource?.dash,
+      );
+
+      const diagonalLine = {
+        wayPoints: [start, end],
+        color: normalizeColorToken(
+          styleSource?.color ??
+          styleSource?.lineColor ??
+          styleSource?.stroke ??
+          styleSource?.outlineC ??
+          styleSource?.c
+        ) ?? "#34BBE6",
+        thickness: parseFiniteNumberToken(
+          styleSource?.thickness ??
+          styleSource?.th ??
+          styleSource?.["stroke-width"]
+        ) ?? 2,
+        target: typeof styleSource?.target === "string" ? styleSource.target : "overlay",
+        lineCap: parseLineCapToken(styleSource?.["stroke-linecap"], styleSource?.strokeLinecap, styleSource?.lineCap) ?? "round",
+        lineJoin: parseLineJoinToken(styleSource?.["stroke-linejoin"], styleSource?.strokeLinejoin, styleSource?.lineJoin) ?? "round",
+        dashArray,
+        dashOffset: parseFiniteNumberToken(styleSource?.["stroke-dashoffset"] ?? styleSource?.dashOffset),
+        opacity: parseOpacityToken(styleSource?.opacity ?? styleSource?.alpha),
+        renderOrder: nextRenderOrder(),
+      };
+      existingLines.push(diagonalLine as NonNullable<PuzzleCosmetics["lines"]>[number]);
+    };
+
+    for (const [kind, style] of diagonalByKind.entries()) {
+      pushDiagonal(kind, style);
+    }
+
+    if (existingLines.length) cosmetics.lines = existingLines;
+  }
+
   // Thermometer variants: modern `thermos` and legacy `thermometer` with nested `lines`.
   const thermometerLines = [
     ...(Array.isArray(scl?.thermos) ? scl.thermos : []),
