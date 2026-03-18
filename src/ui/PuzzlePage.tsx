@@ -84,6 +84,11 @@ function toHistorySelection(entry: unknown): CellRC[] | null {
   return normalized;
 }
 
+function normalizeComparisonSymbol(symbol: string | undefined): string {
+  const trimmed = symbol?.trim() ?? "";
+  return trimmed.length ? trimmed.toUpperCase() : "";
+}
+
 function isSolved(progress: PuzzleProgress, solution?: string): boolean {
   const rows = progress.cells.length;
   const cols = progress.cells[0]?.length ?? 0;
@@ -91,7 +96,10 @@ function isSolved(progress: PuzzleProgress, solution?: string): boolean {
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
         const idx = r * cols + c;
-        if ((progress.cells[r][c].value ?? "") !== solution[idx]) return false;
+        const expected = normalizeComparisonSymbol(solution[idx]);
+        if (!expected || expected === ".") continue;
+        const actual = normalizeComparisonSymbol(progress.cells[r][c].value);
+        if (actual !== expected) return false;
       }
     }
     return true;

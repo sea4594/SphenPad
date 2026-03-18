@@ -603,6 +603,11 @@ export function GridCanvas(props: {
       return trimmed.length ? trimmed : null;
     };
 
+    const normalizeComparisonSymbol = (symbol: string | undefined): string => {
+      const trimmed = symbol?.trim() ?? "";
+      return trimmed.length ? trimmed.toUpperCase() : "";
+    };
+
     const boxKeyByCell: Array<Array<string | null>> = Array.from(
       { length: rows },
       () => Array.from({ length: cols }, () => null),
@@ -1490,13 +1495,15 @@ export function GridCanvas(props: {
       const solution = def.cosmetics.solution;
       const isCorrect = (rc: CellRC) => {
         if (!inBounds(rc.r, rc.c)) return false;
-        const value = progress.cells[rc.r][rc.c].value ?? "";
+        const value = normalizeComparisonSymbol(progress.cells[rc.r][rc.c].value);
         if (!value) return false;
         if (solution && solution.length >= rows * cols) {
           const idx = rc.r * cols + rc.c;
-          return value === solution[idx];
+          const expected = normalizeComparisonSymbol(solution[idx]);
+          if (!expected || expected === ".") return false;
+          return value === expected;
         }
-        const given = progress.cells[rc.r][rc.c].given;
+        const given = normalizeComparisonSymbol(progress.cells[rc.r][rc.c].given);
         return Boolean(given && value === given);
       };
 
@@ -1602,7 +1609,7 @@ export function GridCanvas(props: {
     }
 
     if (fogDefined) {
-      ctx.fillStyle = "#c8cdd3";
+      ctx.fillStyle = "#afafaf";
       for (let r = 0; r < rows; r++) {
         for (let c = 0; c < cols; c++) {
           if (lit[r][c]) continue;
