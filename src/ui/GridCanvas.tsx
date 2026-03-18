@@ -1264,6 +1264,35 @@ export function GridCanvas(props: {
       drawVisualLayer("over");
     };
 
+    const clipToFogVisibleAreas = (litMask: boolean[][]) => {
+      const boardLeft = cellX(0);
+      const boardTop = cellY(0);
+      const boardRight = cellX(cols);
+      const boardBottom = cellY(rows);
+
+      ctx.beginPath();
+
+      // Keep everything outside the board visible regardless of fog state.
+      if (boardTop > 0) ctx.rect(0, 0, widthPx, boardTop);
+      if (boardBottom < heightPx) ctx.rect(0, boardBottom, widthPx, heightPx - boardBottom);
+      if (boardLeft > 0 && boardBottom > boardTop) {
+        ctx.rect(0, boardTop, boardLeft, boardBottom - boardTop);
+      }
+      if (boardRight < widthPx && boardBottom > boardTop) {
+        ctx.rect(boardRight, boardTop, widthPx - boardRight, boardBottom - boardTop);
+      }
+
+      // Inside the board, only lit cells are visible through fog.
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          if (!litMask[r][c]) continue;
+          ctx.rect(cellX(c), cellY(r), cellPx, cellPx);
+        }
+      }
+
+      ctx.clip();
+    };
+
     const fogDefined =
       def.cosmetics.fogEnabled === true ||
       (def.cosmetics.fogLights?.length ?? 0) > 0 ||
@@ -1591,33 +1620,17 @@ export function GridCanvas(props: {
         }
       }
 
-      // Re-render grid-target features only in lit cells.
-      ctx.save();
-      ctx.beginPath();
-      for (let r = 0; r < rows; r++) {
-        for (let c = 0; c < cols; c++) {
-          if (!lit[r][c]) continue;
-          ctx.rect(cellX(c), cellY(r), cellPx, cellPx);
-        }
-      }
-      ctx.clip();
+      // Grid-target features (for example cell-grids monitors) stay visible above fog.
       drawGridPuzzleFeatures();
-      ctx.restore();
 
       if (def.cosmetics.gridVisible !== false) {
         drawGridLines();
       }
 
-      // Keep top puzzle feature layers above the grid under fog, but only in lit cells.
+      // Keep top puzzle feature layers above the grid under fog.
+      // Within the board, show them only in lit cells; outside the board, keep them visible.
       ctx.save();
-      ctx.beginPath();
-      for (let r = 0; r < rows; r++) {
-        for (let c = 0; c < cols; c++) {
-          if (!lit[r][c]) continue;
-          ctx.rect(cellX(c), cellY(r), cellPx, cellPx);
-        }
-      }
-      ctx.clip();
+      clipToFogVisibleAreas(lit);
       drawTopPuzzleFeatures();
       ctx.restore();
 
