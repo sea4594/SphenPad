@@ -960,8 +960,8 @@ export function GridCanvas(props: {
         if (hasStroke) {
           ctx.strokeStyle = ln.color as string;
           ctx.lineWidth = ln.thickness ?? 6;
-          ctx.lineCap = ln.lineCap ?? "butt";
-          ctx.lineJoin = ln.lineJoin ?? "miter";
+          ctx.lineCap = ln.lineCap ?? "round";
+          ctx.lineJoin = ln.lineJoin ?? "round";
           ctx.stroke(path);
         }
         ctx.restore();
@@ -994,8 +994,8 @@ export function GridCanvas(props: {
       if (hasStroke) {
         ctx.strokeStyle = ln.color as string;
         ctx.lineWidth = (ln.thickness ?? 6) * (cellPx / cosmeticUnit);
-        ctx.lineCap = ln.lineCap ?? "butt";
-        ctx.lineJoin = ln.lineJoin ?? "miter";
+        ctx.lineCap = ln.lineCap ?? "round";
+        ctx.lineJoin = ln.lineJoin ?? "round";
         ctx.stroke();
       }
       ctx.restore();
@@ -1076,46 +1076,21 @@ export function GridCanvas(props: {
       const waypointPath = Array.isArray(a.wayPoints) && a.wayPoints.length >= 2
         ? a.wayPoints
         : null;
-
-      ctx.strokeStyle = stroke;
-      ctx.lineWidth = lineW;
-      ctx.lineCap = "round";
-      ctx.lineJoin = "round";
-      ctx.beginPath();
-      if (waypointPath) {
-        waypointPath.forEach((p, i) => {
-          const x = worldX(p.x);
-          const y = worldY(p.y);
-          if (i === 0) ctx.moveTo(x, y);
-          else ctx.lineTo(x, y);
-        });
-      } else {
-        const cellPath = Array.isArray(a.path) ? a.path : [];
-        cellPath.forEach((rc, i) => {
-          const x = cellX(rc.c) + cellPx / 2;
-          const y = cellY(rc.r) + cellPx / 2;
-          if (i === 0) {
-            if (cellPath.length > 1 && a.bulb) {
-              const n0 = cellPath[1] as CellRC;
-              const nx = cellX(n0.c) + cellPx / 2;
-              const ny = cellY(n0.r) + cellPx / 2;
-              const vx = nx - x;
-              const vy = ny - y;
-              const vl = Math.hypot(vx, vy) || 1;
-              ctx.moveTo(x + (vx / vl) * bulbRadius * 0.92, y + (vy / vl) * bulbRadius * 0.92);
-            } else {
-              ctx.moveTo(x, y);
-            }
-          } else {
-            ctx.lineTo(x, y);
-          }
-        });
-      }
-      ctx.stroke();
-
       const pathPoints = waypointPath
         ? waypointPath.map((p) => ({ x: worldX(p.x), y: worldY(p.y) }))
         : (Array.isArray(a.path) ? a.path : []).map((rc) => ({ x: cellX(rc.c) + cellPx / 2, y: cellY(rc.r) + cellPx / 2 }));
+
+      if (!waypointPath && pathPoints.length > 1 && a.bulb) {
+        const first = pathPoints[0] as { x: number; y: number };
+        const second = pathPoints[1] as { x: number; y: number };
+        const vx = second.x - first.x;
+        const vy = second.y - first.y;
+        const vl = Math.hypot(vx, vy) || 1;
+        pathPoints[0] = {
+          x: first.x + (vx / vl) * bulbRadius * 0.92,
+          y: first.y + (vy / vl) * bulbRadius * 0.92,
+        };
+      }
 
       if (pathPoints.length >= 2) {
         const end = pathPoints[pathPoints.length - 1] as { x: number; y: number };
@@ -1131,21 +1106,65 @@ export function GridCanvas(props: {
         const uy = vy / vl;
         const nx = -uy;
         const ny = ux;
-        const headLen = Number.isFinite(a.headLength)
-          ? (a.headLengthUnit === "cell"
-            ? scaledCellPx(Number(a.headLength), { previewMin: 2.2, normalMin: 8 })
-            : scaledCosmeticPx(Number(a.headLength), { previewMin: 1.6, normalMin: 6 }))
-          : scaledCellPx(0.23, { previewMin: 2.2, normalMin: 8 });
-        const headWidth = scaledCellPx(0.15, { previewMin: 1.6, normalMin: 6 });
-        const bx = ex - ux * headLen;
-        const by = ey - uy * headLen;
-        ctx.fillStyle = stroke;
+        const headStyle = a.headStyle === "fill" ? "fill" : "stroke";
+        const headAngleDeg = Number.isFinite(a.headAngle) ? Number(a.headAngle) : 90;
+        const halfRad = (headAngleDeg * Math.PI) / 360;
+        const headIndent = Number.isFinite(a.headIndent) ? Math.max(0, Number(a.headIndent)) : 0;
+        const headSide = Number.isFinite(a.headLength)
+          ? scaledCellPx(Number(a.headLength), { previewMin: 0, normalMin: 0 })
+          : lineW * 5;
+        const headBack = headSide * Math.cos(halfRad);
+        const headSpread = headSide * Math.sin(halfRad);
+        const retractBy = headStyle === "fill"
+          ? Math.max(0, headBack * Math.max(0, 1 - headIndent) - 0.5)
+          : lineW;
+        const retract = Math.min(retractBy, Math.max(0, vl - 0.001));
+
+        const shaftPoints = [...pathPoints];
+        shaftPoints[shaftPoints.length - 1] = {
+          x: ex - ux * retract,
+          y: ey - uy * retract,
+        };
+
+        ctx.strokeStyle = stroke;
+        ctx.lineWidth = lineW;
+        ctx.lineCap = "butt";
+        ctx.lineJoin = "round";
         ctx.beginPath();
-        ctx.moveTo(ex, ey);
-        ctx.lineTo(bx + nx * headWidth, by + ny * headWidth);
-        ctx.lineTo(bx - nx * headWidth, by - ny * headWidth);
-        ctx.closePath();
-        ctx.fill();
+        shaftPoints.forEach((p, i) => {
+          if (i === 0) ctx.moveTo(p.x, p.y);
+          else ctx.lineTo(p.x, p.y);
+        });
+        ctx.stroke();
+
+        const leftX = ex - ux * headBack + nx * headSpread;
+        const leftY = ey - uy * headBack + ny * headSpread;
+        const rightX = ex - ux * headBack - nx * headSpread;
+        const rightY = ey - uy * headBack - ny * headSpread;
+
+        if (headStyle === "fill") {
+          const notchBack = headBack * Math.max(0, 1 - headIndent);
+          const notchX = ex - ux * notchBack;
+          const notchY = ey - uy * notchBack;
+          ctx.fillStyle = stroke;
+          ctx.beginPath();
+          ctx.moveTo(leftX, leftY);
+          ctx.lineTo(ex, ey);
+          ctx.lineTo(rightX, rightY);
+          ctx.lineTo(notchX, notchY);
+          ctx.closePath();
+          ctx.fill();
+        } else {
+          ctx.strokeStyle = stroke;
+          ctx.lineWidth = lineW;
+          ctx.lineCap = "butt";
+          ctx.lineJoin = "miter";
+          ctx.beginPath();
+          ctx.moveTo(leftX, leftY);
+          ctx.lineTo(ex, ey);
+          ctx.lineTo(rightX, rightY);
+          ctx.stroke();
+        }
       }
 
       if (!a.bulb) return;
@@ -1207,7 +1226,7 @@ export function GridCanvas(props: {
 
       for (const ln of def.cosmetics.lines ?? []) {
         if (ln.wayPoints.length < 2) continue;
-        if (classifyRenderTargetWithDefault(ln.target, "under") !== layer) continue;
+        if (classifyRenderTargetWithDefault(ln.target, "over") !== layer) continue;
         entries.push({ kind: "line", item: ln, order: ln.renderOrder ?? maxOrder, serial: serial++ });
       }
 

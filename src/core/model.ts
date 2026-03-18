@@ -64,6 +64,9 @@ export type PuzzleCosmetics = {
     wayPoints?: Array<{ x: number; y: number }>;
     headLength?: number;
     headLengthUnit?: "cell" | "cosmetic";
+    headStyle?: "stroke" | "fill";
+    headAngle?: number;
+    headIndent?: number;
     color?: string;
     thickness?: number;
     bulbFill?: string;

@@ -1350,14 +1350,18 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
           .filter(Boolean) as Array<{ x: number; y: number }>;
         if (cellPath.length < 2 && wpPath.length < 2) return null;
         const bulb = bulbCells[0];
-        const compactHeadLength = parseFiniteNumberToken(a?.hl);
-        const explicitHeadLength = parseFiniteNumberToken(a?.headLength);
+        const headLength = parseFiniteNumberToken(a?.headLength ?? a?.hl);
+        const headStyleToken = typeof a?.headStyle === "string" ? a.headStyle.trim().toLowerCase() : typeof a?.hs === "string" ? a.hs.trim().toLowerCase() : "";
+        const headStyle = headStyleToken === "fill" ? "fill" : headStyleToken === "stroke" ? "stroke" : undefined;
         return {
           bulb,
           path: cellPath.length ? cellPath : undefined,
           wayPoints: wpPath.length ? wpPath : undefined,
-          headLength: compactHeadLength ?? explicitHeadLength,
-          headLengthUnit: compactHeadLength != null ? "cell" : explicitHeadLength != null ? "cosmetic" : undefined,
+          headLength,
+          headLengthUnit: headLength != null ? "cell" : undefined,
+          headStyle,
+          headAngle: parseFiniteNumberToken(a?.headAngle ?? a?.ha),
+          headIndent: parseFiniteNumberToken(a?.headIndent ?? a?.hi),
           color: normalizeColorToken(a?.color ?? a?.lineColor ?? a?.c),
           thickness: parseFiniteNumberToken(a?.thickness ?? a?.th),
           bulbFill: normalizeColorToken(a?.bulbColor ?? a?.baseC ?? "#ffffff"),
