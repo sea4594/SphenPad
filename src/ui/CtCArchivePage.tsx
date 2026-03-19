@@ -1,5 +1,5 @@
-import { useCallback, useDeferredValue, useEffect, useMemo, useState, type MouseEvent } from "react";
-import { useNavigate } from "react-router-dom";
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { normalizePuzzleKey } from "../core/id";
 import { makeInitialProgress } from "../core/scl";
 import { getPuzzle, listCompletedPuzzleKeys, upsertPuzzle } from "../core/storage";
@@ -8,6 +8,12 @@ import { AppBrand } from "./AppBrand";
 import { IconFolder, IconHome, IconImport, IconSettings } from "./icons";
 import { SelectControl } from "./SelectControl";
 import { SettingsOverlay } from "./SettingsOverlay";
+import {
+  currentRoutePath,
+  readPuzzleReturnState,
+  restoreWindowScroll,
+  withPuzzleOriginState,
+} from "./puzzleNavState";
 
 type ArchiveEntry = {
   id: string;
@@ -303,8 +309,10 @@ async function loadCachedPuzzlePayload(entry: ArchiveEntry): Promise<string | nu
 
 export function CtCArchivePage() {
   const nav = useNavigate();
+  const location = useLocation();
   const [renderConfig] = useState(getRenderConfig);
   const initialFilterPrefs = useMemo(readInitialArchiveFilterPrefs, []);
+  const appliedReturnStateRef = useRef(false);
 
   const [rows, setRows] = useState<PreparedArchiveEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -353,6 +361,21 @@ export function CtCArchivePage() {
     minLength,
     maxLength,
   ]);
+
+  useEffect(() => {
+    if (appliedReturnStateRef.current) return;
+    const returned = readPuzzleReturnState(location.state);
+    if (!returned || returned.page !== "archive") return;
+
+    appliedReturnStateRef.current = true;
+    const savedVisibleRowsCount = returned.context?.visibleRowsCount;
+    if (typeof savedVisibleRowsCount === "number" && Number.isFinite(savedVisibleRowsCount)) {
+      setVisibleRowsCount(Math.max(renderConfig.initialVisibleRows, Math.trunc(savedVisibleRowsCount)));
+    }
+    restoreWindowScroll(returned.scrollY);
+
+    nav(currentRoutePath(location.pathname, location.search, location.hash), { replace: true, state: null });
+  }, [location.hash, location.pathname, location.search, location.state, nav, renderConfig.initialVisibleRows]);
 
   async function refreshCompleted() {
     const completed = await listCompletedPuzzleKeys();
@@ -539,7 +562,17 @@ export function CtCArchivePage() {
         createdAt: existing?.createdAt ?? now,
       });
 
-      nav(`/p/${encodeURIComponent(key)}`);
+      nav(`/p/${encodeURIComponent(key)}`, {
+        state: withPuzzleOriginState(location.state, {
+          version: 1,
+          page: "archive",
+          path: currentRoutePath(location.pathname, location.search, location.hash),
+          scrollY: window.scrollY,
+          context: {
+            visibleRowsCount,
+          },
+        }),
+      });
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
       alert(msg);

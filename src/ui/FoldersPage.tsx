@@ -1,5 +1,5 @@
-import { Fragment, useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   createFolder,
   deleteFolder as deleteFolderById,
@@ -17,6 +17,12 @@ import { GridCanvas } from "./GridCanvas";
 import { IconFolder, IconHome, IconImport, IconSettings } from "./icons";
 import { SelectControl } from "./SelectControl";
 import { SettingsOverlay } from "./SettingsOverlay";
+import {
+  currentRoutePath,
+  readPuzzleReturnState,
+  restoreWindowScroll,
+  withPuzzleOriginState,
+} from "./puzzleNavState";
 
 type SortOrder = "recent" | "az";
 type FilterStatus = "all" | "not_started" | "in_progress" | "complete";
@@ -192,7 +198,9 @@ function extractConstraintBullets(def: StoredPuzzle["def"]): string[] {
 
 export function FoldersPage() {
   const nav = useNavigate();
+  const location = useLocation();
   const initialPrefs = useMemo(readInitialFolderMenuPrefs, []);
+  const appliedReturnStateRef = useRef(false);
 
   const [rows, setRows] = useState<StoredPuzzle[]>([]);
   const [folders, setFolders] = useState<PuzzleFolder[]>([]);
@@ -246,6 +254,18 @@ export function FoldersPage() {
     setFolderPuzzleStatusMenuKey(null);
     setFolderRowMenuId(null);
   }, [activeFolderId]);
+
+  useEffect(() => {
+    if (appliedReturnStateRef.current) return;
+    const returned = readPuzzleReturnState(location.state);
+    if (!returned || returned.page !== "folders") return;
+
+    appliedReturnStateRef.current = true;
+    setActiveFolderId(returned.context?.activeFolderId ?? null);
+    restoreWindowScroll(returned.scrollY);
+
+    nav(currentRoutePath(location.pathname, location.search, location.hash), { replace: true, state: null });
+  }, [location.hash, location.pathname, location.search, location.state, nav]);
 
   const folderById = useMemo(() => {
     return new Map(folders.map((folder) => [folder.id, folder]));
@@ -424,7 +444,17 @@ export function FoldersPage() {
   }
 
   function openPuzzle(key: string) {
-    nav(`/p/${encodeURIComponent(key)}`);
+    nav(`/p/${encodeURIComponent(key)}`, {
+      state: withPuzzleOriginState(location.state, {
+        version: 1,
+        page: "folders",
+        path: currentRoutePath(location.pathname, location.search, location.hash),
+        scrollY: window.scrollY,
+        context: {
+          activeFolderId,
+        },
+      }),
+    });
   }
 
   return (

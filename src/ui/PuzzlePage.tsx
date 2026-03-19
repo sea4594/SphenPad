@@ -1,7 +1,7 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { deletePuzzle, getPuzzle, upsertPuzzle } from "../core/storage";
 import type { CellRC, PersistedPuzzle, PuzzleProgress, LineStroke, PuzzleDefinition } from "../core/model";
 import { fmtHMS } from "../core/time";
@@ -33,6 +33,7 @@ import { auth, firebaseEnabled, pullPuzzle, pushPuzzle } from "../firebase/clien
 import { deleteCloudPuzzle } from "../firebase/client";
 import { SettingsOverlay } from "./SettingsOverlay";
 import { useTheme } from "../app/theme";
+import { readPuzzleOriginState, withPuzzleReturnState } from "./puzzleNavState";
 
 function rcKey(rc: CellRC) {
   return `${rc.r},${rc.c}`;
@@ -273,7 +274,9 @@ export function PuzzlePage() {
   const { puzzleId } = useParams();
   const key = decodeURIComponent(puzzleId ?? "");
   const nav = useNavigate();
+  const location = useLocation();
   const { hideTimer } = useTheme();
+  const puzzleOriginState = readPuzzleOriginState(location.state);
 
   const [data, setData] = useState<PersistedPuzzle | null>(null);
   const [pauseMenuOpen, setPauseMenuOpen] = useState(false);
@@ -368,6 +371,13 @@ export function PuzzlePage() {
       }
       if (!local) {
         alert("Puzzle not found.");
+        if (puzzleOriginState) {
+          nav(puzzleOriginState.path, {
+            replace: true,
+            state: withPuzzleReturnState(undefined, puzzleOriginState),
+          });
+          return;
+        }
         nav("/");
         return;
       }
@@ -780,7 +790,7 @@ export function PuzzlePage() {
       if (userId) await pushPuzzle(userId, freshKey, freshData);
 
       if (freshKey !== key) {
-        nav(`/p/${encodeURIComponent(freshKey)}`);
+        nav(`/p/${encodeURIComponent(freshKey)}`, { replace: true, state: location.state });
         return;
       }
 
@@ -1306,7 +1316,21 @@ export function PuzzlePage() {
   return (
     <div className="shell" onPointerUpCapture={blurButtonAfterPointerUp}>
       <div className="topbar puzzleTopbar">
-        <button className="btn" onClick={() => nav("/")}>← Menu</button>
+        <button
+          className="btn"
+          onClick={() => {
+            if (!puzzleOriginState) {
+              nav("/");
+              return;
+            }
+            nav(puzzleOriginState.path, {
+              replace: true,
+              state: withPuzzleReturnState(undefined, puzzleOriginState),
+            });
+          }}
+        >
+          ← Menu
+        </button>
         <div className="puzzleTopbarRight">
           {!hideTimer ? <div className="puzzleTimer">{timeStr}</div> : null}
           <button className="btn" onClick={onPausePlayClick} title="Pause or resume" disabled={data.progress.status === "complete"}>
