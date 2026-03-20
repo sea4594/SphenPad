@@ -17,6 +17,18 @@ export type PuzzleOriginState = {
 const PUZZLE_ORIGIN_STATE_KEY = "sphenpadPuzzleOriginState";
 const PUZZLE_RETURN_STATE_KEY = "sphenpadPuzzleReturnState";
 
+function getPrimaryScrollElement(): HTMLElement | null {
+  if (typeof document === "undefined") return null;
+
+  const foldersOverlayScroll = document.querySelector<HTMLElement>(".foldersOverlayScroll");
+  if (foldersOverlayScroll) return foldersOverlayScroll;
+
+  const shellPage = document.querySelector<HTMLElement>(".shell > .page");
+  if (shellPage) return shellPage;
+
+  return document.querySelector<HTMLElement>(".page");
+}
+
 function asStateObject(state: unknown): Record<string, unknown> {
   if (state && typeof state === "object" && !Array.isArray(state)) {
     return { ...(state as Record<string, unknown>) };
@@ -104,14 +116,63 @@ export function currentRoutePath(pathname: string, search: string, hash: string)
   return `${pathname}${search}${hash}`;
 }
 
+export function readCurrentScrollPosition(): number {
+  if (typeof window === "undefined") return 0;
+  const primaryScrollElement = getPrimaryScrollElement();
+  if (primaryScrollElement) {
+    return Math.max(0, Math.trunc(primaryScrollElement.scrollTop));
+  }
+
+  return Math.max(
+    0,
+    Math.trunc(
+      window.scrollY
+      || window.pageYOffset
+      || document.documentElement.scrollTop
+      || 0
+    ),
+  );
+}
+
 export function restoreWindowScroll(scrollY: number) {
   const top = Math.max(0, Math.trunc(scrollY));
   if (typeof window === "undefined") return;
   console.log(`[PuzzleNav] Restoring scroll to position: ${top}`);
-  // Use setTimeout to ensure scroll happens after DOM layout is complete
-  window.setTimeout(() => {
+
+  const applyScroll = () => {
+    const primaryScrollElement = getPrimaryScrollElement();
+    if (primaryScrollElement) {
+      primaryScrollElement.scrollTo({ top, left: 0, behavior: "auto" });
+      return Math.max(0, Math.trunc(primaryScrollElement.scrollTop));
+    }
+
     window.scrollTo({ top, left: 0, behavior: "auto" });
-    console.log(`[PuzzleNav] Scroll restored to: ${window.scrollY}`);
+    return Math.max(
+      0,
+      Math.trunc(
+        window.scrollY
+        || window.pageYOffset
+        || document.documentElement.scrollTop
+        || 0,
+      ),
+    );
+  };
+
+  window.setTimeout(() => {
+    let attempts = 0;
+    const maxAttempts = 8;
+
+    const restoreAttempt = () => {
+      const actualTop = applyScroll();
+      attempts += 1;
+      if (actualTop === top || attempts >= maxAttempts) {
+        console.log(`[PuzzleNav] Scroll restored to: ${actualTop}`);
+        return;
+      }
+      window.requestAnimationFrame(restoreAttempt);
+    };
+
+    restoreAttempt();
   }, 0);
 }
 

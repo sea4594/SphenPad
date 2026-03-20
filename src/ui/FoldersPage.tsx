@@ -20,6 +20,7 @@ import { SettingsOverlay } from "./SettingsOverlay";
 import {
   clearReturnStateFromHistory,
   currentRoutePath,
+  readCurrentScrollPosition,
   readPuzzleReturnState,
   restoreWindowScroll,
   withPuzzleOriginState,
@@ -451,11 +452,12 @@ export function FoldersPage() {
   }
 
   function openPuzzle(key: string) {
+    const scrollY = readCurrentScrollPosition();
     console.log(
       "[FoldersPage] Capturing origin state for puzzle:",
       `key=${key}`,
       `activeFolderId=${activeFolderId}`,
-      `scrollY=${window.scrollY}`
+      `scrollY=${scrollY}`
     );
     
     nav(`/p/${encodeURIComponent(key)}`, {
@@ -463,7 +465,7 @@ export function FoldersPage() {
         version: 1,
         page: "folders",
         path: currentRoutePath(location.pathname, location.search, location.hash),
-        scrollY: window.scrollY,
+        scrollY,
         context: {
           activeFolderId,
         },

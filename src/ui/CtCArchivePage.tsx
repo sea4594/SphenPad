@@ -11,6 +11,7 @@ import { SettingsOverlay } from "./SettingsOverlay";
 import {
   clearReturnStateFromHistory,
   currentRoutePath,
+  readCurrentScrollPosition,
   readPuzzleReturnState,
   restoreWindowScroll,
   withPuzzleOriginState,
@@ -568,11 +569,12 @@ export function CtCArchivePage() {
         createdAt: existing?.createdAt ?? now,
       });
 
+      const scrollY = readCurrentScrollPosition();
       console.log(
         "[CtCArchivePage] Capturing origin state for puzzle:",
         `key=${key}`,
         `visibleRowsCount=${visibleRowsCount}`,
-        `scrollY=${window.scrollY}`
+        `scrollY=${scrollY}`
       );
       
       nav(`/p/${encodeURIComponent(key)}`, {
@@ -580,7 +582,7 @@ export function CtCArchivePage() {
           version: 1,
           page: "archive",
           path: currentRoutePath(location.pathname, location.search, location.hash),
-          scrollY: window.scrollY,
+          scrollY,
           context: {
             visibleRowsCount,
           },

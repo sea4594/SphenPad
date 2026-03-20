@@ -20,6 +20,7 @@ import { SettingsOverlay } from "./SettingsOverlay";
 import {
   clearReturnStateFromHistory,
   currentRoutePath,
+  readCurrentScrollPosition,
   readPuzzleReturnState,
   restoreWindowScroll,
   withPuzzleOriginState,
@@ -612,12 +613,13 @@ export function MainMenu() {
   }
 
   function openPuzzle(key: string) {
+    const scrollY = readCurrentScrollPosition();
     console.log(
       "[MainMenu] Capturing origin state for puzzle:",
       `key=${key}`,
       `foldersOpen=${foldersOpen}`,
       `activeFolderId=${activeFolderId}`,
-      `scrollY=${window.scrollY}`
+      `scrollY=${scrollY}`
     );
     
     nav(`/p/${encodeURIComponent(key)}`, {
@@ -625,7 +627,7 @@ export function MainMenu() {
         version: 1,
         page: "main-menu",
         path: currentRoutePath(location.pathname, location.search, location.hash),
-        scrollY: window.scrollY,
+        scrollY,
         context: {
           foldersOpen,
           activeFolderId,
