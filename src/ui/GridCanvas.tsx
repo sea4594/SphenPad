@@ -1076,18 +1076,11 @@ export function GridCanvas(props: {
       const clueCellX = cellX(first.c);
       const clueCellY = cellY(first.r);
       const clueInset = scaledCellPx(0.012, { previewMin: 0.35, normalMin: 0.8, max: 1.2 });
-      let clueFontPx = scaledCosmeticPx(12, { previewMin: 4.5, normalMin: 8, max: 14 });
+      const clueFontPx = scaledCosmeticPx(12, { previewMin: 4.5, normalMin: 8, max: 14 });
       const clueText = String(cage.sum);
       ctx.save();
       ctx.font = `${clueFontPx}px ${gridTextFont}, ${emojiTextFont}`;
-      let metrics = ctx.measureText(clueText);
-      const maxTextWidth = Math.max(1, cellPx - clueInset * 2);
-      if (metrics.width > maxTextWidth) {
-        const scaledPx = clueFontPx * (maxTextWidth / Math.max(1, metrics.width));
-        clueFontPx = Math.max(scaledCosmeticPx(7.2, { previewMin: 3.8, normalMin: 6, max: 8 }), scaledPx);
-        ctx.font = `${clueFontPx}px ${gridTextFont}, ${emojiTextFont}`;
-        metrics = ctx.measureText(clueText);
-      }
+      const metrics = ctx.measureText(clueText);
       ctx.textAlign = "left";
       ctx.textBaseline = "top";
       const clueX = clueCellX + clueInset;
@@ -1100,7 +1093,7 @@ export function GridCanvas(props: {
       ctx.beginPath();
       ctx.rect(clueCellX, clueCellY, cellPx, cellPx);
       ctx.clip();
-      ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
+      ctx.fillStyle = "rgba(255, 255, 255, 0.65)";
       ctx.fillRect(
         clueX,
         clueY,
