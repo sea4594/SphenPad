@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import twemoji from "twemoji";
 import { mapForcedPortraitPoint, readForcedPortraitDirection } from "../app/forcedPortrait";
 import type { CellRC, PuzzleDefinition, PuzzleProgress } from "../core/model";
 import { useTheme } from "../app/theme";
@@ -10,6 +11,7 @@ type LineSegmentDraft = { a: CellRC; b: CellRC; edgeTrack?: EdgeTrack };
 type LayerItem = NonNullable<PuzzleDefinition["cosmetics"]["underlays"]>[number];
 const LINE_NODE_DIAMETER = 1;
 const LINE_NODE_RADIUS = LINE_NODE_DIAMETER / 2;
+const TWEMOJI_SVG_BASE = "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/svg";
 
 function isLikelyMobileDevice(): boolean {
   if (typeof window === "undefined") return false;
@@ -74,6 +76,7 @@ export function GridCanvas(props: {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const dragRef = useRef<DragState | null>(null);
+  const twemojiCacheRef = useRef<Map<string, HTMLImageElement | "loading" | "error">>(new Map());
 
   const rows = Math.max(1, Number(def.rows ?? progress.cells.length ?? def.size));
   const cols = Math.max(1, Number(def.cols ?? progress.cells[0]?.length ?? def.size));
@@ -82,6 +85,7 @@ export function GridCanvas(props: {
   const [cellPx, setCellPx] = useState(56);
   const [bgImage, setBgImage] = useState<HTMLImageElement | null>(null);
   const [linePreview, setLinePreview] = useState<{ segments: LineSegmentDraft[]; kind: LineKindResolved } | null>(null);
+  const [emojiRenderVersion, setEmojiRenderVersion] = useState(0);
   const [mobileViewport, setMobileViewport] = useState(() => isLikelyMobileDevice());
 
   const basePad = Math.max(14, Math.round(cellPx * 0.32));
@@ -176,6 +180,69 @@ export function GridCanvas(props: {
   const worldY = useCallback((y: number) => originY + y * cellPx, [originY, cellPx]);
   const cellX = useCallback((c: number) => originX + c * cellPx, [originX, cellPx]);
   const cellY = useCallback((r: number) => originY + r * cellPx, [originY, cellPx]);
+
+  const twemojiCodepointVariants = useCallback((text: string): string[] => {
+    const value = text.trim();
+    if (!value) return [];
+
+    const canonical = twemoji.convert.toCodePoint(value);
+    if (!canonical) return [];
+
+    const withoutVs16 = canonical.replace(/(?:-fe0f)+(?=-|$)/g, "");
+    return Array.from(new Set([canonical, withoutVs16].filter(Boolean)));
+  }, []);
+
+  const twemojiVariantKey = useCallback((text: string): string | null => {
+    const variants = twemojiCodepointVariants(text);
+    if (!variants.length) return null;
+    return variants.join("|");
+  }, [twemojiCodepointVariants]);
+
+  const resolveTwemojiUrl = useCallback(async (text: string): Promise<string | null> => {
+    const variants = twemojiCodepointVariants(text);
+    for (const code of variants) {
+      const url = `${TWEMOJI_SVG_BASE}/${code}.svg`;
+      try {
+        const response = await fetch(url, { method: "HEAD" });
+        if (response.ok) return url;
+      } catch {
+        // Native text rendering remains the fallback when the asset cannot be resolved.
+      }
+    }
+    return null;
+  }, [twemojiCodepointVariants]);
+
+  const getTwemojiImage = useCallback((text: string): HTMLImageElement | null => {
+    const key = twemojiVariantKey(text);
+    if (!key) return null;
+
+    const cached = twemojiCacheRef.current.get(key);
+    if (cached instanceof HTMLImageElement) return cached;
+    if (cached === "loading" || cached === "error") return null;
+
+    twemojiCacheRef.current.set(key, "loading");
+
+    void (async () => {
+      const url = await resolveTwemojiUrl(text);
+      if (!url) {
+        twemojiCacheRef.current.set(key, "error");
+        return;
+      }
+
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.onload = () => {
+        twemojiCacheRef.current.set(key, img);
+        setEmojiRenderVersion((value) => value + 1);
+      };
+      img.onerror = () => {
+        twemojiCacheRef.current.set(key, "error");
+      };
+      img.src = url;
+    })();
+
+    return null;
+  }, [resolveTwemojiUrl, twemojiVariantKey]);
 
   const highlightRotationRad = (20 * Math.PI) / 180;
   const highlightAlpha = 0.82;
@@ -835,7 +902,13 @@ export function GridCanvas(props: {
           ctx.strokeText(text, tx, ty);
         }
         ctx.fillStyle = item.textColor ?? "#111111";
-        ctx.fillText(text, tx, ty);
+        const twemojiImage = hasEmoji ? getTwemojiImage(text) : null;
+        if (twemojiImage) {
+          const sz = textPx;
+          ctx.drawImage(twemojiImage, tx - sz / 2, ty - sz / 2, sz, sz);
+        } else {
+          ctx.fillText(text, tx, ty);
+        }
       }
 
       ctx.restore();
@@ -1671,6 +1744,8 @@ export function GridCanvas(props: {
     boardW,
     cellPx,
     def,
+    emojiRenderVersion,
+    getTwemojiImage,
     heightPx,
     highlightRotationRad,
     linePreview,
