@@ -5,6 +5,7 @@ import { makeInitialProgress } from "../core/scl";
 import { getPuzzle, listCompletedPuzzleKeys, upsertPuzzle } from "../core/storage";
 import { loadFromSudokuPad } from "../core/sudokupad";
 import { AppBrand } from "./AppBrand";
+import { GridCanvas } from "./GridCanvas";
 import { IconFolder, IconHome, IconImport, IconSettings } from "./icons";
 import { SelectControl } from "./SelectControl";
 import { SettingsOverlay } from "./SettingsOverlay";
@@ -335,6 +336,7 @@ export function CtCArchivePage() {
   const [maxLength, setMaxLength] = useState(initialFilterPrefs.maxLength);
   const [visibleRowsCount, setVisibleRowsCount] = useState(renderConfig.initialVisibleRows);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [previewedPuzzles, setPreviewedPuzzles] = useState<Map<string, any>>(new Map());
   const deferredQuery = useDeferredValue(query);
 
   useEffect(() => {
@@ -658,6 +660,27 @@ export function CtCArchivePage() {
     }
   }
 
+  async function loadPuzzlePreview(entry: PreparedArchiveEntry) {
+    if (previewedPuzzles.has(entry.id)) return;
+
+    const importSource = clean(entry.sourceId || entry.sudokuPadUrl);
+    if (!importSource) return;
+
+    try {
+      const cachedPayload = await loadCachedPuzzlePayload(entry);
+      if (!cachedPayload) return;
+
+      const { def } = await loadFromSudokuPad(importSource, {
+        preloadedPayload: cachedPayload,
+        skipCounterFetch: true,
+      });
+
+      setPreviewedPuzzles((prev) => new Map(prev).set(entry.id, def));
+    } catch {
+      // Silently fail for previews
+    }
+  }
+
   return (
     <div className="shell">
       <div className="topbar">
@@ -864,9 +887,15 @@ export function CtCArchivePage() {
                 const display = (value: string) => clean(value) || "~";
                 const constraints = entry.constraintTypes;
                 const collection = displayCollection(entry.collection);
+                const previewDef = previewedPuzzles.get(entry.id);
 
                 return (
-                  <div key={entry.id} className="card archiveEntryCard">
+                  <div
+                    key={entry.id}
+                    className="card archiveEntryCard"
+                    onMouseEnter={() => void loadPuzzlePreview(entry)}
+                    onClick={() => void loadPuzzlePreview(entry)}
+                  >
                     <div className="archiveEntryHead">
                       <div className="archiveEntryMain archiveDetailsGrid">
                         {entry.sudokuPadUrl ? (
@@ -947,11 +976,32 @@ export function CtCArchivePage() {
                             {formatDurationHm(entry.videoLengthSeconds)} - {display(entry.videoHost)}
                           </div>
                         </div>
+                      </div>
+
+                      <div className="archivePreviewStack">
+                        {previewDef ? (
+                          <div className="archivePreview" aria-hidden="true">
+                            <GridCanvas
+                              def={previewDef}
+                              progress={makeInitialProgress(previewDef)}
+                              onSelection={() => {}}
+                              onLineStroke={() => {}}
+                              onLineTapCell={() => {}}
+                              onLineTapEdge={() => {}}
+                              onDoubleCell={() => {}}
+                              interactive={false}
+                              previewMode
+                            />
+                          </div>
+                        ) : null}
 
                         <button
                           className="btn primary archiveImportBtn"
                           disabled={importingId === entry.id}
-                          onClick={() => onImport(entry)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            void onImport(entry);
+                          }}
                           aria-label="Import Puzzle"
                         >
                           {importingId === entry.id ? "Importing…" : "IMPORT"}
