@@ -312,14 +312,17 @@ export function GridCanvas(props: {
       const boardCard = (el.closest(".boardCard") as HTMLElement | null) ?? (el.parentElement as HTMLElement | null) ?? null;
       const boardColumn = (el.closest(".boardColumn") as HTMLElement | null) ?? null;
       const gridLayout = (el.closest(".gridLayout") as HTMLElement | null) ?? null;
+      const kbdPanel = (el.closest(".gridLayout")?.querySelector(".kbdPanel") as HTMLElement | null) ?? null;
       const pane = boardCard ?? boardColumn ?? el;
       const longSide = Math.max(window.innerWidth, window.innerHeight);
       const isMobile = isLikelyMobileDevice();
+      const visualViewportHeight = window.visualViewport?.height ?? window.innerHeight;
+      const wrapRect = el.getBoundingClientRect();
 
-      const width = Math.max(1, el.clientWidth || pane.clientWidth || window.innerWidth);
+      const width = Math.max(1, Math.floor(wrapRect.width) || el.clientWidth || pane.clientWidth || window.innerWidth);
 
       const topbar = document.querySelector(".topbar") as HTMLElement | null;
-      const normalizedViewportHeight = isMobile ? longSide : window.innerHeight;
+      const normalizedViewportHeight = isMobile ? longSide : visualViewportHeight;
       const viewportHeight = Math.max(180, normalizedViewportHeight - (topbar?.offsetHeight ?? 0) - 16);
       const measuredHeight = Math.max(
         boardCard?.clientHeight ?? 0,
@@ -327,10 +330,15 @@ export function GridCanvas(props: {
         gridLayout?.clientHeight ?? 0,
         pane.clientHeight || 0
       );
+      const controlsTop = kbdPanel?.getBoundingClientRect().top ?? Number.POSITIVE_INFINITY;
+      const frameBottom = Math.min(controlsTop, visualViewportHeight);
+      const spaceAboveControls = Math.max(0, Math.floor(frameBottom - wrapRect.top));
 
       const measuredOrPaneHeight = Math.max(1, measuredHeight || el.clientHeight || pane.clientHeight || 0);
       const height = previewMode
         ? measuredOrPaneHeight
+        : spaceAboveControls > 0
+          ? spaceAboveControls
         : measuredOrPaneHeight > 1
           ? measuredOrPaneHeight
           : viewportHeight;
