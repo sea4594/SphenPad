@@ -1320,7 +1320,7 @@ export function PuzzlePage() {
   }
 
   return (
-    <div className="shell" onPointerUpCapture={blurButtonAfterPointerUp}>
+    <div className="shell puzzleShell" onPointerUpCapture={blurButtonAfterPointerUp} onContextMenu={(e) => e.preventDefault()}>
       <div className="topbar puzzleTopbar">
         <button
           className="btn"
