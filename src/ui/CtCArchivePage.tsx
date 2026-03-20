@@ -1,12 +1,12 @@
-import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
+import { Fragment, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { normalizePuzzleKey } from "../core/id";
 import { makeInitialProgress } from "../core/scl";
-import { getPuzzle, listCompletedPuzzleKeys, upsertPuzzle } from "../core/storage";
+import { addPuzzleToFolder, createFolder, getPuzzle, listCompletedPuzzleKeys, listFolders, type PuzzleFolder, upsertPuzzle } from "../core/storage";
 import { loadFromSudokuPad } from "../core/sudokupad";
 import { AppBrand } from "./AppBrand";
 import { GridCanvas } from "./GridCanvas";
-import { IconFolder, IconHome, IconImport, IconSettings } from "./icons";
+import { IconFolder, IconHome, IconImport, IconPlay, IconSettings } from "./icons";
 import { SelectControl } from "./SelectControl";
 import { SettingsOverlay } from "./SettingsOverlay";
 import {
@@ -220,6 +220,20 @@ function sortByVideoLengthAsc(a: PreparedArchiveEntry, b: PreparedArchiveEntry):
   return av - bv;
 }
 
+function buildFolderPath(folder: PuzzleFolder, folderById: Map<string, PuzzleFolder>): string {
+  const names: string[] = [folder.name];
+  const seen = new Set<string>([folder.id]);
+  let cursor = folder.parentId ? folderById.get(folder.parentId) ?? null : null;
+
+  while (cursor && !seen.has(cursor.id)) {
+    names.unshift(cursor.name);
+    seen.add(cursor.id);
+    cursor = cursor.parentId ? folderById.get(cursor.parentId) ?? null : null;
+  }
+
+  return names.join(" / ");
+}
+
 async function waitForNextFrame(): Promise<void> {
   if (typeof window === "undefined") return;
   await new Promise<void>((resolve) => {
@@ -337,6 +351,18 @@ export function CtCArchivePage() {
   const [visibleRowsCount, setVisibleRowsCount] = useState(renderConfig.initialVisibleRows);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [previewedPuzzles, setPreviewedPuzzles] = useState<Map<string, any>>(new Map());
+  const [previewRulesByEntryId, setPreviewRulesByEntryId] = useState<Map<string, string>>(new Map());
+  const [rulesDialogEntry, setRulesDialogEntry] = useState<PreparedArchiveEntry | null>(null);
+  const [rulesDialogBusy, setRulesDialogBusy] = useState(false);
+  const [folders, setFolders] = useState<PuzzleFolder[]>([]);
+  const [importAllMenuOpen, setImportAllMenuOpen] = useState(false);
+  const [importAllBusy, setImportAllBusy] = useState("");
+  const [importToFolderDialogOpen, setImportToFolderDialogOpen] = useState(false);
+  const [importFolderNavId, setImportFolderNavId] = useState<string | null>(null);
+  const [importToFolderBusy, setImportToFolderBusy] = useState("");
+  const [folderCreateDialogOpen, setFolderCreateDialogOpen] = useState(false);
+  const [folderCreateName, setFolderCreateName] = useState("");
+  const [folderCreateBusy, setFolderCreateBusy] = useState("");
   const observerRef = useRef<IntersectionObserver | null>(null);
   const loadingQueueRef = useRef<Set<string>>(new Set());
   const loadCountRef = useRef<number>(0);
@@ -395,6 +421,11 @@ export function CtCArchivePage() {
     setCompletedKeys(new Set(completed));
   }
 
+  async function refreshFolders() {
+    const nextFolders = await listFolders();
+    setFolders(nextFolders);
+  }
+
   async function refreshRows() {
     setLoading(true);
     setError("");
@@ -419,6 +450,7 @@ export function CtCArchivePage() {
 
     const run = () => {
       void refreshCompleted();
+      void refreshFolders();
     };
 
     if (typeof window === "undefined") {
@@ -566,6 +598,33 @@ export function CtCArchivePage() {
 
   const hasMoreRows = visibleRowsCount < filteredRows.length;
 
+  const folderById = useMemo(() => {
+    return new Map(folders.map((folder) => [folder.id, folder]));
+  }, [folders]);
+
+  const importFolderTrail = useMemo(() => {
+    const out: PuzzleFolder[] = [];
+    if (!importFolderNavId) return out;
+
+    const seen = new Set<string>();
+    let cursor: PuzzleFolder | null = folderById.get(importFolderNavId) ?? null;
+    while (cursor && !seen.has(cursor.id)) {
+      out.unshift(cursor);
+      seen.add(cursor.id);
+      cursor = cursor.parentId ? folderById.get(cursor.parentId) ?? null : null;
+    }
+
+    return out;
+  }, [importFolderNavId, folderById]);
+
+  const importFolderChildren = useMemo(() => {
+    return [...folders]
+      .filter((folder) => (folder.parentId ?? null) === importFolderNavId)
+      .sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
+  }, [folders, importFolderNavId]);
+
+  const importFolderTarget = importFolderNavId ? folderById.get(importFolderNavId) ?? null : null;
+
   const onLoadMoreRows = useCallback(() => {
     setVisibleRowsCount((count) => count + renderConfig.visibleRowsStep);
   }, [renderConfig.visibleRowsStep]);
@@ -637,65 +696,184 @@ export function CtCArchivePage() {
     }
   }
 
-  async function onImport(entry: PreparedArchiveEntry) {
+  async function importArchiveEntry(entry: PreparedArchiveEntry): Promise<{ key: string; title: string }> {
     const importSource = clean(entry.sourceId || entry.sudokuPadUrl);
     if (!importSource) {
-      setUiMessage("No puzzle source ID found in archive metadata.");
-      return;
+      throw new Error("No puzzle source ID found in archive metadata.");
     }
 
+    const cachedPayload = await loadCachedPuzzlePayload(entry);
+    if (!cachedPayload) {
+      throw new Error("No cached puzzle payload found. Run archive sync to regenerate local cache files.");
+    }
+
+    const { key, def } = await loadFromSudokuPad(importSource, {
+      preloadedPayload: cachedPayload,
+      skipCounterFetch: true,
+    });
+
+    const fallbackAuthor = clean(entry.puzzleAuthor);
+    const collection = clean(entry.collection);
+    const importedDef = {
+      ...def,
+      meta: {
+        ...def.meta,
+        ...(fallbackAuthor && !clean(def.meta?.author) ? { author: fallbackAuthor } : {}),
+        ...(collection ? { collection } : {}),
+      },
+    };
+
+    const now = Date.now();
+    const existing = await getPuzzle(key);
+    const nextProgress = existing?.progress ?? makeInitialProgress(importedDef);
+
+    await upsertPuzzle(key, {
+      def: importedDef,
+      progress: nextProgress,
+      undo: existing?.undo ?? [],
+      redo: existing?.redo ?? [],
+      updatedAt: now,
+      createdAt: existing?.createdAt ?? now,
+    });
+
+    setCompletedKeys((prev) => {
+      const next = new Set(prev);
+      if (nextProgress.status === "complete") next.add(key);
+      else next.delete(key);
+      return next;
+    });
+
+    return { key, title: importedDef.meta?.title ?? key };
+  }
+
+  async function onImport(entry: PreparedArchiveEntry) {
     setUiMessage("");
     setImportingId(entry.id);
     await waitForNextFrame();
 
     try {
-      const cachedPayload = await loadCachedPuzzlePayload(entry);
-      if (!cachedPayload) {
-        setUiMessage("No cached puzzle payload found. Run archive sync to regenerate local cache files.");
-        return;
-      }
-
-      const { key, def } = await loadFromSudokuPad(importSource, {
-        preloadedPayload: cachedPayload,
-        skipCounterFetch: true,
-      });
-
-      const fallbackAuthor = clean(entry.puzzleAuthor);
-      const collection = clean(entry.collection);
-      const importedDef = {
-        ...def,
-        meta: {
-          ...def.meta,
-          ...(fallbackAuthor && !clean(def.meta?.author) ? { author: fallbackAuthor } : {}),
-          ...(collection ? { collection } : {}),
-        },
-      };
-
-      const now = Date.now();
-      const existing = await getPuzzle(key);
-      const nextProgress = existing?.progress ?? makeInitialProgress(importedDef);
-
-      await upsertPuzzle(key, {
-        def: importedDef,
-        progress: nextProgress,
-        undo: existing?.undo ?? [],
-        redo: existing?.redo ?? [],
-        updatedAt: now,
-        createdAt: existing?.createdAt ?? now,
-      });
-
-      setCompletedKeys((prev) => {
-        const next = new Set(prev);
-        if (nextProgress.status === "complete") next.add(key);
-        else next.delete(key);
-        return next;
-      });
-
-      setUiMessage(`Imported: ${importedDef.meta?.title ?? key}`);
+      const imported = await importArchiveEntry(entry);
+      setUiMessage(`Imported: ${imported.title}`);
     } catch (e: unknown) {
       setUiMessage(e instanceof Error ? e.message : String(e));
     } finally {
       setImportingId("");
+    }
+  }
+
+  async function onImportAndPlay(entry: PreparedArchiveEntry) {
+    setUiMessage("");
+    setImportingId(`${entry.id}:play`);
+    await waitForNextFrame();
+
+    try {
+      const imported = await importArchiveEntry(entry);
+      const scrollY = readCurrentScrollPosition();
+      nav(`/p/${encodeURIComponent(imported.key)}`, {
+        state: withPuzzleOriginState(location.state, {
+          version: 1,
+          page: "archive",
+          path: currentRoutePath(location.pathname, location.search, location.hash),
+          scrollY,
+          context: {
+            visibleRowsCount,
+          },
+        }),
+      });
+    } catch (e: unknown) {
+      setUiMessage(e instanceof Error ? e.message : String(e));
+    } finally {
+      setImportingId("");
+    }
+  }
+
+  async function onImportAllToMyPuzzles(entries: PreparedArchiveEntry[]) {
+    if (!entries.length || importAllBusy) return;
+    setImportAllBusy(`Importing 0/${entries.length}...`);
+    setImportAllMenuOpen(false);
+
+    let importedCount = 0;
+    try {
+      for (const [index, entry] of entries.entries()) {
+        await importArchiveEntry(entry);
+        importedCount = index + 1;
+        setImportAllBusy(`Importing ${importedCount}/${entries.length}...`);
+      }
+      setUiMessage(`Imported ${importedCount} puzzle${importedCount === 1 ? "" : "s"}.`);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setUiMessage(`Imported ${importedCount} then stopped: ${msg}`);
+    } finally {
+      setImportAllBusy("");
+    }
+  }
+
+  async function onImportAllToFolder(entries: PreparedArchiveEntry[], folderId: string) {
+    if (!entries.length || importToFolderBusy) return;
+    setImportToFolderBusy(`Importing 0/${entries.length}...`);
+
+    let importedCount = 0;
+    try {
+      for (const [index, entry] of entries.entries()) {
+        const imported = await importArchiveEntry(entry);
+        await addPuzzleToFolder(folderId, imported.key);
+        importedCount = index + 1;
+        setImportToFolderBusy(`Importing ${importedCount}/${entries.length}...`);
+      }
+
+      setUiMessage(`Imported ${importedCount} puzzle${importedCount === 1 ? "" : "s"} to folder.`);
+      setImportToFolderDialogOpen(false);
+      setImportFolderNavId(null);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setUiMessage(`Imported ${importedCount} then stopped: ${msg}`);
+    } finally {
+      setImportToFolderBusy("");
+      setImportAllBusy("");
+    }
+  }
+
+  function onOpenImportAllMenu() {
+    if (!filteredRows.length || importAllBusy) return;
+    setImportAllMenuOpen(true);
+  }
+
+  function onOpenImportToFolderDialog() {
+    setImportAllMenuOpen(false);
+    setImportFolderNavId(null);
+    setImportToFolderBusy("");
+    setImportToFolderDialogOpen(true);
+    void refreshFolders();
+  }
+
+  async function onCreateFolderForImport() {
+    const folderName = folderCreateName.trim();
+    if (!folderName || folderCreateBusy) return;
+
+    setFolderCreateBusy("Creating folder...");
+    try {
+      const created = await createFolder(folderName, importFolderNavId ?? null);
+      await refreshFolders();
+      setFolderCreateName("");
+      setFolderCreateDialogOpen(false);
+      setImportFolderNavId(created.id);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      alert(msg);
+    } finally {
+      setFolderCreateBusy("");
+    }
+  }
+
+  async function onOpenRulesDialog(entry: PreparedArchiveEntry) {
+    setRulesDialogEntry(entry);
+    if (previewRulesByEntryId.has(entry.id)) return;
+
+    setRulesDialogBusy(true);
+    try {
+      await loadPuzzlePreview(entry);
+    } finally {
+      setRulesDialogBusy(false);
     }
   }
 
@@ -725,19 +903,20 @@ export function CtCArchivePage() {
   }
 
   async function loadPuzzlePreview(entry: PreparedArchiveEntry) {
-    if (previewedPuzzles.has(entry.id)) return;
+    const cached = previewedPuzzles.get(entry.id);
+    if (cached) return cached;
 
     const importSource = clean(entry.sourceId || entry.sudokuPadUrl);
     if (!importSource) {
       loadingQueueRef.current.delete(entry.id);
-      return;
+      return null;
     }
 
     try {
       const cachedPayload = await loadCachedPuzzlePayload(entry);
       if (!cachedPayload) {
         loadingQueueRef.current.delete(entry.id);
-        return;
+        return null;
       }
 
       const { def } = await loadFromSudokuPad(importSource, {
@@ -746,8 +925,11 @@ export function CtCArchivePage() {
       });
 
       setPreviewedPuzzles((prev) => new Map(prev).set(entry.id, def));
+      setPreviewRulesByEntryId((prev) => new Map(prev).set(entry.id, clean(def.meta?.rules) || "No rules available."));
+      return def;
     } catch {
       // Silently fail for previews
+      return null;
     } finally {
       loadingQueueRef.current.delete(entry.id);
     }
@@ -933,6 +1115,14 @@ export function CtCArchivePage() {
               <button type="button" className="btn" onClick={onClearFilters}>
                 Clear Filters
               </button>
+              <button
+                type="button"
+                className="btn primary"
+                onClick={onOpenImportAllMenu}
+                disabled={!filteredRows.length || !!importAllBusy}
+              >
+                {importAllBusy ? importAllBusy : "Import All"}
+              </button>
             </div>
           </div>
 
@@ -1063,33 +1253,67 @@ export function CtCArchivePage() {
                       </div>
 
                       <div className="archivePreviewStack">
-                        {previewDef ? (
-                          <div className="archivePreview" aria-hidden="true">
-                            <GridCanvas
-                              def={previewDef}
-                              progress={makeInitialProgress(previewDef)}
-                              onSelection={() => {}}
-                              onLineStroke={() => {}}
-                              onLineTapCell={() => {}}
-                              onLineTapEdge={() => {}}
-                              onDoubleCell={() => {}}
-                              interactive={false}
-                              previewMode
-                            />
-                          </div>
-                        ) : null}
-
                         <button
-                          className="btn primary archiveImportBtn"
-                          disabled={importingId === entry.id}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            void onImport(entry);
+                          className="archivePreviewButton"
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            void onOpenRulesDialog(entry);
                           }}
-                          aria-label="Import Puzzle"
+                          aria-label={`Open rules for ${display(entry.title)}`}
                         >
-                          {importingId === entry.id ? "Importing…" : "IMPORT"}
+                          {previewDef ? (
+                            <div className="archivePreview" aria-hidden="true">
+                              <GridCanvas
+                                def={previewDef}
+                                progress={makeInitialProgress(previewDef)}
+                                onSelection={() => {}}
+                                onLineStroke={() => {}}
+                                onLineTapCell={() => {}}
+                                onLineTapEdge={() => {}}
+                                onDoubleCell={() => {}}
+                                interactive={false}
+                                previewMode
+                              />
+                            </div>
+                          ) : (
+                            <div className="archivePreview archivePreviewPlaceholder">
+                              <span className="muted">Loading preview...</span>
+                            </div>
+                          )}
                         </button>
+
+                        <div className="archiveImportActions">
+                          <button
+                            className="btn primary archiveImportBtn archiveActionHalf"
+                            disabled={importingId === entry.id || importingId === `${entry.id}:play` || !!importAllBusy}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              void onImport(entry);
+                            }}
+                            aria-label="Import puzzle"
+                            title="Import"
+                            type="button"
+                          >
+                            <IconImport />
+                          </button>
+                          <button
+                            className="btn primary archiveImportBtn archiveActionHalf"
+                            disabled={importingId === entry.id || importingId === `${entry.id}:play` || !!importAllBusy}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              void onImportAndPlay(entry);
+                            }}
+                            aria-label="Import and play puzzle"
+                            title="Import and Play"
+                            type="button"
+                          >
+                            <span className="archiveDualIcon" aria-hidden="true">
+                              <IconImport />
+                              <IconPlay />
+                            </span>
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -1111,6 +1335,211 @@ export function CtCArchivePage() {
           </div>
         </div>
       </div>
+
+      {rulesDialogEntry ? (
+        <div className="overlayBackdrop" onClick={() => (!rulesDialogBusy ? setRulesDialogEntry(null) : null)}>
+          <div
+            className="card archiveRulesDialog"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Puzzle rules"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <button
+              className="btn archiveRulesClose"
+              onClick={() => setRulesDialogEntry(null)}
+              type="button"
+              aria-label="Close rules"
+            >
+              x
+            </button>
+            <div className="menuSectionTitle" style={{ marginRight: 28 }}>Puzzle rules</div>
+            <div className="muted" style={{ marginTop: 6, overflowWrap: "anywhere" }}>
+              {clean(rulesDialogEntry.title) || "(untitled)"}
+            </div>
+            <div className="archiveRulesBody">
+              {rulesDialogBusy
+                ? "Loading rules..."
+                : (previewRulesByEntryId.get(rulesDialogEntry.id) || "No rules available.")}
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {importAllMenuOpen ? (
+        <div className="overlayBackdrop" onClick={() => setImportAllMenuOpen(false)}>
+          <div
+            className="card confirmDialogCard"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Import all options"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div style={{ fontSize: 22, fontWeight: 800 }}>Import All</div>
+            <div className="muted" style={{ marginTop: 6 }}>
+              Import {filteredRows.length} puzzle{filteredRows.length === 1 ? "" : "s"} from the current filtered list.
+            </div>
+            <div className="row" style={{ marginTop: 14, justifyContent: "flex-end" }}>
+              <button
+                className="btn"
+                onClick={() => {
+                  void onImportAllToMyPuzzles(filteredRows);
+                }}
+                type="button"
+              >
+                Import to My Puzzles
+              </button>
+              <button
+                className="btn primary"
+                onClick={onOpenImportToFolderDialog}
+                type="button"
+              >
+                Import to Folder
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {importToFolderDialogOpen ? (
+        <div className="overlayBackdrop" onClick={() => setImportToFolderDialogOpen(false)}>
+          <div
+            className="card folderPickerCard"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Import to folder"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
+              <div className="menuSectionTitle">Import to Folder</div>
+              <button className="btn" onClick={() => setImportToFolderDialogOpen(false)} type="button">Close</button>
+            </div>
+            <div className="muted" style={{ marginTop: 4 }}>
+              {filteredRows.length} puzzle{filteredRows.length === 1 ? "" : "s"} will be imported.
+            </div>
+
+            <div className="row folderBreadcrumbRow folderBreadcrumbTrail" style={{ marginTop: 10 }}>
+              {[{ id: null, name: "Top Level" }, ...importFolderTrail].map((folder, index) => (
+                <Fragment key={`archive-import-folder-trail-${folder.id ?? "top-level"}`}>
+                  {index > 0 ? <span className="folderBreadcrumbSeparator" aria-hidden="true">-&gt;</span> : null}
+                  <button
+                    className={`folderBreadcrumbLink ${importFolderNavId === folder.id ? "is-active" : ""}`}
+                    onClick={() => setImportFolderNavId(folder.id)}
+                    type="button"
+                  >
+                    {folder.name}
+                  </button>
+                </Fragment>
+              ))}
+            </div>
+
+            <div className="addFolderDialogBody">
+              <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
+                <div className="muted" style={{ fontSize: 13 }}>
+                  {importFolderTarget
+                    ? buildFolderPath(importFolderTarget, folderById)
+                    : "Select a folder location"}
+                </div>
+                <button
+                  className="btn"
+                  onClick={() => {
+                    setFolderCreateName("");
+                    setFolderCreateDialogOpen(true);
+                  }}
+                  disabled={!!folderCreateBusy}
+                  type="button"
+                >
+                  New Folder
+                </button>
+              </div>
+
+              <div className="menuPuzzleList addFolderNavigatorList" style={{ marginTop: 10 }}>
+                {importFolderChildren.map((folder) => (
+                  <button
+                    key={`archive-import-folder-nav-${folder.id}`}
+                    className="card folderBrowserItem"
+                    onClick={() => setImportFolderNavId(folder.id)}
+                    type="button"
+                  >
+                    <div className="row" style={{ gap: 6, alignItems: "flex-start" }}>
+                      <IconFolder />
+                      <div style={{ fontWeight: 700, overflowWrap: "anywhere" }}>{folder.name}</div>
+                    </div>
+                  </button>
+                ))}
+                {!importFolderChildren.length ? <div className="muted">No folders in this location.</div> : null}
+              </div>
+
+              <div className="muted addFolderBusyLine">{importToFolderBusy || "\u00A0"}</div>
+
+              <div className="row addFolderDialogFooter">
+                <button
+                  className="btn primary"
+                  onClick={() => {
+                    if (!importFolderTarget) return;
+                    void onImportAllToFolder(filteredRows, importFolderTarget.id);
+                  }}
+                  disabled={!importFolderTarget || !!importToFolderBusy}
+                  type="button"
+                >
+                  {importToFolderBusy ? "Importing..." : "Add Here"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {folderCreateDialogOpen ? (
+        <div
+          className="overlayBackdrop folderCreateOverlayBackdrop"
+          onClick={() => (!folderCreateBusy ? setFolderCreateDialogOpen(false) : null)}
+        >
+          <div
+            className="card confirmDialogCard"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Create folder"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div style={{ fontSize: 22, fontWeight: 800 }}>Create folder</div>
+            <div className="muted" style={{ marginTop: 6 }}>
+              {importFolderTarget
+                ? `Parent: ${buildFolderPath(importFolderTarget, folderById)}`
+                : "Parent: Top-level folders"}
+            </div>
+            <div className="row" style={{ marginTop: 10 }}>
+              <input
+                className="url"
+                placeholder="Folder name"
+                value={folderCreateName}
+                onChange={(event) => setFolderCreateName(event.target.value)}
+                autoFocus
+              />
+            </div>
+            <div className="row" style={{ marginTop: 14, justifyContent: "flex-end" }}>
+              <button
+                className="btn"
+                onClick={() => setFolderCreateDialogOpen(false)}
+                disabled={!!folderCreateBusy}
+                type="button"
+              >
+                Cancel
+              </button>
+              <button
+                className="btn primary"
+                onClick={() => {
+                  void onCreateFolderForImport();
+                }}
+                disabled={!folderCreateName.trim() || !!folderCreateBusy}
+                type="button"
+              >
+                {folderCreateBusy ? "Creating..." : "New Folder"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {settingsOpen ? <SettingsOverlay onClose={() => setSettingsOpen(false)} /> : null}
     </div>

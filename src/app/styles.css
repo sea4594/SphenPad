@@ -1060,6 +1060,40 @@ input.url {
   width: 100%;
 }
 
+.archiveImportActions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.archiveActionHalf {
+  min-width: 0;
+  display: inline-grid;
+  place-items: center;
+  padding: 0;
+}
+
+.archiveDualIcon {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.archivePreviewButton {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  border-radius: 0;
+  cursor: pointer;
+}
+
+.archivePreviewButton:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 .archiveImportText {
   display: inline-grid;
   justify-items: center;
@@ -1085,6 +1119,11 @@ input.url {
   place-items: center;
 }
 
+.archivePreviewPlaceholder {
+  padding: 8px;
+  text-align: center;
+}
+
 .archivePreview .boardSurface {
   width: 100%;
   height: 100%;
@@ -1095,6 +1134,40 @@ input.url {
   height: auto !important;
   max-width: 100% !important;
   max-height: 100% !important;
+}
+
+.archiveRulesDialog {
+  width: min(780px, 100%);
+  max-height: min(82dvh, 760px);
+  overflow: hidden;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  position: relative;
+}
+
+.archiveRulesClose {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  min-width: 28px;
+  min-height: 28px;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  display: inline-grid;
+  place-items: center;
+  font-size: 14px;
+}
+
+.archiveRulesBody {
+  margin-top: 10px;
+  min-height: 0;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 15px;
+  line-height: 1.45;
+  color: var(--text);
 }
 
 .puzzlePage {
