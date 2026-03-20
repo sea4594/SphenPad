@@ -1668,7 +1668,10 @@ input.url {
   }
 
   .archivePreviewStack {
-    display: none;
+    --archive-preview-size: 112px;
+    display: flex;
+    width: var(--archive-preview-size);
+    justify-self: end;
   }
 
   .themeGrid {
