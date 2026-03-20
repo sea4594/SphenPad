@@ -11,7 +11,11 @@ type LineSegmentDraft = { a: CellRC; b: CellRC; edgeTrack?: EdgeTrack };
 type LayerItem = NonNullable<PuzzleDefinition["cosmetics"]["underlays"]>[number];
 const LINE_NODE_DIAMETER = 1;
 const LINE_NODE_RADIUS = LINE_NODE_DIAMETER / 2;
-const TWEMOJI_SVG_BASE = "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/svg";
+const TWEMOJI_OPTIONS = {
+  base: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/",
+  folder: "svg",
+  ext: ".svg",
+} as const;
 
 function isLikelyMobileDevice(): boolean {
   if (typeof window === "undefined") return false;
@@ -181,36 +185,20 @@ export function GridCanvas(props: {
   const cellX = useCallback((c: number) => originX + c * cellPx, [originX, cellPx]);
   const cellY = useCallback((r: number) => originY + r * cellPx, [originY, cellPx]);
 
-  const twemojiCodepointVariants = useCallback((text: string): string[] => {
+  const twemojiVariantKey = useCallback((text: string): string | null => {
     const value = text.trim();
-    if (!value) return [];
-
+    if (!value) return null;
     const canonical = twemoji.convert.toCodePoint(value);
-    if (!canonical) return [];
-
-    const withoutVs16 = canonical.replace(/(?:-fe0f)+(?=-|$)/g, "");
-    return Array.from(new Set([canonical, withoutVs16].filter(Boolean)));
+    return canonical || null;
   }, []);
 
-  const twemojiVariantKey = useCallback((text: string): string | null => {
-    const variants = twemojiCodepointVariants(text);
-    if (!variants.length) return null;
-    return variants.join("|");
-  }, [twemojiCodepointVariants]);
+  const resolveTwemojiUrl = useCallback((text: string): string | null => {
+    const parsed = twemoji.parse(text.trim(), TWEMOJI_OPTIONS);
+    if (!parsed || parsed === text.trim()) return null;
 
-  const resolveTwemojiUrl = useCallback(async (text: string): Promise<string | null> => {
-    const variants = twemojiCodepointVariants(text);
-    for (const code of variants) {
-      const url = `${TWEMOJI_SVG_BASE}/${code}.svg`;
-      try {
-        const response = await fetch(url, { method: "HEAD" });
-        if (response.ok) return url;
-      } catch {
-        // Native text rendering remains the fallback when the asset cannot be resolved.
-      }
-    }
-    return null;
-  }, [twemojiCodepointVariants]);
+    const srcMatch = parsed.match(/src="([^"]+)"/i);
+    return srcMatch?.[1] ?? null;
+  }, []);
 
   const getTwemojiImage = useCallback((text: string): HTMLImageElement | null => {
     const key = twemojiVariantKey(text);
@@ -222,13 +210,13 @@ export function GridCanvas(props: {
 
     twemojiCacheRef.current.set(key, "loading");
 
-    void (async () => {
-      const url = await resolveTwemojiUrl(text);
-      if (!url) {
-        twemojiCacheRef.current.set(key, "error");
-        return;
-      }
+    const url = resolveTwemojiUrl(text);
+    if (!url) {
+      twemojiCacheRef.current.set(key, "error");
+      return null;
+    }
 
+    void (() => {
       const img = new Image();
       img.crossOrigin = "anonymous";
       img.onload = () => {
