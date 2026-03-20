@@ -203,6 +203,7 @@ export function FoldersPage() {
   const location = useLocation();
   const initialPrefs = useMemo(readInitialFolderMenuPrefs, []);
   const appliedReturnStateRef = useRef(false);
+  const [initialFoldersLoaded, setInitialFoldersLoaded] = useState(false);
 
   const [rows, setRows] = useState<StoredPuzzle[]>([]);
   const [folders, setFolders] = useState<PuzzleFolder[]>([]);
@@ -232,6 +233,7 @@ export function FoldersPage() {
     const [nextRows, nextFolders] = await Promise.all([listPuzzles(), listFolders()]);
     setRows(nextRows);
     setFolders(nextFolders);
+    setInitialFoldersLoaded(true);
   }
 
   useEffect(() => {
@@ -246,10 +248,11 @@ export function FoldersPage() {
   }, [sortOrder, filterStatus]);
 
   useEffect(() => {
+    if (!initialFoldersLoaded) return;
     if (activeFolderId && !folders.some((folder) => folder.id === activeFolderId)) {
       setActiveFolderId(null);
     }
-  }, [activeFolderId, folders]);
+  }, [activeFolderId, folders, initialFoldersLoaded]);
 
   useEffect(() => {
     setFolderPuzzleMenu(null);
