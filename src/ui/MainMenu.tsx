@@ -330,6 +330,7 @@ export function MainMenu() {
   const [folderSortOrder, setFolderSortOrder] = useState<SortOrder>(initialFolderPrefs.sortOrder);
   const [folderFilterStatus, setFolderFilterStatus] = useState<FilterStatus>(initialFolderPrefs.filterStatus);
   const [activeFolderId, setActiveFolderId] = useState<string | null>(null);
+  const [initialFoldersLoaded, setInitialFoldersLoaded] = useState(false);
   const [folderCreateDialogOpen, setFolderCreateDialogOpen] = useState(false);
   const [folderCreateContext, setFolderCreateContext] = useState<"folders" | "add-dialog">("folders");
   const [folderCreateName, setFolderCreateName] = useState("");
@@ -352,6 +353,7 @@ export function MainMenu() {
 
   async function refreshFolders() {
     setFolders(await listFolders());
+    setInitialFoldersLoaded(true);
   }
 
   useEffect(() => {
@@ -382,10 +384,11 @@ export function MainMenu() {
   }, [folderSortOrder, folderFilterStatus]);
 
   useEffect(() => {
+    if (!initialFoldersLoaded) return;
     if (activeFolderId && !folders.some((folder) => folder.id === activeFolderId)) {
       setActiveFolderId(null);
     }
-  }, [activeFolderId, folders]);
+  }, [activeFolderId, folders, initialFoldersLoaded]);
 
   useEffect(() => {
     if (addFolderNavId && !folders.some((folder) => folder.id === addFolderNavId)) {
