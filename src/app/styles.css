@@ -1664,7 +1664,8 @@ input.url {
   }
 
   .archiveEntryHead {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
   }
 
   .archivePreviewStack {
@@ -1672,6 +1673,14 @@ input.url {
     display: flex;
     width: var(--archive-preview-size);
     justify-self: end;
+  }
+
+  .archiveEntryMain,
+  .archiveInfoText,
+  .archiveEntryTitle,
+  .archiveVideoTitle {
+    min-width: 0;
+    overflow-wrap: anywhere;
   }
 
   .themeGrid {
