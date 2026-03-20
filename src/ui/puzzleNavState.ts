@@ -17,16 +17,36 @@ export type PuzzleOriginState = {
 const PUZZLE_ORIGIN_STATE_KEY = "sphenpadPuzzleOriginState";
 const PUZZLE_RETURN_STATE_KEY = "sphenpadPuzzleReturnState";
 
-function getPrimaryScrollElement(): HTMLElement | null {
-  if (typeof document === "undefined") return null;
+function readWindowScrollTop(): number {
+  if (typeof window === "undefined") return 0;
+  return Math.max(
+    0,
+    Math.trunc(
+      window.scrollY
+      || window.pageYOffset
+      || document.documentElement.scrollTop
+      || document.body?.scrollTop
+      || 0,
+    ),
+  );
+}
 
-  const foldersOverlayScroll = document.querySelector<HTMLElement>(".foldersOverlayScroll");
-  if (foldersOverlayScroll) return foldersOverlayScroll;
+function getScrollableElements(): HTMLElement[] {
+  if (typeof document === "undefined") return [];
+  const out: HTMLElement[] = [];
+  const push = (el: HTMLElement | null) => {
+    if (!el || out.includes(el)) return;
+    out.push(el);
+  };
 
-  const shellPage = document.querySelector<HTMLElement>(".shell > .page");
-  if (shellPage) return shellPage;
+  push(document.querySelector<HTMLElement>(".foldersOverlayScroll"));
+  push(document.querySelector<HTMLElement>(".shell > .page"));
+  push(document.querySelector<HTMLElement>(".page"));
+  push(document.scrollingElement instanceof HTMLElement ? document.scrollingElement : null);
+  push(document.documentElement);
+  push(document.body);
 
-  return document.querySelector<HTMLElement>(".page");
+  return out;
 }
 
 function asStateObject(state: unknown): Record<string, unknown> {
@@ -117,55 +137,40 @@ export function currentRoutePath(pathname: string, search: string, hash: string)
 }
 
 export function readCurrentScrollPosition(): number {
-  if (typeof window === "undefined") return 0;
-  const primaryScrollElement = getPrimaryScrollElement();
-  if (primaryScrollElement) {
-    return Math.max(0, Math.trunc(primaryScrollElement.scrollTop));
+  if (typeof window === "undefined" || typeof document === "undefined") return 0;
+  const candidatePositions = [readWindowScrollTop()];
+  for (const el of getScrollableElements()) {
+    candidatePositions.push(Math.max(0, Math.trunc(el.scrollTop || 0)));
   }
-
-  return Math.max(
-    0,
-    Math.trunc(
-      window.scrollY
-      || window.pageYOffset
-      || document.documentElement.scrollTop
-      || 0
-    ),
-  );
+  return Math.max(...candidatePositions);
 }
 
 export function restoreWindowScroll(scrollY: number) {
   const top = Math.max(0, Math.trunc(scrollY));
-  if (typeof window === "undefined") return;
+  if (typeof window === "undefined" || typeof document === "undefined") return;
   console.log(`[PuzzleNav] Restoring scroll to position: ${top}`);
 
   const applyScroll = () => {
-    const primaryScrollElement = getPrimaryScrollElement();
-    if (primaryScrollElement) {
-      primaryScrollElement.scrollTo({ top, left: 0, behavior: "auto" });
-      return Math.max(0, Math.trunc(primaryScrollElement.scrollTop));
+    window.scrollTo({ top, left: 0, behavior: "auto" });
+    for (const el of getScrollableElements()) {
+      if (typeof el.scrollTo === "function") {
+        el.scrollTo({ top, left: 0, behavior: "auto" });
+      } else {
+        el.scrollTop = top;
+      }
     }
 
-    window.scrollTo({ top, left: 0, behavior: "auto" });
-    return Math.max(
-      0,
-      Math.trunc(
-        window.scrollY
-        || window.pageYOffset
-        || document.documentElement.scrollTop
-        || 0,
-      ),
-    );
+    return readCurrentScrollPosition();
   };
 
   window.setTimeout(() => {
     let attempts = 0;
-    const maxAttempts = 8;
+    const maxAttempts = 32;
 
     const restoreAttempt = () => {
       const actualTop = applyScroll();
       attempts += 1;
-      if (actualTop === top || attempts >= maxAttempts) {
+      if (Math.abs(actualTop - top) <= 1 || attempts >= maxAttempts) {
         console.log(`[PuzzleNav] Scroll restored to: ${actualTop}`);
         return;
       }
