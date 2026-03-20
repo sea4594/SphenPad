@@ -1093,7 +1093,7 @@ export function GridCanvas(props: {
       ctx.beginPath();
       ctx.rect(clueCellX, clueCellY, cellPx, cellPx);
       ctx.clip();
-      ctx.fillStyle = "rgba(255, 255, 255, 0.65)";
+      ctx.fillStyle = "rgba(255, 255, 255, 0.75)";
       ctx.fillRect(
         clueX,
         clueY,
