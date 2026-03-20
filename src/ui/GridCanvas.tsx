@@ -74,7 +74,6 @@ export function GridCanvas(props: {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const dragRef = useRef<DragState | null>(null);
-  const twemojiCacheRef = useRef<Map<string, HTMLImageElement | "loading" | "error">>(new Map());
 
   const rows = Math.max(1, Number(def.rows ?? progress.cells.length ?? def.size));
   const cols = Math.max(1, Number(def.cols ?? progress.cells[0]?.length ?? def.size));
@@ -83,7 +82,6 @@ export function GridCanvas(props: {
   const [cellPx, setCellPx] = useState(56);
   const [bgImage, setBgImage] = useState<HTMLImageElement | null>(null);
   const [linePreview, setLinePreview] = useState<{ segments: LineSegmentDraft[]; kind: LineKindResolved } | null>(null);
-  const [emojiRenderVersion, setEmojiRenderVersion] = useState(0);
   const [mobileViewport, setMobileViewport] = useState(() => isLikelyMobileDevice());
 
   const basePad = Math.max(14, Math.round(cellPx * 0.32));
@@ -178,64 +176,6 @@ export function GridCanvas(props: {
   const worldY = useCallback((y: number) => originY + y * cellPx, [originY, cellPx]);
   const cellX = useCallback((c: number) => originX + c * cellPx, [originX, cellPx]);
   const cellY = useCallback((r: number) => originY + r * cellPx, [originY, cellPx]);
-
-  const twemojiCodepointVariants = useCallback((text: string): string[] => {
-    const value = text.trim();
-    if (!value) return [];
-    const cpsFull: number[] = [];
-    for (const ch of Array.from(value)) {
-      const cp = ch.codePointAt(0);
-      if (cp == null) continue;
-      cpsFull.push(cp);
-    }
-    if (!cpsFull.length) return [];
-
-    const toCode = (arr: number[]) => arr.map((cp) => cp.toString(16)).join("-");
-    const cpsNoVs16 = cpsFull.filter((cp) => cp !== 0xfe0f);
-    const variants = [toCode(cpsFull), toCode(cpsNoVs16)].filter((s) => s.length > 0);
-    return Array.from(new Set(variants));
-  }, []);
-
-  const twemojiVariantKey = useCallback((text: string): string | null => {
-    const variants = twemojiCodepointVariants(text);
-    if (!variants.length) return null;
-    return variants.join("|");
-  }, [twemojiCodepointVariants]);
-
-  const getTwemojiImage = useCallback((text: string): HTMLImageElement | null => {
-    const key = twemojiVariantKey(text);
-    if (!key) return null;
-    const cached = twemojiCacheRef.current.get(key);
-    if (cached instanceof HTMLImageElement) return cached;
-    if (cached === "loading" || cached === "error") return null;
-
-    const codeVariants = twemojiCodepointVariants(text);
-    if (!codeVariants.length) return null;
-    const cdnBases = [
-      "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/svg",
-      "https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/svg",
-    ];
-    const urls = codeVariants.flatMap((code) => cdnBases.map((base) => `${base}/${code}.svg`));
-    let idx = 0;
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-    twemojiCacheRef.current.set(key, "loading");
-    img.onload = () => {
-      twemojiCacheRef.current.set(key, img);
-      setEmojiRenderVersion((v) => v + 1);
-    };
-    img.onerror = () => {
-      idx += 1;
-      if (idx < urls.length) {
-        img.src = urls[idx] as string;
-        return;
-      }
-      twemojiCacheRef.current.set(key, "error");
-      setEmojiRenderVersion((v) => v + 1);
-    };
-    img.src = urls[0] as string;
-    return null;
-  }, [twemojiCodepointVariants, twemojiVariantKey]);
 
   const highlightRotationRad = (20 * Math.PI) / 180;
   const highlightAlpha = 0.82;
@@ -895,13 +835,7 @@ export function GridCanvas(props: {
           ctx.strokeText(text, tx, ty);
         }
         ctx.fillStyle = item.textColor ?? "#111111";
-        const twemoji = hasEmoji ? getTwemojiImage(text) : null;
-        if (twemoji) {
-          const sz = textPx;
-          ctx.drawImage(twemoji, tx - sz / 2, ty - sz / 2, sz, sz);
-        } else {
-          ctx.fillText(text, tx, ty);
-        }
+        ctx.fillText(text, tx, ty);
       }
 
       ctx.restore();
@@ -1737,8 +1671,6 @@ export function GridCanvas(props: {
     boardW,
     cellPx,
     def,
-    emojiRenderVersion,
-    getTwemojiImage,
     heightPx,
     highlightRotationRad,
     linePreview,
