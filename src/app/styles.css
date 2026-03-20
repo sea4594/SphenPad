@@ -1659,7 +1659,8 @@ input.url {
   .boardCard {
     height: 100%;
     max-height: 100%;
-    padding: 2px;
+    padding: 0;
+    border-width: 0;
   }
 
   .kbdPanel {

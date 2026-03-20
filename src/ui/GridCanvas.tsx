@@ -343,11 +343,11 @@ export function GridCanvas(props: {
           ? measuredOrPaneHeight
           : viewportHeight;
 
-      const sideMargin = previewMode ? 0 : 8;
-      const topBottomPad = previewMode ? 0 : 8;
+      const sideMargin = previewMode ? 0 : isMobile ? 0 : 8;
+      const topBottomPad = previewMode ? 0 : isMobile ? 0 : 8;
       const spanX = cols + outsideLeft + outsideRight;
       const spanY = rows + outsideTop + outsideBottom;
-      const padFactor = isMobile ? 0.14 : 0.68;
+      const padFactor = isMobile ? 0 : 0.68;
       const availableWidth = Math.max(1, width - sideMargin * 2);
       const availableHeight = Math.max(1, height - topBottomPad * 2);
       const byWidth = availableWidth / (spanX + padFactor);
@@ -378,6 +378,10 @@ export function GridCanvas(props: {
 
       if (!fits(next)) {
         next = hardMinCell;
+      }
+
+      while (next < maxCell && fits(next + 1)) {
+        next += 1;
       }
 
       setCellPx(next);
