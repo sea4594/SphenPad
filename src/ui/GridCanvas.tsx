@@ -1032,7 +1032,7 @@ export function GridCanvas(props: {
         }
         const x = cellX(rc.c);
         const y = cellY(rc.r);
-        const inset = scaledCellPx(0.055, { previewMin: 0.8, normalMin: 2, max: 3 });
+        const inset = scaledCellPx(0.065, { previewMin: 1, normalMin: 2.4, max: 3.4 });
         const neighbors = {
           up: `${rc.r - 1},${rc.c}`,
           right: `${rc.r},${rc.c + 1}`,
@@ -1074,8 +1074,8 @@ export function GridCanvas(props: {
       const first = cage.cells[0];
       if (hasMatchingCornerLabel(cage.cells, cage.sum)) return;
       const clueFontPx = scaledCosmeticPx(12, { previewMin: 4.5, normalMin: 8, max: 14 });
-      const clueX = cellX(first.c) + scaledCellPx(0.055, { previewMin: 0.8, normalMin: 2, max: 3 });
-      const clueY = cellY(first.r) + scaledCellPx(0.055, { previewMin: 0.8, normalMin: 2, max: 3 });
+      const clueX = cellX(first.c) + scaledCellPx(0.03, { previewMin: 0.4, normalMin: 1, max: 1.6 });
+      const clueY = cellY(first.r) + scaledCellPx(0.03, { previewMin: 0.4, normalMin: 1, max: 1.6 });
       const clueText = String(cage.sum);
       ctx.save();
       ctx.font = `${clueFontPx}px ${gridTextFont}, ${emojiTextFont}`;
