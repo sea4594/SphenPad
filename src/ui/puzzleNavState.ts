@@ -54,6 +54,13 @@ function normalizeOriginState(raw: unknown): PuzzleOriginState | null {
 export function withPuzzleOriginState(routeState: unknown, origin: PuzzleOriginState): Record<string, unknown> {
   const next = asStateObject(routeState);
   next[PUZZLE_ORIGIN_STATE_KEY] = origin;
+  console.log(
+    "[PuzzleNav] Origin state captured:",
+    `page=${origin.page}`,
+    `path=${origin.path}`,
+    `scrollY=${origin.scrollY}`,
+    origin.context ? `context=${JSON.stringify(origin.context)}` : ""
+  );
   return next;
 }
 
@@ -65,12 +72,32 @@ export function withPuzzleReturnState(routeState: unknown, origin: PuzzleOriginS
 
 export function readPuzzleOriginState(routeState: unknown): PuzzleOriginState | null {
   const stateObj = asStateObject(routeState);
-  return normalizeOriginState(stateObj[PUZZLE_ORIGIN_STATE_KEY]);
+  const originState = normalizeOriginState(stateObj[PUZZLE_ORIGIN_STATE_KEY]);
+  if (originState) {
+    console.log(
+      "[PuzzleNav] Origin state read:",
+      `page=${originState.page}`,
+      `path=${originState.path}`,
+      `scrollY=${originState.scrollY}`,
+      originState.context ? `context=${JSON.stringify(originState.context)}` : ""
+    );
+  }
+  return originState;
 }
 
 export function readPuzzleReturnState(routeState: unknown): PuzzleOriginState | null {
   const stateObj = asStateObject(routeState);
-  return normalizeOriginState(stateObj[PUZZLE_RETURN_STATE_KEY]);
+  const returnState = normalizeOriginState(stateObj[PUZZLE_RETURN_STATE_KEY]);
+  if (returnState) {
+    console.log(
+      "[PuzzleNav] Return state read:",
+      `page=${returnState.page}`,
+      `path=${returnState.path}`,
+      `scrollY=${returnState.scrollY}`,
+      returnState.context ? `context=${JSON.stringify(returnState.context)}` : ""
+    );
+  }
+  return returnState;
 }
 
 export function currentRoutePath(pathname: string, search: string, hash: string): string {
@@ -80,9 +107,11 @@ export function currentRoutePath(pathname: string, search: string, hash: string)
 export function restoreWindowScroll(scrollY: number) {
   const top = Math.max(0, Math.trunc(scrollY));
   if (typeof window === "undefined") return;
+  console.log(`[PuzzleNav] Restoring scroll to position: ${top}`);
   // Use setTimeout to ensure scroll happens after DOM layout is complete
   window.setTimeout(() => {
     window.scrollTo({ top, left: 0, behavior: "auto" });
+    console.log(`[PuzzleNav] Scroll restored to: ${window.scrollY}`);
   }, 0);
 }
 

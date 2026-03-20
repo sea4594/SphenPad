@@ -402,8 +402,17 @@ export function MainMenu() {
     if (!returned || returned.page !== "main-menu") return;
 
     appliedReturnStateRef.current = true;
-    setFoldersOpen(Boolean(returned.context?.foldersOpen));
-    setActiveFolderId(returned.context?.activeFolderId ?? null);
+    const foldersOpenTarget = Boolean(returned.context?.foldersOpen);
+    const activeFolderIdTarget = returned.context?.activeFolderId ?? null;
+    
+    console.log(
+      "[MainMenu] Restoring state:",
+      `foldersOpen=${foldersOpenTarget}`,
+      `activeFolderId=${activeFolderIdTarget}`
+    );
+    
+    setFoldersOpen(foldersOpenTarget);
+    setActiveFolderId(activeFolderIdTarget);
     restoreWindowScroll(returned.scrollY);
     clearReturnStateFromHistory();
   }, [location.state]);
@@ -603,6 +612,14 @@ export function MainMenu() {
   }
 
   function openPuzzle(key: string) {
+    console.log(
+      "[MainMenu] Capturing origin state for puzzle:",
+      `key=${key}`,
+      `foldersOpen=${foldersOpen}`,
+      `activeFolderId=${activeFolderId}`,
+      `scrollY=${window.scrollY}`
+    );
+    
     nav(`/p/${encodeURIComponent(key)}`, {
       state: withPuzzleOriginState(location.state, {
         version: 1,

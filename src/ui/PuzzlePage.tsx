@@ -277,6 +277,12 @@ export function PuzzlePage() {
   const location = useLocation();
   const { hideTimer } = useTheme();
   const puzzleOriginState = readPuzzleOriginState(location.state);
+  
+  if (!puzzleOriginState) {
+    console.log(`[PuzzlePage] No origin state found - puzzle opened without prior navigation context`);
+  } else {
+    console.log(`[PuzzlePage] Opened puzzle with origin state`, puzzleOriginState);
+  }
 
   const [data, setData] = useState<PersistedPuzzle | null>(null);
   const [pauseMenuOpen, setPauseMenuOpen] = useState(false);
@@ -1319,10 +1325,19 @@ export function PuzzlePage() {
         <button
           className="btn"
           onClick={() => {
+            console.log(`[PuzzlePage] User exiting puzzle, key=${key}`);
             if (!puzzleOriginState) {
+              console.log(`[PuzzlePage] No origin state available - returning to main menu`);
               nav("/");
               return;
             }
+            console.log(
+              "[PuzzlePage] Returning to origin:",
+              `page=${puzzleOriginState.page}`,
+              `path=${puzzleOriginState.path}`,
+              `scrollY=${puzzleOriginState.scrollY}`,
+              puzzleOriginState.context ? `context=${JSON.stringify(puzzleOriginState.context)}` : ""
+            );
             nav(puzzleOriginState.path, {
               replace: true,
               state: withPuzzleReturnState(undefined, puzzleOriginState),

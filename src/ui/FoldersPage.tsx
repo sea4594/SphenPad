@@ -262,7 +262,14 @@ export function FoldersPage() {
     if (!returned || returned.page !== "folders") return;
 
     appliedReturnStateRef.current = true;
-    setActiveFolderId(returned.context?.activeFolderId ?? null);
+    const activeFolderIdTarget = returned.context?.activeFolderId ?? null;
+    
+    console.log(
+      "[FoldersPage] Restoring state:",
+      `activeFolderId=${activeFolderIdTarget}`
+    );
+    
+    setActiveFolderId(activeFolderIdTarget);
     restoreWindowScroll(returned.scrollY);
     clearReturnStateFromHistory();
   }, [location.state]);
@@ -444,6 +451,13 @@ export function FoldersPage() {
   }
 
   function openPuzzle(key: string) {
+    console.log(
+      "[FoldersPage] Capturing origin state for puzzle:",
+      `key=${key}`,
+      `activeFolderId=${activeFolderId}`,
+      `scrollY=${window.scrollY}`
+    );
+    
     nav(`/p/${encodeURIComponent(key)}`, {
       state: withPuzzleOriginState(location.state, {
         version: 1,
