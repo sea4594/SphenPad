@@ -1073,25 +1073,39 @@ export function GridCanvas(props: {
       if (!cage.sum) return;
       const first = cage.cells[0];
       if (hasMatchingCornerLabel(cage.cells, cage.sum)) return;
-      const clueFontPx = scaledCosmeticPx(12, { previewMin: 4.5, normalMin: 8, max: 14 });
-      const clueX = cellX(first.c) + scaledCellPx(0.03, { previewMin: 0.4, normalMin: 1, max: 1.6 });
-      const clueY = cellY(first.r) + scaledCellPx(0.03, { previewMin: 0.4, normalMin: 1, max: 1.6 });
+      const clueCellX = cellX(first.c);
+      const clueCellY = cellY(first.r);
+      const clueInset = scaledCellPx(0.012, { previewMin: 0.35, normalMin: 0.8, max: 1.2 });
+      let clueFontPx = scaledCosmeticPx(12, { previewMin: 4.5, normalMin: 8, max: 14 });
       const clueText = String(cage.sum);
       ctx.save();
       ctx.font = `${clueFontPx}px ${gridTextFont}, ${emojiTextFont}`;
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      const metrics = ctx.measureText(clueText);
+      let metrics = ctx.measureText(clueText);
+      const maxTextWidth = Math.max(1, cellPx - clueInset * 2);
+      if (metrics.width > maxTextWidth) {
+        const scaledPx = clueFontPx * (maxTextWidth / Math.max(1, metrics.width));
+        clueFontPx = Math.max(scaledCosmeticPx(7.2, { previewMin: 3.8, normalMin: 6, max: 8 }), scaledPx);
+        ctx.font = `${clueFontPx}px ${gridTextFont}, ${emojiTextFont}`;
+        metrics = ctx.measureText(clueText);
+      }
+      ctx.textAlign = "left";
+      ctx.textBaseline = "top";
+      const clueX = clueCellX + clueInset;
+      const clueY = clueCellY + clueInset;
       const textWidth = Math.max(metrics.width, clueFontPx * 0.6);
-      const textHeight = clueFontPx * 0.86;
-      const padX = Math.max(1, clueFontPx * 0.2);
-      const padY = Math.max(0.6, clueFontPx * 0.1);
+      const measuredHeight = metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent;
+      const textHeight = Math.max(clueFontPx * 0.86, Number.isFinite(measuredHeight) ? measuredHeight : 0);
+      const padX = Math.max(0.5, clueFontPx * 0.06);
+      const padY = Math.max(0.4, clueFontPx * 0.05);
+      ctx.beginPath();
+      ctx.rect(clueCellX, clueCellY, cellPx, cellPx);
+      ctx.clip();
       ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
       ctx.fillRect(
-        clueX - (textWidth / 2 + padX),
-        clueY - (textHeight / 2 + padY),
-        textWidth + padX * 2,
-        textHeight + padY * 2,
+        clueX,
+        clueY,
+        textWidth + padX,
+        textHeight + padY,
       );
       ctx.fillStyle = cage.textColor ?? cage.color ?? "#111111";
       ctx.fillText(clueText, clueX, clueY);
