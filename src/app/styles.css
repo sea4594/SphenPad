@@ -933,6 +933,16 @@ input.url {
   font-size: 12px;
 }
 
+.archiveFilterActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.archiveImportAllBtn {
+  margin-left: auto;
+}
+
 .archiveLenInput {
   min-width: 0;
   max-width: none;

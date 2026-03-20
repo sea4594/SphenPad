@@ -1117,7 +1117,7 @@ export function CtCArchivePage() {
               </button>
               <button
                 type="button"
-                className="btn primary"
+                className="btn primary archiveImportAllBtn"
                 onClick={onOpenImportAllMenu}
                 disabled={!filteredRows.length || !!importAllBusy}
               >
@@ -1353,9 +1353,11 @@ export function CtCArchivePage() {
             >
               x
             </button>
-            <div className="menuSectionTitle" style={{ marginRight: 28 }}>Puzzle rules</div>
-            <div className="muted" style={{ marginTop: 6, overflowWrap: "anywhere" }}>
+            <div className="menuSectionTitle" style={{ marginRight: 28 }}>
               {clean(rulesDialogEntry.title) || "(untitled)"}
+            </div>
+            <div className="muted" style={{ marginTop: 6, overflowWrap: "anywhere" }}>
+              {clean(rulesDialogEntry.puzzleAuthor) || "Unknown author"}
             </div>
             <div className="archiveRulesBody">
               {rulesDialogBusy
