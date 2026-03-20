@@ -18,6 +18,7 @@ import { IconFolder, IconHome, IconImport, IconSettings } from "./icons";
 import { SelectControl } from "./SelectControl";
 import { SettingsOverlay } from "./SettingsOverlay";
 import {
+  clearReturnStateFromHistory,
   currentRoutePath,
   readPuzzleReturnState,
   restoreWindowScroll,
@@ -263,9 +264,8 @@ export function FoldersPage() {
     appliedReturnStateRef.current = true;
     setActiveFolderId(returned.context?.activeFolderId ?? null);
     restoreWindowScroll(returned.scrollY);
-
-    nav(currentRoutePath(location.pathname, location.search, location.hash), { replace: true, state: null });
-  }, [location.hash, location.pathname, location.search, location.state, nav]);
+    clearReturnStateFromHistory();
+  }, [location.state]);
 
   const folderById = useMemo(() => {
     return new Map(folders.map((folder) => [folder.id, folder]));

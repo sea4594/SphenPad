@@ -9,6 +9,7 @@ import { IconFolder, IconHome, IconImport, IconSettings } from "./icons";
 import { SelectControl } from "./SelectControl";
 import { SettingsOverlay } from "./SettingsOverlay";
 import {
+  clearReturnStateFromHistory,
   currentRoutePath,
   readPuzzleReturnState,
   restoreWindowScroll,
@@ -373,9 +374,8 @@ export function CtCArchivePage() {
       setVisibleRowsCount(Math.max(renderConfig.initialVisibleRows, Math.trunc(savedVisibleRowsCount)));
     }
     restoreWindowScroll(returned.scrollY);
-
-    nav(currentRoutePath(location.pathname, location.search, location.hash), { replace: true, state: null });
-  }, [location.hash, location.pathname, location.search, location.state, nav, renderConfig.initialVisibleRows]);
+    clearReturnStateFromHistory();
+  }, [location.state, renderConfig.initialVisibleRows]);
 
   async function refreshCompleted() {
     const completed = await listCompletedPuzzleKeys();

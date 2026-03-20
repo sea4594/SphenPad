@@ -80,9 +80,17 @@ export function currentRoutePath(pathname: string, search: string, hash: string)
 export function restoreWindowScroll(scrollY: number) {
   const top = Math.max(0, Math.trunc(scrollY));
   if (typeof window === "undefined") return;
-  window.requestAnimationFrame(() => {
-    window.requestAnimationFrame(() => {
-      window.scrollTo({ top, left: 0, behavior: "auto" });
-    });
-  });
+  // Use setTimeout to ensure scroll happens after DOM layout is complete
+  window.setTimeout(() => {
+    window.scrollTo({ top, left: 0, behavior: "auto" });
+  }, 0);
+}
+
+export function clearReturnStateFromHistory() {
+  if (typeof window === "undefined" || typeof window.history === "undefined") return;
+  try {
+    window.history.replaceState(null, "", window.location.href);
+  } catch {
+    // Silently fail if replaceState is not allowed
+  }
 }
