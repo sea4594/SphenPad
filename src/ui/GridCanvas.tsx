@@ -328,30 +328,30 @@ export function GridCanvas(props: {
         pane.clientHeight || 0
       );
 
+      const measuredOrPaneHeight = Math.max(1, measuredHeight || el.clientHeight || pane.clientHeight || 0);
       const height = previewMode
-        ? Math.max(1, measuredHeight || el.clientHeight || pane.clientHeight || viewportHeight)
-        : isMobile
-          ? Math.max(160, viewportHeight)
-          : measuredHeight > 220
-            ? measuredHeight
-            : viewportHeight;
+        ? measuredOrPaneHeight
+        : measuredOrPaneHeight > 1
+          ? measuredOrPaneHeight
+          : viewportHeight;
 
       const sideMargin = previewMode ? 0 : 8;
       const topBottomPad = previewMode ? 0 : 8;
       const spanX = cols + outsideLeft + outsideRight;
       const spanY = rows + outsideTop + outsideBottom;
       const padFactor = isMobile ? 0.14 : 0.68;
-      const availableWidth = Math.max(previewMode ? 1 : 240, width - sideMargin * 2);
-      const availableHeight = Math.max(previewMode ? 1 : 220, height - topBottomPad * 2);
+      const availableWidth = Math.max(1, width - sideMargin * 2);
+      const availableHeight = Math.max(1, height - topBottomPad * 2);
       const byWidth = availableWidth / (spanX + padFactor);
       const byHeight = availableHeight / (spanY + padFactor);
 
       const desktop = !isMobile && window.matchMedia("(hover: hover) and (pointer: fine)").matches && longSide >= 1080;
       const mobileMinCell = 21;
       const desktopMinCell = 14;
+      const hardMinCell = previewMode ? 1 : 8;
       const maxCell = desktop ? 96 : 72;
-      const minCell = previewMode ? 2 : isMobile ? mobileMinCell : desktopMinCell;
-      let next = Math.floor(Math.min(maxCell, Math.max(minCell, Math.min(byWidth, byHeight))));
+      const preferredMinCell = previewMode ? 2 : isMobile ? mobileMinCell : desktopMinCell;
+      let next = Math.floor(Math.min(maxCell, Math.max(preferredMinCell, Math.min(byWidth, byHeight))));
 
       const fits = (cell: number) => {
         const basePadding = Math.max(14, Math.round(cell * 0.32));
@@ -365,9 +365,11 @@ export function GridCanvas(props: {
         return fullWidth <= availableWidth && fullHeight <= availableHeight;
       };
 
-      while (next > minCell && !fits(next)) next -= 1;
-      if (!isMobile) {
-        while (next > 8 && !fits(next)) next -= 1;
+      while (next > preferredMinCell && !fits(next)) next -= 1;
+      while (next > hardMinCell && !fits(next)) next -= 1;
+
+      if (!fits(next)) {
+        next = hardMinCell;
       }
 
       setCellPx(next);
