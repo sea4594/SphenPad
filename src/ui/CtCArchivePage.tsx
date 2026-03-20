@@ -338,6 +338,9 @@ export function CtCArchivePage() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [previewedPuzzles, setPreviewedPuzzles] = useState<Map<string, any>>(new Map());
   const observerRef = useRef<IntersectionObserver | null>(null);
+  const loadingQueueRef = useRef<Set<string>>(new Set());
+  const loadCountRef = useRef<number>(0);
+  const pendingQueueRef = useRef<PreparedArchiveEntry[]>([]);
   const deferredQuery = useDeferredValue(query);
 
   useEffect(() => {
@@ -529,7 +532,7 @@ export function CtCArchivePage() {
   useEffect(() => {
     const observerOptions = {
       root: null,
-      rootMargin: "200px",
+      rootMargin: "50px",
       threshold: 0,
     };
 
@@ -537,10 +540,10 @@ export function CtCArchivePage() {
       entries.forEach((entry) => {
         if (entry.isIntersecting) {
           const entryId = (entry.target as HTMLElement).dataset.entryId;
-          if (entryId && !previewedPuzzles.has(entryId)) {
+          if (entryId) {
             const entry_data = visibleRows.find((r) => r.id === entryId);
             if (entry_data) {
-              void loadPuzzlePreview(entry_data);
+              queuePreviewLoad(entry_data);
             }
           }
         }
@@ -549,12 +552,17 @@ export function CtCArchivePage() {
 
     observerRef.current = new IntersectionObserver(handleIntersect, observerOptions);
 
+    // Immediately preload all currently visible rows
+    visibleRows.forEach((entry) => {
+      queuePreviewLoad(entry);
+    });
+
     return () => {
       if (observerRef.current) {
         observerRef.current.disconnect();
       }
     };
-  }, [visibleRows, previewedPuzzles]);
+  }, [visibleRows]);
 
   const hasMoreRows = visibleRowsCount < filteredRows.length;
 
@@ -691,15 +699,46 @@ export function CtCArchivePage() {
     }
   }
 
+  async function processPreviewQueue() {
+    if (loadCountRef.current >= 2 || pendingQueueRef.current.length === 0) return;
+
+    const entry = pendingQueueRef.current.shift();
+    if (!entry) return;
+
+    loadCountRef.current++;
+    try {
+      await loadPuzzlePreview(entry);
+    } finally {
+      loadCountRef.current--;
+      if (pendingQueueRef.current.length > 0) {
+        await processPreviewQueue();
+      }
+    }
+  }
+
+  function queuePreviewLoad(entry: PreparedArchiveEntry) {
+    if (loadingQueueRef.current.has(entry.id) || previewedPuzzles.has(entry.id)) return;
+
+    loadingQueueRef.current.add(entry.id);
+    pendingQueueRef.current.push(entry);
+    void processPreviewQueue();
+  }
+
   async function loadPuzzlePreview(entry: PreparedArchiveEntry) {
     if (previewedPuzzles.has(entry.id)) return;
 
     const importSource = clean(entry.sourceId || entry.sudokuPadUrl);
-    if (!importSource) return;
+    if (!importSource) {
+      loadingQueueRef.current.delete(entry.id);
+      return;
+    }
 
     try {
       const cachedPayload = await loadCachedPuzzlePayload(entry);
-      if (!cachedPayload) return;
+      if (!cachedPayload) {
+        loadingQueueRef.current.delete(entry.id);
+        return;
+      }
 
       const { def } = await loadFromSudokuPad(importSource, {
         preloadedPayload: cachedPayload,
@@ -709,6 +748,8 @@ export function CtCArchivePage() {
       setPreviewedPuzzles((prev) => new Map(prev).set(entry.id, def));
     } catch {
       // Silently fail for previews
+    } finally {
+      loadingQueueRef.current.delete(entry.id);
     }
   }
 
@@ -938,8 +979,6 @@ export function CtCArchivePage() {
                         attachCardObserver(el, entry.id);
                       }
                     }}
-                    onMouseEnter={() => void loadPuzzlePreview(entry)}
-                    onClick={() => void loadPuzzlePreview(entry)}
                   >
                     <div className="archiveEntryHead">
                       <div className="archiveEntryMain archiveDetailsGrid">
