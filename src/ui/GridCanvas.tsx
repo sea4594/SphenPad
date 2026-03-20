@@ -1801,52 +1801,6 @@ export function GridCanvas(props: {
     return { r, c };
   }
 
-  function centerHopsFromPointer(
-    last: CellRC,
-    clientX: number,
-    clientY: number,
-    opts?: { diagonalAssistThreshold?: number; diagonalAssistMinRatio?: number }
-  ): CellRC[] {
-    const gp = eventGridPoint(clientX, clientY);
-    if (!gp) return [];
-
-    const target = { x: gp.gx - 0.5, y: gp.gy - 0.5 };
-    const diagonalAssistThreshold = Math.max(0, Math.min(0.49, opts?.diagonalAssistThreshold ?? 0.22));
-    const diagonalAssistMinRatio = Math.max(0, Math.min(1, opts?.diagonalAssistMinRatio ?? 0));
-    const hops: CellRC[] = [];
-    let cur = { ...last };
-
-    for (let i = 0; i < 10; i++) {
-      const dx = target.x - cur.c;
-      const dy = target.y - cur.r;
-      const absDx = Math.abs(dx);
-      const absDy = Math.abs(dy);
-      const primaryDelta = Math.max(absDx, absDy);
-      const secondaryDelta = Math.min(absDx, absDy);
-      const stepCX = dx > 0 ? 1 : dx < 0 ? -1 : 0;
-      const stepRY = dy > 0 ? 1 : dy < 0 ? -1 : 0;
-      let stepC = absDx >= 0.5 ? stepCX : 0;
-      let stepR = absDy >= 0.5 ? stepRY : 0;
-      const diagonalIntent =
-        secondaryDelta >= diagonalAssistThreshold &&
-        (primaryDelta <= 1e-9 || (secondaryDelta / primaryDelta) >= diagonalAssistMinRatio);
-
-      // Widen diagonal routing corridor so near-corner drags prefer diagonal hops.
-      if (!stepC && stepR && stepCX && diagonalIntent) stepC = stepCX;
-      if (!stepR && stepC && stepRY && diagonalIntent) stepR = stepRY;
-
-      if (!stepR && !stepC) break;
-
-      const next = { r: cur.r + stepR, c: cur.c + stepC };
-      if (!inBounds(next.r, next.c)) break;
-      if (next.r === cur.r && next.c === cur.c) break;
-      hops.push(next);
-      cur = next;
-    }
-
-    return hops;
-  }
-
   function centerLineHopsFromPointer(
     last: CellRC,
     fromClientX: number,
@@ -2053,6 +2007,7 @@ export function GridCanvas(props: {
     e.currentTarget.setPointerCapture(e.pointerId);
 
     const rc = { r: pt.r, c: pt.c };
+    const centerStart = nearestCellCenter(e.clientX, e.clientY) ?? rc;
     if (progress.activeTool === "line") {
       const kind = resolveInitialLineKind(pt);
       const edgeTapCandidate = kind === "edge" ? pickEdgeByPointer(e.clientX, e.clientY, 0.47) ?? undefined : undefined;
@@ -2083,10 +2038,12 @@ export function GridCanvas(props: {
       const nextSelection = new Set<string>();
       nextSelection.add(key);
       dragRef.current = {
-        path: [rc],
+        path: [centerStart],
         segments: [],
-        last: rc,
+        last: centerStart,
         moved: false,
+        lastClientX: e.clientX,
+        lastClientY: e.clientY,
         visited: new Set([key]),
         selectionSet: nextSelection,
         selectionMode: "replace",
@@ -2107,10 +2064,12 @@ export function GridCanvas(props: {
     else nextSelection.add(key);
 
     dragRef.current = {
-      path: [rc],
+      path: [centerStart],
       segments: [],
-      last: rc,
+      last: centerStart,
       moved: false,
+      lastClientX: e.clientX,
+      lastClientY: e.clientY,
       visited: new Set([key]),
       selectionSet: nextSelection,
       selectionMode: mode,
@@ -2193,7 +2152,16 @@ export function GridCanvas(props: {
       drag.selectionDragActive = true;
     }
 
-    const hops = centerHopsFromPointer(drag.last, e.clientX, e.clientY, { diagonalAssistThreshold: 0.26 });
+    const hops = centerLineHopsFromPointer(
+      drag.last,
+      drag.lastClientX ?? e.clientX,
+      drag.lastClientY ?? e.clientY,
+      e.clientX,
+      e.clientY,
+      { hotZoneRadius: LINE_NODE_RADIUS, samplesPerCell: 24, maxHops: 12 }
+    );
+    drag.lastClientX = e.clientX;
+    drag.lastClientY = e.clientY;
     if (!hops.length) return;
 
     const nextSelection = drag.selectionSet ? new Set(drag.selectionSet) : new Set<string>();
