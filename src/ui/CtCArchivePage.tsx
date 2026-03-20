@@ -337,6 +337,7 @@ export function CtCArchivePage() {
   const [visibleRowsCount, setVisibleRowsCount] = useState(renderConfig.initialVisibleRows);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [previewedPuzzles, setPreviewedPuzzles] = useState<Map<string, any>>(new Map());
+  const observerRef = useRef<IntersectionObserver | null>(null);
   const deferredQuery = useDeferredValue(query);
 
   useEffect(() => {
@@ -525,6 +526,36 @@ export function CtCArchivePage() {
     [filteredRows, visibleRowsCount],
   );
 
+  useEffect(() => {
+    const observerOptions = {
+      root: null,
+      rootMargin: "200px",
+      threshold: 0,
+    };
+
+    const handleIntersect = (entries: IntersectionObserverEntry[]) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          const entryId = (entry.target as HTMLElement).dataset.entryId;
+          if (entryId && !previewedPuzzles.has(entryId)) {
+            const entry_data = visibleRows.find((r) => r.id === entryId);
+            if (entry_data) {
+              void loadPuzzlePreview(entry_data);
+            }
+          }
+        }
+      });
+    };
+
+    observerRef.current = new IntersectionObserver(handleIntersect, observerOptions);
+
+    return () => {
+      if (observerRef.current) {
+        observerRef.current.disconnect();
+      }
+    };
+  }, [visibleRows, previewedPuzzles]);
+
   const hasMoreRows = visibleRowsCount < filteredRows.length;
 
   const onLoadMoreRows = useCallback(() => {
@@ -680,6 +711,15 @@ export function CtCArchivePage() {
       // Silently fail for previews
     }
   }
+
+  const attachCardObserver = useCallback(
+    (element: HTMLDivElement | null, entryId: string) => {
+      if (!element || !observerRef.current) return;
+      element.dataset.entryId = entryId;
+      observerRef.current.observe(element);
+    },
+    [],
+  );
 
   return (
     <div className="shell">
@@ -893,6 +933,11 @@ export function CtCArchivePage() {
                   <div
                     key={entry.id}
                     className="card archiveEntryCard"
+                    ref={(el) => {
+                      if (el) {
+                        attachCardObserver(el, entry.id);
+                      }
+                    }}
                     onMouseEnter={() => void loadPuzzlePreview(entry)}
                     onClick={() => void loadPuzzlePreview(entry)}
                   >

@@ -941,8 +941,6 @@ input.url {
 .archiveEntryCard {
   display: grid;
   gap: 10px;
-  content-visibility: auto;
-  contain-intrinsic-size: 220px;
 }
 
 .archiveEntryHead {
