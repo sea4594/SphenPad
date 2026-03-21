@@ -1699,6 +1699,8 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
       if (!center) return null;
       const span = spanFromCells(cells);
       const rawLegacyStroke = item?.borderColor ?? item?.outlineC ?? item?.c1 ?? item?.c;
+      // Default target to 'over' if not specified
+      const target = typeof item?.target === "string" && item.target.trim() ? item.target : "over";
       return {
         center,
         width: typeof item?.width === "number" ? item.width : span?.width,
@@ -1711,7 +1713,7 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
         textColor: normalizeColorToken(item?.textColor ?? item?.fontC ?? item?.color),
         textSize: typeof item?.size === "number" ? Math.max(8, item.size * 28) : undefined,
         angle: typeof item?.angle === "number" ? item.angle : undefined,
-        target: typeof item?.target === "string" ? item.target : undefined,
+        target,
         renderOrder: nextRenderOrder(),
       };
     })
