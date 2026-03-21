@@ -233,7 +233,7 @@ export function GridCanvas(props: {
   }, [resolveTwemojiUrl, twemojiVariantKey]);
 
   const highlightRotationRad = (20 * Math.PI) / 180;
-  const highlightAlpha = 0.82;
+  const highlightAlpha = 0.65;
   const gridTextFont = '"Lato", "Noto Sans", "Segoe UI", ui-sans-serif, sans-serif';
   const emojiTextFont = useMemo(() => {
     const candidates = [
@@ -1307,10 +1307,11 @@ export function GridCanvas(props: {
     };
 
     // Mirror SudokuPad board layering so constraints stay readable over user cell coloring.
-    // underlay -> highlights -> arrows -> cages -> cell-grids -> overlay.
+
+    // underlay -> highlights -> all lines/arrows -> cages -> cell-grids -> overlay.
     drawVisualLayer("under");
 
-    // Highlights sit above underlays and below puzzle constraints.
+    // Highlights sit above underlays and below all puzzle constraints.
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
         const colors = progress.cells[r][c].highlights ?? [];
@@ -1318,7 +1319,13 @@ export function GridCanvas(props: {
       }
     }
 
-    drawVisualLayer("arrows");
+    // Draw all lines/arrows regardless of their target classification to ensure they are always above highlights.
+    for (const ln of def.cosmetics.lines ?? []) {
+      drawConstraintLine(ln);
+    }
+    for (const arrow of def.cosmetics.arrows ?? []) {
+      drawArrow(arrow);
+    }
     drawVisualLayer("cages");
 
     const drawGridPuzzleFeatures = () => {
@@ -1687,10 +1694,16 @@ export function GridCanvas(props: {
         }
       }
 
-      // Keep constraints readable above highlights under fog.
+
+      // Keep all lines/arrows readable above highlights under fog.
       ctx.save();
       clipToFogVisibleAreas(lit);
-      drawVisualLayer("arrows");
+      for (const ln of def.cosmetics.lines ?? []) {
+        drawConstraintLine(ln);
+      }
+      for (const arrow of def.cosmetics.arrows ?? []) {
+        drawArrow(arrow);
+      }
       drawVisualLayer("cages");
       ctx.restore();
 
