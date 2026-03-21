@@ -1306,18 +1306,20 @@ export function GridCanvas(props: {
       }
     };
 
-    // Mirror SudokuPad's board SVG stack: underlay -> arrows -> cages -> highlights -> cell-grids -> overlay.
+    // Mirror SudokuPad board layering so constraints stay readable over user cell coloring.
+    // underlay -> highlights -> arrows -> cages -> cell-grids -> overlay.
     drawVisualLayer("under");
-    drawVisualLayer("arrows");
-    drawVisualLayer("cages");
 
-    // Highlights sit above arrows/cages and below the grid and overlays.
+    // Highlights sit above underlays and below puzzle constraints.
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
         const colors = progress.cells[r][c].highlights ?? [];
         drawCellHighlights(r, c, colors);
       }
     }
+
+    drawVisualLayer("arrows");
+    drawVisualLayer("cages");
 
     const drawGridPuzzleFeatures = () => {
       drawVisualLayer("grid");
@@ -1685,7 +1687,14 @@ export function GridCanvas(props: {
         }
       }
 
-      // Grid-target features (for example cell-grids monitors) stay visible above fog.
+      // Keep constraints readable above highlights under fog.
+      ctx.save();
+      clipToFogVisibleAreas(lit);
+      drawVisualLayer("arrows");
+      drawVisualLayer("cages");
+      ctx.restore();
+
+      // Grid-target features (for example cell-grids) stay visible above fog.
       drawGridPuzzleFeatures();
 
       if (def.cosmetics.gridVisible !== false) {
