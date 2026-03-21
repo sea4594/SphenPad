@@ -1625,11 +1625,41 @@ export function GridCanvas(props: {
 
           const corner = [...cell.notes.corner].sort();
           if (corner.length) {
+            // Custom layout for up to 10 digits
             const hasCageLabel = cageLabelCells.has(`${r},${c}`);
-            drawSymbolRun(corner, x0 + cornerInsetX, y0 + (hasCageLabel ? cornerBaseY * 2 : cornerBaseY), {
-              align: "left",
-              isConflict: (symbol) => hasBigValuePeer(r, c, symbol),
-            });
+            const positions = [
+              // 1st: top left
+              { x: x0 + cellPx * 0.22, y: y0 + cellPx * (hasCageLabel ? 0.32 : 0.18) },
+              // 2nd: top right
+              { x: x0 + cellPx * 0.78, y: y0 + cellPx * (hasCageLabel ? 0.32 : 0.18) },
+              // 3rd: bottom left
+              { x: x0 + cellPx * 0.22, y: y0 + cellPx * 0.82 },
+              // 4th: bottom right
+              { x: x0 + cellPx * 0.78, y: y0 + cellPx * 0.82 },
+              // 5th: top center
+              { x: x0 + cellPx * 0.5, y: y0 + cellPx * (hasCageLabel ? 0.32 : 0.18) },
+              // 6th: bottom center
+              { x: x0 + cellPx * 0.5, y: y0 + cellPx * 0.82 },
+              // 7th: center left
+              { x: x0 + cellPx * 0.22, y: y0 + cellPx * 0.5 },
+              // 8th: center right
+              { x: x0 + cellPx * 0.78, y: y0 + cellPx * 0.5 },
+              // 9th: center, just right of 7th
+              { x: x0 + cellPx * 0.36, y: y0 + cellPx * 0.5 },
+              // 10th: center, just left of 8th
+              { x: x0 + cellPx * 0.64, y: y0 + cellPx * 0.5 },
+            ];
+            const fontPx = noteFontPx;
+            ctx.font = `${fontPx}px ${gridTextFont}, ${emojiTextFont}`;
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            for (let i = 0; i < Math.min(10, corner.length); i++) {
+              const symbol = normalizeSymbol(corner[i]);
+              if (!symbol) continue;
+              const pos = positions[i];
+              ctx.fillStyle = hasBigValuePeer(r, c, symbol) ? conflictColor : noteColor;
+              drawDigitText(symbol, pos.x, pos.y);
+            }
           }
 
           const center = [...cell.notes.center].sort();
