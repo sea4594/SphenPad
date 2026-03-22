@@ -1307,12 +1307,11 @@ export function GridCanvas(props: {
       }
     };
 
-    // Mirror SudokuPad board layering so constraints stay readable over user cell coloring.
-
-    // underlay -> highlights -> all lines/arrows -> cages -> cell-grids -> overlay.
+    // Canonical SudokuPad rendering order:
+    // underlays -> highlights -> arrows/lines (arrows, lines, cages, dots by target) -> grid -> overlays
     drawVisualLayer("under");
 
-    // Highlights sit above underlays and below all puzzle constraints.
+    // Highlights above underlays, below all constraints and overlays
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
         const colors = progress.cells[r][c].highlights ?? [];
@@ -1320,16 +1319,16 @@ export function GridCanvas(props: {
       }
     }
 
-    // Draw all lines/arrows regardless of their target classification to ensure they are always above highlights.
-    for (const ln of def.cosmetics.lines ?? []) {
-      drawConstraintLine(ln);
-    }
-    for (const arrow of def.cosmetics.arrows ?? []) {
-      drawArrow(arrow);
-    }
+    // Draw all arrows/lines/cages/dots by their target/layer
+    drawVisualLayer("arrows");
     drawVisualLayer("cages");
+    drawVisualLayer("grid");
+
+    // Overlays (including circles, rectangles, text) always on top unless specifically targeted as underlay
+    drawVisualLayer("over");
 
     const drawGridPuzzleFeatures = () => {
+      // For compatibility, keep this for any grid-targeted overlays
       drawVisualLayer("grid");
     };
 

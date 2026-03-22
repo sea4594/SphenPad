@@ -1187,6 +1187,9 @@ function extractGivens(scl: any): Array<{ rc: CellRC; v: string }> {
       if (!Array.isArray(row)) continue;
       for (let c = 0; c < row.length; c++) {
         const cell = row[c];
+        // Only treat as a given if explicitly marked as such
+        const isGiven = cell && (cell.given !== undefined || cell.g === true || cell.isGiven === true || cell.type === "given");
+        if (!isGiven) continue;
         const value =
           asValue(cell?.value ?? cell?.v ?? cell?.given ?? cell?.g ?? cell?.digit ?? cell?.d) ??
           (typeof cell === "string" && /^[1-9A-Za-z]$/.test(cell) ? cell : undefined) ??
