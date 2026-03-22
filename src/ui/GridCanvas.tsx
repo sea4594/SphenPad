@@ -797,8 +797,9 @@ export function GridCanvas(props: {
     };
 
     const drawLayerItem = (item: NonNullable<PuzzleDefinition["cosmetics"]["underlays"]>[number]) => {
-      const w = Number.isFinite(item.width) ? item.width! : 1;
-      const h = Number.isFinite(item.height) ? item.height! : 1;
+      // Match SudokuPad: circles should be larger and have a thinner, gray outline by default
+      const w = Number.isFinite(item.width) ? item.width! : 0.82;
+      const h = Number.isFinite(item.height) ? item.height! : 0.82;
       const x = worldX(item.center.x - w / 2);
       const y = worldY(item.center.y - h / 2);
       const rw = w * cellPx;
@@ -859,14 +860,22 @@ export function GridCanvas(props: {
         drawShapePath("fill");
       }
 
-      if (item.borderColor) {
-        const explicitBorderThickness = Number.isFinite(item.borderThickness)
-          ? Number(item.borderThickness)
+      // Default circle outline: thin, gray, unless overridden
+      const isCircle = item.rounded && nearlyCircle;
+      let borderColor = item.borderColor;
+      let borderThickness = item.borderThickness;
+      if (isCircle) {
+        if (!borderColor) borderColor = "#888";
+        if (!borderThickness) borderThickness = 0.08;
+      }
+      if (borderColor) {
+        const explicitBorderThickness = Number.isFinite(borderThickness)
+          ? Number(borderThickness)
           : undefined;
         if (explicitBorderThickness == null || explicitBorderThickness > 0) {
           const borderWidth = (explicitBorderThickness ?? 1.4) * (cellPx / cosmeticUnit);
           if (borderWidth > 0) {
-            ctx.strokeStyle = item.borderColor;
+            ctx.strokeStyle = borderColor;
             ctx.lineWidth = borderWidth;
             ctx.lineCap = item.lineCap ?? "butt";
             ctx.lineJoin = item.lineJoin ?? "miter";
@@ -1070,7 +1079,8 @@ export function GridCanvas(props: {
         }
         ctx.restore();
       }
-      if (!cage.sum) return;
+      // Only render background and digit if sum is a non-empty string or a valid number (not 0 or empty)
+      if (cage.sum === undefined || cage.sum === null || String(cage.sum).trim() === "") return;
       const first = cage.cells[0];
       if (hasMatchingCornerLabel(cage.cells, cage.sum)) return;
       const clueCellX = cellX(first.c);

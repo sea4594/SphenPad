@@ -1268,7 +1268,8 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
           height: 1,
           rounded: false,
           color,
-          opacity: parseOpacityToken(cell?.alpha ?? cell?.opacity) ?? 1,
+          // Default opacity to 0.5 if not specified, to match SudokuPad's lighter cell backgrounds
+          opacity: parseOpacityToken(cell?.alpha ?? cell?.opacity) ?? 0.5,
           renderOrder: nextRenderOrder(),
         });
       }
