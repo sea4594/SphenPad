@@ -424,9 +424,12 @@ export function GridCanvas(props: {
     ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
     ctx.clearRect(0, 0, widthPx, heightPx);
 
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, widthPx, heightPx);
 
-    // Fill the background with transparent or theme-matching color instead of forced white.
-    ctx.clearRect(0, 0, widthPx, heightPx);
+    // Keep the full Sudoku grid area pure white regardless of global theme.
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(cellX(0), cellY(0), cellPx * cols, cellPx * rows);
 
     if (bgImage) {
       ctx.globalAlpha = 0.3;
@@ -858,7 +861,9 @@ export function GridCanvas(props: {
       } else if (item.rounded || item.width !== 1 || item.height !== 1) {
         // If this is a cosmetic rectangle/ellipse with no color, do not fill (transparent)
         // This prevents thin white lines from appearing for overlays with no color
-        // Do nothing (no fill)
+        // Explicitly set fillStyle to fully transparent to avoid accidental white lines
+        ctx.fillStyle = "rgba(0,0,0,0)";
+        // Do not call drawShapePath("fill")
       }
 
       // Default circle outline: thin, gray, unless overridden
