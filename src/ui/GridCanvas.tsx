@@ -1083,8 +1083,9 @@ export function GridCanvas(props: {
       const metrics = ctx.measureText(clueText);
       ctx.textAlign = "left";
       ctx.textBaseline = "top";
+      // Move cage digit up closer to the cell edge
       const clueX = clueCellX + clueInset;
-      const clueY = clueCellY + clueInset;
+      const clueY = clueCellY + clueInset * 0.2;
       const textWidth = Math.max(metrics.width, clueFontPx * 0.6);
       const measuredHeight = metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent;
       const textHeight = Math.max(clueFontPx * 0.86, Number.isFinite(measuredHeight) ? measuredHeight : 0);
@@ -1518,7 +1519,7 @@ export function GridCanvas(props: {
       }
       ctx.fillText(text, x, y);
     };
-    const noteColor = "#1e2633";
+    const noteColor = "#123f9a";
     const conflictColor = "#d93025";
     const drawSymbolRun = (
       symbols: string[],
@@ -1625,29 +1626,31 @@ export function GridCanvas(props: {
 
           const corner = [...cell.notes.corner].sort();
           if (corner.length) {
-            // Custom layout for up to 10 digits
-            const hasCageLabel = cageLabelCells.has(`${r},${c}`);
+            // Always use the same vertical position for the top row, just beneath the cage digit (which is now higher)
+            const topRowY = y0 + cellPx * 0.22;
+            const bottomRowY = y0 + cellPx * 0.82;
+            const middleRowY = y0 + cellPx * 0.52;
             const positions = [
               // 1st: top left
-              { x: x0 + cellPx * 0.22, y: y0 + cellPx * (hasCageLabel ? 0.32 : 0.18) },
+              { x: x0 + cellPx * 0.22, y: topRowY },
               // 2nd: top right
-              { x: x0 + cellPx * 0.78, y: y0 + cellPx * (hasCageLabel ? 0.32 : 0.18) },
+              { x: x0 + cellPx * 0.78, y: topRowY },
               // 3rd: bottom left
-              { x: x0 + cellPx * 0.22, y: y0 + cellPx * 0.82 },
+              { x: x0 + cellPx * 0.22, y: bottomRowY },
               // 4th: bottom right
-              { x: x0 + cellPx * 0.78, y: y0 + cellPx * 0.82 },
+              { x: x0 + cellPx * 0.78, y: bottomRowY },
               // 5th: top center
-              { x: x0 + cellPx * 0.5, y: y0 + cellPx * (hasCageLabel ? 0.32 : 0.18) },
+              { x: x0 + cellPx * 0.5, y: topRowY },
               // 6th: bottom center
-              { x: x0 + cellPx * 0.5, y: y0 + cellPx * 0.82 },
+              { x: x0 + cellPx * 0.5, y: bottomRowY },
               // 7th: center left
-              { x: x0 + cellPx * 0.22, y: y0 + cellPx * 0.5 },
+              { x: x0 + cellPx * 0.22, y: middleRowY },
               // 8th: center right
-              { x: x0 + cellPx * 0.78, y: y0 + cellPx * 0.5 },
+              { x: x0 + cellPx * 0.78, y: middleRowY },
               // 9th: center, just right of 7th
-              { x: x0 + cellPx * 0.36, y: y0 + cellPx * 0.5 },
+              { x: x0 + cellPx * 0.36, y: middleRowY },
               // 10th: center, just left of 8th
-              { x: x0 + cellPx * 0.64, y: y0 + cellPx * 0.5 },
+              { x: x0 + cellPx * 0.64, y: middleRowY },
             ];
             const fontPx = noteFontPx;
             ctx.font = `${fontPx}px ${gridTextFont}, ${emojiTextFont}`;
@@ -1657,7 +1660,7 @@ export function GridCanvas(props: {
               const symbol = normalizeSymbol(corner[i]);
               if (!symbol) continue;
               const pos = positions[i];
-              ctx.fillStyle = hasBigValuePeer(r, c, symbol) ? conflictColor : noteColor;
+              ctx.fillStyle = hasBigValuePeer(r, c, symbol) ? conflictColor : "#123f9a";
               drawDigitText(symbol, pos.x, pos.y);
             }
           }
@@ -1677,7 +1680,32 @@ export function GridCanvas(props: {
                 ctx.font = `${centerFontPx}px ${gridTextFont}, ${emojiTextFont}`;
               }
             }
-            drawSymbolRun(center, x0 + cellPx / 2, y0 + cellPx / 2, {
+            // Make center digits blue
+            const drawSymbolRunBlue = (
+              symbols: string[],
+              x: number,
+              y: number,
+              opts: { align: "left" | "center"; isConflict: (symbol: string) => boolean; fontPxOverride?: number }
+            ) => {
+              const values = symbols.map((symbol) => normalizeSymbol(symbol)).filter(Boolean) as string[];
+              if (!values.length) return;
+              const useFontPx = opts.fontPxOverride ?? noteFontPx;
+              const widths = values.map((symbol) => Math.max(0.001, ctx.measureText(symbol).width));
+              const spacing = Math.max(0.2, useFontPx * 0.05);
+              const totalWidth =
+                widths.reduce((sum, width) => sum + width, 0) +
+                Math.max(0, values.length - 1) * spacing;
+              let cursor = opts.align === "center" ? x - totalWidth / 2 : x;
+              ctx.textAlign = "center";
+              for (let i = 0; i < values.length; i++) {
+                const symbol = values[i] as string;
+                const width = widths[i] as number;
+                ctx.fillStyle = opts.isConflict(symbol) ? conflictColor : "#123f9a";
+                drawDigitText(symbol, cursor + width / 2, y);
+                cursor += width + spacing;
+              }
+            };
+            drawSymbolRunBlue(center, x0 + cellPx / 2, y0 + cellPx / 2, {
               align: "center",
               isConflict: (symbol) => hasBigValuePeer(r, c, symbol),
               fontPxOverride: centerFontPx,
@@ -1696,7 +1724,7 @@ export function GridCanvas(props: {
               if (!idx) continue;
               const rr = Math.floor((idx - 1) / 3);
               const cc = (idx - 1) % 3;
-              ctx.fillStyle = hasBigValuePeer(r, c, symbol) ? conflictColor : noteColor;
+              ctx.fillStyle = hasBigValuePeer(r, c, symbol) ? conflictColor : "#123f9a";
               ctx.fillText(symbol, x0 + (cc + 0.5) * (cellPx / 3), y0 + (rr + 0.5) * (cellPx / 3));
             }
           }
