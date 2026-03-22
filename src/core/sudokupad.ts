@@ -1268,7 +1268,7 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
           height: 1,
           rounded: false,
           color,
-          opacity: parseOpacityToken(cell?.alpha ?? cell?.opacity) ?? 1,
+          opacity: parseOpacityToken(cell?.alpha ?? cell?.opacity) ?? 0.5,
           renderOrder: nextRenderOrder(),
         });
       }

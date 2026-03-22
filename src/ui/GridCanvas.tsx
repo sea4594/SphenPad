@@ -797,8 +797,12 @@ export function GridCanvas(props: {
     };
 
     const drawLayerItem = (item: NonNullable<PuzzleDefinition["cosmetics"]["underlays"]>[number]) => {
-      const w = Number.isFinite(item.width) ? item.width! : 1;
-      const h = Number.isFinite(item.height) ? item.height! : 1;
+      // For circles, default to 0.9 cell size if not specified
+      let w = Number.isFinite(item.width) ? item.width! : 1;
+      let h = Number.isFinite(item.height) ? item.height! : 1;
+      if (item.rounded && (!item.width || !item.height)) {
+        w = h = 0.9;
+      }
       const x = worldX(item.center.x - w / 2);
       const y = worldY(item.center.y - h / 2);
       const rw = w * cellPx;
@@ -835,6 +839,7 @@ export function GridCanvas(props: {
           if (nearlyCircle) {
             ctx.beginPath();
             ctx.ellipse(cx, cy, sw / 2, sh / 2, 0, 0, Math.PI * 2);
+            ctx.lineWidth = Math.max(ctx.lineWidth, 2.2); // Match SudokuPad circle outline
             ctx.stroke();
           } else {
             ctx.beginPath();
@@ -1070,6 +1075,7 @@ export function GridCanvas(props: {
         }
         ctx.restore();
       }
+      // Only draw cage digit background if there is a sum
       if (!cage.sum) return;
       const first = cage.cells[0];
       if (hasMatchingCornerLabel(cage.cells, cage.sum)) return;
