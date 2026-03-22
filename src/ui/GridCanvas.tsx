@@ -866,6 +866,15 @@ export function GridCanvas(props: {
         // Do not call drawShapePath("fill")
       }
 
+      // Prevent accidental thin lines: if width or height is very small and no color or borderColor, skip stroke
+      const minVisualSize = 1.5; // px
+      const hasExplicitColor = !!item.color;
+      const hasExplicitBorder = !!item.borderColor;
+      if ((rw < minVisualSize || rh < minVisualSize) && !hasExplicitColor && !hasExplicitBorder) {
+        ctx.restore();
+        return;
+      }
+
       // Default circle outline: thin, gray, unless overridden
       const isCircle = item.rounded && nearlyCircle;
       let borderColor = item.borderColor;
