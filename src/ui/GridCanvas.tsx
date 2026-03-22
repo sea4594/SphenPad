@@ -424,12 +424,9 @@ export function GridCanvas(props: {
     ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
     ctx.clearRect(0, 0, widthPx, heightPx);
 
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, widthPx, heightPx);
 
-    // Keep the full Sudoku grid area pure white regardless of global theme.
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(cellX(0), cellY(0), cellPx * cols, cellPx * rows);
+    // Fill the background with transparent or theme-matching color instead of forced white.
+    ctx.clearRect(0, 0, widthPx, heightPx);
 
     if (bgImage) {
       ctx.globalAlpha = 0.3;
