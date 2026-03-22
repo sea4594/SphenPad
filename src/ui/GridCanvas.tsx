@@ -858,6 +858,10 @@ export function GridCanvas(props: {
       if (item.color) {
         ctx.fillStyle = item.color;
         drawShapePath("fill");
+      } else if (item.rounded || item.width !== 1 || item.height !== 1) {
+        // If this is a cosmetic rectangle/ellipse with no color, do not fill (transparent)
+        // This prevents thin white lines from appearing for overlays with no color
+        // Do nothing (no fill)
       }
 
       // Default circle outline: thin, gray, unless overridden
