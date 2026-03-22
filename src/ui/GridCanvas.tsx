@@ -424,13 +424,12 @@ export function GridCanvas(props: {
     ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
     ctx.clearRect(0, 0, widthPx, heightPx);
 
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, widthPx, heightPx);
 
-    // Use transparent background to avoid thin white lines between overlays.
-    ctx.clearRect(0, 0, widthPx, heightPx);
-
-    // Optionally, fill with theme background if needed:
-    // ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--panel-soft') || 'transparent';
-    // ctx.fillRect(cellX(0), cellY(0), cellPx * cols, cellPx * rows);
+    // Keep the full Sudoku grid area pure white regardless of global theme.
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(cellX(0), cellY(0), cellPx * cols, cellPx * rows);
 
     if (bgImage) {
       ctx.globalAlpha = 0.3;
@@ -1516,6 +1515,9 @@ export function GridCanvas(props: {
       cageLabelCells.add(`${first.r},${first.c}`);
     }
     const valueFontPx = Math.max(previewMode ? 4.5 : 11, Math.min(previewMode ? 30 : 42, Math.round(cellPx * 0.58)));
+    // Make large digits bigger
+    const valueFontPx = Math.max(previewMode ? 4.5 : 12, Math.min(previewMode ? 34 : 48, Math.round(cellPx * 0.66)));
+    // Make pencil marks thicker (not bigger)
     const noteFontPx = Math.max(previewMode ? 3 : 6, Math.min(previewMode ? 10 : 19, Math.round(cellPx * 0.26)));
     const candidateFontPx = Math.max(previewMode ? 2.2 : 5, Math.min(previewMode ? 8 : 12, Math.round(cellPx * 0.18)));
     const cornerInsetX = Math.max(previewMode ? 0.8 : 2, Math.round(cellPx * 0.08));
@@ -1553,6 +1555,8 @@ export function GridCanvas(props: {
       let cursor = opts.align === "center" ? x - totalWidth / 2 : x;
 
       ctx.textAlign = "center";
+      ctx.save();
+      ctx.font = `700 ${useFontPx}px ${gridTextFont}, ${emojiTextFont}`; // Make pencil marks thicker
       for (let i = 0; i < values.length; i++) {
         const symbol = values[i] as string;
         const width = widths[i] as number;
@@ -1560,6 +1564,7 @@ export function GridCanvas(props: {
         drawDigitText(symbol, cursor + width / 2, y);
         cursor += width + spacing;
       }
+      ctx.restore();
     };
     if (fogDefined) {
       const addLight = (rc: CellRC) => {
