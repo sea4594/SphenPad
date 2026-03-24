@@ -1,4 +1,8 @@
 import { IconCheck } from "./icons";
+// ...existing code...
+
+export default function PuzzlePage(props) {
+  // ...existing code...
   const [checkPopup, setCheckPopup] = useState<string | null>(null);
   function checkBigDigits() {
     if (!data) return;
