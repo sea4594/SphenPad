@@ -16,7 +16,6 @@ import { GridCanvas } from "./GridCanvas";
 import { AppBrand } from "./AppBrand";
 import {
   IconPause,
-  IconCheck,
   IconPlay,
   IconCopyLink,
   IconReload,
@@ -1349,53 +1348,9 @@ export function PuzzlePage() {
         </button>
         <div className="puzzleTopbarRight">
           {!hideTimer ? <div className="puzzleTimer">{timeStr}</div> : null}
-          <button className="btn" onClick={onCheckDigitsClick} title="Check digits" disabled={data.progress.status === "complete"}>
-            <IconCheck />
-          </button>
           <button className="btn" onClick={onPausePlayClick} title="Pause or resume" disabled={data.progress.status === "complete"}>
             {data.progress.status === "complete" ? <IconPause /> : data.progress.paused ? <IconPlay /> : <IconPause />}
           </button>
-            // Check digits popup state
-            const [checkDigitsResult, setCheckDigitsResult] = useState<null | "ok" | "fail">(null);
-
-            // Handler for check button
-            function onCheckDigitsClick() {
-              // Check big digits for correctness
-              if (!data || !data.puzzle || !data.puzzle.solution || !data.puzzle.grid) {
-                setCheckDigitsResult("fail");
-                return;
-              }
-              const solution = data.puzzle.solution;
-              const grid = data.puzzle.grid;
-              let allCorrect = true;
-              for (let r = 0; r < grid.length; r++) {
-                for (let c = 0; c < grid[r].length; c++) {
-                  const entered = grid[r][c]?.value;
-                  if (entered && entered !== solution[r][c]) {
-                    allCorrect = false;
-                  }
-                }
-              }
-              setCheckDigitsResult(allCorrect ? "ok" : "fail");
-            }
-
-            // Handler to close check popup
-            function onCloseCheckDigits() {
-              setCheckDigitsResult(null);
-            }
-                {/* Check Digits Popup */}
-                {checkDigitsResult && (
-                  <div className="overlayBackdrop" onClick={onCloseCheckDigits}>
-                    <div className="card" role="dialog" aria-modal="true" aria-label="Check digits result" onClick={e => e.stopPropagation()} style={{ width: "min(340px, 100%)", maxHeight: "min(60dvh, calc(100vh - 24px))", overflow: "auto", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 32 }}>
-                      <div style={{ fontSize: 28, fontWeight: 800, marginBottom: 12 }}>
-                        {checkDigitsResult === "ok" ? "👍 Looking good so far! 👍" : "😧 Uh, oh! 😧"}
-                      </div>
-                      <button className="btn primary" style={{ width: "100%" }} onClick={onCloseCheckDigits}>
-                        OK
-                      </button>
-                    </div>
-                  </div>
-                )}
           <button className="btn" onClick={onReloadPuzzleClick} title="Reload puzzle from SudokuPad" disabled={reloadingPuzzle}>
             <IconReload />
           </button>
