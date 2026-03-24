@@ -1514,8 +1514,6 @@ export function GridCanvas(props: {
       const first = cage.cells[0] as CellRC;
       cageLabelCells.add(`${first.r},${first.c}`);
     }
-    const valueFontPx = Math.max(previewMode ? 4.5 : 11, Math.min(previewMode ? 30 : 42, Math.round(cellPx * 0.58)));
-    // Make large digits bigger
     // Make large digits even bigger
     const valueFontPx = Math.max(previewMode ? 4.5 : 14, Math.min(previewMode ? 38 : 56, Math.round(cellPx * 0.74)));
     // Make pencil marks thicker (not bigger)
