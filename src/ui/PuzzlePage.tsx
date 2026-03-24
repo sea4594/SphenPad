@@ -252,9 +252,7 @@ function migrateProgressToDefinition(oldData: PersistedPuzzle, nextDef: PuzzleDe
     return inBoundsFor(nextDef, seg.a) && inBoundsFor(nextDef, seg.b);
   };
 
-  const lines = old.lines
-    .map((line) => ({ ...line, segments: line.segments.filter(lineInBounds) }))
-    .filter((line) => line.segments.length > 0);
+    const lines = old.lines.map((line: any) => ({ ...line, segments: line.segments.filter(lineInBounds) })).filter((line: any) => line.segments.length > 0);
 
   return {
     ...base,
