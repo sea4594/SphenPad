@@ -1,3 +1,29 @@
+import { IconCheck } from "./icons";
+  const [checkPopup, setCheckPopup] = useState<string | null>(null);
+  function checkBigDigits() {
+    if (!data) return;
+    const progress = data.progress;
+    const solution = data.def.cosmetics.solution;
+    if (!solution || !progress?.cells?.length) return;
+    const rows = progress.cells.length;
+    const cols = progress.cells[0]?.length ?? 0;
+    let allCorrect = true;
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const idx = r * cols + c;
+        const expected = normalizeComparisonSymbol(solution[idx]);
+        if (!expected || expected === ".") continue;
+        const actual = normalizeComparisonSymbol(progress.cells[r][c].value);
+        if (actual && actual !== expected) {
+          allCorrect = false;
+          break;
+        }
+      }
+      if (!allCorrect) break;
+    }
+    setCheckPopup(allCorrect ? "👍 Looking good so far! 👍" : "😧 Uh, oh! 😧");
+    setTimeout(() => setCheckPopup(null), 1800);
+  }
 /* eslint-disable react-hooks/exhaustive-deps */
 
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -1348,9 +1374,19 @@ export function PuzzlePage() {
         </button>
         <div className="puzzleTopbarRight">
           {!hideTimer ? <div className="puzzleTimer">{timeStr}</div> : null}
+          <button className="btn" onClick={checkBigDigits} title="Check big digits" style={{marginRight: 4}}>
+            <IconCheck />
+          </button>
           <button className="btn" onClick={onPausePlayClick} title="Pause or resume" disabled={data.progress.status === "complete"}>
             {data.progress.status === "complete" ? <IconPause /> : data.progress.paused ? <IconPlay /> : <IconPause />}
           </button>
+                {checkPopup && (
+                  <div className="overlayBackdrop" style={{zIndex: 1000}}>
+                    <div className="card settingsCard" style={{fontSize: 24, textAlign: "center", padding: 32, minWidth: 220}}>
+                      {checkPopup}
+                    </div>
+                  </div>
+                )}
           <button className="btn" onClick={onReloadPuzzleClick} title="Reload puzzle from SudokuPad" disabled={reloadingPuzzle}>
             <IconReload />
           </button>
