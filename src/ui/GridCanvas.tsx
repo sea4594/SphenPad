@@ -1514,9 +1514,7 @@ export function GridCanvas(props: {
       const first = cage.cells[0] as CellRC;
       cageLabelCells.add(`${first.r},${first.c}`);
     }
-    // Make large digits even bigger
-    const valueFontPx = Math.max(previewMode ? 4.5 : 14, Math.min(previewMode ? 38 : 56, Math.round(cellPx * 0.74)));
-    // Make pencil marks thicker (not bigger)
+    const valueFontPx = Math.max(previewMode ? 4.5 : 11, Math.min(previewMode ? 30 : 42, Math.round(cellPx * 0.58)));
     const noteFontPx = Math.max(previewMode ? 3 : 6, Math.min(previewMode ? 10 : 19, Math.round(cellPx * 0.26)));
     const candidateFontPx = Math.max(previewMode ? 2.2 : 5, Math.min(previewMode ? 8 : 12, Math.round(cellPx * 0.18)));
     const cornerInsetX = Math.max(previewMode ? 0.8 : 2, Math.round(cellPx * 0.08));
@@ -1554,10 +1552,6 @@ export function GridCanvas(props: {
       let cursor = opts.align === "center" ? x - totalWidth / 2 : x;
 
       ctx.textAlign = "center";
-      ctx.save();
-      ctx.font = `700 ${useFontPx}px ${gridTextFont}, ${emojiTextFont}`; // Make pencil marks thicker
-      // Make pencil marks even thicker
-      ctx.font = `900 ${useFontPx}px ${gridTextFont}, ${emojiTextFont}`;
       for (let i = 0; i < values.length; i++) {
         const symbol = values[i] as string;
         const width = widths[i] as number;
@@ -1565,7 +1559,6 @@ export function GridCanvas(props: {
         drawDigitText(symbol, cursor + width / 2, y);
         cursor += width + spacing;
       }
-      ctx.restore();
     };
     if (fogDefined) {
       const addLight = (rc: CellRC) => {
