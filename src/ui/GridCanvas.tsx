@@ -1516,7 +1516,8 @@ export function GridCanvas(props: {
     }
     const valueFontPx = Math.max(previewMode ? 4.5 : 11, Math.min(previewMode ? 30 : 42, Math.round(cellPx * 0.58)));
     // Make large digits bigger
-    const valueFontPx = Math.max(previewMode ? 4.5 : 12, Math.min(previewMode ? 34 : 48, Math.round(cellPx * 0.66)));
+    // Make large digits even bigger
+    const valueFontPx = Math.max(previewMode ? 4.5 : 14, Math.min(previewMode ? 38 : 56, Math.round(cellPx * 0.74)));
     // Make pencil marks thicker (not bigger)
     const noteFontPx = Math.max(previewMode ? 3 : 6, Math.min(previewMode ? 10 : 19, Math.round(cellPx * 0.26)));
     const candidateFontPx = Math.max(previewMode ? 2.2 : 5, Math.min(previewMode ? 8 : 12, Math.round(cellPx * 0.18)));
@@ -1557,6 +1558,8 @@ export function GridCanvas(props: {
       ctx.textAlign = "center";
       ctx.save();
       ctx.font = `700 ${useFontPx}px ${gridTextFont}, ${emojiTextFont}`; // Make pencil marks thicker
+      // Make pencil marks even thicker
+      ctx.font = `900 ${useFontPx}px ${gridTextFont}, ${emojiTextFont}`;
       for (let i = 0; i < values.length; i++) {
         const symbol = values[i] as string;
         const width = widths[i] as number;
