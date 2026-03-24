@@ -1,3 +1,8 @@
+export const IconCheck = () => (
+	<svg width="18" height="18" viewBox="0 0 20 20" aria-hidden>
+		<path d="M5 10.5l4 4 6-8" stroke="currentColor" strokeWidth="2.2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+	</svg>
+);
 export const IconUndo = () => <span style={{ fontSize: 18 }}>↶</span>;
 export const IconRedo = () => <span style={{ fontSize: 18 }}>↷</span>;
 export const IconPause = () => (
