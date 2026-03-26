@@ -797,9 +797,8 @@ export function GridCanvas(props: {
     };
 
     const drawLayerItem = (item: NonNullable<PuzzleDefinition["cosmetics"]["underlays"]>[number]) => {
-      // Match SudokuPad: circles should be larger and have a thinner, gray outline by default
-      const w = Number.isFinite(item.width) ? item.width! : 0.82;
-      const h = Number.isFinite(item.height) ? item.height! : 0.82;
+      const w = Number.isFinite(item.width) ? item.width! : 1;
+      const h = Number.isFinite(item.height) ? item.height! : 1;
       const x = worldX(item.center.x - w / 2);
       const y = worldY(item.center.y - h / 2);
       const rw = w * cellPx;
@@ -864,14 +863,8 @@ export function GridCanvas(props: {
         // Do nothing (no fill)
       }
 
-      // Default circle outline: thin, gray, unless overridden
-      const isCircle = item.rounded && nearlyCircle;
       let borderColor = item.borderColor;
-      let borderThickness = item.borderThickness;
-      if (isCircle) {
-        if (!borderColor) borderColor = "#888";
-        if (!borderThickness) borderThickness = 0.08;
-      }
+      const borderThickness = item.borderThickness;
       // Don't stroke a shape with zero dimensions — it produces a hairline artifact.
       if (rw === 0 || rh === 0) borderColor = undefined;
       if (borderColor) {
