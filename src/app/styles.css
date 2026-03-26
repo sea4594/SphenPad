@@ -464,6 +464,13 @@ input.url {
   align-items: stretch;
 }
 
+.menuModeTabsCard {
+  position: sticky;
+  top: 0;
+  z-index: 25;
+  align-self: start;
+}
+
 .menuModeTab {
   min-width: 0;
   display: inline-flex;

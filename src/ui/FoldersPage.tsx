@@ -488,11 +488,11 @@ export function FoldersPage() {
 
       <div className="page">
         <div className="mainMenuWrap foldersPageWrap">
-          <div className="card">
+          <div className="card menuModeTabsCard">
             <div className="row menuModeTabs" style={{ marginTop: 2 }}>
               <button className="btn menuModeTab" onClick={() => nav("/")} type="button">
                 <IconHome />
-                <span>My Puzzles</span>
+                <span>Puzzles</span>
               </button>
               <button className="btn primary menuModeTab" onClick={() => nav("/folders")} type="button">
                 <IconFolder />
