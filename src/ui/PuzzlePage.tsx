@@ -15,6 +15,7 @@ import { Keyboard } from "./Keyboard";
 import { GridCanvas } from "./GridCanvas";
 import { AppBrand } from "./AppBrand";
 import {
+  IconCheck,
   IconPause,
   IconPlay,
   IconCopyLink,
@@ -758,6 +759,31 @@ export function PuzzlePage() {
     setPauseMenuOpen(true);
   }
 
+  function onCheckAnswers() {
+    if (!data) return;
+    const { cells } = data.progress;
+    const solution = data.def.cosmetics.solution;
+    const rows = cells.length;
+    const cols = cells[0]?.length ?? 0;
+    let allCorrect = true;
+    if (solution && solution.length >= rows * cols) {
+      outer: for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const cell = cells[r][c];
+          if (cell.given) continue;
+          const actual = normalizeComparisonSymbol(cell.value);
+          if (!actual) continue;
+          const expected = normalizeComparisonSymbol(solution[r * cols + c]);
+          if (expected && expected !== "." && actual !== expected) {
+            allCorrect = false;
+            break outer;
+          }
+        }
+      }
+    }
+    alert(allCorrect ? "👍 Looking good so far! 👍" : "😧 Uh, oh! 😧");
+  }
+
   async function onReloadPuzzleClick() {
     if (!data || reloadingPuzzle) return;
     const source = (data.def.sourceId ?? key).trim();
@@ -1348,6 +1374,9 @@ export function PuzzlePage() {
         </button>
         <div className="puzzleTopbarRight">
           {!hideTimer ? <div className="puzzleTimer">{timeStr}</div> : null}
+          <button className="btn" onClick={onCheckAnswers} title="Check answers" disabled={data.progress.status === "complete" || data.progress.paused}>
+            <IconCheck />
+          </button>
           <button className="btn" onClick={onPausePlayClick} title="Pause or resume" disabled={data.progress.status === "complete"}>
             {data.progress.status === "complete" ? <IconPause /> : data.progress.paused ? <IconPlay /> : <IconPause />}
           </button>

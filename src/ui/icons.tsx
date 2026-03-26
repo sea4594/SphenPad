@@ -145,6 +145,12 @@ export const IconToolHighlight = () => (
 	/>
 );
 
+export const IconCheck = () => (
+	<svg width="18" height="18" viewBox="0 0 20 20" aria-hidden>
+		<path d="M3.5 10.5l4.5 4.5 8.5-9" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+	</svg>
+);
+
 export const IconToolLine = () => (
 	<svg width="20" height="20" viewBox="0 0 20 20" aria-hidden>
 		<path d="M2 10 L8 10 L8 4" stroke="currentColor" strokeWidth="1.8" fill="none" strokeLinecap="round" strokeLinejoin="round" />
