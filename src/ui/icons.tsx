@@ -151,31 +151,17 @@ export const IconCheck = () => (
 	</svg>
 );
 
-export const IconToolLine = () => {
-	// 20×20 viewBox.
-	// Square: inset 1.5px on each side → 17×17, rounded corners rx=3.4
-	// Circle: center (9.5, 9.0), radius 5.6 — large, nearly fills the square
-	// L-shaped crosshair through circle center:
-	//   vertical arm: from circle center (9.5, 9.0) down to square bottom interior (9.5, 18.5)
-	//   horizontal arm: from circle center (9.5, 9.0) right to square right interior (18.5, 9.0)
-	//   corner at circle center with a small rounded join
-	const cx = 9.5, cy = 9.0, r = 5.6;
-	const sqR = 18.5;
-	const sqB = 18.5;
-	const cr = 1.0;
-	return (
-		<svg width="20" height="20" viewBox="0 0 20 20" aria-hidden>
-			<rect x="1.5" y="1.5" width="17" height="17" rx="3.4" ry="3.4" fill="none" stroke="currentColor" strokeWidth="1.65" />
-			<circle cx={cx} cy={cy} r={r} fill="none" stroke="currentColor" strokeWidth="1.65" />
-			{/* L from circle center: down then right, with rounded corner */}
-			<path
-				d={`M${cx} ${sqB} L${cx} ${cy + cr} Q${cx} ${cy} ${cx + cr} ${cy} L${sqR} ${cy}`}
-				fill="none"
-				stroke="currentColor"
-				strokeWidth="1.65"
-				strokeLinecap="round"
-				strokeLinejoin="round"
-			/>
-		</svg>
-	);
-};
+export const IconToolLine = () => (
+	<svg width="18" height="18" viewBox="0 0 20 20" aria-hidden>
+		<rect x="1" y="1" width="18" height="18" rx="3.5" ry="3.5" fill="none" stroke="currentColor" strokeWidth="1.6" />
+		<circle cx="10" cy="10" r="6.5" fill="none" stroke="currentColor" strokeWidth="1.6" />
+		<path
+			d="M10 19 L10 11 Q10 10 11 10 L19 10"
+			fill="none"
+			stroke="currentColor"
+			strokeWidth="1.6"
+			strokeLinecap="round"
+			strokeLinejoin="round"
+		/>
+	</svg>
+);
