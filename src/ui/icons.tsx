@@ -151,15 +151,31 @@ export const IconCheck = () => (
 	</svg>
 );
 
-export const IconToolLine = () => (
-	<svg width="20" height="20" viewBox="0 0 20 20" aria-hidden>
-		{/* Rounded square outline, centered in viewBox */}
-		<rect x="2" y="2" width="16" height="16" rx="3" ry="3" fill="none" stroke="currentColor" strokeWidth="1.7" />
-		{/* Circle in upper-left quadrant; center at (6.5, 6.5) */}
-		<circle cx="6.5" cy="6.5" r="2.8" fill="none" stroke="currentColor" strokeWidth="1.7" />
-		{/* Line from bottom-center of square (10, 18) to circle center (6.5, 6.5) */}
-		<line x1="10" y1="18" x2="6.5" y2="6.5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
-		{/* Line from right-center of square (18, 10) to circle center (6.5, 6.5) */}
-		<line x1="18" y1="10" x2="6.5" y2="6.5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
-	</svg>
-);
+export const IconToolLine = () => {
+	// 20×20 viewBox.
+	// Square: inset 1.5px on each side → 17×17, rounded corners rx=3.4
+	// Circle: center (9.5, 9.0), radius 5.6 — large, nearly fills the square
+	// L-shaped crosshair through circle center:
+	//   vertical arm: from circle center (9.5, 9.0) down to square bottom interior (9.5, 18.5)
+	//   horizontal arm: from circle center (9.5, 9.0) right to square right interior (18.5, 9.0)
+	//   corner at circle center with a small rounded join
+	const cx = 9.5, cy = 9.0, r = 5.6;
+	const sqR = 18.5;
+	const sqB = 18.5;
+	const cr = 1.0;
+	return (
+		<svg width="20" height="20" viewBox="0 0 20 20" aria-hidden>
+			<rect x="1.5" y="1.5" width="17" height="17" rx="3.4" ry="3.4" fill="none" stroke="currentColor" strokeWidth="1.65" />
+			<circle cx={cx} cy={cy} r={r} fill="none" stroke="currentColor" strokeWidth="1.65" />
+			{/* L from circle center: down then right, with rounded corner */}
+			<path
+				d={`M${cx} ${sqB} L${cx} ${cy + cr} Q${cx} ${cy} ${cx + cr} ${cy} L${sqR} ${cy}`}
+				fill="none"
+				stroke="currentColor"
+				strokeWidth="1.65"
+				strokeLinecap="round"
+				strokeLinejoin="round"
+			/>
+		</svg>
+	);
+};
