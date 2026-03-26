@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 
-export function AppBrand() {
+export function AppBrand({ compact }: { compact?: boolean }) {
   const nav = useNavigate();
 
   const handleClick = () => {
@@ -13,9 +13,9 @@ export function AppBrand() {
   };
 
   return (
-    <button className="brandWrap" onClick={handleClick} type="button">
+    <button className={`brandWrap ${compact ? "is-compact" : ""}`} onClick={handleClick} type="button">
       <img className="brandIcon" src={`${import.meta.env.BASE_URL}sphen-icon-192.png`} alt="" aria-hidden="true" />
-      <div className="brand">SphenPad</div>
+      {compact ? null : <div className="brand">SphenPad</div>}
     </button>
   );
 }

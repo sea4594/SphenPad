@@ -284,24 +284,49 @@ button,
    * Reduce padding so the bar (and buttons) use less vertical space.
    */
   padding: max(6px, var(--safe-top)) 12px 8px 12px;
+  display: grid;
+  grid-template-columns: 1fr minmax(0, 520px) 1fr;
+  align-items: center;
   gap: 10px;
 }
 
 .topbarMenuTabs {
-  display: flex;
-  align-items: center;
+  grid-column: 2;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
-  flex-wrap: nowrap;
+  width: 100%;
+  max-width: 100%;
 }
 
 .topbarMenuTab {
   min-height: 34px;
-  padding: 5px 8px;
+  padding: 5px 6px;
+  width: 100%;
+  min-width: 0;
 }
 
 .topbarMenuTab span {
   font-size: 13px;
   white-space: nowrap;
+}
+
+.topbarLeftSpacer {
+  grid-column: 1;
+}
+
+.topbarRight {
+  grid-column: 3;
+  justify-self: end;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: nowrap;
+}
+
+.topbarFirebase {
+  grid-column: 1 / -1;
+  justify-self: end;
 }
 
 .puzzleTopbar {
@@ -338,6 +363,10 @@ button,
   cursor: pointer;
   color: inherit;
   font: inherit;
+}
+
+.brandWrap.is-compact {
+  gap: 0;
 }
 
 .brandIcon {
