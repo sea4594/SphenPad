@@ -11,6 +11,7 @@ import type { Patch } from "../core/undo";
 import { applyPatch, invertPatch, patchAt } from "../core/undo";
 import { PauseOverlay } from "./PauseOverlay";
 import { CompletionOverlay } from "./CompletionOverlay";
+import { CheckAnswersOverlay } from "./CheckAnswersOverlay";
 import { Keyboard } from "./Keyboard";
 import { GridCanvas } from "./GridCanvas";
 import { AppBrand } from "./AppBrand";
@@ -289,6 +290,7 @@ export function PuzzlePage() {
   const [pauseMenuOpen, setPauseMenuOpen] = useState(false);
   const [completionOpen, setCompletionOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [checkResult, setCheckResult] = useState<boolean | null>(null);
   const [restartPromptOpen, setRestartPromptOpen] = useState(false);
   const [restartFromPause, setRestartFromPause] = useState(false);
   const [reloadingPuzzle, setReloadingPuzzle] = useState(false);
@@ -781,7 +783,7 @@ export function PuzzlePage() {
         }
       }
     }
-    alert(allCorrect ? "👍 Looking good so far! 👍" : "😧 Uh, oh! 😧");
+    setCheckResult(allCorrect);
   }
 
   async function onReloadPuzzleClick() {
@@ -1514,6 +1516,10 @@ export function PuzzlePage() {
       )}
 
       {settingsOpen ? <SettingsOverlay onClose={() => setSettingsOpen(false)} /> : null}
+
+      {checkResult !== null && (
+        <CheckAnswersOverlay correct={checkResult} onClose={() => setCheckResult(null)} />
+      )}
 
       {restartPromptOpen ? (
         <div className="overlayBackdrop" onClick={closeRestartPrompt}>
