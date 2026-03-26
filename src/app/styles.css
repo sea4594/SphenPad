@@ -1187,6 +1187,19 @@ input.url {
   color: var(--text);
 }
 
+.archiveRulesPreviewWrap {
+  margin-top: 12px;
+  display: grid;
+  justify-items: center;
+}
+
+.archiveRulesPreview {
+  --archive-preview-size: min(520px, 100%);
+  width: min(520px, 100%);
+  height: auto;
+  aspect-ratio: 1 / 1;
+}
+
 .puzzlePage {
   width: 100%;
   max-width: 1260px;
