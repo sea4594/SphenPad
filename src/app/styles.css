@@ -278,6 +278,32 @@ button,
   z-index: 20;
 }
 
+.topbar.menuTopbar {
+  /*
+   * These pages contain additional navigation buttons inside the top bar.
+   * Reduce padding so the bar (and buttons) use less vertical space.
+   */
+  padding: max(6px, var(--safe-top)) 12px 8px 12px;
+  gap: 10px;
+}
+
+.topbarMenuTabs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: nowrap;
+}
+
+.topbarMenuTab {
+  min-height: 34px;
+  padding: 5px 8px;
+}
+
+.topbarMenuTab span {
+  font-size: 13px;
+  white-space: nowrap;
+}
+
 .puzzleTopbar {
   flex-wrap: nowrap;
   gap: 8px;

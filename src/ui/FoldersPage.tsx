@@ -478,9 +478,23 @@ export function FoldersPage() {
 
   return (
     <div className="shell">
-      <div className="topbar">
+      <div className="topbar menuTopbar">
         <AppBrand />
         <div className="spacer" />
+        <div className="topbarMenuTabs" aria-label="Main navigation">
+          <button className="btn menuModeTab topbarMenuTab" onClick={() => nav("/")} type="button">
+            <IconHome />
+            <span>Puzzles</span>
+          </button>
+          <button className="btn primary menuModeTab topbarMenuTab" onClick={() => nav("/folders")} type="button">
+            <IconFolder />
+            <span>Folders</span>
+          </button>
+          <button className="btn menuModeTab topbarMenuTab" onClick={() => nav("/archive")} type="button">
+            <IconImport />
+            <span>Import</span>
+          </button>
+        </div>
         <button className="btn" onClick={() => setSettingsOpen(true)} title="Settings" type="button">
           <IconSettings />
         </button>
@@ -488,23 +502,6 @@ export function FoldersPage() {
 
       <div className="page">
         <div className="mainMenuWrap foldersPageWrap">
-          <div className="card menuModeTabsCard">
-            <div className="row menuModeTabs" style={{ marginTop: 2 }}>
-              <button className="btn menuModeTab" onClick={() => nav("/")} type="button">
-                <IconHome />
-                <span>Puzzles</span>
-              </button>
-              <button className="btn primary menuModeTab" onClick={() => nav("/folders")} type="button">
-                <IconFolder />
-                <span>Folders</span>
-              </button>
-              <button className="btn menuModeTab" onClick={() => nav("/archive")} type="button">
-                <IconImport />
-                <span>Import</span>
-              </button>
-            </div>
-          </div>
-
           <div className="card foldersPageCard">
             <div className="row" style={{ justifyContent: "space-between", alignItems: "center", gap: 8 }}>
               <div className="menuSectionTitle">Folders</div>
