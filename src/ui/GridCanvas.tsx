@@ -872,6 +872,8 @@ export function GridCanvas(props: {
         if (!borderColor) borderColor = "#888";
         if (!borderThickness) borderThickness = 0.08;
       }
+      // Don't stroke a shape with zero dimensions — it produces a hairline artifact.
+      if (rw === 0 || rh === 0) borderColor = undefined;
       if (borderColor) {
         const explicitBorderThickness = Number.isFinite(borderThickness)
           ? Number(borderThickness)

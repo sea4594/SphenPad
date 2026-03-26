@@ -1635,7 +1635,11 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
     const explicitBorderToken = normalizeColorToken(rawExplicitBorder);
     const rawStroke = item?.stroke;
     const strokeToken = normalizeColorToken(rawStroke);
-    const borderColor = explicitBorderToken ?? (isNoStrokeToken(rawStroke) ? undefined : strokeToken);
+    // When width is 0 the item is a text-only label; `stroke` is the text outline
+    // color in SudokuPad's format, not a shape border. Mapping it to borderColor
+    // would draw a zero-width shape stroke that appears as a thin white line.
+    const isTextOnlyItem = width === 0;
+    const borderColor = explicitBorderToken ?? (isNoStrokeToken(rawStroke) || isTextOnlyItem ? undefined : strokeToken);
     const fillColor = normalizeColorToken(item?.backgroundColor ?? item?.c2 ?? item?.fill);
     const dashArray = parseDashArrayToken(item?.["stroke-dasharray"], item?.strokeDasharray, item?.dashArray, item?.dash);
     const lineCap = parseLineCapToken(item?.["stroke-linecap"], item?.strokeLinecap, item?.lineCap);
@@ -1657,7 +1661,7 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
       lineJoin,
       text,
       textColor: normalizeColorToken(item?.color ?? item?.textColor ?? item?.c),
-      textStrokeColor: normalizeColorToken(item?.textStrokeColor ?? item?.strokeTextColor ?? item?.fontOutline ?? item?.fontStrokeColor ?? item?.c1),
+      textStrokeColor: normalizeColorToken(item?.textStrokeColor ?? item?.strokeTextColor ?? item?.fontOutline ?? item?.fontStrokeColor ?? item?.c1 ?? (isTextOnlyItem ? item?.stroke : undefined)),
       textStrokeWidth: parseFiniteNumberToken(item?.textStrokeWidth ?? item?.fontOutlineSize ?? item?.fontStrokeWidth),
       textSize: explicitTextSize,
       textAlign: parseTextAlignToken(item?.textAlign ?? item?.["text-anchor"]),
