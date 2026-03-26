@@ -1509,7 +1509,7 @@ export function GridCanvas(props: {
       const first = cage.cells[0] as CellRC;
       cageLabelCells.add(`${first.r},${first.c}`);
     }
-    const valueFontPx = Math.max(previewMode ? 4.5 : 11, Math.min(previewMode ? 30 : 42, Math.round(cellPx * 0.58)));
+    const valueFontPx = Math.max(previewMode ? 4.5 : 11, Math.min(previewMode ? 30 : 48, Math.round(cellPx * 0.65)));
     const noteFontPx = Math.max(previewMode ? 3 : 6, Math.min(previewMode ? 10 : 19, Math.round(cellPx * 0.26)));
     const candidateFontPx = Math.max(previewMode ? 2.2 : 5, Math.min(previewMode ? 8 : 12, Math.round(cellPx * 0.18)));
     const cornerInsetX = Math.max(previewMode ? 0.8 : 2, Math.round(cellPx * 0.08));
@@ -1628,7 +1628,7 @@ export function GridCanvas(props: {
           ctx.textBaseline = "middle";
           drawDigitText(valueSymbol, x0 + cellPx / 2, y0 + cellPx / 2 + 1);
         } else {
-          ctx.font = `${noteFontPx}px ${gridTextFont}, ${emojiTextFont}`;
+          ctx.font = `500 ${noteFontPx}px ${gridTextFont}, ${emojiTextFont}`;
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";
 
@@ -1661,7 +1661,7 @@ export function GridCanvas(props: {
               { x: x0 + cellPx * 0.64, y: middleRowY },
             ];
             const fontPx = noteFontPx;
-            ctx.font = `${fontPx}px ${gridTextFont}, ${emojiTextFont}`;
+            ctx.font = `500 ${fontPx}px ${gridTextFont}, ${emojiTextFont}`;
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
             for (let i = 0; i < Math.min(10, corner.length); i++) {
@@ -1676,7 +1676,7 @@ export function GridCanvas(props: {
           const center = [...cell.notes.center].sort();
           if (center.length) {
             let centerFontPx = noteFontPx;
-            ctx.font = `${centerFontPx}px ${gridTextFont}, ${emojiTextFont}`;
+            ctx.font = `500 ${centerFontPx}px ${gridTextFont}, ${emojiTextFont}`;
             const centerVals = center.map((s) => normalizeSymbol(s)).filter(Boolean) as string[];
             if (centerVals.length > 1) {
               const sp0 = Math.max(0.2, centerFontPx * 0.05);
@@ -1685,7 +1685,7 @@ export function GridCanvas(props: {
               const maxW = cellPx * 0.9;
               if (totalW0 > maxW) {
                 centerFontPx = Math.max(1, (centerFontPx * maxW) / totalW0);
-                ctx.font = `${centerFontPx}px ${gridTextFont}, ${emojiTextFont}`;
+                ctx.font = `500 ${centerFontPx}px ${gridTextFont}, ${emojiTextFont}`;
               }
             }
             // Make center digits blue
@@ -1722,7 +1722,7 @@ export function GridCanvas(props: {
 
           const cand = new Set(cell.notes.candidates);
           if (cand.size) {
-            ctx.font = `${candidateFontPx}px ${gridTextFont}, ${emojiTextFont}`;
+            ctx.font = `500 ${candidateFontPx}px ${gridTextFont}, ${emojiTextFont}`;
             ctx.textAlign = "center";
             const sym = Array.from(cand).sort();
             for (const rawSymbol of sym) {
@@ -1813,7 +1813,7 @@ export function GridCanvas(props: {
           }
 
           if (cell.given) continue;
-          ctx.font = `${noteFontPx}px ${gridTextFont}, ${emojiTextFont}`;
+          ctx.font = `500 ${noteFontPx}px ${gridTextFont}, ${emojiTextFont}`;
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";
 
@@ -1828,7 +1828,7 @@ export function GridCanvas(props: {
           const center = [...cell.notes.center].sort();
           if (center.length) {
             let centerFontPx = noteFontPx;
-            ctx.font = `${centerFontPx}px ${gridTextFont}, ${emojiTextFont}`;
+            ctx.font = `500 ${centerFontPx}px ${gridTextFont}, ${emojiTextFont}`;
             const centerVals = center.map((s) => normalizeSymbol(s)).filter(Boolean) as string[];
             if (centerVals.length > 1) {
               const sp0 = Math.max(0.2, centerFontPx * 0.05);
@@ -1837,7 +1837,7 @@ export function GridCanvas(props: {
               const maxW = cellPx * 0.9;
               if (totalW0 > maxW) {
                 centerFontPx = Math.max(1, (centerFontPx * maxW) / totalW0);
-                ctx.font = `${centerFontPx}px ${gridTextFont}, ${emojiTextFont}`;
+                ctx.font = `500 ${centerFontPx}px ${gridTextFont}, ${emojiTextFont}`;
               }
             }
             drawSymbolRun(center, x0 + cellPx / 2, y0 + cellPx / 2, {
