@@ -153,11 +153,13 @@ export const IconCheck = () => (
 
 export const IconToolLine = () => (
 	<svg width="20" height="20" viewBox="0 0 20 20" aria-hidden>
-		{/* Rounded square outline */}
-		<rect x="2" y="2" width="16" height="16" rx="3.2" ry="3.2" fill="none" stroke="currentColor" strokeWidth="1.7" />
-		{/* Circle in upper-left quadrant */}
-		<circle cx="7.5" cy="7.5" r="3.2" fill="none" stroke="currentColor" strokeWidth="1.7" />
-		{/* Diagonal line from circle edge to lower-right corner */}
-		<line x1="9.8" y1="9.8" x2="16.2" y2="16.2" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+		{/* Rounded square outline, centered in viewBox */}
+		<rect x="2" y="2" width="16" height="16" rx="3" ry="3" fill="none" stroke="currentColor" strokeWidth="1.7" />
+		{/* Circle in upper-left quadrant; center at (6.5, 6.5) */}
+		<circle cx="6.5" cy="6.5" r="2.8" fill="none" stroke="currentColor" strokeWidth="1.7" />
+		{/* Line from bottom-center of square (10, 18) to circle center (6.5, 6.5) */}
+		<line x1="10" y1="18" x2="6.5" y2="6.5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+		{/* Line from right-center of square (18, 10) to circle center (6.5, 6.5) */}
+		<line x1="18" y1="10" x2="6.5" y2="6.5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
 	</svg>
 );
