@@ -1360,31 +1360,33 @@ export function CtCArchivePage() {
             <div className="muted" style={{ marginTop: 6, overflowWrap: "anywhere" }}>
               {clean(rulesDialogEntry.puzzleAuthor) || "Unknown author"}
             </div>
-            <div className="archiveRulesPreviewWrap">
-              {rulesDialogPreviewDef ? (
-                <div className="archivePreview archiveRulesPreview" aria-hidden="true">
-                  <GridCanvas
-                    def={rulesDialogPreviewDef}
-                    progress={makeInitialProgress(rulesDialogPreviewDef)}
-                    onSelection={() => {}}
-                    onLineStroke={() => {}}
-                    onLineTapCell={() => {}}
-                    onLineTapEdge={() => {}}
-                    onDoubleCell={() => {}}
-                    interactive={false}
-                    previewMode
-                  />
-                </div>
-              ) : (
-                <div className="archivePreview archiveRulesPreview archivePreviewPlaceholder">
-                  <span className="muted">{rulesDialogBusy ? "Loading puzzle preview..." : "Preview unavailable."}</span>
-                </div>
-              )}
-            </div>
-            <div className="archiveRulesBody">
-              {rulesDialogBusy
-                ? "Loading rules..."
-                : (previewRulesByEntryId.get(rulesDialogEntry.id) || "No rules available.")}
+            <div className="archiveRulesScrollArea">
+              <div className="archiveRulesPreviewWrap">
+                {rulesDialogPreviewDef ? (
+                  <div className="archivePreview archiveRulesPreview" aria-hidden="true">
+                    <GridCanvas
+                      def={rulesDialogPreviewDef}
+                      progress={makeInitialProgress(rulesDialogPreviewDef)}
+                      onSelection={() => {}}
+                      onLineStroke={() => {}}
+                      onLineTapCell={() => {}}
+                      onLineTapEdge={() => {}}
+                      onDoubleCell={() => {}}
+                      interactive={false}
+                      previewMode
+                    />
+                  </div>
+                ) : (
+                  <div className="archivePreview archiveRulesPreview archivePreviewPlaceholder">
+                    <span className="muted">{rulesDialogBusy ? "Loading puzzle preview..." : "Preview unavailable."}</span>
+                  </div>
+                )}
+              </div>
+              <div className="archiveRulesBody">
+                {rulesDialogBusy
+                  ? "Loading rules..."
+                  : (previewRulesByEntryId.get(rulesDialogEntry.id) || "No rules available.")}
+              </div>
             </div>
           </div>
         </div>

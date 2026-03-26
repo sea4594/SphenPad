@@ -1158,7 +1158,7 @@ input.url {
   max-height: min(82dvh, 760px);
   overflow: hidden;
   display: grid;
-  grid-template-rows: auto auto auto minmax(0, 1fr);
+  grid-template-rows: auto auto minmax(0, 1fr);
   position: relative;
 }
 
@@ -1176,10 +1176,14 @@ input.url {
   font-size: 14px;
 }
 
-.archiveRulesBody {
-  margin-top: 10px;
+.archiveRulesScrollArea {
+  margin-top: 12px;
   min-height: 0;
   overflow: auto;
+}
+
+.archiveRulesBody {
+  margin-top: 10px;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   font-size: 15px;
