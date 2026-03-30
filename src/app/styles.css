@@ -285,7 +285,7 @@ button,
    */
   padding: max(6px, var(--safe-top)) 12px 8px 12px;
   display: grid;
-  grid-template-columns: 1fr minmax(0, 520px) 1fr;
+  grid-template-columns: auto minmax(0, 520px) auto;
   align-items: center;
   gap: 10px;
 }
@@ -311,17 +311,14 @@ button,
   white-space: nowrap;
 }
 
-.topbarLeftSpacer {
+.topbarBrand {
   grid-column: 1;
+  justify-self: start;
 }
 
-.topbarRight {
+.topbarSettings {
   grid-column: 3;
   justify-self: end;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: nowrap;
 }
 
 .topbarFirebase {

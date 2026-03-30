@@ -479,7 +479,9 @@ export function FoldersPage() {
   return (
     <div className="shell">
       <div className="topbar menuTopbar">
-        <div className="topbarLeftSpacer" aria-hidden="true" />
+        <div className="topbarBrand">
+          <AppBrand compact />
+        </div>
         <div className="topbarMenuTabs" aria-label="Main navigation">
           <button className="btn menuModeTab topbarMenuTab" onClick={() => nav("/")} type="button">
             <IconHome />
@@ -494,8 +496,7 @@ export function FoldersPage() {
             <span>Import</span>
           </button>
         </div>
-        <div className="topbarRight">
-          <AppBrand compact />
+        <div className="topbarSettings">
           <button className="btn" onClick={() => setSettingsOpen(true)} title="Settings" type="button">
             <IconSettings />
           </button>

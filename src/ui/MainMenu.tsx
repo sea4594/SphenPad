@@ -777,6 +777,9 @@ export function MainMenu() {
   return (
     <div className="shell">
       <div className="topbar menuTopbar">
+        <div className="topbarBrand">
+          <AppBrand compact />
+        </div>
         <div className="topbarMenuTabs" aria-label="Main navigation">
           <button className="btn primary menuModeTab topbarMenuTab" onClick={() => nav("/")} type="button">
             <IconHome />
@@ -791,13 +794,11 @@ export function MainMenu() {
             <span>Import</span>
           </button>
         </div>
-        <div className="topbarRight">
-          <AppBrand compact />
+        <div className="topbarSettings">
           <button className="btn" onClick={() => setSettingsOpen(true)} title="Settings" type="button">
             <IconSettings />
           </button>
         </div>
-        <div className="topbarLeftSpacer" aria-hidden="true" />
         {firebaseEnabled ? (
           <div className="topbarFirebase row">
             <button className="btn" onClick={() => googleLogin().catch((e) => alert(e.message))} type="button">Google login</button>
