@@ -77,6 +77,13 @@ function toPatchEntry(entry: unknown): Patch[] {
   return [];
 }
 
+function toHistoryEntry(entry: unknown): { patches: Patch[]; selection?: CellRC[] } {
+  return {
+    patches: toPatchEntry(entry),
+    selection: toHistorySelection(entry) ?? undefined,
+  };
+}
+
 function toHistorySelection(entry: unknown): CellRC[] | null {
   if (!entry || typeof entry !== "object") return null;
   const sel = (entry as { selection?: unknown }).selection;
@@ -552,33 +559,31 @@ export function PuzzlePage() {
 
   function undo() {
     if (!data || data.undo.length === 0) return;
-    const entry = toPatchEntry(data.undo[data.undo.length - 1]);
-    if (!entry.length) return;
+    const historyEntry = toHistoryEntry(data.undo[data.undo.length - 1]);
+    if (!historyEntry.patches.length) return;
     let nextProgress = data.progress;
-    for (let i = entry.length - 1; i >= 0; i--) nextProgress = applyPatch(nextProgress, invertPatch(entry[i] as Patch));
-    const historySelection = toHistorySelection(data.undo[data.undo.length - 1]);
-    if (historySelection) nextProgress = { ...nextProgress, selection: historySelection };
+    for (let i = historyEntry.patches.length - 1; i >= 0; i--) nextProgress = applyPatch(nextProgress, invertPatch(historyEntry.patches[i]));
+    if (historyEntry.selection) nextProgress = { ...nextProgress, selection: historyEntry.selection };
     persist({
       ...data,
       progress: nextProgress,
       undo: data.undo.slice(0, -1),
-      redo: [...data.redo, entry],
+      redo: [...data.redo, historyEntry],
       updatedAt: Date.now(),
     });
   }
 
   function redo() {
     if (!data || data.redo.length === 0) return;
-    const entry = toPatchEntry(data.redo[data.redo.length - 1]);
-    if (!entry.length) return;
+    const historyEntry = toHistoryEntry(data.redo[data.redo.length - 1]);
+    if (!historyEntry.patches.length) return;
     let nextProgress = data.progress;
-    for (const p of entry) nextProgress = applyPatch(nextProgress, p);
-    const historySelection = toHistorySelection(data.redo[data.redo.length - 1]);
-    if (historySelection) nextProgress = { ...nextProgress, selection: historySelection };
+    for (const p of historyEntry.patches) nextProgress = applyPatch(nextProgress, p);
+    if (historyEntry.selection) nextProgress = { ...nextProgress, selection: historyEntry.selection };
     persist({
       ...data,
       progress: nextProgress,
-      undo: [...data.undo, entry],
+      undo: [...data.undo, historyEntry],
       redo: data.redo.slice(0, -1),
       updatedAt: Date.now(),
     });
