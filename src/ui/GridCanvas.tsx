@@ -1512,8 +1512,6 @@ export function GridCanvas(props: {
     const valueFontPx = Math.max(previewMode ? 4.5 : 11, Math.min(previewMode ? 30 : 48, Math.round(cellPx * 0.65)));
     const noteFontPx = Math.max(previewMode ? 3 : 6, Math.min(previewMode ? 10 : 19, Math.round(cellPx * 0.26)));
     const candidateFontPx = Math.max(previewMode ? 2.2 : 5, Math.min(previewMode ? 8 : 12, Math.round(cellPx * 0.18)));
-    const cornerInsetX = Math.max(previewMode ? 0.8 : 2, Math.round(cellPx * 0.08));
-    const cornerBaseY = Math.max(previewMode ? 2.2 : 7, Math.round(cellPx * 0.22));
     const digitOutlineWidth = Math.max(previewMode ? 0.18 : 0.45, Math.min(previewMode ? 0.6 : 0.9, cellPx * 0.015));
     const drawDigitText = (text: string, x: number, y: number) => {
       if (outlineDigits) {
@@ -1612,7 +1610,6 @@ export function GridCanvas(props: {
 
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
-        if (fogDefined) continue;
         const cell = progress.cells[r][c];
         const x0 = cellX(c);
         const y0 = cellY(r);
@@ -1818,14 +1815,6 @@ export function GridCanvas(props: {
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";
 
-          const corner = [...cell.notes.corner].sort();
-          if (corner.length) {
-            drawSymbolRun(corner, x0 + cornerInsetX, y0 + cornerBaseY, {
-              align: "left",
-              isConflict: (symbol) => hasBigValuePeer(r, c, symbol),
-            });
-          }
-
           const center = [...cell.notes.center].sort();
           if (center.length) {
             let centerFontPx = noteFontPx;
@@ -1846,6 +1835,55 @@ export function GridCanvas(props: {
               isConflict: (symbol) => hasBigValuePeer(r, c, symbol),
               fontPxOverride: centerFontPx,
             });
+          }
+        }
+      }
+    }
+
+    // Draw corner notes on top of everything, including fog
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const cell = progress.cells[r][c];
+        if (cell.value) continue; // Skip cells with values
+
+        const corner = [...cell.notes.corner].sort();
+        if (corner.length) {
+          const x0 = cellX(c);
+          const y0 = cellY(r);
+          const topRowY = y0 + cellPx * 0.22;
+          const bottomRowY = y0 + cellPx * 0.82;
+          const middleRowY = y0 + cellPx * 0.52;
+          const positions = [
+            // 1st: top left
+            { x: x0 + cellPx * 0.22, y: topRowY },
+            // 2nd: top right
+            { x: x0 + cellPx * 0.78, y: topRowY },
+            // 3rd: bottom left
+            { x: x0 + cellPx * 0.22, y: bottomRowY },
+            // 4th: bottom right
+            { x: x0 + cellPx * 0.78, y: bottomRowY },
+            // 5th: top center
+            { x: x0 + cellPx * 0.5, y: topRowY },
+            // 6th: bottom center
+            { x: x0 + cellPx * 0.5, y: bottomRowY },
+            // 7th: center left
+            { x: x0 + cellPx * 0.22, y: middleRowY },
+            // 8th: center right
+            { x: x0 + cellPx * 0.78, y: middleRowY },
+            // 9th: center, just right of 7th
+            { x: x0 + cellPx * 0.36, y: middleRowY },
+            // 10th: center, just left of 8th
+            { x: x0 + cellPx * 0.64, y: middleRowY },
+          ];
+          ctx.font = `500 ${noteFontPx}px ${gridTextFont}, ${emojiTextFont}`;
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          for (let i = 0; i < Math.min(10, corner.length); i++) {
+            const symbol = normalizeSymbol(corner[i]);
+            if (!symbol) continue;
+            const pos = positions[i];
+            ctx.fillStyle = hasBigValuePeer(r, c, symbol) ? conflictColor : "#123f9a";
+            drawDigitText(symbol, pos.x, pos.y);
           }
         }
       }
