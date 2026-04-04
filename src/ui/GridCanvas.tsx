@@ -1612,6 +1612,7 @@ export function GridCanvas(props: {
 
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
+        if (fogDefined) continue;
         const cell = progress.cells[r][c];
         const x0 = cellX(c);
         const y0 = cellY(r);
