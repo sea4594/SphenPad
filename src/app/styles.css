@@ -148,9 +148,16 @@ body,
   color: var(--text);
 }
 
+@supports (-webkit-touch-callout: none) {
+  html,
+  body,
+  #root {
+    height: -webkit-fill-available;
+    min-height: -webkit-fill-available;
+  }
+}
+
 #root {
-  height: 100dvh;
-  min-height: 100svh;
   overflow: hidden;
 }
 
