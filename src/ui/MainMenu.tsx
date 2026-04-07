@@ -40,8 +40,8 @@ type MainMenuFilterPrefs = {
   filterStatusList: FilterStatus[];
   query: string;
   searchField: MainMenuSearchField;
-  authorFilter: string;
-  collectionFilter: string;
+  authorFilters: string[];
+  collectionFilters: string[];
   constraintFilters: string[];
 };
 
@@ -61,10 +61,24 @@ const DEFAULT_MAIN_MENU_FILTER_PREFS: MainMenuFilterPrefs = {
   filterStatusList: [],
   query: "",
   searchField: "any",
-  authorFilter: "all",
-  collectionFilter: "all",
+  authorFilters: [],
+  collectionFilters: [],
   constraintFilters: [],
 };
+
+function splitSemicolonValues(value: string): string[] {
+  return value
+    .split(";")
+    .map((part) => clean(part))
+    .filter(Boolean);
+}
+
+function orderSelectedFirst(options: string[], selected: string[]): string[] {
+  const selectedSet = new Set(selected);
+  const selectedOptions = options.filter((option) => selectedSet.has(option));
+  const remainingOptions = options.filter((option) => !selectedSet.has(option));
+  return [...selectedOptions, ...remainingOptions];
+}
 
 const NOOP = () => {};
 
@@ -105,6 +119,8 @@ function readInitialMainMenuFilterPrefs(): MainMenuFilterPrefs {
       searchField?: string;
       authorFilter?: string;
       collectionFilter?: string;
+      authorFilters?: string[];
+      collectionFilters?: string[];
       constraintFilters?: string[];
     };
     const parsedSortOrder = parsed.sortOrder;
@@ -126,12 +142,16 @@ function readInitialMainMenuFilterPrefs(): MainMenuFilterPrefs {
       searchField: typeof parsedSearchField === "string" && isMainMenuSearchField(parsedSearchField)
         ? parsedSearchField
         : DEFAULT_MAIN_MENU_FILTER_PREFS.searchField,
-      authorFilter: typeof parsed.authorFilter === "string"
-        ? parsed.authorFilter
-        : DEFAULT_MAIN_MENU_FILTER_PREFS.authorFilter,
-      collectionFilter: typeof parsed.collectionFilter === "string"
-        ? parsed.collectionFilter
-        : DEFAULT_MAIN_MENU_FILTER_PREFS.collectionFilter,
+      authorFilters: Array.isArray(parsed.authorFilters)
+        ? parsed.authorFilters.filter((value): value is string => typeof value === "string").map((value) => clean(value)).filter(Boolean)
+        : (typeof parsed.authorFilter === "string" && clean(parsed.authorFilter).toLowerCase() !== "all"
+          ? [clean(parsed.authorFilter)]
+          : DEFAULT_MAIN_MENU_FILTER_PREFS.authorFilters),
+      collectionFilters: Array.isArray(parsed.collectionFilters)
+        ? parsed.collectionFilters.filter((value): value is string => typeof value === "string").map((value) => clean(value)).filter(Boolean)
+        : (typeof parsed.collectionFilter === "string" && clean(parsed.collectionFilter).toLowerCase() !== "all"
+          ? [clean(parsed.collectionFilter)]
+          : DEFAULT_MAIN_MENU_FILTER_PREFS.collectionFilters),
       constraintFilters: Array.isArray(parsed.constraintFilters)
         ? parsed.constraintFilters.filter((value): value is string => typeof value === "string")
         : DEFAULT_MAIN_MENU_FILTER_PREFS.constraintFilters,
@@ -183,6 +203,13 @@ function matchesStatusList(row: StoredPuzzle, statuses: FilterStatus[]): boolean
   return statuses.includes(puzzleStatus(row));
 }
 
+function puzzleVideoDateTs(row: StoredPuzzle): number | null {
+  const raw = clean(row.def?.meta?.archiveVideoDate);
+  if (!raw) return null;
+  const parsed = Date.parse(raw);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
 function sortPuzzles(rows: StoredPuzzle[], sortOrder: SortOrder, sortDirection: SortDirection): StoredPuzzle[] {
   const next = [...rows];
   const directionFactor = sortDirection === "asc" ? 1 : -1;
@@ -191,7 +218,14 @@ function sortPuzzles(rows: StoredPuzzle[], sortOrder: SortOrder, sortDirection: 
     return next;
   }
   if (sortOrder === "date") {
-    next.sort((a, b) => ((a.createdAt ?? 0) - (b.createdAt ?? 0)) * directionFactor);
+    next.sort((a, b) => {
+      const av = puzzleVideoDateTs(a);
+      const bv = puzzleVideoDateTs(b);
+      if (av == null && bv == null) return 0;
+      if (av == null) return 1;
+      if (bv == null) return -1;
+      return (av - bv) * directionFactor;
+    });
     return next;
   }
 
@@ -223,6 +257,10 @@ function puzzleTitle(row: StoredPuzzle): string {
 
 function puzzleAuthor(row: StoredPuzzle): string {
   return clean(row.def?.meta?.author);
+}
+
+function puzzleAuthors(row: StoredPuzzle): string[] {
+  return splitSemicolonValues(puzzleAuthor(row));
 }
 
 function puzzleCollection(row: StoredPuzzle): string {
@@ -348,9 +386,12 @@ export function MainMenu() {
   const [filterStatusList, setFilterStatusList] = useState<FilterStatus[]>(initialFilterPrefs.filterStatusList);
   const [query, setQuery] = useState(initialFilterPrefs.query);
   const [searchField, setSearchField] = useState<MainMenuSearchField>(initialFilterPrefs.searchField);
-  const [authorFilter, setAuthorFilter] = useState(initialFilterPrefs.authorFilter);
-  const [collectionFilter, setCollectionFilter] = useState(initialFilterPrefs.collectionFilter);
+  const [authorFilters, setAuthorFilters] = useState<string[]>(initialFilterPrefs.authorFilters);
+  const [collectionFilters, setCollectionFilters] = useState<string[]>(initialFilterPrefs.collectionFilters);
   const [constraintFilters, setConstraintFilters] = useState<string[]>(initialFilterPrefs.constraintFilters);
+  const [authorFilterQuery, setAuthorFilterQuery] = useState("");
+  const [collectionFilterQuery, setCollectionFilterQuery] = useState("");
+  const [constraintFilterQuery, setConstraintFilterQuery] = useState("");
   const deferredQuery = useDeferredValue(query);
 
   const [foldersOpen, setFoldersOpen] = useState(false);
@@ -398,12 +439,12 @@ export function MainMenu() {
         filterStatusList,
         query,
         searchField,
-        authorFilter,
-        collectionFilter,
+        authorFilters,
+        collectionFilters,
         constraintFilters,
       } satisfies MainMenuFilterPrefs),
     );
-  }, [sortOrder, sortDirection, filterStatusList, query, searchField, authorFilter, collectionFilter, constraintFilters]);
+  }, [sortOrder, sortDirection, filterStatusList, query, searchField, authorFilters, collectionFilters, constraintFilters]);
 
   useEffect(() => {
     setSyncedLocalStorageItem(
@@ -467,12 +508,12 @@ export function MainMenu() {
   }, [rows]);
 
   const authors = useMemo(
-    () => ["all", ...Array.from(new Set(rows.map((row) => puzzleAuthor(row)).filter(Boolean))).sort((a, b) => a.localeCompare(b))],
+    () => Array.from(new Set(rows.flatMap((row) => puzzleAuthors(row)).filter(Boolean))).sort((a, b) => a.localeCompare(b)),
     [rows],
   );
 
   const collections = useMemo(
-    () => ["all", ...Array.from(new Set(rows.map((row) => puzzleCollection(row)).filter(Boolean))).sort((a, b) => a.localeCompare(b))],
+    () => Array.from(new Set(rows.map((row) => puzzleCollection(row)).filter(Boolean))).sort((a, b) => a.localeCompare(b)),
     [rows],
   );
 
@@ -481,11 +522,39 @@ export function MainMenu() {
     [rows, constraintBulletsByPuzzle],
   );
 
+  const filteredAuthorOptions = useMemo(() => {
+    const q = clean(authorFilterQuery).toLowerCase();
+    const matched = q ? authors.filter((value) => value.toLowerCase().includes(q)) : authors;
+    return orderSelectedFirst(matched, authorFilters);
+  }, [authors, authorFilterQuery, authorFilters]);
+
+  const filteredCollectionOptions = useMemo(() => {
+    const q = clean(collectionFilterQuery).toLowerCase();
+    const matched = q ? collections.filter((value) => value.toLowerCase().includes(q)) : collections;
+    return orderSelectedFirst(matched, collectionFilters);
+  }, [collections, collectionFilterQuery, collectionFilters]);
+
+  const filteredConstraintOptions = useMemo(() => {
+    const q = clean(constraintFilterQuery).toLowerCase();
+    const matched = q ? constraintOptions.filter((value) => value.toLowerCase().includes(q)) : constraintOptions;
+    return orderSelectedFirst(matched, constraintFilters);
+  }, [constraintOptions, constraintFilterQuery, constraintFilters]);
+
   useEffect(() => {
     if (!rows.length) return;
 
-    setAuthorFilter((current) => (current === "all" || authors.includes(current) ? current : "all"));
-    setCollectionFilter((current) => (current === "all" || collections.includes(current) ? current : "all"));
+    setAuthorFilters((current) => {
+      if (!current.length) return current;
+      const valid = new Set(authors);
+      const next = current.filter((value) => valid.has(value));
+      return next.length === current.length ? current : next;
+    });
+    setCollectionFilters((current) => {
+      if (!current.length) return current;
+      const valid = new Set(collections);
+      const next = current.filter((value) => valid.has(value));
+      return next.length === current.length ? current : next;
+    });
     setConstraintFilters((current) => {
       if (!current.length) return current;
       const valid = new Set(constraintOptions);
@@ -498,12 +567,12 @@ export function MainMenu() {
     const queryLower = clean(deferredQuery).toLowerCase();
 
     return rows.filter((row) => {
-      const rowAuthor = puzzleAuthor(row);
+      const rowAuthors = puzzleAuthors(row);
       const rowCollection = puzzleCollection(row);
       const rowConstraints = constraintBulletsByPuzzle.get(row.key) ?? [];
 
-      if (authorFilter !== "all" && rowAuthor !== authorFilter) return false;
-      if (collectionFilter !== "all" && rowCollection !== collectionFilter) return false;
+      if (authorFilters.length && !authorFilters.some((selectedAuthor) => rowAuthors.includes(selectedAuthor))) return false;
+      if (collectionFilters.length && !collectionFilters.includes(rowCollection)) return false;
 
       if (constraintFilters.length) {
         const hasAllConstraints = constraintFilters.every((selectedConstraint) => rowConstraints.includes(selectedConstraint));
@@ -513,7 +582,7 @@ export function MainMenu() {
       if (!matchesMainMenuSearch(row, rowConstraints, searchField, queryLower)) return false;
       return true;
     });
-  }, [rows, deferredQuery, searchField, authorFilter, collectionFilter, constraintFilters, constraintBulletsByPuzzle]);
+  }, [rows, deferredQuery, searchField, authorFilters, collectionFilters, constraintFilters, constraintBulletsByPuzzle]);
 
   const displayRows = useMemo(() => {
     return sortPuzzles(
@@ -526,8 +595,8 @@ export function MainMenu() {
   const hasMainMenuSearchFilters =
     !!clean(query) ||
     searchField !== "any" ||
-    authorFilter !== "all" ||
-    collectionFilter !== "all" ||
+    authorFilters.length > 0 ||
+    collectionFilters.length > 0 ||
     constraintFilters.length > 0 ||
     filterStatusList.length > 0;
 
@@ -840,9 +909,12 @@ export function MainMenu() {
   function onClearMainMenuFilters() {
     setQuery("");
     setSearchField("any");
-    setAuthorFilter("all");
-    setCollectionFilter("all");
+    setAuthorFilters([]);
+    setCollectionFilters([]);
     setConstraintFilters([]);
+    setAuthorFilterQuery("");
+    setCollectionFilterQuery("");
+    setConstraintFilterQuery("");
     setFilterStatusList([]);
   }
 
@@ -852,6 +924,30 @@ export function MainMenu() {
     event.preventDefault();
     const value = target.value;
     setConstraintFilters((current) => (
+      current.includes(value)
+        ? current.filter((entry) => entry !== value)
+        : [...current, value]
+    ));
+  }
+
+  function onAuthorMouseDown(event: MouseEvent<HTMLSelectElement>) {
+    const target = event.target;
+    if (!(target instanceof HTMLOptionElement)) return;
+    event.preventDefault();
+    const value = target.value;
+    setAuthorFilters((current) => (
+      current.includes(value)
+        ? current.filter((entry) => entry !== value)
+        : [...current, value]
+    ));
+  }
+
+  function onCollectionMouseDown(event: MouseEvent<HTMLSelectElement>) {
+    const target = event.target;
+    if (!(target instanceof HTMLOptionElement)) return;
+    event.preventDefault();
+    const value = target.value;
+    setCollectionFilters((current) => (
       current.includes(value)
         ? current.filter((entry) => entry !== value)
         : [...current, value]
@@ -912,46 +1008,81 @@ export function MainMenu() {
               <div className="archiveFilterRow">
                 <label className="archiveFilterControl">
                   <span className="muted archiveFilterLabel">Author</span>
+                  <input
+                    className="url"
+                    placeholder="Search authors..."
+                    value={authorFilterQuery}
+                    onChange={(event) => setAuthorFilterQuery(event.target.value)}
+                    aria-label="Search author filter options"
+                  />
                   <SelectControl
-                    className="btn menuControlSelect"
-                    value={authorFilter}
-                    onChange={(event) => setAuthorFilter(event.target.value)}
-                    searchable
-                    searchPlaceholder="Search authors..."
+                    className="archiveConstraintSelect"
+                    multiple
+                    size={Math.min(8, Math.max(4, filteredAuthorOptions.length || 4))}
+                    value={authorFilters}
+                    onMouseDown={onAuthorMouseDown}
+                    onChange={(event) => {
+                      const nextSelected = Array.from(event.target.selectedOptions, (option) => option.value);
+                      setAuthorFilters(nextSelected);
+                    }}
+                    aria-label="Filter puzzles by author"
                   >
-                    {authors.map((value) => (
+                    {filteredAuthorOptions.map((value) => (
                       <option key={value} value={value}>
-                        {value === "all" ? "All" : value}
+                        {value}
                       </option>
                     ))}
                   </SelectControl>
+                  <span className="muted archiveFilterHint">
+                    {authorFilters.length ? `${authorFilters.length} selected` : "All"}
+                  </span>
                 </label>
 
                 <label className="archiveFilterControl">
                   <span className="muted archiveFilterLabel">Collection</span>
+                  <input
+                    className="url"
+                    placeholder="Search collections..."
+                    value={collectionFilterQuery}
+                    onChange={(event) => setCollectionFilterQuery(event.target.value)}
+                    aria-label="Search collection filter options"
+                  />
                   <SelectControl
-                    className="btn menuControlSelect"
-                    value={collectionFilter}
-                    onChange={(event) => setCollectionFilter(event.target.value)}
-                    searchable
-                    searchPlaceholder="Search collections..."
+                    className="archiveConstraintSelect"
+                    multiple
+                    size={Math.min(8, Math.max(4, filteredCollectionOptions.length || 4))}
+                    value={collectionFilters}
+                    onMouseDown={onCollectionMouseDown}
+                    onChange={(event) => {
+                      const nextSelected = Array.from(event.target.selectedOptions, (option) => option.value);
+                      setCollectionFilters(nextSelected);
+                    }}
+                    aria-label="Filter puzzles by collection"
                   >
-                    {collections.map((value) => (
+                    {filteredCollectionOptions.map((value) => (
                       <option key={value} value={value}>
-                        {value === "all" ? "All" : value}
+                        {value}
                       </option>
                     ))}
                   </SelectControl>
+                  <span className="muted archiveFilterHint">
+                    {collectionFilters.length ? `${collectionFilters.length} selected` : "All"}
+                  </span>
                 </label>
 
                 <label className="archiveFilterControl">
                   <span className="muted archiveFilterLabel">Constraints</span>
+                  <input
+                    className="url"
+                    placeholder="Search constraints..."
+                    value={constraintFilterQuery}
+                    onChange={(event) => setConstraintFilterQuery(event.target.value)}
+                    aria-label="Search constraint filter options"
+                  />
                   <SelectControl
                     className="archiveConstraintSelect"
                     multiple
-                    searchable
-                    searchPlaceholder="Search constraints..."
-                    size={Math.min(8, Math.max(4, constraintOptions.length || 4))}
+                    size={Math.min(8, Math.max(4, filteredConstraintOptions.length || 4))}
                     value={constraintFilters}
                     onMouseDown={onConstraintMouseDown}
                     onChange={(event) => {
@@ -960,7 +1091,7 @@ export function MainMenu() {
                     }}
                     aria-label="Filter puzzles by constraints"
                   >
-                    {constraintOptions.map((value) => (
+                    {filteredConstraintOptions.map((value) => (
                       <option key={value} value={value}>
                         {value}
                       </option>

@@ -69,9 +69,9 @@ type ArchiveFilterPrefs = {
   searchField: SearchField;
   sortField: SortField;
   sortDirection: SortDirection;
-  hostFilter: string;
-  authorFilter: string;
-  collectionFilter: string;
+  hostFilters: string[];
+  authorFilters: string[];
+  collectionFilters: string[];
   constraintFilters: string[];
   minLength: string;
   maxLength: string;
@@ -108,13 +108,27 @@ const DEFAULT_ARCHIVE_FILTER_PREFS: ArchiveFilterPrefs = {
   searchField: "any",
   sortField: "date",
   sortDirection: "desc",
-  hostFilter: "all",
-  authorFilter: "all",
-  collectionFilter: "all",
+  hostFilters: [],
+  authorFilters: [],
+  collectionFilters: [],
   constraintFilters: [],
   minLength: "",
   maxLength: "",
 };
+
+function splitSemicolonValues(value: string): string[] {
+  return clean(value)
+    .split(";")
+    .map((part) => clean(part))
+    .filter(Boolean);
+}
+
+function orderSelectedFirst(options: string[], selected: string[]): string[] {
+  const selectedSet = new Set(selected);
+  const selectedOptions = options.filter((option) => selectedSet.has(option));
+  const remainingOptions = options.filter((option) => !selectedSet.has(option));
+  return [...selectedOptions, ...remainingOptions];
+}
 
 function getRenderConfig() {
   const isMobile =
@@ -252,6 +266,11 @@ function readInitialArchiveFilterPrefs(): ArchiveFilterPrefs {
     if (!raw) return DEFAULT_ARCHIVE_FILTER_PREFS;
 
     const parsed = JSON.parse(raw) as Partial<ArchiveFilterPrefs>;
+    const legacy = parsed as {
+      hostFilter?: string;
+      authorFilter?: string;
+      collectionFilter?: string;
+    };
 
     const searchField = typeof parsed.searchField === "string" && isSearchField(parsed.searchField)
       ? parsed.searchField
@@ -268,11 +287,21 @@ function readInitialArchiveFilterPrefs(): ArchiveFilterPrefs {
       searchField,
       sortField,
       sortDirection,
-      hostFilter: typeof parsed.hostFilter === "string" ? parsed.hostFilter : DEFAULT_ARCHIVE_FILTER_PREFS.hostFilter,
-      authorFilter: typeof parsed.authorFilter === "string" ? parsed.authorFilter : DEFAULT_ARCHIVE_FILTER_PREFS.authorFilter,
-      collectionFilter: typeof parsed.collectionFilter === "string"
-        ? parsed.collectionFilter
-        : DEFAULT_ARCHIVE_FILTER_PREFS.collectionFilter,
+      hostFilters: Array.isArray(parsed.hostFilters)
+        ? parsed.hostFilters.filter((value): value is string => typeof value === "string").map((value) => clean(value)).filter(Boolean)
+        : (typeof legacy.hostFilter === "string" && clean(legacy.hostFilter).toLowerCase() !== "all"
+          ? [clean(legacy.hostFilter)]
+          : DEFAULT_ARCHIVE_FILTER_PREFS.hostFilters),
+      authorFilters: Array.isArray(parsed.authorFilters)
+        ? parsed.authorFilters.filter((value): value is string => typeof value === "string").map((value) => clean(value)).filter(Boolean)
+        : (typeof legacy.authorFilter === "string" && clean(legacy.authorFilter).toLowerCase() !== "all"
+          ? [clean(legacy.authorFilter)]
+          : DEFAULT_ARCHIVE_FILTER_PREFS.authorFilters),
+      collectionFilters: Array.isArray(parsed.collectionFilters)
+        ? parsed.collectionFilters.filter((value): value is string => typeof value === "string").map((value) => clean(value)).filter(Boolean)
+        : (typeof legacy.collectionFilter === "string" && clean(legacy.collectionFilter).toLowerCase() !== "all"
+          ? [clean(legacy.collectionFilter)]
+          : DEFAULT_ARCHIVE_FILTER_PREFS.collectionFilters),
       constraintFilters: Array.isArray(parsed.constraintFilters)
         ? parsed.constraintFilters.filter((value): value is string => typeof value === "string")
         : DEFAULT_ARCHIVE_FILTER_PREFS.constraintFilters,
@@ -340,10 +369,14 @@ export function CtCArchivePage() {
   const [searchField, setSearchField] = useState<SearchField>(initialFilterPrefs.searchField);
   const [sortField, setSortField] = useState<SortField>(initialFilterPrefs.sortField);
   const [sortDirection, setSortDirection] = useState<SortDirection>(initialFilterPrefs.sortDirection);
-  const [hostFilter, setHostFilter] = useState(initialFilterPrefs.hostFilter);
-  const [authorFilter, setAuthorFilter] = useState(initialFilterPrefs.authorFilter);
-  const [collectionFilter, setCollectionFilter] = useState(initialFilterPrefs.collectionFilter);
+  const [hostFilters, setHostFilters] = useState<string[]>(initialFilterPrefs.hostFilters);
+  const [authorFilters, setAuthorFilters] = useState<string[]>(initialFilterPrefs.authorFilters);
+  const [collectionFilters, setCollectionFilters] = useState<string[]>(initialFilterPrefs.collectionFilters);
   const [constraintFilters, setConstraintFilters] = useState<string[]>(initialFilterPrefs.constraintFilters);
+  const [hostFilterQuery, setHostFilterQuery] = useState("");
+  const [authorFilterQuery, setAuthorFilterQuery] = useState("");
+  const [collectionFilterQuery, setCollectionFilterQuery] = useState("");
+  const [constraintFilterQuery, setConstraintFilterQuery] = useState("");
   const [minLength, setMinLength] = useState(initialFilterPrefs.minLength);
   const [maxLength, setMaxLength] = useState(initialFilterPrefs.maxLength);
   const [visibleRowsCount, setVisibleRowsCount] = useState(renderConfig.initialVisibleRows);
@@ -375,9 +408,9 @@ export function CtCArchivePage() {
         searchField,
         sortField,
         sortDirection,
-        hostFilter,
-        authorFilter,
-        collectionFilter,
+        hostFilters,
+        authorFilters,
+        collectionFilters,
         constraintFilters,
         minLength,
         maxLength,
@@ -388,9 +421,9 @@ export function CtCArchivePage() {
     searchField,
     sortField,
     sortDirection,
-    hostFilter,
-    authorFilter,
-    collectionFilter,
+    hostFilters,
+    authorFilters,
+    collectionFilters,
     constraintFilters,
     minLength,
     maxLength,
@@ -468,17 +501,17 @@ export function CtCArchivePage() {
   }, []);
 
   const hosts = useMemo(
-    () => ["all", ...Array.from(new Set(rows.map((r) => r.videoHost).filter(Boolean))).sort((a, b) => a.localeCompare(b))],
+    () => Array.from(new Set(rows.map((r) => r.videoHost).filter(Boolean))).sort((a, b) => a.localeCompare(b)),
     [rows],
   );
 
   const authors = useMemo(
-    () => ["all", ...Array.from(new Set(rows.map((r) => r.puzzleAuthor).filter(Boolean))).sort((a, b) => a.localeCompare(b))],
+    () => Array.from(new Set(rows.flatMap((r) => splitSemicolonValues(r.puzzleAuthor)).filter(Boolean))).sort((a, b) => a.localeCompare(b)),
     [rows],
   );
 
   const collections = useMemo(
-    () => ["all", ...Array.from(new Set(rows.map((r) => r.collection).filter(Boolean))).sort((a, b) => a.localeCompare(b))],
+    () => Array.from(new Set(rows.map((r) => r.collection).filter(Boolean))).sort((a, b) => a.localeCompare(b)),
     [rows],
   );
 
@@ -487,12 +520,51 @@ export function CtCArchivePage() {
     [rows],
   );
 
+  const filteredHostOptions = useMemo(() => {
+    const q = clean(hostFilterQuery).toLowerCase();
+    const matched = q ? hosts.filter((value) => value.toLowerCase().includes(q)) : hosts;
+    return orderSelectedFirst(matched, hostFilters);
+  }, [hosts, hostFilterQuery, hostFilters]);
+
+  const filteredAuthorOptions = useMemo(() => {
+    const q = clean(authorFilterQuery).toLowerCase();
+    const matched = q ? authors.filter((value) => value.toLowerCase().includes(q)) : authors;
+    return orderSelectedFirst(matched, authorFilters);
+  }, [authors, authorFilterQuery, authorFilters]);
+
+  const filteredCollectionOptions = useMemo(() => {
+    const q = clean(collectionFilterQuery).toLowerCase();
+    const matched = q ? collections.filter((value) => value.toLowerCase().includes(q)) : collections;
+    return orderSelectedFirst(matched, collectionFilters);
+  }, [collections, collectionFilterQuery, collectionFilters]);
+
+  const filteredConstraintOptions = useMemo(() => {
+    const q = clean(constraintFilterQuery).toLowerCase();
+    const matched = q ? constraintOptions.filter((value) => value.toLowerCase().includes(q)) : constraintOptions;
+    return orderSelectedFirst(matched, constraintFilters);
+  }, [constraintOptions, constraintFilterQuery, constraintFilters]);
+
   useEffect(() => {
     if (!rows.length) return;
 
-    setHostFilter((current) => (current === "all" || hosts.includes(current) ? current : "all"));
-    setAuthorFilter((current) => (current === "all" || authors.includes(current) ? current : "all"));
-    setCollectionFilter((current) => (current === "all" || collections.includes(current) ? current : "all"));
+    setHostFilters((current) => {
+      if (!current.length) return current;
+      const valid = new Set(hosts);
+      const next = current.filter((value) => valid.has(value));
+      return next.length === current.length ? current : next;
+    });
+    setAuthorFilters((current) => {
+      if (!current.length) return current;
+      const valid = new Set(authors);
+      const next = current.filter((value) => valid.has(value));
+      return next.length === current.length ? current : next;
+    });
+    setCollectionFilters((current) => {
+      if (!current.length) return current;
+      const valid = new Set(collections);
+      const next = current.filter((value) => valid.has(value));
+      return next.length === current.length ? current : next;
+    });
     setConstraintFilters((current) => {
       if (!current.length) return current;
       const valid = new Set(constraintOptions);
@@ -536,9 +608,10 @@ export function CtCArchivePage() {
     const maxSeconds = maxLength ? parseMinutesToSeconds(maxLength) : null;
 
     return sortedRows.filter((r) => {
-      if (hostFilter !== "all" && r.videoHost !== hostFilter) return false;
-      if (authorFilter !== "all" && r.puzzleAuthor !== authorFilter) return false;
-      if (collectionFilter !== "all" && r.collection !== collectionFilter) return false;
+      const rowAuthors = splitSemicolonValues(r.puzzleAuthor);
+      if (hostFilters.length && !hostFilters.includes(r.videoHost)) return false;
+      if (authorFilters.length && !authorFilters.some((selectedAuthor) => rowAuthors.includes(selectedAuthor))) return false;
+      if (collectionFilters.length && !collectionFilters.includes(r.collection)) return false;
       if (constraintFilters.length && !constraintFilters.every((selectedConstraint) => r.constraintTypes.includes(selectedConstraint))) {
         return false;
       }
@@ -551,9 +624,9 @@ export function CtCArchivePage() {
     sortedRows,
     deferredQuery,
     searchField,
-    hostFilter,
-    authorFilter,
-    collectionFilter,
+    hostFilters,
+    authorFilters,
+    collectionFilters,
     constraintFilters,
     minLength,
     maxLength,
@@ -567,9 +640,9 @@ export function CtCArchivePage() {
     searchField,
     sortField,
     sortDirection,
-    hostFilter,
-    authorFilter,
-    collectionFilter,
+    hostFilters,
+    authorFilters,
+    collectionFilters,
     constraintFilters,
     minLength,
     maxLength,
@@ -710,10 +783,14 @@ export function CtCArchivePage() {
   const onClearFilters = useCallback(() => {
     setQuery("");
     setSearchField("any");
-    setHostFilter("all");
-    setAuthorFilter("all");
-    setCollectionFilter("all");
+    setHostFilters([]);
+    setAuthorFilters([]);
+    setCollectionFilters([]);
     setConstraintFilters([]);
+    setHostFilterQuery("");
+    setAuthorFilterQuery("");
+    setCollectionFilterQuery("");
+    setConstraintFilterQuery("");
     setMinLength("");
     setMaxLength("");
   }, []);
@@ -724,6 +801,42 @@ export function CtCArchivePage() {
     event.preventDefault();
     const value = target.value;
     setConstraintFilters((current) => (
+      current.includes(value)
+        ? current.filter((entry) => entry !== value)
+        : [...current, value]
+    ));
+  }, []);
+
+  const onHostMouseDown = useCallback((event: MouseEvent<HTMLSelectElement>) => {
+    const target = event.target;
+    if (!(target instanceof HTMLOptionElement)) return;
+    event.preventDefault();
+    const value = target.value;
+    setHostFilters((current) => (
+      current.includes(value)
+        ? current.filter((entry) => entry !== value)
+        : [...current, value]
+    ));
+  }, []);
+
+  const onAuthorMouseDown = useCallback((event: MouseEvent<HTMLSelectElement>) => {
+    const target = event.target;
+    if (!(target instanceof HTMLOptionElement)) return;
+    event.preventDefault();
+    const value = target.value;
+    setAuthorFilters((current) => (
+      current.includes(value)
+        ? current.filter((entry) => entry !== value)
+        : [...current, value]
+    ));
+  }, []);
+
+  const onCollectionMouseDown = useCallback((event: MouseEvent<HTMLSelectElement>) => {
+    const target = event.target;
+    if (!(target instanceof HTMLOptionElement)) return;
+    event.preventDefault();
+    const value = target.value;
+    setCollectionFilters((current) => (
       current.includes(value)
         ? current.filter((entry) => entry !== value)
         : [...current, value]
@@ -1072,63 +1185,113 @@ export function CtCArchivePage() {
             <div className="archiveFilterRow">
               <label className="archiveFilterControl">
                 <span className="muted archiveFilterLabel">Host</span>
+                <input
+                  className="url"
+                  placeholder="Search hosts..."
+                  value={hostFilterQuery}
+                  onChange={(e) => setHostFilterQuery(e.target.value)}
+                  aria-label="Search host filter options"
+                />
                 <SelectControl
-                  className="btn menuControlSelect"
-                  value={hostFilter}
-                  onChange={(e) => setHostFilter(e.target.value)}
-                  searchable
-                  searchPlaceholder="Search hosts..."
+                  className="archiveConstraintSelect"
+                  multiple
+                  size={Math.min(8, Math.max(4, filteredHostOptions.length || 4))}
+                  value={hostFilters}
+                  onMouseDown={onHostMouseDown}
+                  onChange={(e) => {
+                    const nextSelected = Array.from(e.target.selectedOptions, (option) => option.value);
+                    setHostFilters(nextSelected);
+                  }}
+                  aria-label="Filter by host"
                 >
-                  {hosts.map((v) => (
+                  {filteredHostOptions.map((v) => (
                     <option key={v} value={v}>
-                      {v === "all" ? "All" : v}
+                      {v}
                     </option>
                   ))}
                 </SelectControl>
+                <span className="muted archiveFilterHint">
+                  {hostFilters.length ? `${hostFilters.length} selected` : "All"}
+                </span>
               </label>
 
               <label className="archiveFilterControl">
                 <span className="muted archiveFilterLabel">Author</span>
+                <input
+                  className="url"
+                  placeholder="Search authors..."
+                  value={authorFilterQuery}
+                  onChange={(e) => setAuthorFilterQuery(e.target.value)}
+                  aria-label="Search author filter options"
+                />
                 <SelectControl
-                  className="btn menuControlSelect"
-                  value={authorFilter}
-                  onChange={(e) => setAuthorFilter(e.target.value)}
-                  searchable
-                  searchPlaceholder="Search authors..."
+                  className="archiveConstraintSelect"
+                  multiple
+                  size={Math.min(8, Math.max(4, filteredAuthorOptions.length || 4))}
+                  value={authorFilters}
+                  onMouseDown={onAuthorMouseDown}
+                  onChange={(e) => {
+                    const nextSelected = Array.from(e.target.selectedOptions, (option) => option.value);
+                    setAuthorFilters(nextSelected);
+                  }}
+                  aria-label="Filter by author"
                 >
-                  {authors.map((v) => (
+                  {filteredAuthorOptions.map((v) => (
                     <option key={v} value={v}>
-                      {v === "all" ? "All" : v}
+                      {v}
                     </option>
                   ))}
                 </SelectControl>
+                <span className="muted archiveFilterHint">
+                  {authorFilters.length ? `${authorFilters.length} selected` : "All"}
+                </span>
               </label>
 
               <label className="archiveFilterControl">
                 <span className="muted archiveFilterLabel">Collection</span>
+                <input
+                  className="url"
+                  placeholder="Search collections..."
+                  value={collectionFilterQuery}
+                  onChange={(e) => setCollectionFilterQuery(e.target.value)}
+                  aria-label="Search collection filter options"
+                />
                 <SelectControl
-                  className="btn menuControlSelect"
-                  value={collectionFilter}
-                  onChange={(e) => setCollectionFilter(e.target.value)}
-                  searchable
-                  searchPlaceholder="Search collections..."
+                  className="archiveConstraintSelect"
+                  multiple
+                  size={Math.min(8, Math.max(4, filteredCollectionOptions.length || 4))}
+                  value={collectionFilters}
+                  onMouseDown={onCollectionMouseDown}
+                  onChange={(e) => {
+                    const nextSelected = Array.from(e.target.selectedOptions, (option) => option.value);
+                    setCollectionFilters(nextSelected);
+                  }}
+                  aria-label="Filter by collection"
                 >
-                  {collections.map((v) => (
+                  {filteredCollectionOptions.map((v) => (
                     <option key={v} value={v}>
-                      {v === "all" ? "All" : displayCollection(v) || "None"}
+                      {displayCollection(v) || "None"}
                     </option>
                   ))}
                 </SelectControl>
+                <span className="muted archiveFilterHint">
+                  {collectionFilters.length ? `${collectionFilters.length} selected` : "All"}
+                </span>
               </label>
 
               <label className="archiveFilterControl">
                 <span className="muted archiveFilterLabel">Constraints</span>
+                <input
+                  className="url"
+                  placeholder="Search constraints..."
+                  value={constraintFilterQuery}
+                  onChange={(e) => setConstraintFilterQuery(e.target.value)}
+                  aria-label="Search constraint filter options"
+                />
                 <SelectControl
                   className="archiveConstraintSelect"
                   multiple
-                  searchable
-                  searchPlaceholder="Search constraints..."
-                  size={Math.min(8, Math.max(4, constraintOptions.length || 4))}
+                  size={Math.min(8, Math.max(4, filteredConstraintOptions.length || 4))}
                   value={constraintFilters}
                   onMouseDown={onConstraintMouseDown}
                   onChange={(e) => {
@@ -1137,7 +1300,7 @@ export function CtCArchivePage() {
                   }}
                   aria-label="Filter by constraints"
                 >
-                  {constraintOptions.map((value) => (
+                  {filteredConstraintOptions.map((value) => (
                     <option key={value} value={value}>
                       {value}
                     </option>

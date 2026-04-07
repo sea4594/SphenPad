@@ -98,6 +98,13 @@ function matchesStatusList(row: StoredPuzzle, statuses: FilterStatus[]): boolean
   return statuses.includes(puzzleStatus(row));
 }
 
+function puzzleVideoDateTs(row: StoredPuzzle): number | null {
+  const raw = (row.def?.meta?.archiveVideoDate ?? "").trim();
+  if (!raw) return null;
+  const parsed = Date.parse(raw);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
 function sortPuzzles(rows: StoredPuzzle[], sortOrder: SortOrder, sortDirection: SortDirection): StoredPuzzle[] {
   const next = [...rows];
   const directionFactor = sortDirection === "asc" ? 1 : -1;
@@ -106,7 +113,14 @@ function sortPuzzles(rows: StoredPuzzle[], sortOrder: SortOrder, sortDirection: 
     return next;
   }
   if (sortOrder === "date") {
-    next.sort((a, b) => ((a.createdAt ?? 0) - (b.createdAt ?? 0)) * directionFactor);
+    next.sort((a, b) => {
+      const av = puzzleVideoDateTs(a);
+      const bv = puzzleVideoDateTs(b);
+      if (av == null && bv == null) return 0;
+      if (av == null) return 1;
+      if (bv == null) return -1;
+      return (av - bv) * directionFactor;
+    });
     return next;
   }
 
