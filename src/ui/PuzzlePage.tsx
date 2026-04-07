@@ -87,6 +87,14 @@ function toPatchEntry(entry: unknown): Patch[] {
   return [];
 }
 
+function normalizeSelection(value: unknown): CellRC[] | null {
+  if (!Array.isArray(value)) return null;
+  const normalized = value
+    .filter((rc) => rc && typeof rc === "object" && Number.isFinite((rc as CellRC).r) && Number.isFinite((rc as CellRC).c))
+    .map((rc) => ({ r: Number((rc as CellRC).r), c: Number((rc as CellRC).c) }));
+  return normalized;
+}
+
 function toHistoryEntry(entry: unknown): { patches: Patch[]; selection?: CellRC[] } {
   return {
     patches: toPatchEntry(entry),
@@ -96,12 +104,31 @@ function toHistoryEntry(entry: unknown): { patches: Patch[]; selection?: CellRC[
 
 function toHistorySelection(entry: unknown): CellRC[] | null {
   if (!entry || typeof entry !== "object") return null;
-  const sel = (entry as { selection?: unknown }).selection;
-  if (!Array.isArray(sel)) return null;
-  const normalized = sel
-    .filter((rc) => rc && typeof rc === "object" && Number.isFinite((rc as CellRC).r) && Number.isFinite((rc as CellRC).c))
-    .map((rc) => ({ r: Number((rc as CellRC).r), c: Number((rc as CellRC).c) }));
-  return normalized;
+  return normalizeSelection((entry as { selection?: unknown }).selection);
+}
+
+function isSelectionOnlyHistoryEntry(entry: unknown): boolean {
+  const historyEntry = toHistoryEntry(entry);
+  return historyEntry.patches.length === 1 && historyEntry.patches[0]?.path.length === 1 && historyEntry.patches[0]?.path[0] === "selection";
+}
+
+function mergeTrailingSelectionHistoryEntry(history: unknown[], selection: CellRC[]): unknown[] | null {
+  if (!history.length || !isSelectionOnlyHistoryEntry(history[history.length - 1])) return null;
+  const historyEntry = toHistoryEntry(history[history.length - 1]);
+  const patch = historyEntry.patches[0];
+  const prevSelection = normalizeSelection(patch?.prev) ?? [];
+  if (sameSelection(prevSelection, selection)) return history.slice(0, -1);
+  return [
+    ...history.slice(0, -1),
+    {
+      patches: [
+        {
+          ...patch,
+          next: selection,
+        },
+      ],
+    },
+  ];
 }
 
 function normalizeComparisonSymbol(symbol: string | undefined): string {
@@ -572,6 +599,7 @@ export function PuzzlePage() {
     let nextRedo = data.redo;
 
     if (recordHistory) {
+      if (nextUndo.length > 0 && isSelectionOnlyHistoryEntry(nextUndo[nextUndo.length - 1])) nextUndo.pop();
       nextUndo.push({ patches: [...patches], selection: data.progress.selection });
       nextRedo = [];
     }
@@ -673,6 +701,19 @@ export function PuzzlePage() {
 
   function setSelection(sel: CellRC[]) {
     if (!data || data.progress.activeTool === "line") return;
+    const nextUndo = mergeTrailingSelectionHistoryEntry(data.undo, sel);
+    if (nextUndo) {
+      persist({
+        ...data,
+        progress: {
+          ...data.progress,
+          selection: sel,
+        },
+        undo: nextUndo,
+        updatedAt: Date.now(),
+      });
+      return;
+    }
     pushPatch(patchAt(data.progress, ["selection"], sel), { recordHistory: false });
   }
 
