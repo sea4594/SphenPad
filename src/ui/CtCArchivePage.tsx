@@ -7,7 +7,7 @@ import { addPuzzleToFolder, createFolder, getPuzzle, listCompletedPuzzleKeys, li
 import { loadFromSudokuPad } from "../core/sudokupad";
 import { AppBrand } from "./AppBrand";
 import { GridCanvas } from "./GridCanvas";
-import { IconFolder, IconHome, IconImport, IconPlay, IconSettings, IconSort } from "./icons";
+import { IconFolder, IconHome, IconImport, IconPlay, IconSettings, IconSort, IconSortAsc, IconSortDesc } from "./icons";
 import { SelectControl } from "./SelectControl";
 import { SettingsOverlay } from "./SettingsOverlay";
 import {
@@ -61,11 +61,13 @@ type SearchField =
   | "collection";
 
 type SortField = "title" | "video_length" | "date";
+type SortDirection = "asc" | "desc";
 
 type ArchiveFilterPrefs = {
   query: string;
   searchField: SearchField;
   sortField: SortField;
+  sortDirection: SortDirection;
   hostFilter: string;
   authorFilter: string;
   collectionFilter: string;
@@ -104,6 +106,7 @@ const DEFAULT_ARCHIVE_FILTER_PREFS: ArchiveFilterPrefs = {
   query: "",
   searchField: "any",
   sortField: "date",
+  sortDirection: "desc",
   hostFilter: "all",
   authorFilter: "all",
   collectionFilter: "all",
@@ -205,22 +208,6 @@ function matchesSearch(entry: PreparedArchiveEntry, searchField: SearchField, qu
   return entry.searchAnyLower.includes(queryLower);
 }
 
-function sortByDateDesc(a: PreparedArchiveEntry, b: PreparedArchiveEntry): number {
-  const av = a.videoDateTs ?? 0;
-  const bv = b.videoDateTs ?? 0;
-  return bv - av;
-}
-
-function sortByTitleAsc(a: PreparedArchiveEntry, b: PreparedArchiveEntry): number {
-  return a.title.localeCompare(b.title);
-}
-
-function sortByVideoLengthAsc(a: PreparedArchiveEntry, b: PreparedArchiveEntry): number {
-  const av = a.videoLengthSeconds ?? Number.MAX_SAFE_INTEGER;
-  const bv = b.videoLengthSeconds ?? Number.MAX_SAFE_INTEGER;
-  return av - bv;
-}
-
 function buildFolderPath(folder: PuzzleFolder, folderById: Map<string, PuzzleFolder>): string {
   const names: string[] = [folder.name];
   const seen = new Set<string>([folder.id]);
@@ -254,6 +241,10 @@ function isSortField(value: string): value is SortField {
   return SORT_FIELDS.has(value as SortField);
 }
 
+function isSortDirection(value: string): value is SortDirection {
+  return value === "asc" || value === "desc";
+}
+
 function readInitialArchiveFilterPrefs(): ArchiveFilterPrefs {
   try {
     const raw = localStorage.getItem(ARCHIVE_FILTER_PREFS_KEY);
@@ -267,11 +258,15 @@ function readInitialArchiveFilterPrefs(): ArchiveFilterPrefs {
     const sortField = typeof parsed.sortField === "string" && isSortField(parsed.sortField)
       ? parsed.sortField
       : DEFAULT_ARCHIVE_FILTER_PREFS.sortField;
+    const sortDirection = typeof parsed.sortDirection === "string" && isSortDirection(parsed.sortDirection)
+      ? parsed.sortDirection
+      : DEFAULT_ARCHIVE_FILTER_PREFS.sortDirection;
 
     return {
       query: typeof parsed.query === "string" ? parsed.query : DEFAULT_ARCHIVE_FILTER_PREFS.query,
       searchField,
       sortField,
+      sortDirection,
       hostFilter: typeof parsed.hostFilter === "string" ? parsed.hostFilter : DEFAULT_ARCHIVE_FILTER_PREFS.hostFilter,
       authorFilter: typeof parsed.authorFilter === "string" ? parsed.authorFilter : DEFAULT_ARCHIVE_FILTER_PREFS.authorFilter,
       collectionFilter: typeof parsed.collectionFilter === "string"
@@ -343,6 +338,7 @@ export function CtCArchivePage() {
   const [query, setQuery] = useState(initialFilterPrefs.query);
   const [searchField, setSearchField] = useState<SearchField>(initialFilterPrefs.searchField);
   const [sortField, setSortField] = useState<SortField>(initialFilterPrefs.sortField);
+  const [sortDirection, setSortDirection] = useState<SortDirection>(initialFilterPrefs.sortDirection);
   const [hostFilter, setHostFilter] = useState(initialFilterPrefs.hostFilter);
   const [authorFilter, setAuthorFilter] = useState(initialFilterPrefs.authorFilter);
   const [collectionFilter, setCollectionFilter] = useState(initialFilterPrefs.collectionFilter);
@@ -377,6 +373,7 @@ export function CtCArchivePage() {
         query,
         searchField,
         sortField,
+        sortDirection,
         hostFilter,
         authorFilter,
         collectionFilter,
@@ -389,6 +386,7 @@ export function CtCArchivePage() {
     query,
     searchField,
     sortField,
+    sortDirection,
     hostFilter,
     authorFilter,
     collectionFilter,
@@ -502,15 +500,34 @@ export function CtCArchivePage() {
     });
   }, [rows, hosts, authors, collections, constraintOptions]);
 
-  const rowsByDate = useMemo(() => [...rows].sort(sortByDateDesc), [rows]);
-  const rowsByTitle = useMemo(() => [...rows].sort(sortByTitleAsc), [rows]);
-  const rowsByVideoLength = useMemo(() => [...rows].sort(sortByVideoLengthAsc), [rows]);
-
   const sortedRows = useMemo(() => {
-    if (sortField === "title") return rowsByTitle;
-    if (sortField === "video_length") return rowsByVideoLength;
-    return rowsByDate;
-  }, [sortField, rowsByDate, rowsByTitle, rowsByVideoLength]);
+    const directionFactor = sortDirection === "asc" ? 1 : -1;
+    const next = [...rows];
+
+    next.sort((a, b) => {
+      if (sortField === "title") {
+        return a.title.localeCompare(b.title) * directionFactor;
+      }
+
+      if (sortField === "video_length") {
+        const av = a.videoLengthSeconds;
+        const bv = b.videoLengthSeconds;
+        if (av == null && bv == null) return 0;
+        if (av == null) return 1;
+        if (bv == null) return -1;
+        return (av - bv) * directionFactor;
+      }
+
+      const av = a.videoDateTs;
+      const bv = b.videoDateTs;
+      if (av == null && bv == null) return 0;
+      if (av == null) return 1;
+      if (bv == null) return -1;
+      return (av - bv) * directionFactor;
+    });
+
+    return next;
+  }, [rows, sortField, sortDirection]);
 
   const filteredRows = useMemo(() => {
     const q = clean(deferredQuery).toLowerCase();
@@ -548,6 +565,7 @@ export function CtCArchivePage() {
     deferredQuery,
     searchField,
     sortField,
+    sortDirection,
     hostFilter,
     authorFilter,
     collectionFilter,
@@ -1127,20 +1145,31 @@ export function CtCArchivePage() {
               <div className="menuSectionTitle">CtC Archive Puzzles</div>
 
               <div className="row">
-                <div className="sortSelectWrap">
-                  <IconSort />
-                  <SelectControl
-                    className="btn menuControlSelect"
-                    value={sortField}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      if (isSortField(value)) setSortField(value);
-                    }}
+                <div className="sortControlGroup">
+                  <div className="sortSelectWrap">
+                    <IconSort />
+                    <SelectControl
+                      className="btn menuControlSelect"
+                      value={sortField}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        if (isSortField(value)) setSortField(value);
+                      }}
+                    >
+                      <option value="date">Video date</option>
+                      <option value="title">Puzzle title</option>
+                      <option value="video_length">Video length</option>
+                    </SelectControl>
+                  </div>
+                  <button
+                    className="btn sortDirectionButton"
+                    onClick={() => setSortDirection((current) => (current === "asc" ? "desc" : "asc"))}
+                    aria-label={sortDirection === "asc" ? "Sort ascending" : "Sort descending"}
+                    title={sortDirection === "asc" ? "Ascending" : "Descending"}
+                    type="button"
                   >
-                    <option value="date">Video date</option>
-                    <option value="title">Puzzle title</option>
-                    <option value="video_length">Video length</option>
-                  </SelectControl>
+                    {sortDirection === "asc" ? <IconSortAsc /> : <IconSortDesc />}
+                  </button>
                 </div>
 
                 <div className="muted">{visibleRows.length} of {filteredRows.length} shown</div>

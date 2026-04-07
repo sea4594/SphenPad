@@ -79,6 +79,20 @@ export const IconSort = () => (
 	</svg>
 );
 
+export const IconSortAsc = () => (
+	<svg width="16" height="16" viewBox="0 0 20 20" aria-hidden>
+		<path d="M10 15.4V4.6" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+		<path d="M6.9 7.8 10 4.6l3.1 3.2" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+	</svg>
+);
+
+export const IconSortDesc = () => (
+	<svg width="16" height="16" viewBox="0 0 20 20" aria-hidden>
+		<path d="M10 4.6v10.8" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+		<path d="m6.9 12.2 3.1 3.2 3.1-3.2" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+	</svg>
+);
+
 export const IconFolderAdd = () => (
 	<svg width="18" height="18" viewBox="0 0 20 20" aria-hidden>
 		<path

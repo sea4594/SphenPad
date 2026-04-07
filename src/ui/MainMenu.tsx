@@ -14,7 +14,7 @@ import { fmtHMS } from "../core/time";
 import { firebaseEnabled, googleLogin, googleLogout } from "../firebase/client";
 import { GridCanvas } from "./GridCanvas";
 import { AppBrand } from "./AppBrand";
-import { IconFolder, IconHome, IconImport, IconSettings, IconSort } from "./icons";
+import { IconFolder, IconHome, IconImport, IconSettings, IconSort, IconSortAsc, IconSortDesc } from "./icons";
 import { SelectControl } from "./SelectControl";
 import { SettingsOverlay } from "./SettingsOverlay";
 import {
@@ -27,6 +27,7 @@ import {
 } from "./puzzleNavState";
 
 type SortOrder = "recent" | "az" | "date";
+type SortDirection = "asc" | "desc";
 type PuzzlePlayStatus = "not_started" | "in_progress" | "complete";
 type FilterStatus = PuzzlePlayStatus;
 type FolderFilterStatus = "all" | PuzzlePlayStatus;
@@ -35,6 +36,7 @@ type StoredPuzzle = Awaited<ReturnType<typeof listPuzzles>>[number];
 
 type MainMenuFilterPrefs = {
   sortOrder: SortOrder;
+  sortDirection: SortDirection;
   filterStatusList: FilterStatus[];
   query: string;
   searchField: MainMenuSearchField;
@@ -45,6 +47,7 @@ type MainMenuFilterPrefs = {
 
 type FolderMenuPrefs = {
   sortOrder: SortOrder;
+  sortDirection: SortDirection;
   filterStatus: "all" | FilterStatus;
 };
 
@@ -54,6 +57,7 @@ const MAIN_MENU_SEARCH_FIELDS = new Set<MainMenuSearchField>(["any", "title", "c
 
 const DEFAULT_MAIN_MENU_FILTER_PREFS: MainMenuFilterPrefs = {
   sortOrder: "recent",
+  sortDirection: "desc",
   filterStatusList: [],
   query: "",
   searchField: "any",
@@ -66,6 +70,10 @@ const NOOP = () => {};
 
 function isSortOrder(value: string): value is SortOrder {
   return value === "recent" || value === "az" || value === "date";
+}
+
+function isSortDirection(value: string): value is SortDirection {
+  return value === "asc" || value === "desc";
 }
 
 function isPuzzlePlayStatus(value: string): value is PuzzlePlayStatus {
@@ -91,6 +99,7 @@ function readInitialMainMenuFilterPrefs(): MainMenuFilterPrefs {
 
     const parsed = JSON.parse(raw) as {
       sortOrder?: string;
+      sortDirection?: string;
       filterStatusList?: unknown[];
       query?: string;
       searchField?: string;
@@ -99,6 +108,7 @@ function readInitialMainMenuFilterPrefs(): MainMenuFilterPrefs {
       constraintFilters?: string[];
     };
     const parsedSortOrder = parsed.sortOrder;
+    const parsedSortDirection = parsed.sortDirection;
     const parsedFilterStatusList = parsed.filterStatusList;
     const parsedSearchField = parsed.searchField;
 
@@ -106,6 +116,9 @@ function readInitialMainMenuFilterPrefs(): MainMenuFilterPrefs {
       sortOrder: typeof parsedSortOrder === "string" && isSortOrder(parsedSortOrder)
         ? parsedSortOrder
         : DEFAULT_MAIN_MENU_FILTER_PREFS.sortOrder,
+      sortDirection: typeof parsedSortDirection === "string" && isSortDirection(parsedSortDirection)
+        ? parsedSortDirection
+        : DEFAULT_MAIN_MENU_FILTER_PREFS.sortDirection,
       filterStatusList: Array.isArray(parsedFilterStatusList)
         ? parsedFilterStatusList.filter((v): v is FilterStatus => typeof v === "string" && isPuzzlePlayStatus(v))
         : DEFAULT_MAIN_MENU_FILTER_PREFS.filterStatusList,
@@ -131,21 +144,24 @@ function readInitialMainMenuFilterPrefs(): MainMenuFilterPrefs {
 function readInitialFolderMenuPrefs(): FolderMenuPrefs {
   try {
     const raw = localStorage.getItem(FOLDER_MENU_PREFS_KEY);
-    if (!raw) return { sortOrder: "recent", filterStatus: "all" };
+    if (!raw) return { sortOrder: "recent", sortDirection: "desc", filterStatus: "all" };
 
     const parsed = JSON.parse(raw) as {
       sortOrder?: string;
+      sortDirection?: string;
       filterStatus?: string;
     };
     const parsedSortOrder = parsed.sortOrder;
+    const parsedSortDirection = parsed.sortDirection;
     const parsedFilterStatus = parsed.filterStatus;
 
     return {
       sortOrder: typeof parsedSortOrder === "string" && isSortOrder(parsedSortOrder) ? parsedSortOrder : "recent",
+      sortDirection: typeof parsedSortDirection === "string" && isSortDirection(parsedSortDirection) ? parsedSortDirection : "desc",
       filterStatus: typeof parsedFilterStatus === "string" && isFilterStatus(parsedFilterStatus) ? parsedFilterStatus : "all",
     };
   } catch {
-    return { sortOrder: "recent", filterStatus: "all" };
+    return { sortOrder: "recent", sortDirection: "desc", filterStatus: "all" };
   }
 }
 
@@ -167,14 +183,15 @@ function matchesStatusList(row: StoredPuzzle, statuses: FilterStatus[]): boolean
   return statuses.includes(puzzleStatus(row));
 }
 
-function sortPuzzles(rows: StoredPuzzle[], sortOrder: SortOrder): StoredPuzzle[] {
+function sortPuzzles(rows: StoredPuzzle[], sortOrder: SortOrder, sortDirection: SortDirection): StoredPuzzle[] {
   const next = [...rows];
+  const directionFactor = sortDirection === "asc" ? 1 : -1;
   if (sortOrder === "recent") {
-    next.sort((a, b) => b.updatedAt - a.updatedAt);
+    next.sort((a, b) => (a.updatedAt - b.updatedAt) * directionFactor);
     return next;
   }
   if (sortOrder === "date") {
-    next.sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
+    next.sort((a, b) => ((a.createdAt ?? 0) - (b.createdAt ?? 0)) * directionFactor);
     return next;
   }
 
@@ -183,19 +200,20 @@ function sortPuzzles(rows: StoredPuzzle[], sortOrder: SortOrder): StoredPuzzle[]
     const tb = (b.def?.meta?.title ?? "").toLowerCase();
     if (!ta && tb) return 1;
     if (ta && !tb) return -1;
-    return ta.localeCompare(tb);
+    return ta.localeCompare(tb) * directionFactor;
   });
   return next;
 }
 
-function sortFolders(rows: PuzzleFolder[], sortOrder: SortOrder): PuzzleFolder[] {
+function sortFolders(rows: PuzzleFolder[], sortOrder: SortOrder, sortDirection: SortDirection): PuzzleFolder[] {
   const next = [...rows];
+  const directionFactor = sortDirection === "asc" ? 1 : -1;
   if (sortOrder === "recent") {
-    next.sort((a, b) => b.updatedAt - a.updatedAt);
+    next.sort((a, b) => (a.updatedAt - b.updatedAt) * directionFactor);
     return next;
   }
 
-  next.sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
+  next.sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()) * directionFactor);
   return next;
 }
 
@@ -326,6 +344,7 @@ export function MainMenu() {
   const [folders, setFolders] = useState<PuzzleFolder[]>([]);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [sortOrder, setSortOrder] = useState<SortOrder>(initialFilterPrefs.sortOrder);
+  const [sortDirection, setSortDirection] = useState<SortDirection>(initialFilterPrefs.sortDirection);
   const [filterStatusList, setFilterStatusList] = useState<FilterStatus[]>(initialFilterPrefs.filterStatusList);
   const [query, setQuery] = useState(initialFilterPrefs.query);
   const [searchField, setSearchField] = useState<MainMenuSearchField>(initialFilterPrefs.searchField);
@@ -336,6 +355,7 @@ export function MainMenu() {
 
   const [foldersOpen, setFoldersOpen] = useState(false);
   const [folderSortOrder, setFolderSortOrder] = useState<SortOrder>(initialFolderPrefs.sortOrder);
+  const [folderSortDirection, setFolderSortDirection] = useState<SortDirection>(initialFolderPrefs.sortDirection);
   const [folderFilterStatus, setFolderFilterStatus] = useState<FolderFilterStatus>(initialFolderPrefs.filterStatus);
   const [activeFolderId, setActiveFolderId] = useState<string | null>(null);
   const [initialFoldersLoaded, setInitialFoldersLoaded] = useState(false);
@@ -374,6 +394,7 @@ export function MainMenu() {
       MAIN_MENU_FILTER_PREFS_KEY,
       JSON.stringify({
         sortOrder,
+        sortDirection,
         filterStatusList,
         query,
         searchField,
@@ -382,14 +403,14 @@ export function MainMenu() {
         constraintFilters,
       } satisfies MainMenuFilterPrefs),
     );
-  }, [sortOrder, filterStatusList, query, searchField, authorFilter, collectionFilter, constraintFilters]);
+  }, [sortOrder, sortDirection, filterStatusList, query, searchField, authorFilter, collectionFilter, constraintFilters]);
 
   useEffect(() => {
     localStorage.setItem(
       FOLDER_MENU_PREFS_KEY,
-      JSON.stringify({ sortOrder: folderSortOrder, filterStatus: folderFilterStatus } satisfies FolderMenuPrefs),
+      JSON.stringify({ sortOrder: folderSortOrder, sortDirection: folderSortDirection, filterStatus: folderFilterStatus } satisfies FolderMenuPrefs),
     );
-  }, [folderSortOrder, folderFilterStatus]);
+  }, [folderSortOrder, folderSortDirection, folderFilterStatus]);
 
   useEffect(() => {
     if (!initialFoldersLoaded) return;
@@ -498,8 +519,9 @@ export function MainMenu() {
     return sortPuzzles(
       rowsMatchingSearchFilters.filter((row) => matchesStatusList(row, filterStatusList)),
       sortOrder,
+      sortDirection,
     );
-  }, [rowsMatchingSearchFilters, sortOrder, filterStatusList]);
+  }, [rowsMatchingSearchFilters, sortOrder, sortDirection, filterStatusList]);
 
   const hasMainMenuSearchFilters =
     !!clean(query) ||
@@ -570,8 +592,9 @@ export function MainMenu() {
     return sortFolders(
       folders.filter((folder) => (folder.parentId ?? null) === activeFolderId),
       folderSortOrder,
+      folderSortDirection,
     );
-  }, [folders, activeFolderId, folderSortOrder]);
+  }, [folders, activeFolderId, folderSortOrder, folderSortDirection]);
 
   const visibleFolderPuzzles = useMemo(() => {
     if (!activeFolder) return [];
@@ -583,13 +606,15 @@ export function MainMenu() {
     return sortPuzzles(
       resolved.filter((row) => matchesStatusList(row, folderFilterStatus === "all" ? [] : [folderFilterStatus])),
       folderSortOrder,
+      folderSortDirection,
     );
-  }, [activeFolder, puzzleByKey, folderFilterStatus, folderSortOrder]);
+  }, [activeFolder, puzzleByKey, folderFilterStatus, folderSortOrder, folderSortDirection]);
 
   const addDialogChildFolders = useMemo(() => {
     return sortFolders(
       folders.filter((folder) => (folder.parentId ?? null) === addFolderNavId),
       "az",
+      "asc",
     );
   }, [folders, addFolderNavId]);
 
@@ -921,18 +946,29 @@ export function MainMenu() {
                       : `${rows.length} total`}
                 </div>
               </div>
-              <div className="sortSelectWrap">
-                <IconSort />
-                <SelectControl
-                  className="btn menuControlSelect"
-                  value={sortOrder}
-                  onChange={(e) => setSortOrder(e.target.value as SortOrder)}
-                  aria-label="Sort puzzles"
+              <div className="sortControlGroup">
+                <div className="sortSelectWrap">
+                  <IconSort />
+                  <SelectControl
+                    className="btn menuControlSelect"
+                    value={sortOrder}
+                    onChange={(e) => setSortOrder(e.target.value as SortOrder)}
+                    aria-label="Sort puzzles"
+                  >
+                    <option value="recent">Recent</option>
+                    <option value="az">A - Z</option>
+                    <option value="date">Video Date</option>
+                  </SelectControl>
+                </div>
+                <button
+                  className="btn sortDirectionButton"
+                  onClick={() => setSortDirection((current) => (current === "asc" ? "desc" : "asc"))}
+                  aria-label={sortDirection === "asc" ? "Sort ascending" : "Sort descending"}
+                  title={sortDirection === "asc" ? "Ascending" : "Descending"}
+                  type="button"
                 >
-                  <option value="recent">Recent</option>
-                  <option value="az">A - Z</option>
-                  <option value="date">Video Date</option>
-                </SelectControl>
+                  {sortDirection === "asc" ? <IconSortAsc /> : <IconSortDesc />}
+                </button>
               </div>
             </div>
 
@@ -1164,14 +1200,25 @@ export function MainMenu() {
             <div className="row" style={{ marginTop: 8 }}>
               <label className="menuControlLabel">
                 <span className="muted" style={{ fontSize: 13 }}>Sort</span>
-                <SelectControl
-                  className="btn menuControlSelect"
-                  value={folderSortOrder}
-                  onChange={(e) => setFolderSortOrder(e.target.value as SortOrder)}
-                >
-                  <option value="recent">Recent</option>
-                  <option value="az">A - Z</option>
-                </SelectControl>
+                <div className="sortControlGroup">
+                  <SelectControl
+                    className="btn menuControlSelect"
+                    value={folderSortOrder}
+                    onChange={(e) => setFolderSortOrder(e.target.value as SortOrder)}
+                  >
+                    <option value="recent">Recent</option>
+                    <option value="az">A - Z</option>
+                  </SelectControl>
+                  <button
+                    className="btn sortDirectionButton"
+                    onClick={() => setFolderSortDirection((current) => (current === "asc" ? "desc" : "asc"))}
+                    aria-label={folderSortDirection === "asc" ? "Sort ascending" : "Sort descending"}
+                    title={folderSortDirection === "asc" ? "Ascending" : "Descending"}
+                    type="button"
+                  >
+                    {folderSortDirection === "asc" ? <IconSortAsc /> : <IconSortDesc />}
+                  </button>
+                </div>
               </label>
               <label className="menuControlLabel">
                 <span className="muted" style={{ fontSize: 13 }}>Filter</span>

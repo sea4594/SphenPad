@@ -344,6 +344,20 @@ button,
   padding-left: 34px;
 }
 
+.sortControlGroup {
+  display: inline-flex;
+  align-items: stretch;
+  gap: 6px;
+}
+
+.sortDirectionButton {
+  min-width: 34px;
+  width: 34px;
+  padding: 0;
+  display: inline-grid;
+  place-items: center;
+}
+
 .topbarModeTabs {
   flex: 1;
   min-width: 0;

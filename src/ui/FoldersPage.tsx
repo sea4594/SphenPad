@@ -14,7 +14,7 @@ import {
 import { fmtHMS } from "../core/time";
 import { AppBrand } from "./AppBrand";
 import { GridCanvas } from "./GridCanvas";
-import { IconFolder, IconHome, IconImport, IconSettings, IconSort } from "./icons";
+import { IconFolder, IconHome, IconImport, IconSettings, IconSort, IconSortAsc, IconSortDesc } from "./icons";
 import { SelectControl } from "./SelectControl";
 import { SettingsOverlay } from "./SettingsOverlay";
 import {
@@ -27,12 +27,14 @@ import {
 } from "./puzzleNavState";
 
 type SortOrder = "recent" | "az" | "date";
+type SortDirection = "asc" | "desc";
 type PuzzlePlayStatus = "not_started" | "in_progress" | "complete";
 type FilterStatus = PuzzlePlayStatus;
 type StoredPuzzle = Awaited<ReturnType<typeof listPuzzles>>[number];
 
 type FolderMenuPrefs = {
   sortOrder: SortOrder;
+  sortDirection: SortDirection;
   filterStatusList: FilterStatus[];
 };
 
@@ -43,6 +45,10 @@ function isSortOrder(value: string): value is SortOrder {
   return value === "recent" || value === "az" || value === "date";
 }
 
+function isSortDirection(value: string): value is SortDirection {
+  return value === "asc" || value === "desc";
+}
+
 function isPuzzlePlayStatus(value: string): value is PuzzlePlayStatus {
   return value === "not_started" || value === "in_progress" || value === "complete";
 }
@@ -50,23 +56,26 @@ function isPuzzlePlayStatus(value: string): value is PuzzlePlayStatus {
 function readInitialFolderMenuPrefs(): FolderMenuPrefs {
   try {
     const raw = localStorage.getItem(FOLDER_MENU_FILTER_PREFS_KEY);
-    if (!raw) return { sortOrder: "recent", filterStatusList: [] };
+    if (!raw) return { sortOrder: "recent", sortDirection: "desc", filterStatusList: [] };
 
     const parsed = JSON.parse(raw) as {
       sortOrder?: string;
+      sortDirection?: string;
       filterStatusList?: unknown[];
     };
     const parsedSortOrder = parsed.sortOrder;
+    const parsedSortDirection = parsed.sortDirection;
     const parsedFilterStatusList = parsed.filterStatusList;
 
     return {
       sortOrder: typeof parsedSortOrder === "string" && isSortOrder(parsedSortOrder) ? parsedSortOrder : "recent",
+      sortDirection: typeof parsedSortDirection === "string" && isSortDirection(parsedSortDirection) ? parsedSortDirection : "desc",
       filterStatusList: Array.isArray(parsedFilterStatusList)
         ? parsedFilterStatusList.filter((v): v is FilterStatus => typeof v === "string" && isPuzzlePlayStatus(v))
         : [],
     };
   } catch {
-    return { sortOrder: "recent", filterStatusList: [] };
+    return { sortOrder: "recent", sortDirection: "desc", filterStatusList: [] };
   }
 }
 
@@ -88,14 +97,15 @@ function matchesStatusList(row: StoredPuzzle, statuses: FilterStatus[]): boolean
   return statuses.includes(puzzleStatus(row));
 }
 
-function sortPuzzles(rows: StoredPuzzle[], sortOrder: SortOrder): StoredPuzzle[] {
+function sortPuzzles(rows: StoredPuzzle[], sortOrder: SortOrder, sortDirection: SortDirection): StoredPuzzle[] {
   const next = [...rows];
+  const directionFactor = sortDirection === "asc" ? 1 : -1;
   if (sortOrder === "recent") {
-    next.sort((a, b) => b.updatedAt - a.updatedAt);
+    next.sort((a, b) => (a.updatedAt - b.updatedAt) * directionFactor);
     return next;
   }
   if (sortOrder === "date") {
-    next.sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
+    next.sort((a, b) => ((a.createdAt ?? 0) - (b.createdAt ?? 0)) * directionFactor);
     return next;
   }
 
@@ -104,23 +114,24 @@ function sortPuzzles(rows: StoredPuzzle[], sortOrder: SortOrder): StoredPuzzle[]
     const tb = (b.def?.meta?.title ?? "").toLowerCase();
     if (!ta && tb) return 1;
     if (ta && !tb) return -1;
-    return ta.localeCompare(tb);
+    return ta.localeCompare(tb) * directionFactor;
   });
   return next;
 }
 
-function sortFolders(rows: PuzzleFolder[], sortOrder: SortOrder): PuzzleFolder[] {
+function sortFolders(rows: PuzzleFolder[], sortOrder: SortOrder, sortDirection: SortDirection): PuzzleFolder[] {
   const next = [...rows];
+  const directionFactor = sortDirection === "asc" ? 1 : -1;
   if (sortOrder === "recent") {
-    next.sort((a, b) => b.updatedAt - a.updatedAt);
+    next.sort((a, b) => (a.updatedAt - b.updatedAt) * directionFactor);
     return next;
   }
   if (sortOrder === "date") {
-    next.sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
+    next.sort((a, b) => ((a.createdAt ?? 0) - (b.createdAt ?? 0)) * directionFactor);
     return next;
   }
 
-  next.sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
+  next.sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()) * directionFactor);
   return next;
 }
 
@@ -217,6 +228,7 @@ export function FoldersPage() {
   const [rows, setRows] = useState<StoredPuzzle[]>([]);
   const [folders, setFolders] = useState<PuzzleFolder[]>([]);
   const [sortOrder, setSortOrder] = useState<SortOrder>(initialPrefs.sortOrder);
+  const [sortDirection, setSortDirection] = useState<SortDirection>(initialPrefs.sortDirection);
   const [filterStatusList, setFilterStatusList] = useState<FilterStatus[]>(initialPrefs.filterStatusList);
   const [activeFolderId, setActiveFolderId] = useState<string | null>(null);
 
@@ -252,9 +264,9 @@ export function FoldersPage() {
   useEffect(() => {
     localStorage.setItem(
       FOLDER_MENU_FILTER_PREFS_KEY,
-      JSON.stringify({ sortOrder, filterStatusList } satisfies FolderMenuPrefs),
+      JSON.stringify({ sortOrder, sortDirection, filterStatusList } satisfies FolderMenuPrefs),
     );
-  }, [sortOrder, filterStatusList]);
+  }, [sortOrder, sortDirection, filterStatusList]);
 
   useEffect(() => {
     if (!initialFoldersLoaded) return;
@@ -316,8 +328,9 @@ export function FoldersPage() {
     return sortFolders(
       folders.filter((folder) => (folder.parentId ?? null) === activeFolderId),
       sortOrder,
+      sortDirection,
     );
-  }, [folders, activeFolderId, sortOrder]);
+  }, [folders, activeFolderId, sortOrder, sortDirection]);
 
   const visibleFolderPuzzles = useMemo(() => {
     if (!activeFolder) return [];
@@ -329,8 +342,9 @@ export function FoldersPage() {
     return sortPuzzles(
       resolved.filter((row) => matchesStatusList(row, filterStatusList)),
       sortOrder,
+      sortDirection,
     );
-  }, [activeFolder, puzzleByKey, filterStatusList, sortOrder]);
+  }, [activeFolder, puzzleByKey, filterStatusList, sortOrder, sortDirection]);
 
   async function onCreateFolder() {
     const folderName = folderCreateName.trim();
@@ -603,18 +617,29 @@ export function FoldersPage() {
 
               {activeFolder ? (
                 <div className="row" style={{ marginTop: 4 }}>
-                  <div className="sortSelectWrap">
-                    <IconSort />
-                    <SelectControl
-                      className="btn menuControlSelect"
-                      value={sortOrder}
-                      onChange={(e) => setSortOrder(e.target.value as SortOrder)}
-                      aria-label="Sort folders"
+                  <div className="sortControlGroup">
+                    <div className="sortSelectWrap">
+                      <IconSort />
+                      <SelectControl
+                        className="btn menuControlSelect"
+                        value={sortOrder}
+                        onChange={(e) => setSortOrder(e.target.value as SortOrder)}
+                        aria-label="Sort folders"
+                      >
+                        <option value="recent">Recent</option>
+                        <option value="az">A - Z</option>
+                        <option value="date">Video Date</option>
+                      </SelectControl>
+                    </div>
+                    <button
+                      className="btn sortDirectionButton"
+                      onClick={() => setSortDirection((current) => (current === "asc" ? "desc" : "asc"))}
+                      aria-label={sortDirection === "asc" ? "Sort ascending" : "Sort descending"}
+                      title={sortDirection === "asc" ? "Ascending" : "Descending"}
+                      type="button"
                     >
-                      <option value="recent">Recent</option>
-                      <option value="az">A - Z</option>
-                      <option value="date">Video Date</option>
-                    </SelectControl>
+                      {sortDirection === "asc" ? <IconSortAsc /> : <IconSortDesc />}
+                    </button>
                   </div>
                   <div className="menuStatusTabs" style={{ flex: 1 }}>
                     {(["not_started", "in_progress", "complete"] as const).map((status) => (
