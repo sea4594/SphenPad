@@ -32,6 +32,7 @@ export function makeInitialProgress(def: PuzzleDefinition): PuzzleProgress {
     lineEdgeMarks: [],
     entryMode: "value",
     alphabetMode: false,
+    alphabetPage: 0,
     highlightPalettePage: 0,
     activeHighlightColor: "#ffd0d0",
     linePaletteColor: "#ff08ff",

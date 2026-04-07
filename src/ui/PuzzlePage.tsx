@@ -255,6 +255,7 @@ function migrateProgressToDefinition(oldData: PersistedPuzzle, nextDef: PuzzleDe
     multiSelect: old.multiSelect,
     entryMode: old.entryMode,
     alphabetMode: old.alphabetMode,
+    alphabetPage: old.alphabetPage ?? 0,
     highlightPalettePage: old.highlightPalettePage,
     activeHighlightColor: old.activeHighlightColor,
     linePaletteColor: old.linePaletteColor,
@@ -350,6 +351,10 @@ export function PuzzlePage() {
       ...progress,
       cells,
       multiSelect: progress.multiSelect ?? false,
+      alphabetPage:
+        progress.alphabetPage === 1 || progress.alphabetPage === 2
+          ? progress.alphabetPage
+          : 0,
       lineCenterMarks: progress.lineCenterMarks ?? [],
       lineEdgeMarks: progress.lineEdgeMarks ?? [],
       activeTool:
@@ -676,6 +681,7 @@ export function PuzzlePage() {
       paused: false,
       multiSelect: data.progress.multiSelect,
       alphabetMode: data.progress.alphabetMode,
+      alphabetPage: data.progress.alphabetPage,
       activeTool: data.progress.activeTool,
       entryMode: data.progress.entryMode,
       highlightPalettePage: data.progress.highlightPalettePage,
@@ -1153,6 +1159,11 @@ export function PuzzlePage() {
       o: "I",
       0: "0",
     };
+      const alphabetPages: ReadonlyArray<ReadonlyArray<string>> = [
+        ["A", "B", "C", "D", "E", "F", "G", "H", "I"],
+        ["J", "K", "L", "M", "N", "O", "P", "Q", "R"],
+        ["S", "T", "U", "V", "W", "X", "Y", "Z", "*"],
+      ];
 
     const normalizeDigit = (k: string): string | null => {
       if (/^[1-9]$/.test(k)) return k;
@@ -1317,6 +1328,33 @@ export function PuzzlePage() {
           setActiveTool("highlight");
           return;
         }
+        if (
+          digit === "0" &&
+          !e.ctrlKey &&
+          !e.shiftKey &&
+          data.progress.alphabetMode &&
+          (data.progress.activeTool === "value" || data.progress.activeTool === "center" || data.progress.activeTool === "corner")
+        ) {
+          const next = ((data.progress.alphabetPage + 1) % 3) as 0 | 1 | 2;
+          pushPatch(patchAt(data.progress, ["alphabetPage"], next), { recordHistory: false });
+          return;
+        }
+
+        if (
+          data.progress.alphabetMode &&
+          !e.ctrlKey &&
+          !e.shiftKey &&
+          (data.progress.activeTool === "value" || data.progress.activeTool === "center" || data.progress.activeTool === "corner")
+        ) {
+          const idx = digit === "0" ? -1 : Number(digit) - 1;
+          const page = alphabetPages[data.progress.alphabetPage] ?? alphabetPages[0];
+          const sym = page[idx];
+          if (sym) {
+            applyDigit(sym);
+            return;
+          }
+        }
+
         if (e.ctrlKey) {
           applyDigit(digit, "center");
           return;
@@ -1491,6 +1529,10 @@ export function PuzzlePage() {
                     onDigit={applyDigit}
                     onBackspace={handleBackspace}
                     onToggleAlphabet={() => pushPatch(patchAt(data.progress, ["alphabetMode"], !data.progress.alphabetMode), { recordHistory: false })}
+                    onCycleAlphabetPage={() => {
+                      const next = ((data.progress.alphabetPage + 1) % 3) as 0 | 1 | 2;
+                      pushPatch(patchAt(data.progress, ["alphabetPage"], next), { recordHistory: false });
+                    }}
                   />
                 ) : null}
 

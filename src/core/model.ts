@@ -227,6 +227,7 @@ export type PuzzleProgress = {
 
   entryMode: "value" | "center" | "corner" | "candidates";
   alphabetMode: boolean;
+  alphabetPage: 0 | 1 | 2;
 
   highlightPalettePage: 0 | 1 | 2;
   activeHighlightColor: string;

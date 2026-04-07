@@ -6,10 +6,17 @@ const baseColors1 = ["#000000", "#ffa0a0", "#ffdf61", "#feffaf", "#b0ffb0", "#61
 const baseColors2 = ["#a8a8a8", "#ffd0d0", "#ffe9a7", "#fffbd6", "#d6ffd6", "#8bf2a9", "#d9f1ff", "#bdb7ff", "#ffb3ff"];
 const lineColors = ["#000000", "#ff4d4f", "#ff9f1a", "#ffd60a", "#34c759", "#00b894", "#32ade6", "#4f46e5", "#ff2d96"];
 
-function digits(alphabetMode: boolean) {
-  return Array.from({ length: 9 }, (_, i) =>
-    alphabetMode ? String.fromCharCode(65 + i) : String(i + 1)
-  );
+const alphabetPages: ReadonlyArray<ReadonlyArray<string>> = [
+  ["A", "B", "C", "D", "E", "F", "G", "H", "I"],
+  ["J", "K", "L", "M", "N", "O", "P", "Q", "R"],
+  ["S", "T", "U", "V", "W", "X", "Y", "Z", "*"],
+];
+
+const alphabetPageLabels = ["A-I", "J-R", "S-Z*"] as const;
+
+function digits(alphabetMode: boolean, alphabetPage: 0 | 1 | 2) {
+  if (alphabetMode) return alphabetPages[alphabetPage] ?? alphabetPages[0];
+  return Array.from({ length: 9 }, (_, i) => String(i + 1));
 }
 
 export function Keyboard(props: {
@@ -22,6 +29,7 @@ export function Keyboard(props: {
   onDigit?: (d: string) => void;
   onBackspace?: () => void;
   onToggleAlphabet?: () => void;
+  onCycleAlphabetPage?: () => void;
   onMode?: (m: PuzzleProgress["entryMode"]) => void;
 
   onColor?: (c: string) => void;
@@ -34,13 +42,18 @@ export function Keyboard(props: {
   const compact = Boolean(props.compact);
 
   if (kind === "numbers") {
-    const keys = digits(progress.alphabetMode);
+    const keys = digits(progress.alphabetMode, progress.alphabetPage ?? 0);
+    const pageLabel = alphabetPageLabels[progress.alphabetPage ?? 0] ?? alphabetPageLabels[0];
     const grid = (
       <Grid3x4 compact={compact}>
         {keys.map((k) => (
           <Key key={k} onClick={() => props.onDigit?.(k)}>{k}</Key>
         ))}
-        <Key onClick={() => props.onDigit?.("0")}>0</Key>
+        {progress.alphabetMode ? (
+          <Key onClick={() => props.onCycleAlphabetPage?.()} title="Cycle letter page">{pageLabel}</Key>
+        ) : (
+          <Key onClick={() => props.onDigit?.("0")}>0</Key>
+        )}
         <Key onClick={() => props.onToggleAlphabet?.()}>{progress.alphabetMode ? "123" : "A-I"}</Key>
         <Key onClick={() => props.onBackspace?.()} title="Backspace">⌫</Key>
       </Grid3x4>
