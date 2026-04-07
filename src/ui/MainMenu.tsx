@@ -429,13 +429,13 @@ export function MainMenu() {
   const [folderCreateContext, setFolderCreateContext] = useState<"folders" | "add-dialog">("folders");
   const [folderCreateName, setFolderCreateName] = useState("");
   const [folderCreateBusy, setFolderCreateBusy] = useState("");
-  const [folderPuzzleMenu, setFolderPuzzleMenu] = useState<{ folderId: string; puzzleKey: string } | null>(null);
+  const [, setFolderPuzzleMenu] = useState<{ folderId: string; puzzleKey: string } | null>(null);
   const [folderActionBusyKey, setFolderActionBusyKey] = useState<string | null>(null);
 
   const [deleteCandidate, setDeleteCandidate] = useState<StoredPuzzle | null>(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
-  const [mainPuzzleMenuKey, setMainPuzzleMenuKey] = useState<string | null>(null);
-  const [mainPuzzleStatusMenuKey, setMainPuzzleStatusMenuKey] = useState<string | null>(null);
+  const [, setMainPuzzleMenuKey] = useState<string | null>(null);
+  const [, setMainPuzzleStatusMenuKey] = useState<string | null>(null);
 
   const [addToFolderPuzzle, setAddToFolderPuzzle] = useState<StoredPuzzle | null>(null);
   const [addFolderNavId, setAddFolderNavId] = useState<string | null>(null);
@@ -1030,6 +1030,61 @@ export function MainMenu() {
     }
   }
 
+  async function onMainPuzzleAction(
+    row: StoredPuzzle,
+    action: "add_to_folder" | "open_in_sudokupad" | "status_not_started" | "status_in_progress" | "status_complete" | "delete",
+  ) {
+    if (action === "add_to_folder") {
+      onOpenAddToFolder(row);
+      return;
+    }
+    if (action === "open_in_sudokupad") {
+      onOpenPuzzleInSudokuPad(row);
+      return;
+    }
+    if (action === "status_not_started") {
+      await onSetPuzzleStatus(row, "not_started");
+      return;
+    }
+    if (action === "status_in_progress") {
+      await onSetPuzzleStatus(row, "in_progress");
+      return;
+    }
+    if (action === "status_complete") {
+      await onSetPuzzleStatus(row, "complete");
+      return;
+    }
+    await onDeletePuzzleWithConfirm(row);
+  }
+
+  async function onFolderPuzzleAction(
+    folderId: string,
+    row: StoredPuzzle,
+    action: "remove_from_folder" | "open_in_sudokupad" | "status_not_started" | "status_in_progress" | "status_complete" | "delete",
+  ) {
+    if (action === "remove_from_folder") {
+      await onRemovePuzzleFromFolder(folderId, row.key);
+      return;
+    }
+    if (action === "open_in_sudokupad") {
+      onOpenPuzzleInSudokuPad(row);
+      return;
+    }
+    if (action === "status_not_started") {
+      await onSetPuzzleStatus(row, "not_started");
+      return;
+    }
+    if (action === "status_in_progress") {
+      await onSetPuzzleStatus(row, "in_progress");
+      return;
+    }
+    if (action === "status_complete") {
+      await onSetPuzzleStatus(row, "complete");
+      return;
+    }
+    await onDeletePuzzleWithConfirm(row);
+  }
+
   function onClearMainMenuFilters() {
     setQuery("");
     setSearchField("any");
@@ -1228,8 +1283,6 @@ export function MainMenu() {
                   multiSelect: false,
                 };
                 const constraintBullets = constraintBulletsByPuzzle.get(row.key) ?? ["Normal Sudoku rules only"];
-                const puzzlePlayStatus = puzzleStatus(row);
-
                 return (
                   <div
                     key={row.key}
@@ -1275,106 +1328,36 @@ export function MainMenu() {
                       </div>
 
                       <div className="row menuPuzzleActions">
-                        {mainPuzzleMenuKey === row.key ? (
-                          <div
-                            className="card menuPuzzleMoreMenu"
-                            onClick={(event) => event.stopPropagation()}
-                          >
-                            <button
-                              className="btn menuPuzzleMoreItem"
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                onOpenAddToFolder(row);
-                              }}
-                              type="button"
-                            >
-                              Add to folder
-                            </button>
-                            <button
-                              className="btn menuPuzzleMoreItem"
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                onOpenPuzzleInSudokuPad(row);
-                              }}
-                              type="button"
-                            >
-                              Open in SudokuPad
-                            </button>
-
-                            <button
-                              className="btn menuPuzzleMoreItem"
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                setMainPuzzleStatusMenuKey((current) => (current === row.key ? null : row.key));
-                              }}
-                              type="button"
-                            >
-                              Set status
-                            </button>
-
-                            {mainPuzzleStatusMenuKey === row.key ? (
-                              <div className="menuPuzzleStatusList">
-                                <button
-                                  className={`btn menuPuzzleMoreItem ${puzzlePlayStatus === "not_started" ? "primary" : ""}`}
-                                  onClick={(event) => {
-                                    event.stopPropagation();
-                                    void onSetPuzzleStatus(row, "not_started");
-                                  }}
-                                  type="button"
-                                >
-                                  Not Started
-                                </button>
-                                <button
-                                  className={`btn menuPuzzleMoreItem ${puzzlePlayStatus === "in_progress" ? "primary" : ""}`}
-                                  onClick={(event) => {
-                                    event.stopPropagation();
-                                    void onSetPuzzleStatus(row, "in_progress");
-                                  }}
-                                  type="button"
-                                >
-                                  In Progress
-                                </button>
-                                <button
-                                  className={`btn menuPuzzleMoreItem ${puzzlePlayStatus === "complete" ? "primary" : ""}`}
-                                  onClick={(event) => {
-                                    event.stopPropagation();
-                                    void onSetPuzzleStatus(row, "complete");
-                                  }}
-                                  type="button"
-                                >
-                                  Complete
-                                </button>
-                              </div>
-                            ) : null}
-
-                            <button
-                              className="btn danger menuPuzzleMoreItem"
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                setMainPuzzleMenuKey(null);
-                                setMainPuzzleStatusMenuKey(null);
-                                void onDeletePuzzleWithConfirm(row);
-                              }}
-                              type="button"
-                            >
-                              Delete
-                            </button>
-                          </div>
-                        ) : null}
-
-                        <button
-                          className="btn menuPuzzleWideButton menuPuzzleMoreButton"
-                          onClick={(event) => {
+                        <select
+                          className="menuPuzzleNativeSelect"
+                          defaultValue=""
+                          onClick={(event) => event.stopPropagation()}
+                          onMouseDown={(event) => event.stopPropagation()}
+                          onChange={(event) => {
                             event.stopPropagation();
-                            setMainPuzzleStatusMenuKey(null);
-                            setMainPuzzleMenuKey((current) => (current === row.key ? null : row.key));
+                            const action = event.currentTarget.value as
+                              | ""
+                              | "add_to_folder"
+                              | "open_in_sudokupad"
+                              | "status_not_started"
+                              | "status_in_progress"
+                              | "status_complete"
+                              | "delete";
+                            event.currentTarget.value = "";
+                            if (!action) return;
+                            void onMainPuzzleAction(row, action);
                           }}
                           title="Puzzle options"
                           aria-label={`Options for ${row.def?.meta?.title || "puzzle"}`}
-                          type="button"
                         >
-                          <span aria-hidden>...</span>
-                        </button>
+                          <option value="">...</option>
+                          <option value="add_to_folder">Add to folder</option>
+                          <option value="open_in_sudokupad">Open in SudokuPad</option>
+                          <option value="status_not_started">Set status: Not Started</option>
+                          <option value="status_in_progress">Set status: In Progress</option>
+                          <option value="status_complete">Set status: Complete</option>
+                          <option value="delete">Delete</option>
+                        </select>
                       </div>
                     </div>
                   </div>
@@ -1521,8 +1504,6 @@ export function MainMenu() {
                         multiSelect: false,
                       };
                       const constraintBullets = constraintBulletsByPuzzle.get(row.key) ?? ["Normal Sudoku rules only"];
-                      const menuOpen =
-                        folderPuzzleMenu?.folderId === activeFolder.id && folderPuzzleMenu.puzzleKey === row.key;
                       const menuBusy = folderActionBusyKey === row.key;
 
                       return (
@@ -1570,54 +1551,37 @@ export function MainMenu() {
                             </div>
 
                             <div className="row menuPuzzleActions">
-                              <button
-                                className="btn menuPuzzleIconButton menuPuzzleMoreButton"
-                                onClick={(event) => {
+                              <select
+                                className="menuPuzzleNativeSelect"
+                                defaultValue=""
+                                onClick={(event) => event.stopPropagation()}
+                                onMouseDown={(event) => event.stopPropagation()}
+                                onChange={(event) => {
                                   event.stopPropagation();
-                                  setFolderPuzzleMenu((current) => {
-                                    if (!current || current.folderId !== activeFolder.id || current.puzzleKey !== row.key) {
-                                      return { folderId: activeFolder.id, puzzleKey: row.key };
-                                    }
-                                    return null;
-                                  });
+                                  const action = event.currentTarget.value as
+                                    | ""
+                                    | "remove_from_folder"
+                                    | "open_in_sudokupad"
+                                    | "status_not_started"
+                                    | "status_in_progress"
+                                    | "status_complete"
+                                    | "delete";
+                                  event.currentTarget.value = "";
+                                  if (!action) return;
+                                  void onFolderPuzzleAction(activeFolder.id, row, action);
                                 }}
                                 title="Puzzle actions"
                                 aria-label={`Actions for ${row.def?.meta?.title || "puzzle"}`}
-                                type="button"
+                                disabled={menuBusy}
                               >
-                                <span aria-hidden>...</span>
-                              </button>
-
-                              {menuOpen ? (
-                                <div
-                                  className="card menuPuzzleMoreMenu"
-                                  onClick={(event) => event.stopPropagation()}
-                                >
-                                  <button
-                                    className="btn menuPuzzleMoreItem"
-                                    onClick={(event) => {
-                                      event.stopPropagation();
-                                      void onRemovePuzzleFromFolder(activeFolder.id, row.key);
-                                    }}
-                                    disabled={menuBusy}
-                                    type="button"
-                                  >
-                                    Remove from folder
-                                  </button>
-                                  <button
-                                    className="btn danger menuPuzzleMoreItem"
-                                    onClick={(event) => {
-                                      event.stopPropagation();
-                                      setFolderPuzzleMenu(null);
-                                      void onDeletePuzzleWithConfirm(row);
-                                    }}
-                                    disabled={menuBusy}
-                                    type="button"
-                                  >
-                                    Delete
-                                  </button>
-                                </div>
-                              ) : null}
+                                <option value="">...</option>
+                                <option value="remove_from_folder">Remove from folder</option>
+                                <option value="open_in_sudokupad">Open in SudokuPad</option>
+                                <option value="status_not_started">Set status: Not Started</option>
+                                <option value="status_in_progress">Set status: In Progress</option>
+                                <option value="status_complete">Set status: Complete</option>
+                                <option value="delete">Delete</option>
+                              </select>
                             </div>
                           </div>
                         </div>
@@ -1625,20 +1589,14 @@ export function MainMenu() {
                     })}
                     {!visibleFolderPuzzles.length ? (
                       <div className="muted" style={{ marginTop: 2 }}>
-                        {folderFilterStatus === "all"
-                          ? "This folder has no puzzles yet."
-                          : "No puzzles in this folder match the current filter."}
+                        No puzzles in this folder match the current filter.
                       </div>
                     ) : null}
                   </>
                 ) : null}
-
-                {!visibleChildFolders.length && !activeFolder ? (
-                  <div className="muted">No folders yet. Use New Folder to get started.</div>
-                ) : null}
-              </div>
             </div>
           </div>
+        </div>
         </div>
       ) : null}
 

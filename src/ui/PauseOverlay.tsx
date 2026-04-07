@@ -10,8 +10,6 @@ export function PauseOverlay(props: {
   started: boolean;
   onStart: () => void;
   onResume: () => void;
-  onStayPaused: () => void;
-  onRestart: () => void;
 }) {
   const { def, meta, started, onResume, onStart } = props;
   const clean = (value: string | null | undefined) => (value ?? "").trim();
@@ -52,145 +50,140 @@ export function PauseOverlay(props: {
 
   return (
     <div className="overlayBackdrop" onClick={onBackdropClick}>
-      <div className="card" role="dialog" aria-modal="true" aria-label="Pause menu" onClick={(e) => e.stopPropagation()} style={{ width: "min(700px, 100%)", maxHeight: "min(92dvh, calc(100vh - 24px))", overflow: "hidden", display: "flex", flexDirection: "column" }}>
-        <div style={{ flex: 1, overflowY: "auto", minHeight: 0 }}>
-        <div className="row" style={{ justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "nowrap" }}>
-          <div style={{ fontWeight: 800, fontSize: 22, minWidth: 0, overflowWrap: "anywhere" }}>{meta?.title || "(untitled)"}</div>
-          <button
-            type="button"
-            className="btn"
-            onClick={onBackdropClick}
-            aria-label={started ? "Resume puzzle" : "Start puzzle"}
-            title={started ? "Resume" : "Start"}
-            style={{ width: 32, height: 32, minHeight: 32, padding: 0, lineHeight: 1, fontSize: 16, flexShrink: 0 }}
-          >
-            x
-          </button>
-        </div>
-        <div className="muted" style={{ marginTop: 6 }}>{meta?.author || ""}</div>
-        <div className="archiveRulesPreview" style={{ marginTop: 12 }} aria-label="Puzzle preview">
-          <GridCanvas
-            def={def}
-            progress={makeInitialProgress(def)}
-            onSelection={() => {}}
-            onLineStroke={() => {}}
-            onLineTapCell={() => {}}
-            onLineTapEdge={() => {}}
-            onDoubleCell={() => {}}
-            interactive={false}
-            previewMode
-          />
-        </div>
-
-        <div style={{ marginTop: 12 }}>
-          <div style={{ fontWeight: 700, marginBottom: 6 }}>Instructions</div>
-          <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.45 }}>
-            {meta?.rules || "No instructions found in metadata."}
+      <div className="card pauseOverlayCard" role="dialog" aria-modal="true" aria-label="Pause menu" onClick={(e) => e.stopPropagation()}>
+        <div className="pauseOverlayHeader">
+          <div className="row" style={{ justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "nowrap" }}>
+            <div style={{ fontWeight: 800, fontSize: 22, minWidth: 0, overflowWrap: "anywhere" }}>{meta?.title || "(untitled)"}</div>
+            <button
+              type="button"
+              className="btn"
+              onClick={onBackdropClick}
+              aria-label={started ? "Resume puzzle" : "Start puzzle"}
+              title={started ? "Resume" : "Start"}
+              style={{ width: 32, height: 32, minHeight: 32, padding: 0, lineHeight: 1, fontSize: 16, flexShrink: 0 }}
+            >
+              x
+            </button>
           </div>
-          {typeof meta?.solveCount === "number" ? (
-            <div className="muted" style={{ marginTop: 10 }}>SudokuPad solves: {meta.solveCount.toLocaleString()}</div>
-          ) : null}
+          <div className="muted" style={{ marginTop: 6 }}>{meta?.author || ""}</div>
         </div>
 
-        <div className="card archiveEntryCard" style={{ marginTop: 12 }}>
-          <div className="archiveEntryHead">
-            <div className="archiveEntryMain archiveDetailsGrid">
-              {sudokuPadUrl ? (
-                <a
-                  className="btn archiveOpenIcon archiveSudokuPadIcon"
-                  href={sudokuPadUrl}
-                  target="_blank"
-                  rel="noreferrer noopener"
-                  title="Open SudokuPad"
-                  aria-label="Open SudokuPad"
-                >
-                  <img src={SUDOKUPAD_ICON_URL} alt="" className="archiveIconImage" />
-                </a>
-              ) : (
-                <button
-                  type="button"
-                  className="btn archiveOpenIcon archiveSudokuPadIcon"
-                  disabled
-                  title="Open SudokuPad"
-                  aria-label="Open SudokuPad"
-                >
-                  <img src={SUDOKUPAD_ICON_URL} alt="" className="archiveIconImage" />
-                </button>
-              )}
+        <div className="pauseOverlayBody">
+          <button
+            className="btn primary"
+            style={{ width: "100%", marginBottom: 12, flexShrink: 0, height: 44, display: started ? "none" : undefined }}
+            onClick={props.onStart}
+          >
+            Start
+          </button>
+          <div className="archiveRulesPreview" aria-label="Puzzle preview">
+            <GridCanvas
+              def={def}
+              progress={makeInitialProgress(def)}
+              onSelection={() => {}}
+              onLineStroke={() => {}}
+              onLineTapCell={() => {}}
+              onLineTapEdge={() => {}}
+              onDoubleCell={() => {}}
+              interactive={false}
+              previewMode
+            />
+          </div>
 
-              <div className="archiveInfoText archivePuzzleInfo">
-                <div className="archiveEntryTitle">
-                  {display(meta?.title)}
-                  {collection ? (
-                    <span className="archiveEntryCollection">
-                      {" "}
-                      (Collection: {collection})
-                    </span>
-                  ) : null}
+          <div style={{ marginTop: 12 }}>
+            <div style={{ fontWeight: 700, marginBottom: 6 }}>Instructions</div>
+            <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.45 }}>
+              {meta?.rules || "No instructions found in metadata."}
+            </div>
+            {typeof meta?.solveCount === "number" ? (
+              <div className="muted" style={{ marginTop: 10 }}>SudokuPad solves: {meta.solveCount.toLocaleString()}</div>
+            ) : null}
+          </div>
+
+          <div className="card archiveEntryCard" style={{ marginTop: 12 }}>
+            <div className="archiveEntryHead">
+              <div className="archiveEntryMain archiveDetailsGrid">
+                {sudokuPadUrl ? (
+                  <a
+                    className="btn archiveOpenIcon archiveSudokuPadIcon"
+                    href={sudokuPadUrl}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    title="Open SudokuPad"
+                    aria-label="Open SudokuPad"
+                  >
+                    <img src={SUDOKUPAD_ICON_URL} alt="" className="archiveIconImage" />
+                  </a>
+                ) : (
+                  <button
+                    type="button"
+                    className="btn archiveOpenIcon archiveSudokuPadIcon"
+                    disabled
+                    title="Open SudokuPad"
+                    aria-label="Open SudokuPad"
+                  >
+                    <img src={SUDOKUPAD_ICON_URL} alt="" className="archiveIconImage" />
+                  </button>
+                )}
+
+                <div className="archiveInfoText archivePuzzleInfo">
+                  <div className="archiveEntryTitle">
+                    {display(meta?.title)}
+                    {collection ? (
+                      <span className="archiveEntryCollection">
+                        {" "}
+                        (Collection: {collection})
+                      </span>
+                    ) : null}
+                  </div>
+
+                  <div className="archiveMetaSmall">{display(meta?.author)}</div>
+
+                  {constraints.length ? (
+                    <ul className="archiveConstraintList">
+                      {constraints.map((constraint, index) => (
+                        <li key={`pause-${index}-${constraint}`}>{constraint}</li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <div className="archiveMetaMedium">~</div>
+                  )}
                 </div>
 
-                <div className="archiveMetaSmall">{display(meta?.author)}</div>
-
-                {constraints.length ? (
-                  <ul className="archiveConstraintList">
-                    {constraints.map((constraint, index) => (
-                      <li key={`pause-${index}-${constraint}`}>{constraint}</li>
-                    ))}
-                  </ul>
+                {youtubeUrl ? (
+                  <a
+                    className="btn archiveOpenIcon archiveYoutubeIcon"
+                    href={youtubeUrl}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    title="Open YouTube"
+                    aria-label="Open YouTube"
+                  >
+                    <img src={YOUTUBE_ICON_DATA_URL} alt="" className="archiveIconImage" />
+                  </a>
                 ) : (
-                  <div className="archiveMetaMedium">~</div>
+                  <button
+                    type="button"
+                    className="btn archiveOpenIcon archiveYoutubeIcon"
+                    disabled
+                    title="Open YouTube"
+                    aria-label="Open YouTube"
+                  >
+                    <img src={YOUTUBE_ICON_DATA_URL} alt="" className="archiveIconImage" />
+                  </button>
                 )}
-              </div>
 
-              {youtubeUrl ? (
-                <a
-                  className="btn archiveOpenIcon archiveYoutubeIcon"
-                  href={youtubeUrl}
-                  target="_blank"
-                  rel="noreferrer noopener"
-                  title="Open YouTube"
-                  aria-label="Open YouTube"
-                >
-                  <img src={YOUTUBE_ICON_DATA_URL} alt="" className="archiveIconImage" />
-                </a>
-              ) : (
-                <button
-                  type="button"
-                  className="btn archiveOpenIcon archiveYoutubeIcon"
-                  disabled
-                  title="Open YouTube"
-                  aria-label="Open YouTube"
-                >
-                  <img src={YOUTUBE_ICON_DATA_URL} alt="" className="archiveIconImage" />
-                </button>
-              )}
-
-              <div className="archiveInfoText archiveVideoInfo">
-                <div className="archiveVideoTitle">{display(meta?.archiveVideoTitle)}</div>
-                <div className="archiveMetaSmall">{display(meta?.archiveVideoDate)}</div>
-                <div className="archiveMetaMedium">
-                  {formatDurationHm(meta?.archiveVideoLengthSeconds)} - {display(meta?.archiveVideoHost)}
+                <div className="archiveInfoText archiveVideoInfo">
+                  <div className="archiveVideoTitle">{display(meta?.archiveVideoTitle)}</div>
+                  <div className="archiveMetaSmall">{display(meta?.archiveVideoDate)}</div>
+                  <div className="archiveMetaMedium">
+                    {formatDurationHm(meta?.archiveVideoLengthSeconds)} - {display(meta?.archiveVideoHost)}
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         </div>
-        </div>
-
-        {!started ? (
-          <button className="btn primary" style={{ width: "100%", marginTop: 12, flexShrink: 0, height: 44 }} onClick={props.onStart}>
-            Start
-          </button>
-        ) : (
-          <div className="row" style={{ marginTop: 12, flexWrap: "nowrap", flexShrink: 0 }}>
-            <button className="btn" style={{ flex: 1, minWidth: 0, height: 44 }} onClick={props.onStayPaused}>
-              Stay paused
-            </button>
-            <button className="btn" style={{ flex: 1, minWidth: 0, height: 44 }} onClick={props.onRestart}>
-              Restart
-            </button>
-          </div>
-        )}
       </div>
     </div>
   );

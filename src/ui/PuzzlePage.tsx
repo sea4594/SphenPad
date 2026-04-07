@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
-import { deletePuzzle, getPuzzle, upsertPuzzle } from "../core/storage";
+import { getPuzzle, upsertPuzzle } from "../core/storage";
 import type { CellRC, PersistedPuzzle, PuzzleProgress, LineStroke, PuzzleDefinition } from "../core/model";
 import { fmtHMS } from "../core/time";
 import { makeInitialProgress } from "../core/scl";
@@ -363,8 +363,8 @@ export function PuzzlePage() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [checkResult, setCheckResult] = useState<boolean | null>(null);
   const [restartPromptOpen, setRestartPromptOpen] = useState(false);
-  const [restartFromPause, setRestartFromPause] = useState(false);
   const [reloadingPuzzle, setReloadingPuzzle] = useState(false);
+  const [boardReloadNonce, setBoardReloadNonce] = useState(0);
   const tickRef = useRef<number | null>(null);
   const holdDelayRef = useRef<number | null>(null);
   const holdIntervalRef = useRef<number | null>(null);
@@ -704,47 +704,56 @@ export function PuzzlePage() {
     setSelectionMode(!data.progress.multiSelect);
   }
 
-  function restartPuzzle(resetTimer: boolean) {
-    if (!data) return;
-    const fresh = normalizeProgress(makeInitialProgress(data.def));
-    const keptMillis = resetTimer ? 0 : data.progress.totalMillis;
-    const nextProgress: PuzzleProgress = {
-      ...fresh,
-      totalMillis: keptMillis,
-      startedAt: Date.now(),
-      status: "not_started",
-      paused: false,
-      multiSelect: data.progress.multiSelect,
-      alphabetMode: data.progress.alphabetMode,
-      alphabetPage: data.progress.alphabetPage,
-      activeTool: data.progress.activeTool,
-      entryMode: data.progress.entryMode,
-      highlightPalettePage: data.progress.highlightPalettePage,
-      linePaletteColor: data.progress.linePaletteColor,
-      linePaletteKind: data.progress.linePaletteKind,
-    };
-    const normalizedProgress = maybePromoteToInProgress(nextProgress);
-    persist({
-      ...data,
-      progress: normalizedProgress,
-      updatedAt: Date.now(),
-    });
-    setRestartPromptOpen(false);
-    setRestartFromPause(false);
-    setCompletionOpen(false);
-    setPauseMenuOpen(false);
-  }
+  async function restartPuzzleFromCache(resetTimer: boolean) {
+    if (!data || reloadingPuzzle) return;
 
-  function openRestartPrompt(fromPause: boolean) {
-    setRestartFromPause(fromPause);
-    setRestartPromptOpen(true);
-    if (fromPause) setPauseMenuOpen(false);
+    setReloadingPuzzle(true);
+    try {
+      const cached = await getPuzzle(key);
+      const cachedData = cached ?? data;
+      const fresh = normalizeProgress(makeInitialProgress(cachedData.def));
+      const keptMillis = resetTimer ? 0 : data.progress.totalMillis;
+      const nextProgress: PuzzleProgress = {
+        ...fresh,
+        totalMillis: keptMillis,
+        startedAt: Date.now(),
+        status: "not_started",
+        paused: false,
+        multiSelect: data.progress.multiSelect,
+        alphabetMode: data.progress.alphabetMode,
+        alphabetPage: data.progress.alphabetPage,
+        activeTool: data.progress.activeTool,
+        entryMode: data.progress.entryMode,
+        highlightPalettePage: data.progress.highlightPalettePage,
+        linePaletteColor: data.progress.linePaletteColor,
+        linePaletteKind: data.progress.linePaletteKind,
+      };
+      const normalizedProgress = maybePromoteToInProgress(nextProgress);
+      const nextData: PersistedPuzzle = {
+        ...cachedData,
+        progress: normalizedProgress,
+        undo: [],
+        redo: [],
+        updatedAt: Date.now(),
+      };
+
+      await upsertPuzzle(key, nextData);
+      setData(nextData);
+      setBoardReloadNonce((current) => current + 1);
+      setCompletionOpen(false);
+      setPauseMenuOpen(false);
+      setCheckResult(null);
+      setRestartPromptOpen(false);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      alert(`Failed to restart puzzle: ${msg}`);
+    } finally {
+      setReloadingPuzzle(false);
+    }
   }
 
   function closeRestartPrompt() {
     setRestartPromptOpen(false);
-    if (restartFromPause) setPauseMenuOpen(true);
-    setRestartFromPause(false);
   }
 
   useEffect(() => {
@@ -753,10 +762,6 @@ export function PuzzlePage() {
       if (event.key !== "Escape") return;
       event.preventDefault();
       setRestartPromptOpen(false);
-      setRestartFromPause((fromPause) => {
-        if (fromPause) setPauseMenuOpen(true);
-        return false;
-      });
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
@@ -856,55 +861,9 @@ export function PuzzlePage() {
     setCheckResult(allCorrect);
   }
 
-  async function onReloadPuzzleClick() {
+  function onReloadPuzzleClick() {
     if (!data || reloadingPuzzle) return;
-    const source = (data.def.sourceId ?? key).trim();
-    if (!source) {
-      alert("Unable to reload this puzzle because its source id is missing.");
-      return;
-    }
-
-    const proceed = window.confirm("Reload this puzzle from SudokuPad and erase all local progress?");
-    if (!proceed) return;
-
-    setReloadingPuzzle(true);
-    try {
-      const loaded = await loadFromSudokuPad(source);
-      const freshKey = loaded.key;
-      const freshDef = loaded.def;
-      const baseFresh = makeInitialProgress(freshDef);
-      const freshProgress: PuzzleProgress = {
-        ...baseFresh,
-        startedAt: Date.now(),
-        paused: false,
-      };
-      const freshData: PersistedPuzzle = {
-        def: freshDef,
-        progress: freshProgress,
-        undo: [],
-        redo: [],
-        updatedAt: Date.now(),
-      };
-
-      await deletePuzzle(key);
-
-      await upsertPuzzle(freshKey, freshData);
-
-      if (freshKey !== key) {
-        nav(`/p/${encodeURIComponent(freshKey)}`, { replace: true, state: location.state });
-        return;
-      }
-
-      setData(freshData);
-      setCompletionOpen(false);
-      setRestartPromptOpen(false);
-      setPauseMenuOpen(false);
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : String(e);
-      alert(`Failed to reload puzzle: ${msg}`);
-    } finally {
-      setReloadingPuzzle(false);
-    }
+    setRestartPromptOpen(true);
   }
 
   async function onCopySudokuPadLinkClick() {
@@ -1484,7 +1443,7 @@ export function PuzzlePage() {
           <button className="btn" onClick={onPausePlayClick} title="Pause or resume" disabled={data.progress.status === "complete"}>
             {data.progress.status === "complete" ? <IconPause /> : data.progress.paused ? <IconPlay /> : <IconPause />}
           </button>
-          <button className="btn" onClick={onReloadPuzzleClick} title="Reload puzzle from SudokuPad" disabled={reloadingPuzzle}>
+          <button className="btn" onClick={onReloadPuzzleClick} title="Restart puzzle" disabled={reloadingPuzzle}>
             <IconReload />
           </button>
           <button className="btn" onClick={onCopySudokuPadLinkClick} title="Copy SudokuPad link">
@@ -1501,6 +1460,7 @@ export function PuzzlePage() {
           <div className="boardColumn">
             <div className="card boardCard">
               <GridCanvas
+                key={`puzzle-grid-${boardReloadNonce}`}
                 def={data.def}
                 progress={data.progress}
                 onSelection={setSelection}
@@ -1609,8 +1569,6 @@ export function PuzzlePage() {
           started={Boolean(data.progress.startedAt)}
           onStart={startOrResume}
           onResume={startOrResume}
-          onStayPaused={() => setPauseMenuOpen(false)}
-          onRestart={() => openRestartPrompt(true)}
         />
       )}
 
@@ -1633,13 +1591,17 @@ export function PuzzlePage() {
           <div className="card settingsCard" onClick={(e) => e.stopPropagation()}>
             <div className="settingsHeader">
               <div style={{ fontWeight: 700, fontSize: 21 }}>Restart Puzzle</div>
-              <button className="btn" onClick={closeRestartPrompt}>Close</button>
+              <button className="btn" onClick={closeRestartPrompt} type="button">x</button>
             </div>
             <div className="settingsSection">
-              <div className="muted">Choose how to restart:</div>
-              <button className="btn primary" onClick={() => restartPuzzle(true)}>Restart and reset timer</button>
-              <button className="btn" onClick={() => restartPuzzle(false)}>Restart and keep time</button>
-              <button className="btn" onClick={closeRestartPrompt}>Cancel</button>
+              <div className="muted">Reload the puzzle from the local cache and choose how to handle the timer:</div>
+              <button className="btn primary" onClick={() => void restartPuzzleFromCache(true)} disabled={reloadingPuzzle} type="button">
+                {reloadingPuzzle ? "Restarting..." : "Restart and reset timer"}
+              </button>
+              <button className="btn" onClick={() => void restartPuzzleFromCache(false)} disabled={reloadingPuzzle} type="button">
+                Restart and keep time
+              </button>
+              <button className="btn" onClick={closeRestartPrompt} disabled={reloadingPuzzle} type="button">Cancel</button>
             </div>
           </div>
         </div>

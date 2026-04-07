@@ -828,6 +828,18 @@ input.url {
   letter-spacing: 0.5px;
 }
 
+.menuPuzzleNativeSelect {
+  width: 100%;
+  min-width: 0;
+  min-height: 42px;
+  padding: 0 10px;
+  border-radius: 0;
+  border: 1px solid color-mix(in oklab, var(--text) 24%, transparent);
+  background: var(--panel-soft);
+  color: inherit;
+  font: inherit;
+}
+
 .menuPuzzleMoreMenu {
   position: absolute;
   right: 0;
@@ -1618,6 +1630,28 @@ input.url {
   gap: 14px;
   max-height: min(88dvh, calc(100vh - 24px));
   overflow: auto;
+}
+
+.pauseOverlayCard {
+  width: min(700px, 100%);
+  max-height: min(92dvh, calc(100vh - 24px));
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.pauseOverlayHeader {
+  flex-shrink: 0;
+  padding-bottom: 12px;
+  border-bottom: 1px solid color-mix(in oklab, var(--text) 16%, transparent);
+}
+
+.pauseOverlayBody {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  margin-top: 12px;
+  padding-right: 2px;
 }
 
 .settingsHeader {
