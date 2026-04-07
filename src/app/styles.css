@@ -148,16 +148,9 @@ body,
   color: var(--text);
 }
 
-@supports (-webkit-touch-callout: none) {
-  html,
-  body,
-  #root {
-    height: -webkit-fill-available;
-    min-height: -webkit-fill-available;
-  }
-}
-
 #root {
+  position: fixed;
+  inset: 0;
   overflow: hidden;
 }
 
@@ -167,7 +160,7 @@ html {
 }
 
 body {
-  overflow-x: hidden;
+  overflow: hidden;
 }
 
 html[data-mobile-filter-open="true"],
@@ -425,6 +418,8 @@ button,
   max-width: 100%;
   overflow: auto;
   overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
 }
 
 .row {
