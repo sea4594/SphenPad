@@ -919,6 +919,21 @@ input.url {
   gap: 8px;
 }
 
+.archiveLoadRow {
+  margin-top: 2px;
+  align-items: center;
+  flex-wrap: nowrap;
+}
+
+.archiveLoadLabel {
+  font-size: 20px;
+  white-space: nowrap;
+}
+
+.archiveLoadRow > .url {
+  min-width: 0;
+}
+
 .archiveFilterRow {
   display: flex;
   gap: 8px;

@@ -971,9 +971,8 @@ export function CtCArchivePage() {
       <div className="page">
         <div className="mainMenuWrap">
           <div className="card">
-            <div className="menuSectionTitle">Load Puzzle</div>
-            <div className="muted" style={{ marginTop: 2 }}>Paste a sudokupad.app link or a puzzle id</div>
-            <div className="row" style={{ marginTop: 10 }}>
+            <div className="row archiveLoadRow">
+              <div className="menuSectionTitle archiveLoadLabel">Puzzle URL</div>
               <input
                 className="url"
                 placeholder="https://sudokupad.app/..."
