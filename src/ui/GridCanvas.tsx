@@ -1509,7 +1509,7 @@ export function GridCanvas(props: {
       const first = cage.cells[0] as CellRC;
       cageLabelCells.add(`${first.r},${first.c}`);
     }
-    const valueFontPx = Math.max(previewMode ? 4.5 : 11, Math.min(previewMode ? 30 : 48, Math.round(cellPx * 0.65)));
+    const valueFontPx = Math.max(previewMode ? 4.5 : 11, Math.min(previewMode ? 30 : 50, Math.round(cellPx * 0.67)));
     const noteFontPx = Math.max(previewMode ? 3 : 6, Math.min(previewMode ? 10 : 19, Math.round(cellPx * 0.26)));
     const candidateFontPx = Math.max(previewMode ? 2.2 : 5, Math.min(previewMode ? 8 : 12, Math.round(cellPx * 0.18)));
     const digitOutlineWidth = Math.max(previewMode ? 0.18 : 0.45, Math.min(previewMode ? 0.6 : 0.9, cellPx * 0.015));

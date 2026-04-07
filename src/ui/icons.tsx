@@ -165,3 +165,18 @@ export const IconToolLine = () => (
 		/>
 	</svg>
 );
+
+export const IconBackspace = () => (
+	<svg width="20" height="20" viewBox="0 0 24 24" aria-hidden>
+		<path
+			d="M10 6h10a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H10a2 2 0 0 1-1.41-.59L3.17 12l5.42-5.41A2 2 0 0 1 10 6Z"
+			fill="none"
+			stroke="currentColor"
+			strokeWidth="1.8"
+			strokeLinecap="round"
+			strokeLinejoin="round"
+		/>
+		<path d="m11.5 9.5 5 5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+		<path d="m16.5 9.5-5 5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+	</svg>
+);

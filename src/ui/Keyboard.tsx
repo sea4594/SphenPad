@@ -1,5 +1,6 @@
 import React from "react";
 import type { PuzzleProgress, LineStroke } from "../core/model";
+import { IconBackspace } from "./icons";
 
 const baseColors0 = ["#d9d9d9", "#9b9b9b", "#4f4f4f", "#57d38c", "#ff8fc3", "#ffae57", "#ff5f57", "#ffe066", "#63a6ff"];
 const baseColors1 = ["#000000", "#ffa0a0", "#ffdf61", "#feffaf", "#b0ffb0", "#61d060", "#d0d0ff", "#8180f0", "#ff08ff"];
@@ -55,7 +56,7 @@ export function Keyboard(props: {
           <Key onClick={() => props.onDigit?.("0")}>0</Key>
         )}
         <Key onClick={() => props.onToggleAlphabet?.()}>{progress.alphabetMode ? "123" : "A-I"}</Key>
-        <Key onClick={() => props.onBackspace?.()} title="Backspace">⌫</Key>
+        <Key onClick={() => props.onBackspace?.()} title="Backspace"><IconBackspace /></Key>
       </Grid3x4>
     );
 
@@ -94,7 +95,7 @@ export function Keyboard(props: {
         ))}
         <ColorKey color="#ffffff" onClick={() => props.onWhite?.()} />
         <Key onClick={() => props.onFlipPalette?.()}>⇄</Key>
-        <Key onClick={() => props.onBackspace?.()} title="Backspace">⌫</Key>
+        <Key onClick={() => props.onBackspace?.()} title="Backspace"><IconBackspace /></Key>
       </Grid3x4>
     );
 
@@ -126,7 +127,7 @@ export function Keyboard(props: {
       <Key onClick={() => props.onLineKind?.(progress.linePaletteKind === "both" ? "center" : progress.linePaletteKind === "center" ? "edge" : "both")} title="Cycle line mode">
         {lineKindLabel}
       </Key>
-      <Key onClick={() => props.onBackspace?.()} title="Backspace">⌫</Key>
+      <Key onClick={() => props.onBackspace?.()} title="Backspace"><IconBackspace /></Key>
     </Grid3x4>
   );
 
