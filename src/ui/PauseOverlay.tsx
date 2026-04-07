@@ -71,7 +71,7 @@ export function PauseOverlay(props: {
           />
         </div>
 
-        <div className="card" style={{ marginTop: 12, overflow: "auto", minHeight: 0 }}>
+        <div style={{ marginTop: 12 }}>
           <div style={{ fontWeight: 700, marginBottom: 6 }}>Instructions</div>
           <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.45 }}>
             {meta?.rules || "No instructions found in metadata."}
