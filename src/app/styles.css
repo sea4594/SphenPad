@@ -1121,6 +1121,7 @@ input.url {
   grid-template-rows: auto auto minmax(0, 1fr) auto;
   gap: 12px;
   overflow: hidden;
+  overscroll-behavior: contain;
 }
 
 .mobileFilterOptionList {
@@ -1130,6 +1131,15 @@ input.url {
   border: 1px solid color-mix(in oklab, var(--text) 20%, transparent);
   border-radius: 10px;
   background: color-mix(in oklab, var(--panel-soft) 92%, transparent);
+  overscroll-behavior: contain;
+}
+
+.mobileFilterBackdrop {
+  overflow: hidden;
+  overscroll-behavior: none;
+  align-items: start;
+  padding-top: 12px;
+  padding-bottom: 12px;
 }
 
 .mobileFilterOptionRow {
@@ -1181,16 +1191,15 @@ input.url {
   background: var(--panel-soft);
   color: inherit;
   line-height: 1.25;
-  min-height: 120px;
-  max-height: 180px;
-  overflow-y: auto;
-  overflow-x: hidden;
+  min-height: 0;
+  max-height: none;
+  overflow: hidden;
   user-select: auto;
   -webkit-user-select: auto;
 }
 
 .archiveConstraintSelect .selectControlList {
-  max-height: calc(var(--select-control-visible-rows, 4) * 34px + 12px);
+  max-height: 180px;
 }
 
 @media (max-width: 760px) {
