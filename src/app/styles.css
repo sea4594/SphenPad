@@ -2156,9 +2156,9 @@ input.url {
     flex-direction: column;
     align-items: stretch;
     justify-content: flex-start;
-    width: 58px;
-    min-width: 58px;
-    padding: max(6px, var(--safe-top)) 6px max(6px, var(--safe-bottom)) 6px;
+    width: calc(58px + var(--safe-left));
+    min-width: calc(58px + var(--safe-left));
+    padding: max(6px, var(--safe-top)) 6px max(6px, var(--safe-bottom)) calc(6px + var(--safe-left));
     border-bottom: 0;
     border-right: 1px solid rgba(255, 255, 255, 0.08);
     gap: 6px;
