@@ -1271,23 +1271,22 @@ input.url {
   margin-top: 10px;
   border: 1px solid color-mix(in oklab, var(--text) 20%, transparent);
   background: color-mix(in oklab, var(--panel-soft) 84%, transparent);
-  min-height: clamp(220px, 42dvh, 420px);
-  max-height: clamp(220px, 42dvh, 420px);
-  overflow: hidden;
+  padding: 8px;
+  overflow: visible;
   display: grid;
   place-items: center;
 }
 
 .archiveRulesPreview .boardSurface {
-  width: 100%;
-  height: 100%;
+  width: min(100%, 620px);
+  height: auto;
 }
 
 .archiveRulesPreview canvas {
-  width: auto !important;
+  width: 100% !important;
   height: auto !important;
   max-width: 100% !important;
-  max-height: 100% !important;
+  max-height: none !important;
 }
 
 .archiveRulesPreviewFallback {
