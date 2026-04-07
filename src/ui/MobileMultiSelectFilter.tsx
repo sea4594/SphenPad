@@ -62,12 +62,15 @@ export function MobileMultiSelectFilter(props: {
                 return (
                   <button
                     key={option.value}
-                    className={`btn mobileFilterOption ${selected ? "primary" : ""}`}
+                    className={`mobileFilterOptionRow ${selected ? "is-selected" : ""}`}
                     onClick={() => onSelectedValuesChange(toggleValue(selectedValues, option.value))}
                     type="button"
                   >
                     <span className="mobileFilterOptionLabel">{option.label}</span>
-                    <span className="mobileFilterOptionMeta">{option.count ?? 0}</span>
+                    <span className="mobileFilterOptionRight">
+                      <span className="mobileFilterOptionMeta">{option.count ?? 0}</span>
+                      <span className="mobileFilterOptionCheck" aria-hidden="true">{selected ? "●" : "○"}</span>
+                    </span>
                   </button>
                 );
               }) : (

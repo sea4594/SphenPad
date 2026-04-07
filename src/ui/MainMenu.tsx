@@ -1395,9 +1395,14 @@ export function MainMenu() {
                           items={[
                             { label: "Add to folder", onSelect: () => void onMainPuzzleAction(row, "add_to_folder") },
                             { label: "Open in SudokuPad", onSelect: () => void onMainPuzzleAction(row, "open_in_sudokupad") },
-                            { label: "Set status: Not Started", onSelect: () => void onMainPuzzleAction(row, "status_not_started") },
-                            { label: "Set status: In Progress", onSelect: () => void onMainPuzzleAction(row, "status_in_progress") },
-                            { label: "Set status: Complete", onSelect: () => void onMainPuzzleAction(row, "status_complete") },
+                            {
+                              label: "Set status",
+                              submenu: [
+                                { label: "Not started", onSelect: () => void onMainPuzzleAction(row, "status_not_started") },
+                                { label: "In progress", onSelect: () => void onMainPuzzleAction(row, "status_in_progress") },
+                                { label: "Complete", onSelect: () => void onMainPuzzleAction(row, "status_complete") },
+                              ],
+                            },
                             { label: "Delete", onSelect: () => void onMainPuzzleAction(row, "delete"), tone: "danger" },
                           ]}
                         />
@@ -1601,9 +1606,14 @@ export function MainMenu() {
                                 items={[
                                   { label: "Remove from folder", onSelect: () => void onFolderPuzzleAction(activeFolder.id, row, "remove_from_folder"), disabled: menuBusy },
                                   { label: "Open in SudokuPad", onSelect: () => void onFolderPuzzleAction(activeFolder.id, row, "open_in_sudokupad") },
-                                  { label: "Set status: Not Started", onSelect: () => void onFolderPuzzleAction(activeFolder.id, row, "status_not_started") },
-                                  { label: "Set status: In Progress", onSelect: () => void onFolderPuzzleAction(activeFolder.id, row, "status_in_progress") },
-                                  { label: "Set status: Complete", onSelect: () => void onFolderPuzzleAction(activeFolder.id, row, "status_complete") },
+                                  {
+                                    label: "Set status",
+                                    submenu: [
+                                      { label: "Not started", onSelect: () => void onFolderPuzzleAction(activeFolder.id, row, "status_not_started") },
+                                      { label: "In progress", onSelect: () => void onFolderPuzzleAction(activeFolder.id, row, "status_in_progress") },
+                                      { label: "Complete", onSelect: () => void onFolderPuzzleAction(activeFolder.id, row, "status_complete") },
+                                    ],
+                                  },
                                   { label: "Delete", onSelect: () => void onFolderPuzzleAction(activeFolder.id, row, "delete"), tone: "danger", disabled: menuBusy },
                                 ]}
                               />

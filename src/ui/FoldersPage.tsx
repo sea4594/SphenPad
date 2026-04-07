@@ -859,9 +859,14 @@ export function FoldersPage() {
                               items={[
                                 { label: "Remove from folder", onSelect: () => void onPuzzleRowAction(activeFolder.id, row, "remove_from_folder"), disabled: menuBusy },
                                 { label: "Open in SudokuPad", onSelect: () => void onPuzzleRowAction(activeFolder.id, row, "open_in_sudokupad") },
-                                { label: "Set status: Not Started", onSelect: () => void onPuzzleRowAction(activeFolder.id, row, "status_not_started") },
-                                { label: "Set status: In Progress", onSelect: () => void onPuzzleRowAction(activeFolder.id, row, "status_in_progress") },
-                                { label: "Set status: Complete", onSelect: () => void onPuzzleRowAction(activeFolder.id, row, "status_complete") },
+                                {
+                                  label: "Set status",
+                                  submenu: [
+                                    { label: "Not started", onSelect: () => void onPuzzleRowAction(activeFolder.id, row, "status_not_started") },
+                                    { label: "In progress", onSelect: () => void onPuzzleRowAction(activeFolder.id, row, "status_in_progress") },
+                                    { label: "Complete", onSelect: () => void onPuzzleRowAction(activeFolder.id, row, "status_complete") },
+                                  ],
+                                },
                                 { label: "Delete", onSelect: () => void onPuzzleRowAction(activeFolder.id, row, "delete"), tone: "danger", disabled: menuBusy },
                               ]}
                             />

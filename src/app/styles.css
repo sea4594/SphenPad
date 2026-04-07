@@ -834,14 +834,14 @@ input.url {
 }
 
 .menuPuzzleMoreMenu {
-  position: absolute;
-  right: 0;
-  top: calc(100% + 4px);
+  position: fixed;
   min-width: 180px;
   display: grid;
   gap: 6px;
   padding: 8px;
   z-index: 6;
+  max-height: min(80dvh, 460px);
+  overflow: auto;
 }
 
 .menuPuzzleMoreItem {
@@ -1087,6 +1087,8 @@ input.url {
 
 .archiveFilterLabel {
   font-size: 12px;
+  line-height: 1.1;
+}
 
 .mobileFilterTrigger {
   width: 100%;
@@ -1111,9 +1113,12 @@ input.url {
 }
 
 .mobileFilterDialog {
-  width: min(520px, 100%);
-  max-height: min(90dvh, calc(100vh - 24px));
+  width: 420px;
+  height: 520px;
+  max-width: calc(100vw - 24px);
+  max-height: calc(100vh - 24px);
   display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
   gap: 12px;
   overflow: hidden;
 }
@@ -1121,19 +1126,46 @@ input.url {
 .mobileFilterOptionList {
   min-height: 0;
   overflow: auto;
-  display: grid;
-  gap: 8px;
+  display: block;
+  border: 1px solid color-mix(in oklab, var(--text) 20%, transparent);
+  border-radius: 10px;
+  background: color-mix(in oklab, var(--panel-soft) 92%, transparent);
 }
 
-.mobileFilterOption {
+.mobileFilterOptionRow {
   width: 100%;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 10px;
   align-items: center;
   text-align: left;
+  border: 0;
+  border-bottom: 1px solid color-mix(in oklab, var(--text) 14%, transparent);
+  background: transparent;
+  color: inherit;
+  min-height: 40px;
+  padding: 8px 10px;
+  cursor: pointer;
 }
-  line-height: 1.1;
+
+.mobileFilterOptionRow:last-child {
+  border-bottom: 0;
+}
+
+.mobileFilterOptionRow.is-selected {
+  background: color-mix(in oklab, var(--accent) 16%, transparent);
+}
+
+.mobileFilterOptionRight {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mobileFilterOptionCheck {
+  width: 1.1em;
+  text-align: center;
+  color: color-mix(in oklab, var(--text) 60%, transparent);
 }
 
 .archiveFilterControl > .url,
