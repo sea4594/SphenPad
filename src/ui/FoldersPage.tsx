@@ -616,32 +616,34 @@ export function FoldersPage() {
               })}
 
               {activeFolder ? (
-                <div className="row" style={{ marginTop: 4 }}>
-                  <div className="sortControlGroup">
-                    <div className="sortSelectWrap">
-                      <IconSort />
-                      <SelectControl
-                        className="btn menuControlSelect"
-                        value={sortOrder}
-                        onChange={(e) => setSortOrder(e.target.value as SortOrder)}
-                        aria-label="Sort folders"
+                <div style={{ marginTop: 4, display: "grid", gap: 8 }}>
+                  <div className="row">
+                    <div className="sortControlGroup">
+                      <div className="sortSelectWrap">
+                        <IconSort />
+                        <SelectControl
+                          className="btn menuControlSelect"
+                          value={sortOrder}
+                          onChange={(e) => setSortOrder(e.target.value as SortOrder)}
+                          aria-label="Sort folders"
+                        >
+                          <option value="recent">Recent</option>
+                          <option value="az">A - Z</option>
+                          <option value="date">Video Date</option>
+                        </SelectControl>
+                      </div>
+                      <button
+                        className="btn sortDirectionButton"
+                        onClick={() => setSortDirection((current) => (current === "asc" ? "desc" : "asc"))}
+                        aria-label={sortDirection === "asc" ? "Sort ascending" : "Sort descending"}
+                        title={sortDirection === "asc" ? "Ascending" : "Descending"}
+                        type="button"
                       >
-                        <option value="recent">Recent</option>
-                        <option value="az">A - Z</option>
-                        <option value="date">Video Date</option>
-                      </SelectControl>
+                        {sortDirection === "asc" ? <IconSortAsc /> : <IconSortDesc />}
+                      </button>
                     </div>
-                    <button
-                      className="btn sortDirectionButton"
-                      onClick={() => setSortDirection((current) => (current === "asc" ? "desc" : "asc"))}
-                      aria-label={sortDirection === "asc" ? "Sort ascending" : "Sort descending"}
-                      title={sortDirection === "asc" ? "Ascending" : "Descending"}
-                      type="button"
-                    >
-                      {sortDirection === "asc" ? <IconSortAsc /> : <IconSortDesc />}
-                    </button>
                   </div>
-                  <div className="menuStatusTabs" style={{ flex: 1 }}>
+                  <div className="menuStatusTabs">
                     {(["not_started", "in_progress", "complete"] as const).map((status) => (
                       <button
                         key={status}
