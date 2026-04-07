@@ -1900,6 +1900,7 @@ export function GridCanvas(props: {
     getTwemojiImage,
     heightPx,
     highlightRotationRad,
+    interactive,
     linePreview,
     outlineDigits,
     conflictChecker,

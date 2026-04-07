@@ -112,10 +112,6 @@ export function SelectControl({
   const canUseCustomMenu = forcedPortrait;
 
   useEffect(() => {
-    if (!canUseCustomMenu) setOpen(false);
-  }, [canUseCustomMenu]);
-
-  useEffect(() => {
     if (!open) return;
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") setOpen(false);
@@ -216,7 +212,7 @@ export function SelectControl({
 
       {name && !multiple ? <input type="hidden" name={name} value={controlledValue} /> : null}
 
-      {open ? (
+      {open && canUseCustomMenu ? (
         <div
           className="overlayBackdrop selectControlBackdrop"
           onPointerUp={(event) => pointerTapAction(event, closeMenu)}

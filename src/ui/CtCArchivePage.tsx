@@ -1,6 +1,7 @@
 import { Fragment, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { normalizePuzzleKey } from "../core/id";
+import { type PuzzleDefinition } from "../core/model";
 import { makeInitialProgress } from "../core/scl";
 import { addPuzzleToFolder, createFolder, getPuzzle, listCompletedPuzzleKeys, listFolders, type PuzzleFolder, upsertPuzzle } from "../core/storage";
 import { loadFromSudokuPad } from "../core/sudokupad";
@@ -350,7 +351,7 @@ export function CtCArchivePage() {
   const [maxLength, setMaxLength] = useState(initialFilterPrefs.maxLength);
   const [visibleRowsCount, setVisibleRowsCount] = useState(renderConfig.initialVisibleRows);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [previewedPuzzles, setPreviewedPuzzles] = useState<Map<string, any>>(new Map());
+  const [previewedPuzzles, setPreviewedPuzzles] = useState<Map<string, PuzzleDefinition>>(new Map());
   const [previewRulesByEntryId, setPreviewRulesByEntryId] = useState<Map<string, string>>(new Map());
   const [rulesDialogEntry, setRulesDialogEntry] = useState<PreparedArchiveEntry | null>(null);
   const [rulesDialogBusy, setRulesDialogBusy] = useState(false);
@@ -561,6 +562,64 @@ export function CtCArchivePage() {
     [filteredRows, visibleRowsCount],
   );
 
+  const loadPuzzlePreview = useCallback(async (entry: PreparedArchiveEntry) => {
+    const cached = previewedPuzzles.get(entry.id);
+    if (cached) return cached;
+
+    const importSource = clean(entry.sourceId || entry.sudokuPadUrl);
+    if (!importSource) {
+      loadingQueueRef.current.delete(entry.id);
+      return null;
+    }
+
+    try {
+      const cachedPayload = await loadCachedPuzzlePayload(entry);
+      if (!cachedPayload) {
+        loadingQueueRef.current.delete(entry.id);
+        return null;
+      }
+
+      const { def } = await loadFromSudokuPad(importSource, {
+        preloadedPayload: cachedPayload,
+        skipCounterFetch: true,
+      });
+
+      setPreviewedPuzzles((prev) => new Map(prev).set(entry.id, def));
+      setPreviewRulesByEntryId((prev) => new Map(prev).set(entry.id, clean(def.meta?.rules) || "No rules available."));
+      return def;
+    } catch {
+      // Silently fail for previews
+      return null;
+    } finally {
+      loadingQueueRef.current.delete(entry.id);
+    }
+  }, [previewedPuzzles]);
+
+  const processPreviewQueue = useCallback(async () => {
+    if (loadCountRef.current >= 2 || pendingQueueRef.current.length === 0) return;
+
+    const entry = pendingQueueRef.current.shift();
+    if (!entry) return;
+
+    loadCountRef.current++;
+    try {
+      await loadPuzzlePreview(entry);
+    } finally {
+      loadCountRef.current--;
+      if (pendingQueueRef.current.length > 0) {
+        await processPreviewQueue();
+      }
+    }
+  }, [loadPuzzlePreview]);
+
+  const queuePreviewLoad = useCallback((entry: PreparedArchiveEntry) => {
+    if (loadingQueueRef.current.has(entry.id) || previewedPuzzles.has(entry.id)) return;
+
+    loadingQueueRef.current.add(entry.id);
+    pendingQueueRef.current.push(entry);
+    void processPreviewQueue();
+  }, [previewedPuzzles, processPreviewQueue]);
+
   useEffect(() => {
     const observerOptions = {
       root: null,
@@ -594,7 +653,7 @@ export function CtCArchivePage() {
         observerRef.current.disconnect();
       }
     };
-  }, [visibleRows]);
+  }, [visibleRows, queuePreviewLoad]);
 
   const hasMoreRows = visibleRowsCount < filteredRows.length;
 
@@ -874,64 +933,6 @@ export function CtCArchivePage() {
       await loadPuzzlePreview(entry);
     } finally {
       setRulesDialogBusy(false);
-    }
-  }
-
-  async function processPreviewQueue() {
-    if (loadCountRef.current >= 2 || pendingQueueRef.current.length === 0) return;
-
-    const entry = pendingQueueRef.current.shift();
-    if (!entry) return;
-
-    loadCountRef.current++;
-    try {
-      await loadPuzzlePreview(entry);
-    } finally {
-      loadCountRef.current--;
-      if (pendingQueueRef.current.length > 0) {
-        await processPreviewQueue();
-      }
-    }
-  }
-
-  function queuePreviewLoad(entry: PreparedArchiveEntry) {
-    if (loadingQueueRef.current.has(entry.id) || previewedPuzzles.has(entry.id)) return;
-
-    loadingQueueRef.current.add(entry.id);
-    pendingQueueRef.current.push(entry);
-    void processPreviewQueue();
-  }
-
-  async function loadPuzzlePreview(entry: PreparedArchiveEntry) {
-    const cached = previewedPuzzles.get(entry.id);
-    if (cached) return cached;
-
-    const importSource = clean(entry.sourceId || entry.sudokuPadUrl);
-    if (!importSource) {
-      loadingQueueRef.current.delete(entry.id);
-      return null;
-    }
-
-    try {
-      const cachedPayload = await loadCachedPuzzlePayload(entry);
-      if (!cachedPayload) {
-        loadingQueueRef.current.delete(entry.id);
-        return null;
-      }
-
-      const { def } = await loadFromSudokuPad(importSource, {
-        preloadedPayload: cachedPayload,
-        skipCounterFetch: true,
-      });
-
-      setPreviewedPuzzles((prev) => new Map(prev).set(entry.id, def));
-      setPreviewRulesByEntryId((prev) => new Map(prev).set(entry.id, clean(def.meta?.rules) || "No rules available."));
-      return def;
-    } catch {
-      // Silently fail for previews
-      return null;
-    } finally {
-      loadingQueueRef.current.delete(entry.id);
     }
   }
 
