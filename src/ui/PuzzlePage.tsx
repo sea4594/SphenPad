@@ -109,6 +109,23 @@ function normalizeComparisonSymbol(symbol: string | undefined): string {
   return trimmed.length ? trimmed.toUpperCase() : "";
 }
 
+function symbolSortRank(symbol: string): number {
+  const normalized = symbol.trim().toUpperCase();
+  if (!normalized) return 999;
+  if (/^[1-9]$/.test(normalized)) return Number(normalized);
+  if (normalized === "0") return 10;
+  if (/^[A-Z]$/.test(normalized)) return 20 + normalized.charCodeAt(0) - 65;
+  if (normalized === "*") return 200;
+  return 300;
+}
+
+function compareSymbols(a: string, b: string): number {
+  const ar = symbolSortRank(a);
+  const br = symbolSortRank(b);
+  if (ar !== br) return ar - br;
+  return a.localeCompare(b, undefined, { sensitivity: "base" });
+}
+
 function isSolved(progress: PuzzleProgress, solution?: string): boolean {
   const rows = progress.cells.length;
   const cols = progress.cells[0]?.length ?? 0;
@@ -934,7 +951,10 @@ export function PuzzlePage() {
         const nextSet = new Set(curSet);
         if (allHave) nextSet.delete(sym);
         else nextSet.add(sym);
-        patches.push(patchAt(data.progress, ["cells", rc.r, rc.c, "notes", keyName], nextSet));
+        const ordered = keyName === "corner"
+          ? new Set(Array.from(nextSet).sort(compareSymbols))
+          : nextSet;
+        patches.push(patchAt(data.progress, ["cells", rc.r, rc.c, "notes", keyName], ordered));
       }
     }
     applyPatches(patches);

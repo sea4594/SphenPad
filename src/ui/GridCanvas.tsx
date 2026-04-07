@@ -64,6 +64,23 @@ function segKeyWithKind(seg: { a: CellRC; b: CellRC; edgeTrack?: EdgeTrack }, ki
   return `${lineKindNamespace(kind)}:${segKey(seg.a, seg.b)}`;
 }
 
+function symbolSortRank(symbol: string): number {
+  const normalized = symbol.trim().toUpperCase();
+  if (!normalized) return 999;
+  if (/^[1-9]$/.test(normalized)) return Number(normalized);
+  if (normalized === "0") return 10;
+  if (/^[A-Z]$/.test(normalized)) return 20 + normalized.charCodeAt(0) - 65;
+  if (normalized === "*") return 200;
+  return 300;
+}
+
+function compareSymbols(a: string, b: string): number {
+  const ar = symbolSortRank(a);
+  const br = symbolSortRank(b);
+  if (ar !== br) return ar - br;
+  return a.localeCompare(b, undefined, { sensitivity: "base" });
+}
+
 export function GridCanvas(props: {
   def: PuzzleDefinition;
   progress: PuzzleProgress;
@@ -1630,7 +1647,7 @@ export function GridCanvas(props: {
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";
 
-          const corner = [...cell.notes.corner].sort();
+          const corner = [...cell.notes.corner].sort(compareSymbols);
           if (corner.length) {
             // Always use the same vertical position for the top row, just beneath the cage digit (which is now higher)
             const topRowY = y0 + cellPx * 0.22;
@@ -1846,7 +1863,7 @@ export function GridCanvas(props: {
         const cell = progress.cells[r][c];
         if (cell.value) continue; // Skip cells with values
 
-        const corner = [...cell.notes.corner].sort();
+        const corner = [...cell.notes.corner].sort(compareSymbols);
         if (corner.length) {
           const x0 = cellX(c);
           const y0 = cellY(r);
