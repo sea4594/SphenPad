@@ -34,6 +34,7 @@ import {
 import { SettingsOverlay } from "./SettingsOverlay";
 import { useTheme } from "../app/theme";
 import { readPuzzleOriginState, withPuzzleReturnState } from "./puzzleNavState";
+import { highlightPalettePages, linePalette } from "./toolPalettes";
 
 const AUTO_IN_PROGRESS_MILLIS = 30_000;
 
@@ -309,10 +310,11 @@ function migrateProgressToDefinition(oldData: PersistedPuzzle, nextDef: PuzzleDe
     entryMode: old.entryMode,
     alphabetMode: old.alphabetMode,
     alphabetPage: old.alphabetPage ?? 0,
-    highlightPalettePage: old.highlightPalettePage,
+    highlightPalettePage: old.highlightPalettePage === 1 ? 1 : 0,
     activeHighlightColor: old.activeHighlightColor,
     linePaletteColor: old.linePaletteColor,
-    linePaletteKind: old.linePaletteKind,
+    linePaletteKind: "both",
+    lineDoubleMode: old.lineDoubleMode ?? false,
     activeTool: old.activeTool,
     storedSelectionWhenLineTool: old.storedSelectionWhenLineTool?.filter((rc) => inBoundsFor(nextDef, rc)),
     lines,
@@ -334,14 +336,6 @@ function normalizePersistedDefinition(p: PersistedPuzzle): PersistedPuzzle {
     },
   };
 }
-
-const highlightPalettePages = [
-  ["#d9d9d9", "#9b9b9b", "#4f4f4f", "#57d38c", "#ff8fc3", "#ffae57", "#ff5f57", "#ffe066", "#63a6ff"],
-  ["#000000", "#ffa0a0", "#ffdf61", "#feffaf", "#b0ffb0", "#61d060", "#d0d0ff", "#8180f0", "#ff08ff"],
-  ["#a8a8a8", "#ffd0d0", "#ffe9a7", "#fffbd6", "#d6ffd6", "#8bf2a9", "#d9f1ff", "#bdb7ff", "#ffb3ff"],
-] as const;
-
-const linePalette = ["#000000", "#ff4d4f", "#ff9f1a", "#ffd60a", "#34c759", "#00b894", "#32ade6", "#4f46e5", "#ff2d96"] as const;
 
 export function PuzzlePage() {
   const { puzzleId } = useParams();
@@ -406,8 +400,11 @@ export function PuzzlePage() {
         progress.alphabetPage === 1 || progress.alphabetPage === 2
           ? progress.alphabetPage
           : 0,
+      highlightPalettePage: progress.highlightPalettePage === 1 ? 1 : 0,
       lineCenterMarks: progress.lineCenterMarks ?? [],
       lineEdgeMarks: progress.lineEdgeMarks ?? [],
+      linePaletteKind: "both",
+      lineDoubleMode: progress.lineDoubleMode ?? false,
       activeTool:
         progress.activeTool ??
         (progress.entryMode === "center" ? "center" : progress.entryMode === "corner" ? "corner" : "value"),
@@ -726,7 +723,8 @@ export function PuzzlePage() {
         entryMode: data.progress.entryMode,
         highlightPalettePage: data.progress.highlightPalettePage,
         linePaletteColor: data.progress.linePaletteColor,
-        linePaletteKind: data.progress.linePaletteKind,
+        linePaletteKind: "both",
+        lineDoubleMode: data.progress.lineDoubleMode,
       };
       const normalizedProgress = maybePromoteToInProgress(nextProgress);
       const nextData: PersistedPuzzle = {
@@ -1083,14 +1081,35 @@ export function PuzzlePage() {
     const uniqueByKey = new Map<string, { a: CellRC; b: CellRC; edgeTrack?: "top" | "bottom" | "left" | "right" }>();
     for (const seg of segments) uniqueByKey.set(segKeyWithKind(seg, resolvedKind), seg);
     const uniqueSegments = Array.from(uniqueByKey.values());
-    const drawKeys = new Set(uniqueSegments.map((seg) => segKeyWithKind(seg, resolvedKind)));
+    const targetKeys = new Set(uniqueSegments.map((seg) => segKey(seg.a, seg.b)));
+
+    const colorsBySegment = new Map<string, string[]>();
+    for (const stroke of data.progress.lines) {
+      if (lineKindNamespace(stroke.kind) !== resolvedKind) continue;
+      for (const seg of stroke.segments) {
+        const key = segKey(seg.a, seg.b);
+        const existing = colorsBySegment.get(key);
+        if (existing) {
+          if (!existing.includes(stroke.color)) existing.push(stroke.color);
+          continue;
+        }
+        colorsBySegment.set(key, [stroke.color]);
+      }
+    }
 
     if (action === "erase") {
       const lines = data.progress.lines
         .map((stroke) => ({
           ...stroke,
           segments: lineKindNamespace(stroke.kind) === resolvedKind
-            ? stroke.segments.filter((seg) => !drawKeys.has(segKeyWithKind(seg, stroke.kind)))
+            ? stroke.segments.filter((seg) => {
+                const key = segKey(seg.a, seg.b);
+                if (!targetKeys.has(key)) return true;
+                const segmentColors = colorsBySegment.get(key) ?? [];
+                const removeCurrentColorOnly = segmentColors.includes(data.progress.linePaletteColor);
+                if (removeCurrentColorOnly) return stroke.color !== data.progress.linePaletteColor;
+                return false;
+              })
             : stroke.segments,
         }))
         .filter((stroke) => stroke.segments.length > 0);
@@ -1101,13 +1120,12 @@ export function PuzzlePage() {
       return;
     }
 
-    const occupied = new Set<string>();
-    for (const stroke of data.progress.lines) {
-      if (lineKindNamespace(stroke.kind) !== resolvedKind) continue;
-      for (const seg of stroke.segments) occupied.add(segKeyWithKind(seg, stroke.kind));
-    }
-
-    const drawable = uniqueSegments.filter((seg) => !occupied.has(segKeyWithKind(seg, resolvedKind)));
+    const maxColors = data.progress.lineDoubleMode ? 2 : 1;
+    const drawable = uniqueSegments.filter((seg) => {
+      const existingColors = colorsBySegment.get(segKey(seg.a, seg.b)) ?? [];
+      if (existingColors.includes(data.progress.linePaletteColor)) return false;
+      return existingColors.length < maxColors;
+    });
     if (!drawable.length) return;
 
     const stroke: LineStroke = {
@@ -1539,7 +1557,7 @@ export function PuzzlePage() {
                     onWhite={() => applyHighlight("#ffffff")}
                     onBackspace={handleBackspace}
                     onFlipPalette={() => {
-                      const next = ((data.progress.highlightPalettePage + 1) % 3) as 0 | 1 | 2;
+                      const next = (data.progress.highlightPalettePage === 0 ? 1 : 0) as 0 | 1;
                       pushPatch(patchAt(data.progress, ["highlightPalettePage"], next), { recordHistory: false });
                     }}
                   />
@@ -1552,7 +1570,7 @@ export function PuzzlePage() {
                     progress={data.progress}
                     onBackspace={handleBackspace}
                     onColor={(c) => pushPatch(patchAt(data.progress, ["linePaletteColor"], c), { recordHistory: false })}
-                    onLineKind={(k) => pushPatch(patchAt(data.progress, ["linePaletteKind"], k), { recordHistory: false })}
+                    onToggleDoubleLine={() => pushPatch(patchAt(data.progress, ["lineDoubleMode"], !data.progress.lineDoubleMode), { recordHistory: false })}
                   />
                 ) : null}
               </div>

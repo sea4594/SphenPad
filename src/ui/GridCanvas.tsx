@@ -8,6 +8,7 @@ type LineKindResolved = "center" | "edge";
 type LineKindStored = LineKindResolved | "both";
 type EdgeTrack = "top" | "bottom" | "left" | "right";
 type LineSegmentDraft = { a: CellRC; b: CellRC; edgeTrack?: EdgeTrack };
+type LinePreviewState = { segments: LineSegmentDraft[]; kind: LineKindResolved; action: "draw" | "erase" };
 type LayerItem = NonNullable<PuzzleDefinition["cosmetics"]["underlays"]>[number];
 const LINE_NODE_DIAMETER = 1;
 const LINE_NODE_RADIUS = LINE_NODE_DIAMETER / 2;
@@ -60,8 +61,21 @@ function lineKindNamespace(kind: LineKindStored): LineKindResolved {
   return kind === "edge" ? "edge" : "center";
 }
 
-function segKeyWithKind(seg: { a: CellRC; b: CellRC; edgeTrack?: EdgeTrack }, kind: LineKindStored) {
-  return `${lineKindNamespace(kind)}:${segKey(seg.a, seg.b)}`;
+function collectLineSegmentColors(lines: PuzzleProgress["lines"], kind: LineKindResolved) {
+  const grouped = new Map<string, { seg: LineSegmentDraft; colors: string[] }>();
+  for (const stroke of lines) {
+    if (lineKindNamespace(stroke.kind) !== kind) continue;
+    for (const seg of stroke.segments) {
+      const key = segKey(seg.a, seg.b);
+      const existing = grouped.get(key);
+      if (existing) {
+        if (!existing.colors.includes(stroke.color)) existing.colors.push(stroke.color);
+        continue;
+      }
+      grouped.set(key, { seg, colors: [stroke.color] });
+    }
+  }
+  return grouped;
 }
 
 function symbolSortRank(symbol: string): number {
@@ -105,7 +119,7 @@ export function GridCanvas(props: {
   const cosmeticUnit = Number.isFinite(sourceCellSize) && sourceCellSize > 0 ? sourceCellSize : 56;
   const [cellPx, setCellPx] = useState(56);
   const [bgImage, setBgImage] = useState<HTMLImageElement | null>(null);
-  const [linePreview, setLinePreview] = useState<{ segments: LineSegmentDraft[]; kind: LineKindResolved } | null>(null);
+  const [linePreview, setLinePreview] = useState<LinePreviewState | null>(null);
   const [emojiRenderVersion, setEmojiRenderVersion] = useState(0);
   const [mobileViewport, setMobileViewport] = useState(() => isLikelyMobileDevice());
 
@@ -276,23 +290,9 @@ export function GridCanvas(props: {
     return `${available.map((name) => `"${name}"`).join(", ")}, emoji, sans-serif`;
   }, []);
 
-  const centerLineKeys = useMemo(() => {
-    const keys = new Set<string>();
-    for (const stroke of progress.lines) {
-      if (stroke.kind !== "center") continue;
-      for (const seg of stroke.segments) keys.add(segKey(seg.a, seg.b));
-    }
-    return keys;
-  }, [progress.lines]);
+  const centerLineSegments = useMemo(() => collectLineSegmentColors(progress.lines, "center"), [progress.lines]);
 
-  const edgeLineKeys = useMemo(() => {
-    const keys = new Set<string>();
-    for (const stroke of progress.lines) {
-      if (stroke.kind !== "edge") continue;
-      for (const seg of stroke.segments) keys.add(segKey(seg.a, seg.b));
-    }
-    return keys;
-  }, [progress.lines]);
+  const edgeLineSegments = useMemo(() => collectLineSegmentColors(progress.lines, "edge"), [progress.lines]);
 
   const inBounds = useCallback((r: number, c: number) => {
     return r >= 0 && c >= 0 && r < rows && c < cols;
@@ -1403,76 +1403,107 @@ export function GridCanvas(props: {
     drawGridLines();
     if (!fogDefined) drawTopPuzzleFeatures();
 
-    const drawCenterStroke = (segments: LineSegmentDraft[], color: string, alpha = 1) => {
+    const drawSegmentLine = (
+      start: { x: number; y: number },
+      end: { x: number; y: number },
+      color: string,
+      width: number,
+      alpha = 1,
+      offset = 0,
+    ) => {
+      const dx = end.x - start.x;
+      const dy = end.y - start.y;
+      const length = Math.hypot(dx, dy);
+      if (length <= 0) return;
+      const nx = -dy / length;
+      const ny = dx / length;
       ctx.save();
       ctx.globalAlpha = alpha;
       ctx.strokeStyle = color;
-      ctx.lineWidth = scaledCellPx(0.071, { previewMin: 0.8, normalMin: 2.4 });
+      ctx.lineWidth = width;
       ctx.lineCap = "round";
       ctx.lineJoin = "round";
-      for (const seg of segments) {
-        const ax = cellX(seg.a.c) + cellPx / 2;
-        const ay = cellY(seg.a.r) + cellPx / 2;
-        const bx = cellX(seg.b.c) + cellPx / 2;
-        const by = cellY(seg.b.r) + cellPx / 2;
-        ctx.beginPath();
-        ctx.moveTo(ax, ay);
-        ctx.lineTo(bx, by);
-        ctx.stroke();
-      }
+      ctx.beginPath();
+      ctx.moveTo(start.x + nx * offset, start.y + ny * offset);
+      ctx.lineTo(end.x + nx * offset, end.y + ny * offset);
+      ctx.stroke();
       ctx.restore();
     };
 
-    const drawEdgeStroke = (segments: LineSegmentDraft[], color: string, alpha = 1) => {
-      ctx.save();
-      ctx.globalAlpha = alpha;
-      ctx.strokeStyle = color;
-      ctx.lineWidth = scaledCellPx(0.068, { previewMin: 0.75, normalMin: 2.2 });
-      ctx.lineCap = "round";
+    const drawCenterStroke = (segments: LineSegmentDraft[], colors: string[], alpha = 1) => {
+      const singleWidth = scaledCellPx(0.071, { previewMin: 0.8, normalMin: 2.4 });
+      const doubleWidth = singleWidth * (2 / 3);
+      for (const seg of segments) {
+        const start = { x: cellX(seg.a.c) + cellPx / 2, y: cellY(seg.a.r) + cellPx / 2 };
+        const end = { x: cellX(seg.b.c) + cellPx / 2, y: cellY(seg.b.r) + cellPx / 2 };
+        if (colors.length >= 2) {
+          drawSegmentLine(start, end, colors[0] as string, doubleWidth, alpha, -doubleWidth / 2);
+          drawSegmentLine(start, end, colors[1] as string, doubleWidth, alpha, doubleWidth / 2);
+          continue;
+        }
+        drawSegmentLine(start, end, colors[0] as string, singleWidth, alpha);
+      }
+    };
+
+    const drawEdgeStroke = (segments: LineSegmentDraft[], colors: string[], alpha = 1) => {
+      const singleWidth = scaledCellPx(0.068, { previewMin: 0.75, normalMin: 2.2 });
+      const doubleWidth = singleWidth * (2 / 3);
       for (const seg of segments) {
         const dr = Math.abs(seg.b.r - seg.a.r);
         const dc = Math.abs(seg.b.c - seg.a.c);
         if (dr > 1 || dc > 1 || (dr === 0 && dc === 0)) continue;
-        const x0 = cellX(seg.a.c);
-        const y0 = cellY(seg.a.r);
-        const x1 = cellX(seg.b.c);
-        const y1 = cellY(seg.b.r);
-        ctx.beginPath();
-        ctx.moveTo(x0, y0);
-        ctx.lineTo(x1, y1);
-        ctx.stroke();
+        const start = { x: cellX(seg.a.c), y: cellY(seg.a.r) };
+        const end = { x: cellX(seg.b.c), y: cellY(seg.b.r) };
+        if (colors.length >= 2) {
+          drawSegmentLine(start, end, colors[0] as string, doubleWidth, alpha, -doubleWidth / 2);
+          drawSegmentLine(start, end, colors[1] as string, doubleWidth, alpha, doubleWidth / 2);
+          continue;
+        }
+        drawSegmentLine(start, end, colors[0] as string, singleWidth, alpha);
       }
-      ctx.restore();
+    };
+
+    const drawGroupedStrokes = (
+      grouped: Map<string, { seg: LineSegmentDraft; colors: string[] }>,
+      kind: LineKindResolved,
+      alpha = 1,
+    ) => {
+      for (const entry of grouped.values()) {
+        if (!entry.colors.length) continue;
+        if (kind === "edge") drawEdgeStroke([entry.seg], entry.colors.slice(0, 2), alpha);
+        else drawCenterStroke([entry.seg], entry.colors.slice(0, 2), alpha);
+      }
     };
 
     const drawUserLines = () => {
-      const previewKeys = linePreview?.segments?.length
-        ? new Set(linePreview.segments.map((seg) => segKeyWithKind(seg, linePreview.kind)))
-        : null;
-      const erasePreview = Boolean(
-        previewKeys &&
-          progress.lines.some((stroke) =>
-            lineKindNamespace(stroke.kind) === linePreview?.kind &&
-            stroke.segments.some((seg) => previewKeys.has(segKeyWithKind(seg, stroke.kind)))
-          )
-      );
+      const grouped = {
+        center: new Map(Array.from(centerLineSegments.entries()).map(([key, value]) => [key, { seg: value.seg, colors: [...value.colors] }])),
+        edge: new Map(Array.from(edgeLineSegments.entries()).map(([key, value]) => [key, { seg: value.seg, colors: [...value.colors] }])),
+      };
 
-      for (const stroke of progress.lines) {
-        const segments = erasePreview && previewKeys
-          ? (lineKindNamespace(stroke.kind) === linePreview?.kind
-            ? stroke.segments.filter((seg) => !previewKeys.has(segKeyWithKind(seg, stroke.kind)))
-            : stroke.segments)
-          : stroke.segments;
-        if (!segments.length) continue;
-        if (stroke.kind === "edge") drawEdgeStroke(segments, stroke.color);
-        else drawCenterStroke(segments, stroke.color);
+      if (linePreview) {
+        const active = grouped[linePreview.kind];
+        for (const seg of linePreview.segments) {
+          const key = segKey(seg.a, seg.b);
+          const existing = active.get(key);
+          if (linePreview.action === "erase") {
+            if (!existing) continue;
+            const filtered = existing.colors.filter((color) => color !== progress.linePaletteColor);
+            existing.colors = filtered.length === existing.colors.length ? [] : filtered;
+            if (!existing.colors.length) active.delete(key);
+            continue;
+          }
+
+          if (existing) {
+            if (!existing.colors.includes(progress.linePaletteColor)) existing.colors.push(progress.linePaletteColor);
+          } else {
+            active.set(key, { seg, colors: [progress.linePaletteColor] });
+          }
+        }
       }
 
-      // When overlap is detected, preview as progressive erase by hiding matching segments.
-      if (linePreview && !erasePreview) {
-        if (linePreview.kind === "edge") drawEdgeStroke(linePreview.segments, progress.linePaletteColor, 0.8);
-        else drawCenterStroke(linePreview.segments, progress.linePaletteColor, 0.8);
-      }
+      drawGroupedStrokes(grouped.center, "center");
+      drawGroupedStrokes(grouped.edge, "edge");
 
       for (const mark of progress.lineCenterMarks) {
         const x = cellX(mark.rc.c) + cellPx / 2;
@@ -2153,9 +2184,6 @@ export function GridCanvas(props: {
   }
 
   function resolveInitialLineKind(point: { fx: number; fy: number }): LineKindResolved {
-    if (progress.linePaletteKind === "center") return "center";
-    if (progress.linePaletteKind === "edge") return "edge";
-
     const dCenter = Math.hypot(point.fx - 0.5, point.fy - 0.5);
     const dEdgeCenter = Math.min(
       Math.hypot(point.fx - 0.5, point.fy),
@@ -2178,6 +2206,15 @@ export function GridCanvas(props: {
     if (dCorner <= 0.14) return "edge";
 
     return dCenter <= dEdgeCenter ? "center" : "edge";
+  }
+
+  function resolveLineSegmentAction(seg: LineSegmentDraft, kind: LineKindResolved): "draw" | "erase" {
+    const source = kind === "edge" ? edgeLineSegments : centerLineSegments;
+    const existingColors = source.get(segKey(seg.a, seg.b))?.colors ?? [];
+    if (existingColors.includes(progress.linePaletteColor)) return "erase";
+    const maxColors = progress.lineDoubleMode ? 2 : 1;
+    if (existingColors.length < maxColors) return "draw";
+    return "erase";
   }
 
   function onDown(e: React.PointerEvent) {
@@ -2206,7 +2243,7 @@ export function GridCanvas(props: {
         lineKind: kind,
         visited: new Set([rcKey(start)]),
       };
-      setLinePreview({ segments: [], kind });
+      setLinePreview({ segments: [], kind, action: "draw" });
       return;
     }
 
@@ -2305,10 +2342,10 @@ export function GridCanvas(props: {
           continue;
         }
 
-        const occupied = kind === "edge" ? edgeLineKeys.has(stepKey) : centerLineKeys.has(stepKey);
-        if (!drag.lineAction) drag.lineAction = occupied ? "erase" : "draw";
+        const stepAction = resolveLineSegmentAction({ a: drag.last, b: hop }, kind);
+        if (!drag.lineAction) drag.lineAction = stepAction;
 
-        if ((drag.lineAction === "erase" && occupied) || (drag.lineAction === "draw" && !occupied)) {
+        if (drag.lineAction === stepAction) {
           drag.segments.push({ a: drag.last, b: hop });
         }
 
@@ -2317,7 +2354,7 @@ export function GridCanvas(props: {
         drag.moved = true;
       }
 
-      setLinePreview({ segments: [...drag.segments], kind });
+      setLinePreview({ segments: [...drag.segments], kind, action: drag.lineAction ?? "draw" });
       return;
     }
 

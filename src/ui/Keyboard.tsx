@@ -1,11 +1,7 @@
 import React from "react";
-import type { PuzzleProgress, LineStroke } from "../core/model";
+import type { PuzzleProgress } from "../core/model";
 import { IconBackspace } from "./icons";
-
-const baseColors0 = ["#d9d9d9", "#9b9b9b", "#4f4f4f", "#57d38c", "#ff8fc3", "#ffae57", "#ff5f57", "#ffe066", "#63a6ff"];
-const baseColors1 = ["#000000", "#ffa0a0", "#ffdf61", "#feffaf", "#b0ffb0", "#61d060", "#d0d0ff", "#8180f0", "#ff08ff"];
-const baseColors2 = ["#a8a8a8", "#ffd0d0", "#ffe9a7", "#fffbd6", "#d6ffd6", "#8bf2a9", "#d9f1ff", "#bdb7ff", "#ffb3ff"];
-const lineColors = ["#000000", "#ff4d4f", "#ff9f1a", "#ffd60a", "#34c759", "#00b894", "#32ade6", "#4f46e5", "#ff2d96"];
+import { highlightPalettePages, linePalette } from "./toolPalettes";
 
 const alphabetPages: ReadonlyArray<ReadonlyArray<string>> = [
   ["A", "B", "C", "D", "E", "F", "G", "H", "I"],
@@ -37,7 +33,7 @@ export function Keyboard(props: {
   onWhite?: () => void;
   onFlipPalette?: () => void;
 
-  onLineKind?: (k: LineStroke["kind"]) => void;
+  onToggleDoubleLine?: () => void;
 }) {
   const { kind, progress } = props;
   const compact = Boolean(props.compact);
@@ -48,15 +44,15 @@ export function Keyboard(props: {
     const grid = (
       <Grid3x4 compact={compact}>
         {keys.map((k) => (
-          <Key key={k} onClick={() => props.onDigit?.(k)}>{k}</Key>
+          <Key key={k} className="keyButtonValue" onClick={() => props.onDigit?.(k)}>{k}</Key>
         ))}
         {progress.alphabetMode ? (
-          <Key onClick={() => props.onCycleAlphabetPage?.()} title="Cycle letter page">{pageLabel}</Key>
+          <Key className="keyButtonValue" onClick={() => props.onCycleAlphabetPage?.()} title="Cycle letter page">{pageLabel}</Key>
         ) : (
-          <Key onClick={() => props.onDigit?.("0")}>0</Key>
+          <Key className="keyButtonValue" onClick={() => props.onDigit?.("0")}>0</Key>
         )}
-        <Key onClick={() => props.onToggleAlphabet?.()}>{progress.alphabetMode ? "123" : "A-I"}</Key>
-        <Key onClick={() => props.onBackspace?.()} title="Backspace"><IconBackspace /></Key>
+        <Key className="keyButtonValue" onClick={() => props.onToggleAlphabet?.()}>{progress.alphabetMode ? "123" : "A-I"}</Key>
+        <Key className="keyButtonBackspace" onClick={() => props.onBackspace?.()} title="Backspace"><IconBackspace size={26} /></Key>
       </Grid3x4>
     );
 
@@ -87,7 +83,7 @@ export function Keyboard(props: {
   }
 
   if (kind === "highlight") {
-    const palette = progress.highlightPalettePage === 0 ? baseColors0 : progress.highlightPalettePage === 1 ? baseColors1 : baseColors2;
+    const palette = highlightPalettePages[progress.highlightPalettePage] ?? highlightPalettePages[0];
     const grid = (
       <Grid3x4 compact={compact}>
         {palette.map((c) => (
@@ -95,7 +91,7 @@ export function Keyboard(props: {
         ))}
         <ColorKey color="#ffffff" onClick={() => props.onWhite?.()} />
         <Key onClick={() => props.onFlipPalette?.()}>⇄</Key>
-        <Key onClick={() => props.onBackspace?.()} title="Backspace"><IconBackspace /></Key>
+        <Key className="keyButtonBackspace" onClick={() => props.onBackspace?.()} title="Backspace"><IconBackspace size={26} /></Key>
       </Grid3x4>
     );
 
@@ -105,7 +101,7 @@ export function Keyboard(props: {
       <div className="card">
         <div className="row" style={{ justifyContent: "space-between" }}>
           <div style={{ fontWeight: 700 }}>Highlight</div>
-          <div className="muted">page {progress.highlightPalettePage + 1}/3</div>
+          <div className="muted">page {progress.highlightPalettePage + 1}/2</div>
         </div>
 
         {grid}
@@ -113,21 +109,16 @@ export function Keyboard(props: {
     );
   }
 
-  const lineKindLabel = progress.linePaletteKind === "both"
-    ? "B"
-    : progress.linePaletteKind === "center"
-      ? "C"
-      : "E";
   const lineGrid = (
     <Grid3x4 compact={compact}>
-      {lineColors.map((c) => (
+      {linePalette.map((c) => (
         <ColorKey key={c} color={c} onClick={() => props.onColor?.(c)} />
       ))}
       <ColorKey color="#ffffff" onClick={() => props.onColor?.("#ffffff")} />
-      <Key onClick={() => props.onLineKind?.(progress.linePaletteKind === "both" ? "center" : progress.linePaletteKind === "center" ? "edge" : "both")} title="Cycle line mode">
-        {lineKindLabel}
+      <Key active={progress.lineDoubleMode} className="keyButtonValue" onClick={() => props.onToggleDoubleLine?.()} title="Toggle double-line mode">
+        2x
       </Key>
-      <Key onClick={() => props.onBackspace?.()} title="Backspace"><IconBackspace /></Key>
+      <Key className="keyButtonBackspace" onClick={() => props.onBackspace?.()} title="Backspace"><IconBackspace size={26} /></Key>
     </Grid3x4>
   );
 
@@ -159,9 +150,9 @@ function Grid3x4(props: { children: React.ReactNode; compact?: boolean }) {
   );
 }
 
-function Key(props: { children: React.ReactNode; onClick?: () => void; style?: React.CSSProperties; title?: string }) {
+function Key(props: { children: React.ReactNode; onClick?: () => void; style?: React.CSSProperties; title?: string; className?: string; active?: boolean }) {
   return (
-    <button className="btn keyButton" style={{ height: "100%", ...props.style }} onClick={props.onClick} title={props.title}>
+    <button className={"btn keyButton" + (props.active ? " primary" : "") + (props.className ? ` ${props.className}` : "")} style={{ height: "100%", ...props.style }} onClick={props.onClick} title={props.title}>
       {props.children}
     </button>
   );

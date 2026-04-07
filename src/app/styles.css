@@ -1598,6 +1598,17 @@ input.url {
   min-height: 40px;
 }
 
+.keyButtonValue {
+  font-size: 1.55rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.keyButtonBackspace svg {
+  transform: scale(1.18);
+  transform-origin: center;
+}
+
 .lineKindSelect {
   min-height: 40px;
 }
@@ -1906,6 +1917,15 @@ input.url {
   .panelBtn svg,
   .panelBtn > span {
     transform: scale(1.7);
+    transform-origin: center;
+  }
+
+  .panelMainGrid .keyButtonValue {
+    font-size: 1.85rem;
+  }
+
+  .panelMainGrid .keyButtonBackspace svg {
+    transform: scale(1.34);
     transform-origin: center;
   }
 

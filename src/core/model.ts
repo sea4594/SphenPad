@@ -236,11 +236,12 @@ export type PuzzleProgress = {
   alphabetMode: boolean;
   alphabetPage: 0 | 1 | 2;
 
-  highlightPalettePage: 0 | 1 | 2;
+  highlightPalettePage: 0 | 1;
   activeHighlightColor: string;
 
   linePaletteColor: string;
   linePaletteKind: LineStroke["kind"];
+  lineDoubleMode: boolean;
 
   // Exactly one visible tool on the puzzle page.
   activeTool: "value" | "center" | "corner" | "highlight" | "line";
