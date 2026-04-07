@@ -1432,13 +1432,12 @@ export function GridCanvas(props: {
 
     const drawCenterStroke = (segments: LineSegmentDraft[], colors: string[], alpha = 1) => {
       const singleWidth = scaledCellPx(0.071, { previewMin: 0.8, normalMin: 2.4 });
-      const doubleWidth = singleWidth * (2 / 3);
       for (const seg of segments) {
         const start = { x: cellX(seg.a.c) + cellPx / 2, y: cellY(seg.a.r) + cellPx / 2 };
         const end = { x: cellX(seg.b.c) + cellPx / 2, y: cellY(seg.b.r) + cellPx / 2 };
         if (colors.length >= 2) {
-          drawSegmentLine(start, end, colors[0] as string, doubleWidth, alpha, -doubleWidth / 2);
-          drawSegmentLine(start, end, colors[1] as string, doubleWidth, alpha, doubleWidth / 2);
+          drawSegmentLine(start, end, colors[0] as string, singleWidth, alpha, -singleWidth / 2);
+          drawSegmentLine(start, end, colors[1] as string, singleWidth, alpha, singleWidth / 2);
           continue;
         }
         drawSegmentLine(start, end, colors[0] as string, singleWidth, alpha);
@@ -1447,7 +1446,6 @@ export function GridCanvas(props: {
 
     const drawEdgeStroke = (segments: LineSegmentDraft[], colors: string[], alpha = 1) => {
       const singleWidth = scaledCellPx(0.068, { previewMin: 0.75, normalMin: 2.2 });
-      const doubleWidth = singleWidth * (2 / 3);
       for (const seg of segments) {
         const dr = Math.abs(seg.b.r - seg.a.r);
         const dc = Math.abs(seg.b.c - seg.a.c);
@@ -1455,8 +1453,8 @@ export function GridCanvas(props: {
         const start = { x: cellX(seg.a.c), y: cellY(seg.a.r) };
         const end = { x: cellX(seg.b.c), y: cellY(seg.b.r) };
         if (colors.length >= 2) {
-          drawSegmentLine(start, end, colors[0] as string, doubleWidth, alpha, -doubleWidth / 2);
-          drawSegmentLine(start, end, colors[1] as string, doubleWidth, alpha, doubleWidth / 2);
+          drawSegmentLine(start, end, colors[0] as string, singleWidth, alpha, -singleWidth / 2);
+          drawSegmentLine(start, end, colors[1] as string, singleWidth, alpha, singleWidth / 2);
           continue;
         }
         drawSegmentLine(start, end, colors[0] as string, singleWidth, alpha);
