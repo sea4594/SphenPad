@@ -4,6 +4,7 @@ export const SYNCED_LOCAL_STORAGE_KEYS = [
   "sphenpad-theme-v1",
   "sphenpad-main-menu-filters-v1",
   "sphenpad-folder-menu-filters-v1",
+  "sphenpad-folders-page-menu-filters-v1",
   "sphenpad-archive-filters-v1",
 ] as const;
 

@@ -42,6 +42,7 @@ type FolderMenuPrefs = {
 };
 
 const FOLDER_MENU_FILTER_PREFS_KEY = "sphenpad-folder-menu-filters-v1";
+const FOLDERS_PAGE_MENU_FILTER_PREFS_KEY = "sphenpad-folders-page-menu-filters-v1";
 const FOLDER_ACTIVE_ID_KEY = "sphenpad-folders-active-id-v1";
 const NOOP = () => {};
 const FOLDER_SORT_OPTIONS: SelectControlOption[] = [
@@ -64,7 +65,8 @@ function isPuzzlePlayStatus(value: string): value is PuzzlePlayStatus {
 
 function readInitialFolderMenuPrefs(): FolderMenuPrefs {
   try {
-    const raw = localStorage.getItem(FOLDER_MENU_FILTER_PREFS_KEY);
+    const raw = localStorage.getItem(FOLDERS_PAGE_MENU_FILTER_PREFS_KEY)
+      ?? localStorage.getItem(FOLDER_MENU_FILTER_PREFS_KEY);
     if (!raw) return { sortOrder: "recent", sortDirection: "desc", filterStatusList: [] };
 
     const parsed = JSON.parse(raw) as {
@@ -298,7 +300,7 @@ export function FoldersPage() {
 
   useEffect(() => {
     setSyncedLocalStorageItem(
-      FOLDER_MENU_FILTER_PREFS_KEY,
+      FOLDERS_PAGE_MENU_FILTER_PREFS_KEY,
       JSON.stringify({ sortOrder, sortDirection, filterStatusList } satisfies FolderMenuPrefs),
     );
   }, [sortOrder, sortDirection, filterStatusList]);
