@@ -16,6 +16,7 @@ import { fmtHMS } from "../core/time";
 import { AppBrand } from "./AppBrand";
 import { GridCanvas } from "./GridCanvas";
 import { IconFolder, IconHome, IconImport, IconSettings, IconSort, IconSortAsc, IconSortDesc } from "./icons";
+import { PopupMenuButton } from "./PopupMenuButton";
 import { SelectControl, type SelectControlOption } from "./SelectControl";
 import { SettingsOverlay } from "./SettingsOverlay";
 import {
@@ -738,25 +739,15 @@ export function FoldersPage() {
                     </button>
 
                     <div className="row menuPuzzleActions folderBrowserActions">
-                      <select
-                        className="menuPuzzleNativeSelect"
-                        defaultValue=""
-                        onClick={(event) => event.stopPropagation()}
-                        onMouseDown={(event) => event.stopPropagation()}
-                        onChange={(event) => {
-                          event.stopPropagation();
-                          const action = event.currentTarget.value as "" | "rename" | "delete";
-                          event.currentTarget.value = "";
-                          if (!action) return;
-                          void onFolderRowAction(folder, action);
-                        }}
+                      <PopupMenuButton
+                        ariaLabel={`Options for folder ${folder.name}`}
                         title="Folder options"
-                        aria-label={`Options for folder ${folder.name}`}
-                      >
-                        <option value="">...</option>
-                        <option value="rename">Rename folder</option>
-                        <option value="delete">Delete folder</option>
-                      </select>
+                        className="btn menuPuzzleIconButton menuPuzzleMoreButton"
+                        items={[
+                          { label: "Rename folder", onSelect: () => void onFolderRowAction(folder, "rename") },
+                          { label: "Delete folder", onSelect: () => void onFolderRowAction(folder, "delete"), tone: "danger" },
+                        ]}
+                      />
                     </div>
                   </div>
                 );
@@ -860,37 +851,20 @@ export function FoldersPage() {
                           </div>
 
                           <div className="row menuPuzzleActions">
-                            <select
-                              className="menuPuzzleNativeSelect"
-                              defaultValue=""
-                              onClick={(event) => event.stopPropagation()}
-                              onMouseDown={(event) => event.stopPropagation()}
-                              onChange={(event) => {
-                                event.stopPropagation();
-                                const action = event.currentTarget.value as
-                                  | ""
-                                  | "remove_from_folder"
-                                  | "open_in_sudokupad"
-                                  | "status_not_started"
-                                  | "status_in_progress"
-                                  | "status_complete"
-                                  | "delete";
-                                event.currentTarget.value = "";
-                                if (!action) return;
-                                void onPuzzleRowAction(activeFolder.id, row, action);
-                              }}
+                            <PopupMenuButton
+                              ariaLabel={`Actions for ${row.def?.meta?.title || "puzzle"}`}
                               title="Puzzle actions"
-                              aria-label={`Actions for ${row.def?.meta?.title || "puzzle"}`}
+                              className="btn menuPuzzleIconButton menuPuzzleMoreButton"
                               disabled={menuBusy}
-                            >
-                              <option value="">...</option>
-                              <option value="remove_from_folder">Remove from folder</option>
-                              <option value="open_in_sudokupad">Open in SudokuPad</option>
-                              <option value="status_not_started">Set status: Not Started</option>
-                              <option value="status_in_progress">Set status: In Progress</option>
-                              <option value="status_complete">Set status: Complete</option>
-                              <option value="delete">Delete</option>
-                            </select>
+                              items={[
+                                { label: "Remove from folder", onSelect: () => void onPuzzleRowAction(activeFolder.id, row, "remove_from_folder"), disabled: menuBusy },
+                                { label: "Open in SudokuPad", onSelect: () => void onPuzzleRowAction(activeFolder.id, row, "open_in_sudokupad") },
+                                { label: "Set status: Not Started", onSelect: () => void onPuzzleRowAction(activeFolder.id, row, "status_not_started") },
+                                { label: "Set status: In Progress", onSelect: () => void onPuzzleRowAction(activeFolder.id, row, "status_in_progress") },
+                                { label: "Set status: Complete", onSelect: () => void onPuzzleRowAction(activeFolder.id, row, "status_complete") },
+                                { label: "Delete", onSelect: () => void onPuzzleRowAction(activeFolder.id, row, "delete"), tone: "danger", disabled: menuBusy },
+                              ]}
+                            />
                           </div>
                         </div>
                       </div>

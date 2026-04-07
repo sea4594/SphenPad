@@ -15,6 +15,8 @@ import { fmtHMS } from "../core/time";
 import { GridCanvas } from "./GridCanvas";
 import { AppBrand } from "./AppBrand";
 import { IconFolder, IconHome, IconImport, IconSettings, IconSort, IconSortAsc, IconSortDesc } from "./icons";
+import { MobileMultiSelectFilter } from "./MobileMultiSelectFilter";
+import { PopupMenuButton } from "./PopupMenuButton";
 import { SelectControl, type SelectControlOption } from "./SelectControl";
 import { SettingsOverlay } from "./SettingsOverlay";
 import {
@@ -53,6 +55,7 @@ type FolderMenuPrefs = {
 
 const MAIN_MENU_FILTER_PREFS_KEY = "sphenpad-main-menu-filters-v1";
 const FOLDER_MENU_PREFS_KEY = "sphenpad-folder-menu-filters-v1";
+const MOBILE_FILTER_MEDIA_QUERY = "(max-width: 760px)";
 const MAIN_MENU_SEARCH_FIELDS = new Set<MainMenuSearchField>(["any", "title", "constraints", "author", "collection"]);
 const MAIN_MENU_SEARCH_FIELD_OPTIONS: SelectControlOption[] = [
   { value: "any", label: "Search: Any field" },
@@ -417,6 +420,7 @@ export function MainMenu() {
   const [authorFilterQuery, setAuthorFilterQuery] = useState("");
   const [collectionFilterQuery, setCollectionFilterQuery] = useState("");
   const [constraintFilterQuery, setConstraintFilterQuery] = useState("");
+  const [mobileFilters, setMobileFilters] = useState(() => typeof window !== "undefined" && window.matchMedia(MOBILE_FILTER_MEDIA_QUERY).matches);
   const deferredQuery = useDeferredValue(query);
 
   const [foldersOpen, setFoldersOpen] = useState(false);
@@ -453,6 +457,15 @@ export function MainMenu() {
   useEffect(() => {
     void refreshPuzzles();
     void refreshFolders();
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return;
+    const mediaQuery = window.matchMedia(MOBILE_FILTER_MEDIA_QUERY);
+    const onChange = () => setMobileFilters(mediaQuery.matches);
+    onChange();
+    mediaQuery.addEventListener("change", onChange);
+    return () => mediaQuery.removeEventListener("change", onChange);
   }, []);
 
   useEffect(() => {
@@ -1143,76 +1156,124 @@ export function MainMenu() {
               </div>
 
               <div className="archiveFilterRow">
-                <label className="archiveFilterControl">
-                  <span className="muted archiveFilterLabel">Author</span>
-                  <input
-                    className="url"
-                    placeholder="Search authors..."
-                    value={authorFilterQuery}
-                    onChange={(event) => setAuthorFilterQuery(event.target.value)}
-                    aria-label="Search author filter options"
-                  />
-                  <SelectControl
-                    className="archiveConstraintSelect"
-                    multiple
-                    size={Math.min(8, Math.max(4, filteredAuthorOptions.length || 4))}
-                    value={authorFilters}
-                    onValuesChange={setAuthorFilters}
-                    aria-label="Filter puzzles by author"
-                    options={authorFilterOptions}
-                  />
-                  <span className="muted archiveFilterHint">
-                    {authorFilters.length ? `${authorFilters.length} selected` : "All"}
-                  </span>
-                </label>
+                {mobileFilters ? (
+                  <>
+                    <div className="archiveFilterControl is-mobile-popup">
+                      <MobileMultiSelectFilter
+                        label="Author"
+                        searchPlaceholder="Search authors..."
+                        searchQuery={authorFilterQuery}
+                        onSearchQueryChange={setAuthorFilterQuery}
+                        options={authorFilterOptions}
+                        selectedValues={authorFilters}
+                        onSelectedValuesChange={setAuthorFilters}
+                        emptyText="No authors found"
+                        summaryText={authorFilters.length ? `${authorFilters.length} selected` : "All"}
+                      />
+                    </div>
+                    <div className="archiveFilterControl is-mobile-popup">
+                      <MobileMultiSelectFilter
+                        label="Collection"
+                        searchPlaceholder="Search collections..."
+                        searchQuery={collectionFilterQuery}
+                        onSearchQueryChange={setCollectionFilterQuery}
+                        options={collectionFilterOptions}
+                        selectedValues={collectionFilters}
+                        onSelectedValuesChange={setCollectionFilters}
+                        emptyText="No collections found"
+                        summaryText={collectionFilters.length ? `${collectionFilters.length} selected` : "All"}
+                      />
+                    </div>
+                    <div className="archiveFilterControl is-mobile-popup">
+                      <MobileMultiSelectFilter
+                        label="Constraints"
+                        searchPlaceholder="Search constraints..."
+                        searchQuery={constraintFilterQuery}
+                        onSearchQueryChange={setConstraintFilterQuery}
+                        options={constraintFilterOptions}
+                        selectedValues={constraintFilters}
+                        onSelectedValuesChange={setConstraintFilters}
+                        emptyText="No constraints found"
+                        summaryText={constraintOptions.length
+                          ? (constraintFilters.length ? `${constraintFilters.length} selected` : "All")
+                          : "No constraints found"}
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <label className="archiveFilterControl">
+                      <span className="muted archiveFilterLabel">Author</span>
+                      <input
+                        className="url"
+                        placeholder="Search authors..."
+                        value={authorFilterQuery}
+                        onChange={(event) => setAuthorFilterQuery(event.target.value)}
+                        aria-label="Search author filter options"
+                      />
+                      <SelectControl
+                        className="archiveConstraintSelect"
+                        multiple
+                        size={Math.min(8, Math.max(4, filteredAuthorOptions.length || 4))}
+                        value={authorFilters}
+                        onValuesChange={setAuthorFilters}
+                        aria-label="Filter puzzles by author"
+                        options={authorFilterOptions}
+                      />
+                      <span className="muted archiveFilterHint">
+                        {authorFilters.length ? `${authorFilters.length} selected` : "All"}
+                      </span>
+                    </label>
 
-                <label className="archiveFilterControl">
-                  <span className="muted archiveFilterLabel">Collection</span>
-                  <input
-                    className="url"
-                    placeholder="Search collections..."
-                    value={collectionFilterQuery}
-                    onChange={(event) => setCollectionFilterQuery(event.target.value)}
-                    aria-label="Search collection filter options"
-                  />
-                  <SelectControl
-                    className="archiveConstraintSelect"
-                    multiple
-                    size={Math.min(8, Math.max(4, filteredCollectionOptions.length || 4))}
-                    value={collectionFilters}
-                    onValuesChange={setCollectionFilters}
-                    aria-label="Filter puzzles by collection"
-                    options={collectionFilterOptions}
-                  />
-                  <span className="muted archiveFilterHint">
-                    {collectionFilters.length ? `${collectionFilters.length} selected` : "All"}
-                  </span>
-                </label>
+                    <label className="archiveFilterControl">
+                      <span className="muted archiveFilterLabel">Collection</span>
+                      <input
+                        className="url"
+                        placeholder="Search collections..."
+                        value={collectionFilterQuery}
+                        onChange={(event) => setCollectionFilterQuery(event.target.value)}
+                        aria-label="Search collection filter options"
+                      />
+                      <SelectControl
+                        className="archiveConstraintSelect"
+                        multiple
+                        size={Math.min(8, Math.max(4, filteredCollectionOptions.length || 4))}
+                        value={collectionFilters}
+                        onValuesChange={setCollectionFilters}
+                        aria-label="Filter puzzles by collection"
+                        options={collectionFilterOptions}
+                      />
+                      <span className="muted archiveFilterHint">
+                        {collectionFilters.length ? `${collectionFilters.length} selected` : "All"}
+                      </span>
+                    </label>
 
-                <label className="archiveFilterControl">
-                  <span className="muted archiveFilterLabel">Constraints</span>
-                  <input
-                    className="url"
-                    placeholder="Search constraints..."
-                    value={constraintFilterQuery}
-                    onChange={(event) => setConstraintFilterQuery(event.target.value)}
-                    aria-label="Search constraint filter options"
-                  />
-                  <SelectControl
-                    className="archiveConstraintSelect"
-                    multiple
-                    size={Math.min(8, Math.max(4, filteredConstraintOptions.length || 4))}
-                    value={constraintFilters}
-                    onValuesChange={setConstraintFilters}
-                    aria-label="Filter puzzles by constraints"
-                    options={constraintFilterOptions}
-                  />
-                  <span className="muted archiveFilterHint">
-                    {constraintOptions.length
-                      ? (constraintFilters.length ? `${constraintFilters.length} selected` : "All")
-                      : "No constraints found"}
-                  </span>
-                </label>
+                    <label className="archiveFilterControl">
+                      <span className="muted archiveFilterLabel">Constraints</span>
+                      <input
+                        className="url"
+                        placeholder="Search constraints..."
+                        value={constraintFilterQuery}
+                        onChange={(event) => setConstraintFilterQuery(event.target.value)}
+                        aria-label="Search constraint filter options"
+                      />
+                      <SelectControl
+                        className="archiveConstraintSelect"
+                        multiple
+                        size={Math.min(8, Math.max(4, filteredConstraintOptions.length || 4))}
+                        value={constraintFilters}
+                        onValuesChange={setConstraintFilters}
+                        aria-label="Filter puzzles by constraints"
+                        options={constraintFilterOptions}
+                      />
+                      <span className="muted archiveFilterHint">
+                        {constraintOptions.length
+                          ? (constraintFilters.length ? `${constraintFilters.length} selected` : "All")
+                          : "No constraints found"}
+                      </span>
+                    </label>
+                  </>
+                )}
               </div>
 
               <div className="archiveFilterActions">
@@ -1328,36 +1389,18 @@ export function MainMenu() {
                       </div>
 
                       <div className="row menuPuzzleActions">
-                        <select
-                          className="menuPuzzleNativeSelect"
-                          defaultValue=""
-                          onClick={(event) => event.stopPropagation()}
-                          onMouseDown={(event) => event.stopPropagation()}
-                          onChange={(event) => {
-                            event.stopPropagation();
-                            const action = event.currentTarget.value as
-                              | ""
-                              | "add_to_folder"
-                              | "open_in_sudokupad"
-                              | "status_not_started"
-                              | "status_in_progress"
-                              | "status_complete"
-                              | "delete";
-                            event.currentTarget.value = "";
-                            if (!action) return;
-                            void onMainPuzzleAction(row, action);
-                          }}
+                        <PopupMenuButton
+                          ariaLabel={`Options for ${row.def?.meta?.title || "puzzle"}`}
                           title="Puzzle options"
-                          aria-label={`Options for ${row.def?.meta?.title || "puzzle"}`}
-                        >
-                          <option value="">...</option>
-                          <option value="add_to_folder">Add to folder</option>
-                          <option value="open_in_sudokupad">Open in SudokuPad</option>
-                          <option value="status_not_started">Set status: Not Started</option>
-                          <option value="status_in_progress">Set status: In Progress</option>
-                          <option value="status_complete">Set status: Complete</option>
-                          <option value="delete">Delete</option>
-                        </select>
+                          items={[
+                            { label: "Add to folder", onSelect: () => void onMainPuzzleAction(row, "add_to_folder") },
+                            { label: "Open in SudokuPad", onSelect: () => void onMainPuzzleAction(row, "open_in_sudokupad") },
+                            { label: "Set status: Not Started", onSelect: () => void onMainPuzzleAction(row, "status_not_started") },
+                            { label: "Set status: In Progress", onSelect: () => void onMainPuzzleAction(row, "status_in_progress") },
+                            { label: "Set status: Complete", onSelect: () => void onMainPuzzleAction(row, "status_complete") },
+                            { label: "Delete", onSelect: () => void onMainPuzzleAction(row, "delete"), tone: "danger" },
+                          ]}
+                        />
                       </div>
                     </div>
                   </div>
@@ -1551,37 +1594,19 @@ export function MainMenu() {
                             </div>
 
                             <div className="row menuPuzzleActions">
-                              <select
-                                className="menuPuzzleNativeSelect"
-                                defaultValue=""
-                                onClick={(event) => event.stopPropagation()}
-                                onMouseDown={(event) => event.stopPropagation()}
-                                onChange={(event) => {
-                                  event.stopPropagation();
-                                  const action = event.currentTarget.value as
-                                    | ""
-                                    | "remove_from_folder"
-                                    | "open_in_sudokupad"
-                                    | "status_not_started"
-                                    | "status_in_progress"
-                                    | "status_complete"
-                                    | "delete";
-                                  event.currentTarget.value = "";
-                                  if (!action) return;
-                                  void onFolderPuzzleAction(activeFolder.id, row, action);
-                                }}
+                              <PopupMenuButton
+                                ariaLabel={`Actions for ${row.def?.meta?.title || "puzzle"}`}
                                 title="Puzzle actions"
-                                aria-label={`Actions for ${row.def?.meta?.title || "puzzle"}`}
                                 disabled={menuBusy}
-                              >
-                                <option value="">...</option>
-                                <option value="remove_from_folder">Remove from folder</option>
-                                <option value="open_in_sudokupad">Open in SudokuPad</option>
-                                <option value="status_not_started">Set status: Not Started</option>
-                                <option value="status_in_progress">Set status: In Progress</option>
-                                <option value="status_complete">Set status: Complete</option>
-                                <option value="delete">Delete</option>
-                              </select>
+                                items={[
+                                  { label: "Remove from folder", onSelect: () => void onFolderPuzzleAction(activeFolder.id, row, "remove_from_folder"), disabled: menuBusy },
+                                  { label: "Open in SudokuPad", onSelect: () => void onFolderPuzzleAction(activeFolder.id, row, "open_in_sudokupad") },
+                                  { label: "Set status: Not Started", onSelect: () => void onFolderPuzzleAction(activeFolder.id, row, "status_not_started") },
+                                  { label: "Set status: In Progress", onSelect: () => void onFolderPuzzleAction(activeFolder.id, row, "status_in_progress") },
+                                  { label: "Set status: Complete", onSelect: () => void onFolderPuzzleAction(activeFolder.id, row, "status_complete") },
+                                  { label: "Delete", onSelect: () => void onFolderPuzzleAction(activeFolder.id, row, "delete"), tone: "danger", disabled: menuBusy },
+                                ]}
+                              />
                             </div>
                           </div>
                         </div>

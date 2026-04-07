@@ -9,6 +9,7 @@ import { loadFromSudokuPad } from "../core/sudokupad";
 import { AppBrand } from "./AppBrand";
 import { GridCanvas } from "./GridCanvas";
 import { IconFolder, IconHome, IconImport, IconPlay, IconSettings, IconSort, IconSortAsc, IconSortDesc } from "./icons";
+import { MobileMultiSelectFilter } from "./MobileMultiSelectFilter";
 import { SelectControl, type SelectControlOption } from "./SelectControl";
 import { SettingsOverlay } from "./SettingsOverlay";
 import {
@@ -1261,97 +1262,156 @@ export function CtCArchivePage() {
             </div>
 
             <div className="archiveFilterRow">
-              <label className="archiveFilterControl">
-                <span className="muted archiveFilterLabel">Host</span>
-                <input
-                  className="url"
-                  placeholder="Search hosts..."
-                  value={hostFilterQuery}
-                  onChange={(e) => setHostFilterQuery(e.target.value)}
-                  aria-label="Search host filter options"
-                />
-                <SelectControl
-                  className="archiveConstraintSelect"
-                  multiple
-                  size={Math.min(8, Math.max(4, filteredHostOptions.length || 4))}
-                  value={hostFilters}
-                  onValuesChange={setHostFilters}
-                  aria-label="Filter by host"
-                  options={hostFilterOptions}
-                />
-                <span className="muted archiveFilterHint">
-                  {hostFilters.length ? `${hostFilters.length} selected` : "All"}
-                </span>
-              </label>
+              {renderConfig.compact ? (
+                <>
+                  <div className="archiveFilterControl is-mobile-popup">
+                    <MobileMultiSelectFilter
+                      label="Host"
+                      searchPlaceholder="Search hosts..."
+                      searchQuery={hostFilterQuery}
+                      onSearchQueryChange={setHostFilterQuery}
+                      options={hostFilterOptions}
+                      selectedValues={hostFilters}
+                      onSelectedValuesChange={setHostFilters}
+                      emptyText="No hosts found"
+                      summaryText={hostFilters.length ? `${hostFilters.length} selected` : "All"}
+                    />
+                  </div>
+                  <div className="archiveFilterControl is-mobile-popup">
+                    <MobileMultiSelectFilter
+                      label="Author"
+                      searchPlaceholder="Search authors..."
+                      searchQuery={authorFilterQuery}
+                      onSearchQueryChange={setAuthorFilterQuery}
+                      options={authorFilterOptions}
+                      selectedValues={authorFilters}
+                      onSelectedValuesChange={setAuthorFilters}
+                      emptyText="No authors found"
+                      summaryText={authorFilters.length ? `${authorFilters.length} selected` : "All"}
+                    />
+                  </div>
+                  <div className="archiveFilterControl is-mobile-popup">
+                    <MobileMultiSelectFilter
+                      label="Collection"
+                      searchPlaceholder="Search collections..."
+                      searchQuery={collectionFilterQuery}
+                      onSearchQueryChange={setCollectionFilterQuery}
+                      options={collectionFilterOptions}
+                      selectedValues={collectionFilters}
+                      onSelectedValuesChange={setCollectionFilters}
+                      emptyText="No collections found"
+                      summaryText={collectionFilters.length ? `${collectionFilters.length} selected` : "All"}
+                    />
+                  </div>
+                  <div className="archiveFilterControl is-mobile-popup">
+                    <MobileMultiSelectFilter
+                      label="Constraints"
+                      searchPlaceholder="Search constraints..."
+                      searchQuery={constraintFilterQuery}
+                      onSearchQueryChange={setConstraintFilterQuery}
+                      options={constraintFilterOptions}
+                      selectedValues={constraintFilters}
+                      onSelectedValuesChange={setConstraintFilters}
+                      emptyText="No constraints found"
+                      summaryText={constraintFilters.length ? `${constraintFilters.length} selected` : "All"}
+                    />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <label className="archiveFilterControl">
+                    <span className="muted archiveFilterLabel">Host</span>
+                    <input
+                      className="url"
+                      placeholder="Search hosts..."
+                      value={hostFilterQuery}
+                      onChange={(e) => setHostFilterQuery(e.target.value)}
+                      aria-label="Search host filter options"
+                    />
+                    <SelectControl
+                      className="archiveConstraintSelect"
+                      multiple
+                      size={Math.min(8, Math.max(4, filteredHostOptions.length || 4))}
+                      value={hostFilters}
+                      onValuesChange={setHostFilters}
+                      aria-label="Filter by host"
+                      options={hostFilterOptions}
+                    />
+                    <span className="muted archiveFilterHint">
+                      {hostFilters.length ? `${hostFilters.length} selected` : "All"}
+                    </span>
+                  </label>
 
-              <label className="archiveFilterControl">
-                <span className="muted archiveFilterLabel">Author</span>
-                <input
-                  className="url"
-                  placeholder="Search authors..."
-                  value={authorFilterQuery}
-                  onChange={(e) => setAuthorFilterQuery(e.target.value)}
-                  aria-label="Search author filter options"
-                />
-                <SelectControl
-                  className="archiveConstraintSelect"
-                  multiple
-                  size={Math.min(8, Math.max(4, filteredAuthorOptions.length || 4))}
-                  value={authorFilters}
-                  onValuesChange={setAuthorFilters}
-                  aria-label="Filter by author"
-                  options={authorFilterOptions}
-                />
-                <span className="muted archiveFilterHint">
-                  {authorFilters.length ? `${authorFilters.length} selected` : "All"}
-                </span>
-              </label>
+                  <label className="archiveFilterControl">
+                    <span className="muted archiveFilterLabel">Author</span>
+                    <input
+                      className="url"
+                      placeholder="Search authors..."
+                      value={authorFilterQuery}
+                      onChange={(e) => setAuthorFilterQuery(e.target.value)}
+                      aria-label="Search author filter options"
+                    />
+                    <SelectControl
+                      className="archiveConstraintSelect"
+                      multiple
+                      size={Math.min(8, Math.max(4, filteredAuthorOptions.length || 4))}
+                      value={authorFilters}
+                      onValuesChange={setAuthorFilters}
+                      aria-label="Filter by author"
+                      options={authorFilterOptions}
+                    />
+                    <span className="muted archiveFilterHint">
+                      {authorFilters.length ? `${authorFilters.length} selected` : "All"}
+                    </span>
+                  </label>
 
-              <label className="archiveFilterControl">
-                <span className="muted archiveFilterLabel">Collection</span>
-                <input
-                  className="url"
-                  placeholder="Search collections..."
-                  value={collectionFilterQuery}
-                  onChange={(e) => setCollectionFilterQuery(e.target.value)}
-                  aria-label="Search collection filter options"
-                />
-                <SelectControl
-                  className="archiveConstraintSelect"
-                  multiple
-                  size={Math.min(8, Math.max(4, filteredCollectionOptions.length || 4))}
-                  value={collectionFilters}
-                  onValuesChange={setCollectionFilters}
-                  aria-label="Filter by collection"
-                  options={collectionFilterOptions}
-                />
-                <span className="muted archiveFilterHint">
-                  {collectionFilters.length ? `${collectionFilters.length} selected` : "All"}
-                </span>
-              </label>
+                  <label className="archiveFilterControl">
+                    <span className="muted archiveFilterLabel">Collection</span>
+                    <input
+                      className="url"
+                      placeholder="Search collections..."
+                      value={collectionFilterQuery}
+                      onChange={(e) => setCollectionFilterQuery(e.target.value)}
+                      aria-label="Search collection filter options"
+                    />
+                    <SelectControl
+                      className="archiveConstraintSelect"
+                      multiple
+                      size={Math.min(8, Math.max(4, filteredCollectionOptions.length || 4))}
+                      value={collectionFilters}
+                      onValuesChange={setCollectionFilters}
+                      aria-label="Filter by collection"
+                      options={collectionFilterOptions}
+                    />
+                    <span className="muted archiveFilterHint">
+                      {collectionFilters.length ? `${collectionFilters.length} selected` : "All"}
+                    </span>
+                  </label>
 
-              <label className="archiveFilterControl">
-                <span className="muted archiveFilterLabel">Constraints</span>
-                <input
-                  className="url"
-                  placeholder="Search constraints..."
-                  value={constraintFilterQuery}
-                  onChange={(e) => setConstraintFilterQuery(e.target.value)}
-                  aria-label="Search constraint filter options"
-                />
-                <SelectControl
-                  className="archiveConstraintSelect"
-                  multiple
-                  size={Math.min(8, Math.max(4, filteredConstraintOptions.length || 4))}
-                  value={constraintFilters}
-                  onValuesChange={setConstraintFilters}
-                  aria-label="Filter by constraints"
-                  options={constraintFilterOptions}
-                />
-                <span className="muted archiveFilterHint">
-                  {constraintFilters.length ? `${constraintFilters.length} selected` : "All"}
-                </span>
-              </label>
+                  <label className="archiveFilterControl">
+                    <span className="muted archiveFilterLabel">Constraints</span>
+                    <input
+                      className="url"
+                      placeholder="Search constraints..."
+                      value={constraintFilterQuery}
+                      onChange={(e) => setConstraintFilterQuery(e.target.value)}
+                      aria-label="Search constraint filter options"
+                    />
+                    <SelectControl
+                      className="archiveConstraintSelect"
+                      multiple
+                      size={Math.min(8, Math.max(4, filteredConstraintOptions.length || 4))}
+                      value={constraintFilters}
+                      onValuesChange={setConstraintFilters}
+                      aria-label="Filter by constraints"
+                      options={constraintFilterOptions}
+                    />
+                    <span className="muted archiveFilterHint">
+                      {constraintFilters.length ? `${constraintFilters.length} selected` : "All"}
+                    </span>
+                  </label>
+                </>
+              )}
             </div>
 
             <div className="archiveLengthRow">

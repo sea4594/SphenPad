@@ -828,16 +828,9 @@ input.url {
   letter-spacing: 0.5px;
 }
 
-.menuPuzzleNativeSelect {
+.popupMenuRoot {
+  position: relative;
   width: 100%;
-  min-width: 0;
-  min-height: 42px;
-  padding: 0 10px;
-  border-radius: 0;
-  border: 1px solid color-mix(in oklab, var(--text) 24%, transparent);
-  background: var(--panel-soft);
-  color: inherit;
-  font: inherit;
 }
 
 .menuPuzzleMoreMenu {
@@ -1094,6 +1087,52 @@ input.url {
 
 .archiveFilterLabel {
   font-size: 12px;
+
+.mobileFilterTrigger {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  text-align: left;
+}
+
+.mobileFilterTriggerLabel,
+.mobileFilterOptionLabel,
+.mobileFilterTriggerValue,
+.mobileFilterOptionMeta {
+  min-width: 0;
+}
+
+.mobileFilterTriggerValue,
+.mobileFilterOptionMeta {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.mobileFilterDialog {
+  width: min(520px, 100%);
+  max-height: min(90dvh, calc(100vh - 24px));
+  display: grid;
+  gap: 12px;
+  overflow: hidden;
+}
+
+.mobileFilterOptionList {
+  min-height: 0;
+  overflow: auto;
+  display: grid;
+  gap: 8px;
+}
+
+.mobileFilterOption {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  text-align: left;
+}
   line-height: 1.1;
 }
 
@@ -1120,6 +1159,20 @@ input.url {
 
 .archiveConstraintSelect .selectControlList {
   max-height: calc(var(--select-control-visible-rows, 4) * 34px + 12px);
+}
+
+@media (max-width: 760px) {
+  .archiveConstraintSelect {
+    display: none;
+  }
+
+  .archiveFilterControl.is-mobile-popup > .url {
+    display: none;
+  }
+
+  .archiveFilterControl.is-mobile-popup {
+    flex: 1 1 100%;
+  }
 }
 
 .archiveFilterHint {
