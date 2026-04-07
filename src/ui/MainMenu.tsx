@@ -778,36 +778,35 @@ export function MainMenu() {
     <div className="shell">
       <div className="topbar">
         <AppBrand />
-        <div className="spacer" />
-        <button className="btn" onClick={() => setSettingsOpen(true)} title="Settings" type="button">
+        <div className="topbarModeTabs" role="tablist" aria-label="Main navigation">
+          <button className="btn primary topbarModeTab" onClick={() => nav("/")} type="button">
+            <IconHome />
+            <span>Puzzles</span>
+          </button>
+          <button className="btn topbarModeTab" onClick={() => nav("/folders")} type="button">
+            <IconFolder />
+            <span>Folders</span>
+          </button>
+          <button className="btn topbarModeTab" onClick={() => nav("/archive")} type="button">
+            <IconImport />
+            <span>Import</span>
+          </button>
+        </div>
+        <button className="btn topbarSettingsButton" onClick={() => setSettingsOpen(true)} title="Settings" type="button">
           <IconSettings />
         </button>
-        {firebaseEnabled ? (
-          <div className="row">
-            <button className="btn" onClick={() => googleLogin().catch((e) => alert(e.message))} type="button">Google login</button>
-            <button className="btn" onClick={() => googleLogout().catch((e) => alert(e.message))} type="button">Logout</button>
-          </div>
-        ) : null}
       </div>
 
       <div className="page">
         <div className="mainMenuWrap">
-          <div className="card">
-            <div className="row menuModeTabs" style={{ marginTop: 2 }}>
-              <button className="btn primary menuModeTab" onClick={() => nav("/")} type="button">
-                <IconHome />
-                <span>My Puzzles</span>
-              </button>
-              <button className="btn menuModeTab" onClick={() => nav("/folders")} type="button">
-                <IconFolder />
-                <span>Folders</span>
-              </button>
-              <button className="btn menuModeTab" onClick={() => nav("/archive")} type="button">
-                <IconImport />
-                <span>Import</span>
-              </button>
+          {firebaseEnabled ? (
+            <div className="card">
+              <div className="row" style={{ justifyContent: "flex-end" }}>
+                <button className="btn" onClick={() => googleLogin().catch((e) => alert(e.message))} type="button">Google login</button>
+                <button className="btn" onClick={() => googleLogout().catch((e) => alert(e.message))} type="button">Logout</button>
+              </div>
             </div>
-          </div>
+          ) : null}
 
           <div className="card menuFilterPanelCard">
             <div className="archiveControls">
