@@ -1253,6 +1253,34 @@ input.url {
   color: var(--text);
 }
 
+.archiveRulesPreview {
+  margin-top: 10px;
+  border: 1px solid color-mix(in oklab, var(--text) 20%, transparent);
+  background: color-mix(in oklab, var(--panel-soft) 84%, transparent);
+  min-height: clamp(220px, 42dvh, 420px);
+  max-height: clamp(220px, 42dvh, 420px);
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+}
+
+.archiveRulesPreview .boardSurface {
+  width: 100%;
+  height: 100%;
+}
+
+.archiveRulesPreview canvas {
+  width: auto !important;
+  height: auto !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+}
+
+.archiveRulesPreviewFallback {
+  padding: 10px;
+  text-align: center;
+}
+
 .puzzlePage {
   width: 100%;
   max-width: 1260px;

@@ -1358,6 +1358,25 @@ export function CtCArchivePage() {
             <div className="muted" style={{ marginTop: 6, overflowWrap: "anywhere" }}>
               {clean(rulesDialogEntry.puzzleAuthor) || "Unknown author"}
             </div>
+            <div className="archiveRulesPreview" aria-label="Puzzle preview">
+              {previewedPuzzles.get(rulesDialogEntry.id) ? (
+                <GridCanvas
+                  def={previewedPuzzles.get(rulesDialogEntry.id)!}
+                  progress={makeInitialProgress(previewedPuzzles.get(rulesDialogEntry.id)!)}
+                  onSelection={() => {}}
+                  onLineStroke={() => {}}
+                  onLineTapCell={() => {}}
+                  onLineTapEdge={() => {}}
+                  onDoubleCell={() => {}}
+                  interactive={false}
+                  previewMode
+                />
+              ) : (
+                <div className="archiveRulesPreviewFallback muted">
+                  {rulesDialogBusy ? "Loading puzzle..." : "Puzzle preview unavailable."}
+                </div>
+              )}
+            </div>
             <div className="archiveRulesBody">
               {rulesDialogBusy
                 ? "Loading rules..."
