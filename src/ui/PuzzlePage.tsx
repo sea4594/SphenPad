@@ -566,8 +566,8 @@ export function PuzzlePage() {
     if (historyEntry.selection) nextProgress = { ...nextProgress, selection: historyEntry.selection };
     
     let entryToPush = historyEntry;
-    if (data.undo.length === 1) {
-      // Save current selection for redo back to current state
+    if (data.redo.length === 0) {
+      // Save current selection for redo back to current state (start of undo sequence)
       entryToPush = { ...historyEntry, selection: data.progress.selection };
     }
     
