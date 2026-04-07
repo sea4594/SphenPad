@@ -564,11 +564,18 @@ export function PuzzlePage() {
     let nextProgress = data.progress;
     for (let i = historyEntry.patches.length - 1; i >= 0; i--) nextProgress = applyPatch(nextProgress, invertPatch(historyEntry.patches[i]));
     if (historyEntry.selection) nextProgress = { ...nextProgress, selection: historyEntry.selection };
+    
+    let entryToPush = historyEntry;
+    if (data.undo.length === 1) {
+      // Save current selection for redo back to current state
+      entryToPush = { ...historyEntry, selection: data.progress.selection };
+    }
+    
     persist({
       ...data,
       progress: nextProgress,
       undo: data.undo.slice(0, -1),
-      redo: [...data.redo, historyEntry],
+      redo: [...data.redo, entryToPush],
       updatedAt: Date.now(),
     });
   }
@@ -579,7 +586,12 @@ export function PuzzlePage() {
     if (!historyEntry.patches.length) return;
     let nextProgress = data.progress;
     for (const p of historyEntry.patches) nextProgress = applyPatch(nextProgress, p);
-    if (historyEntry.selection) nextProgress = { ...nextProgress, selection: historyEntry.selection };
+    // For the final redo back to current state, restore the selection that was current before undoing
+    if (data.redo.length === 1 && historyEntry.selection) {
+      nextProgress = { ...nextProgress, selection: historyEntry.selection };
+    } else if (historyEntry.selection) {
+      nextProgress = { ...nextProgress, selection: historyEntry.selection };
+    }
     persist({
       ...data,
       progress: nextProgress,
