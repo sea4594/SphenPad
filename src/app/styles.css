@@ -1743,6 +1743,7 @@ input.url {
     font-size: 14px;
   }
 
+
   .topbar .muted {
     font-size: 13px;
   }
@@ -1908,6 +1909,80 @@ input.url {
   .menuPuzzleDeleteStack {
     justify-self: end;
     align-items: flex-end;
+  }
+}
+
+@media (max-width: 960px) and (orientation: landscape) and (hover: none) and (pointer: coarse) {
+  .puzzleShell {
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-rows: 1fr;
+  }
+
+  .puzzleShell .puzzleTopbar {
+    grid-column: 1;
+    grid-row: 1;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    width: 58px;
+    min-width: 58px;
+    padding: max(6px, var(--safe-top)) 6px max(6px, var(--safe-bottom)) 6px;
+    border-bottom: 0;
+    border-right: 1px solid rgba(255, 255, 255, 0.08);
+    gap: 6px;
+  }
+
+  .puzzleShell .puzzleTopbar > .btn,
+  .puzzleShell .puzzleTopbarRight > .btn {
+    width: 100%;
+    min-width: 0;
+    padding: 6px 4px;
+    min-height: 36px;
+  }
+
+  .puzzleShell .puzzleTopbarRight {
+    margin-left: 0;
+    width: 100%;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .puzzleShell .puzzleTopbar .puzzleTimer {
+    font-size: 11px;
+    line-height: 1.1;
+    text-align: center;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .puzzleShell .puzzlePage {
+    grid-column: 2;
+    grid-row: 1;
+    padding: 8px;
+    overflow: hidden;
+  }
+
+  .puzzleShell .gridLayout {
+    grid-template-columns: minmax(0, 1fr) minmax(220px, 34vw);
+    grid-template-rows: 1fr;
+    gap: 8px;
+    height: 100%;
+    align-items: stretch;
+  }
+
+  .puzzleShell .boardColumn,
+  .puzzleShell .boardCard,
+  .puzzleShell .kbdPanel,
+  .puzzleShell .controlStack,
+  .puzzleShell .mobileControlPanel {
+    height: 100%;
+    max-height: none;
+    min-height: 0;
+  }
+
+  .puzzleShell .kbdPanel {
+    width: min(34vw, 320px);
+    justify-self: end;
   }
 }
 
