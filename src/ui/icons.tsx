@@ -202,3 +202,12 @@ export const IconBackspace = (props: { size?: number }) => (
 		<path d="m16.5 9.5-5 5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
 	</svg>
 );
+
+export const IconCycle = (props: { size?: number }) => (
+	<svg width={props.size ?? 18} height={props.size ?? 18} viewBox="0 0 20 20" aria-hidden>
+		<path d="M16.4 7.1A6.4 6.4 0 0 0 5.7 4.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+		<path d="m6.2 1.8-.7 3.1 3.1.7" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+		<path d="M3.6 12.9a6.4 6.4 0 0 0 10.7 2.6" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+		<path d="m13.8 18.2.7-3.1-3.1-.7" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+	</svg>
+);

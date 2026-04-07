@@ -1,6 +1,6 @@
 import React from "react";
 import type { PuzzleProgress } from "../core/model";
-import { IconBackspace } from "./icons";
+import { IconBackspace, IconCycle } from "./icons";
 import { highlightPalettePages, linePalette } from "./toolPalettes";
 
 const alphabetPages: ReadonlyArray<ReadonlyArray<string>> = [
@@ -8,8 +8,6 @@ const alphabetPages: ReadonlyArray<ReadonlyArray<string>> = [
   ["J", "K", "L", "M", "N", "O", "P", "Q", "R"],
   ["S", "T", "U", "V", "W", "X", "Y", "Z", "*"],
 ];
-
-const alphabetPageLabels = ["A-I", "J-R", "S-Z*"] as const;
 
 function digits(alphabetMode: boolean, alphabetPage: 0 | 1 | 2) {
   if (alphabetMode) return alphabetPages[alphabetPage] ?? alphabetPages[0];
@@ -40,18 +38,19 @@ export function Keyboard(props: {
 
   if (kind === "numbers") {
     const keys = digits(progress.alphabetMode, progress.alphabetPage ?? 0);
-    const pageLabel = alphabetPageLabels[progress.alphabetPage ?? 0] ?? alphabetPageLabels[0];
     const grid = (
       <Grid3x4 compact={compact}>
         {keys.map((k) => (
           <Key key={k} className="keyButtonValue" onClick={() => props.onDigit?.(k)}>{k}</Key>
         ))}
         {progress.alphabetMode ? (
-          <Key className="keyButtonValue" onClick={() => props.onCycleAlphabetPage?.()} title="Cycle letter page">{pageLabel}</Key>
+          <Key className="keyButtonCycle keyButtonCycleIcon" onClick={() => props.onCycleAlphabetPage?.()} title="Cycle letter page">
+            <IconCycle size={17} />
+          </Key>
         ) : (
           <Key className="keyButtonValue" onClick={() => props.onDigit?.("0")}>0</Key>
         )}
-        <Key className="keyButtonValue" onClick={() => props.onToggleAlphabet?.()}>{progress.alphabetMode ? "123" : "A-I"}</Key>
+        <Key className="keyButtonCycle" onClick={() => props.onToggleAlphabet?.()}>{progress.alphabetMode ? "123" : "ABC"}</Key>
         <Key className="keyButtonBackspace" onClick={() => props.onBackspace?.()} title="Backspace"><IconBackspace size={26} /></Key>
       </Grid3x4>
     );

@@ -1728,6 +1728,17 @@ input.url {
   letter-spacing: 0.02em;
 }
 
+.keyButtonCycle {
+  font-size: 0.86rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.keyButtonCycleIcon {
+  display: grid;
+  place-items: center;
+}
+
 .keyButtonBackspace svg {
   transform: translateX(1.5px) scale(1.18);
   transform-origin: center;
