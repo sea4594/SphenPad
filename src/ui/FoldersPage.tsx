@@ -12,6 +12,7 @@ import {
   upsertPuzzle,
 } from "../core/storage";
 import { setSyncedLocalStorageItem } from "../core/localDataState";
+import { fillProgressWithSolutionDigits } from "../core/solutionFill";
 import { fmtHMS } from "../core/time";
 import { AppBrand } from "./AppBrand";
 import { GridCanvas } from "./GridCanvas";
@@ -510,11 +511,15 @@ export function FoldersPage() {
 
   async function onSetPuzzleStatus(row: StoredPuzzle, status: PuzzlePlayStatus) {
     const now = Date.now();
+    const solvedProgress =
+      status === "complete"
+        ? fillProgressWithSolutionDigits(row.progress, row.def.cosmetics.solution)
+        : row.progress;
     const nextProgress = {
-      ...row.progress,
+      ...solvedProgress,
       status,
       startedAt: status === "not_started" ? undefined : (row.progress.startedAt ?? now),
-      paused: status === "complete" ? false : row.progress.paused,
+      paused: status === "complete" ? false : solvedProgress.paused,
     };
 
     try {
