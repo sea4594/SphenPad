@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
-import { normalizePuzzleKey } from "../core/id";
 import { deletePuzzle, getPuzzle, upsertPuzzle } from "../core/storage";
 import type { CellRC, PersistedPuzzle, PuzzleProgress, LineStroke, PuzzleDefinition } from "../core/model";
 import { fmtHMS } from "../core/time";
@@ -339,7 +338,6 @@ export function PuzzlePage() {
   const redoRef = useRef<() => void>(() => {});
   const metadataRefreshInFlightRef = useRef(new Set<string>());
   const definitionRefreshInFlightRef = useRef(new Set<string>());
-  const archiveMetaRefreshInFlightRef = useRef(new Set<string>());
 
   const userId = firebaseEnabled ? auth?.currentUser?.uid : null;
 
@@ -519,81 +517,6 @@ export function PuzzlePage() {
         // Keep existing cached definition if refresh fails.
       } finally {
         definitionRefreshInFlightRef.current.delete(refreshKey);
-      }
-    })();
-  }, [data, key, userId]);
-
-  useEffect(() => {
-    if (!data) return;
-    const m = data.def.meta;
-    // Only backfill if archive-specific fields are completely absent
-    if (m?.archiveVideoTitle != null || Array.isArray(m?.archiveConstraints)) return;
-    const source = (data.def.sourceId ?? key ?? "").trim();
-    if (!source) return;
-
-    const refreshKey = `${key}::archive-meta`;
-    if (archiveMetaRefreshInFlightRef.current.has(refreshKey)) return;
-    archiveMetaRefreshInFlightRef.current.add(refreshKey);
-
-    (async () => {
-      try {
-        const res = await fetch(`${import.meta.env.BASE_URL}archive/archive-manifest.json`);
-        if (!res.ok) return;
-        const manifestData = (await res.json()) as {
-          entries?: Array<{
-            sourceId: string;
-            subTypeConstraints: string;
-            videoTitle: string;
-            videoDate: string;
-            videoLengthSeconds: number | null;
-            videoHost: string;
-            collection: string;
-            puzzleAuthor: string;
-            youtubeUrl: string;
-            sudokuPadUrl: string;
-          }>;
-        };
-        if (!Array.isArray(manifestData.entries)) return;
-
-        const cleanStr = (v: string | null | undefined) => (v ?? "").trim();
-        const splitConstraints = (value: string): string[] =>
-          cleanStr(value).split(";").map((p) => cleanStr(p)).filter(Boolean);
-
-        const normalizedKey = normalizePuzzleKey(source);
-        const entry = manifestData.entries.find((e) => {
-          const entrySourceId = cleanStr(e.sourceId);
-          return (
-            entrySourceId &&
-            (entrySourceId === source || normalizePuzzleKey(entrySourceId) === normalizedKey)
-          );
-        });
-        if (!entry) return;
-
-        const nextMeta = {
-          ...data.def.meta,
-          ...(cleanStr(entry.collection) && !cleanStr(data.def.meta?.collection)
-            ? { collection: cleanStr(entry.collection) }
-            : {}),
-          archiveConstraints: splitConstraints(entry.subTypeConstraints),
-          archiveVideoTitle: cleanStr(entry.videoTitle),
-          archiveVideoDate: cleanStr(entry.videoDate),
-          archiveVideoLengthSeconds: entry.videoLengthSeconds,
-          archiveVideoHost: cleanStr(entry.videoHost),
-          archiveYouTubeUrl: cleanStr(entry.youtubeUrl),
-          archiveSudokuPadUrl: cleanStr(entry.sudokuPadUrl),
-        };
-        const next: PersistedPuzzle = {
-          ...data,
-          def: { ...data.def, meta: nextMeta },
-          updatedAt: Date.now(),
-        };
-        setData(next);
-        await upsertPuzzle(key, next);
-        if (userId) await pushPuzzle(userId, key, next);
-      } catch {
-        // Silently keep existing metadata if backfill fails.
-      } finally {
-        archiveMetaRefreshInFlightRef.current.delete(refreshKey);
       }
     })();
   }, [data, key, userId]);

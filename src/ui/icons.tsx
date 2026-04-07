@@ -75,21 +75,23 @@ export const IconImport = () => (
 
 export const IconSort = () => (
 	<svg width="18" height="18" viewBox="0 0 20 20" aria-hidden>
-		<path d="M3.5 5.5h13M3.5 10h9M3.5 14.5h5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+		<path d="M5 4.5h10" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+		<path d="M5 10h7" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+		<path d="M5 15.5h4" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
 	</svg>
 );
 
 export const IconSortAsc = () => (
-	<svg width="16" height="16" viewBox="0 0 20 20" aria-hidden>
-		<path d="M10 15.4V4.6" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-		<path d="M6.9 7.8 10 4.6l3.1 3.2" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+	<svg width="18" height="18" viewBox="0 0 20 20" aria-hidden>
+		<path d="M10 16V4.6" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+		<path d="m6.8 7.8 3.2-3.2 3.2 3.2" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
 	</svg>
 );
 
 export const IconSortDesc = () => (
-	<svg width="16" height="16" viewBox="0 0 20 20" aria-hidden>
-		<path d="M10 4.6v10.8" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-		<path d="m6.9 12.2 3.1 3.2 3.1-3.2" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+	<svg width="18" height="18" viewBox="0 0 20 20" aria-hidden>
+		<path d="M10 4v11.4" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+		<path d="m6.8 12.2 3.2 3.2 3.2-3.2" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
 	</svg>
 );
 

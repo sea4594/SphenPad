@@ -365,6 +365,35 @@ export function FoldersPage() {
     }
   }
 
+  function onCreateFolderWithPrompt() {
+    if (folderCreateBusy) return;
+    const parentLabel = activeFolder
+      ? buildFolderPath(activeFolder, folderById)
+      : "Top-level folders";
+    const input = window.prompt(`Create folder\nParent: ${parentLabel}\n\nFolder name:`);
+    if (input == null) return;
+
+    const folderName = input.trim();
+    if (!folderName) {
+      alert("Folder name cannot be empty.");
+      return;
+    }
+
+    setFolderCreateBusy("Creating folder...");
+    void (async () => {
+      try {
+        const created = await createFolder(folderName, activeFolderId ?? null);
+        await refresh();
+        setActiveFolderId(created.id);
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : String(e);
+        alert(msg);
+      } finally {
+        setFolderCreateBusy("");
+      }
+    })();
+  }
+
   async function onRemovePuzzle(folderId: string, puzzleKey: string) {
     if (folderActionBusyKey) return;
     setFolderActionBusyKey(puzzleKey);
@@ -477,6 +506,74 @@ export function FoldersPage() {
     }
   }
 
+  function onRenameFolderWithPrompt(folder: PuzzleFolder) {
+    if (renameFolderBusy) return;
+    const input = window.prompt(`Rename folder\n\n${buildFolderPath(folder, folderById)}\n\nNew name:`, folder.name);
+    if (input == null) return;
+
+    const nextName = input.trim();
+    if (!nextName) {
+      alert("Folder name cannot be empty.");
+      return;
+    }
+
+    setRenameFolderBusy(true);
+    void (async () => {
+      try {
+        await renameFolder(folder.id, nextName);
+        await refresh();
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : String(e);
+        alert(msg);
+      } finally {
+        setRenameFolderBusy(false);
+      }
+    })();
+  }
+
+  function onDeleteFolderWithConfirm(folder: PuzzleFolder) {
+    if (deleteFolderBusy) return;
+    const confirmed = window.confirm(
+      `Delete folder?\n\n${buildFolderPath(folder, folderById)}\n\nAny subfolders inside it will also be removed.`,
+    );
+    if (!confirmed) return;
+
+    setDeleteFolderBusy(true);
+    void (async () => {
+      try {
+        await deleteFolderById(folder.id);
+        await refresh();
+        setFolderRowMenuId(null);
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : String(e);
+        alert(msg);
+      } finally {
+        setDeleteFolderBusy(false);
+      }
+    })();
+  }
+
+  function onDeletePuzzleWithConfirm(row: StoredPuzzle) {
+    if (deleteBusy) return;
+    const title = row.def?.meta?.title || "(untitled)";
+    const confirmed = window.confirm(`Delete puzzle?\n\n${title}`);
+    if (!confirmed) return;
+
+    setDeleteBusy(true);
+    void (async () => {
+      try {
+        await deletePuzzle(row.key);
+        await refresh();
+        setDeleteCandidate(null);
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : String(e);
+        alert(msg);
+      } finally {
+        setDeleteBusy(false);
+      }
+    })();
+  }
+
   function openPuzzle(key: string) {
     const scrollY = readCurrentScrollPosition();
     console.log(
@@ -529,10 +626,7 @@ export function FoldersPage() {
               <div className="menuSectionTitle">Folders</div>
               <button
                 className="btn"
-                onClick={() => {
-                  setFolderCreateName("");
-                  setFolderCreateDialogOpen(true);
-                }}
+                onClick={onCreateFolderWithPrompt}
                 type="button"
               >
                 New Folder
@@ -590,8 +684,7 @@ export function FoldersPage() {
                             onClick={(event) => {
                               event.stopPropagation();
                               setFolderRowMenuId(null);
-                              setRenameFolderTarget(folder);
-                              setRenameFolderValue(folder.name);
+                              onRenameFolderWithPrompt(folder);
                             }}
                             type="button"
                           >
@@ -602,7 +695,7 @@ export function FoldersPage() {
                             onClick={(event) => {
                               event.stopPropagation();
                               setFolderRowMenuId(null);
-                              setDeleteFolderTarget(folder);
+                              onDeleteFolderWithConfirm(folder);
                             }}
                             type="button"
                           >
@@ -820,7 +913,7 @@ export function FoldersPage() {
                                     event.stopPropagation();
                                     setFolderPuzzleMenu(null);
                                     setFolderPuzzleStatusMenuKey(null);
-                                    setDeleteCandidate(row);
+                                    onDeletePuzzleWithConfirm(row);
                                   }}
                                   disabled={menuBusy}
                                   type="button"

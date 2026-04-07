@@ -743,9 +743,60 @@ export function MainMenu() {
   }
 
   function openFolderCreateDialog(context: "folders" | "add-dialog") {
+    if (folderCreateBusy) return;
+
+    const parentId = context === "add-dialog" ? addFolderNavId : activeFolderId;
+    const parent = parentId ? folderById.get(parentId) ?? null : null;
+    const parentLabel = parent
+      ? buildFolderPath(parent, folderById)
+      : "Top-level folders";
+    const input = window.prompt(`Create folder\nParent: ${parentLabel}\n\nFolder name:`);
+    if (input == null) return;
+
+    const folderName = input.trim();
+    if (!folderName) {
+      alert("Folder name cannot be empty.");
+      return;
+    }
+
     setFolderCreateContext(context);
-    setFolderCreateName("");
-    setFolderCreateDialogOpen(true);
+    setFolderCreateBusy("Creating folder...");
+    void (async () => {
+      try {
+        const created = await createFolder(folderName, parentId ?? null);
+        await refreshFolders();
+        if (context === "add-dialog") {
+          setAddFolderNavId(created.id);
+        } else {
+          setActiveFolderId(created.id);
+        }
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : String(e);
+        alert(msg);
+      } finally {
+        setFolderCreateBusy("");
+      }
+    })();
+  }
+
+  async function onDeletePuzzleWithConfirm(row: StoredPuzzle) {
+    if (deleteBusy) return;
+    const title = row.def?.meta?.title || "(untitled)";
+    const shouldDelete = window.confirm(`Delete puzzle?\n\n${title}`);
+    if (!shouldDelete) return;
+
+    setDeleteBusy(true);
+    try {
+      await deletePuzzle(row.key);
+      await refreshPuzzles();
+      await refreshFolders();
+      setDeleteCandidate(null);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      alert(msg);
+    } finally {
+      setDeleteBusy(false);
+    }
   }
 
   async function onCreateFolder() {
@@ -1128,7 +1179,7 @@ export function MainMenu() {
                                 event.stopPropagation();
                                 setMainPuzzleMenuKey(null);
                                 setMainPuzzleStatusMenuKey(null);
-                                setDeleteCandidate(row);
+                                void onDeletePuzzleWithConfirm(row);
                               }}
                               type="button"
                             >
@@ -1390,7 +1441,7 @@ export function MainMenu() {
                                     onClick={(event) => {
                                       event.stopPropagation();
                                       setFolderPuzzleMenu(null);
-                                      setDeleteCandidate(row);
+                                      void onDeletePuzzleWithConfirm(row);
                                     }}
                                     disabled={menuBusy}
                                     type="button"

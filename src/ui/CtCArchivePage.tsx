@@ -950,6 +950,35 @@ export function CtCArchivePage() {
     }
   }
 
+  function onCreateFolderForImportWithPrompt() {
+    if (folderCreateBusy) return;
+    const parentLabel = importFolderTarget
+      ? buildFolderPath(importFolderTarget, folderById)
+      : "Top-level folders";
+    const input = window.prompt(`Create folder\nParent: ${parentLabel}\n\nFolder name:`);
+    if (input == null) return;
+
+    const folderName = input.trim();
+    if (!folderName) {
+      alert("Folder name cannot be empty.");
+      return;
+    }
+
+    setFolderCreateBusy("Creating folder...");
+    void (async () => {
+      try {
+        const created = await createFolder(folderName, importFolderNavId ?? null);
+        await refreshFolders();
+        setImportFolderNavId(created.id);
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : String(e);
+        alert(msg);
+      } finally {
+        setFolderCreateBusy("");
+      }
+    })();
+  }
+
   async function onOpenRulesDialog(entry: PreparedArchiveEntry) {
     setRulesDialogEntry(entry);
     if (previewRulesByEntryId.has(entry.id)) return;
@@ -1507,10 +1536,7 @@ export function CtCArchivePage() {
                 </div>
                 <button
                   className="btn"
-                  onClick={() => {
-                    setFolderCreateName("");
-                    setFolderCreateDialogOpen(true);
-                  }}
+                  onClick={onCreateFolderForImportWithPrompt}
                   disabled={!!folderCreateBusy}
                   type="button"
                 >
