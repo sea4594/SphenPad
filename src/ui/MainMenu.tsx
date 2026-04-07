@@ -902,30 +902,29 @@ export function MainMenu() {
           </div>
 
           <div className="card">
-            <div className="row" style={{ justifyContent: "space-between" }}>
-              <div className="menuSectionTitle">Your puzzles</div>
-              <div className="muted">
-                {filterStatus !== "all"
-                  ? `${displayRows.length} of ${rowsMatchingSearchFilters.length}`
-                  : hasMainMenuSearchFilters
-                    ? `${displayRows.length} of ${rows.length}`
-                    : `${rows.length} total`}
+            <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
+              <div>
+                <div className="menuSectionTitle">Your puzzles</div>
+                <div className="muted" style={{ fontSize: 13, marginTop: 2 }}>
+                  {filterStatus !== "all"
+                    ? `${displayRows.length} of ${rowsMatchingSearchFilters.length}`
+                    : hasMainMenuSearchFilters
+                      ? `${displayRows.length} of ${rows.length}`
+                      : `${rows.length} total`}
+                </div>
               </div>
+              <SelectControl
+                className="btn menuControlSelect"
+                value={sortOrder}
+                onChange={(e) => setSortOrder(e.target.value as SortOrder)}
+                aria-label="Sort puzzles"
+              >
+                <option value="recent">Recent</option>
+                <option value="az">A - Z</option>
+              </SelectControl>
             </div>
 
             <div className="menuSecondaryControls">
-              <div className="row" style={{ justifyContent: "flex-start", alignItems: "flex-end" }}>
-                <SelectControl
-                  className="btn menuControlSelect"
-                  value={sortOrder}
-                  onChange={(e) => setSortOrder(e.target.value as SortOrder)}
-                  aria-label="Sort puzzles"
-                >
-                  <option value="recent">Recent</option>
-                  <option value="az">A - Z</option>
-                </SelectControl>
-              </div>
-
               <div className="menuStatusTabs">
                 {(["all", "not_started", "in_progress", "complete"] as const).map((status) => (
                   <button
