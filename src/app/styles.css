@@ -1234,11 +1234,11 @@ input.url {
 }
 
 .archiveRulesDialog {
-  width: min(780px, 100%);
-  max-height: min(82dvh, 760px);
-  overflow: hidden;
-  display: grid;
-  grid-template-rows: auto auto auto minmax(0, 1fr);
+  width: min(980px, 100%);
+  max-height: min(92dvh, 900px);
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
   position: relative;
 }
 
@@ -1258,8 +1258,8 @@ input.url {
 
 .archiveRulesBody {
   margin-top: 10px;
-  min-height: 0;
-  overflow: auto;
+  min-height: auto;
+  overflow: visible;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   font-size: 15px;
@@ -1278,7 +1278,7 @@ input.url {
 }
 
 .archiveRulesPreview .boardSurface {
-  width: min(100%, 620px);
+  width: 100%;
   height: auto;
 }
 
