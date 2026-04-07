@@ -11,23 +11,43 @@ const LOCAL_SYNC_META_KEY = "sphenpad-sync-meta-v1";
 
 export type SyncedLocalStorageKey = (typeof SYNCED_LOCAL_STORAGE_KEYS)[number];
 
-function writeSyncMeta(updatedAt: number) {
-  localStorage.setItem(LOCAL_SYNC_META_KEY, JSON.stringify({ updatedAt }));
-}
+type SyncMeta = { updatedAt: number; ownerId?: string };
 
-export function readLocalDataUpdatedAt(): number {
+function readRawSyncMeta(): SyncMeta {
   try {
     const raw = localStorage.getItem(LOCAL_SYNC_META_KEY);
-    if (!raw) return 0;
-    const parsed = JSON.parse(raw) as { updatedAt?: unknown };
-    return typeof parsed.updatedAt === "number" && Number.isFinite(parsed.updatedAt) ? parsed.updatedAt : 0;
+    if (!raw) return { updatedAt: 0 };
+    const parsed = JSON.parse(raw) as Partial<SyncMeta>;
+    return {
+      updatedAt: typeof parsed.updatedAt === "number" && Number.isFinite(parsed.updatedAt) ? parsed.updatedAt : 0,
+      ownerId: typeof parsed.ownerId === "string" ? parsed.ownerId : undefined,
+    };
   } catch {
-    return 0;
+    return { updatedAt: 0 };
   }
 }
 
+function writeSyncMeta(update: Partial<SyncMeta>) {
+  const current = readRawSyncMeta();
+  localStorage.setItem(LOCAL_SYNC_META_KEY, JSON.stringify({ ...current, ...update }));
+}
+
+export function readLocalDataUpdatedAt(): number {
+  return readRawSyncMeta().updatedAt;
+}
+
+/** Returns the uid of the Google account that last synced to/from this device's local data, or null if the data has never been linked to an account. */
+export function getLocalDataOwnerId(): string | null {
+  return readRawSyncMeta().ownerId ?? null;
+}
+
+/** Records that the local data now belongs to the given account (or clears ownership when null). */
+export function setLocalDataOwnerId(uid: string | null) {
+  writeSyncMeta({ ownerId: uid === null ? undefined : uid });
+}
+
 export function markLocalDataChanged(updatedAt = Date.now(), notify = true) {
-  writeSyncMeta(updatedAt);
+  writeSyncMeta({ updatedAt });
   if (notify) notifyCloudSyncNeeded();
   return updatedAt;
 }
