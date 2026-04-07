@@ -35,6 +35,8 @@ import { SettingsOverlay } from "./SettingsOverlay";
 import { useTheme } from "../app/theme";
 import { readPuzzleOriginState, withPuzzleReturnState } from "./puzzleNavState";
 
+const AUTO_IN_PROGRESS_MILLIS = 30_000;
+
 function rcKey(rc: CellRC) {
   return `${rc.r},${rc.c}`;
 }
@@ -53,6 +55,15 @@ function segKey(a: CellRC, b: CellRC) {
   const ak = rcKey(a);
   const bk = rcKey(b);
   return ak < bk ? `${ak}|${bk}` : `${bk}|${ak}`;
+}
+
+function maybePromoteToInProgress(progress: PuzzleProgress, opts?: { onEdit?: boolean }): PuzzleProgress {
+  if (progress.status !== "not_started") return progress;
+  if (!opts?.onEdit && progress.totalMillis < AUTO_IN_PROGRESS_MILLIS) return progress;
+  return {
+    ...progress,
+    status: "in_progress",
+  };
 }
 
 function lineKindNamespace(kind: "center" | "edge" | "both"): "center" | "edge" {
@@ -518,14 +529,19 @@ export function PuzzlePage() {
     if (tickRef.current) window.clearInterval(tickRef.current);
 
     tickRef.current = window.setInterval(() => {
+      let promotedNext: PersistedPuzzle | null = null;
       setData((prev) => {
         if (!prev) return prev;
         if (prev.progress.paused) return prev;
         const next = structuredClone(prev);
         next.progress.totalMillis += 250;
+        const nextProgress = maybePromoteToInProgress(next.progress);
+        if (nextProgress !== next.progress) promotedNext = { ...next, progress: nextProgress };
+        next.progress = nextProgress;
         next.updatedAt = Date.now();
         return next;
       });
+      if (promotedNext) void upsertPuzzle(key, promotedNext);
     }, 250);
 
     return () => {
@@ -553,6 +569,8 @@ export function PuzzlePage() {
       };
       setCompletionOpen(false);
     }
+
+    nextProgress = maybePromoteToInProgress(nextProgress, { onEdit: recordHistory });
 
     const nextUndo = [...data.undo];
     let nextRedo = data.redo;
@@ -694,7 +712,7 @@ export function PuzzlePage() {
       ...fresh,
       totalMillis: keptMillis,
       startedAt: Date.now(),
-      status: "in_progress",
+      status: "not_started",
       paused: false,
       multiSelect: data.progress.multiSelect,
       alphabetMode: data.progress.alphabetMode,
@@ -705,9 +723,10 @@ export function PuzzlePage() {
       linePaletteColor: data.progress.linePaletteColor,
       linePaletteKind: data.progress.linePaletteKind,
     };
+    const normalizedProgress = maybePromoteToInProgress(nextProgress);
     persist({
       ...data,
-      progress: nextProgress,
+      progress: normalizedProgress,
       updatedAt: Date.now(),
     });
     setRestartPromptOpen(false);
@@ -796,7 +815,6 @@ export function PuzzlePage() {
     if (!data) return;
     const patches: Patch[] = [];
     if (!data.progress.startedAt) patches.push(patchAt(data.progress, ["startedAt"], Date.now()));
-    if (data.progress.status === "not_started") patches.push(patchAt(data.progress, ["status"], "in_progress"));
     patches.push(patchAt(data.progress, ["paused"], false));
     applyPatches(patches, { recordHistory: false });
     setPauseMenuOpen(false);
@@ -806,8 +824,7 @@ export function PuzzlePage() {
     if (!data) return;
     if (data.progress.status === "complete") return;
     if (data.progress.paused) {
-      pushPatch(patchAt(data.progress, ["paused"], false), { recordHistory: false });
-      setPauseMenuOpen(false);
+      startOrResume();
       return;
     }
     pushPatch(patchAt(data.progress, ["paused"], true), { recordHistory: false });
@@ -859,7 +876,6 @@ export function PuzzlePage() {
       const freshProgress: PuzzleProgress = {
         ...baseFresh,
         startedAt: Date.now(),
-        status: "in_progress",
         paused: false,
       };
       const freshData: PersistedPuzzle = {
