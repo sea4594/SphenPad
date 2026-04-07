@@ -14,7 +14,7 @@ import {
 import { fmtHMS } from "../core/time";
 import { AppBrand } from "./AppBrand";
 import { GridCanvas } from "./GridCanvas";
-import { IconFolder, IconHome, IconImport, IconSettings } from "./icons";
+import { IconFolder, IconHome, IconImport, IconSettings, IconSort } from "./icons";
 import { SelectControl } from "./SelectControl";
 import { SettingsOverlay } from "./SettingsOverlay";
 import {
@@ -26,7 +26,7 @@ import {
   withPuzzleOriginState,
 } from "./puzzleNavState";
 
-type SortOrder = "recent" | "az";
+type SortOrder = "recent" | "az" | "date";
 type FilterStatus = "all" | "not_started" | "in_progress" | "complete";
 type PuzzlePlayStatus = Exclude<FilterStatus, "all">;
 type StoredPuzzle = Awaited<ReturnType<typeof listPuzzles>>[number];
@@ -40,7 +40,7 @@ const FOLDER_MENU_FILTER_PREFS_KEY = "sphenpad-folder-menu-filters-v1";
 const NOOP = () => {};
 
 function isSortOrder(value: string): value is SortOrder {
-  return value === "recent" || value === "az";
+  return value === "recent" || value === "az" || value === "date";
 }
 
 function isFilterStatus(value: string): value is FilterStatus {
@@ -93,6 +93,10 @@ function sortPuzzles(rows: StoredPuzzle[], sortOrder: SortOrder): StoredPuzzle[]
     next.sort((a, b) => b.updatedAt - a.updatedAt);
     return next;
   }
+  if (sortOrder === "date") {
+    next.sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
+    return next;
+  }
 
   next.sort((a, b) => {
     const ta = (a.def?.meta?.title ?? "").toLowerCase();
@@ -108,6 +112,10 @@ function sortFolders(rows: PuzzleFolder[], sortOrder: SortOrder): PuzzleFolder[]
   const next = [...rows];
   if (sortOrder === "recent") {
     next.sort((a, b) => b.updatedAt - a.updatedAt);
+    return next;
+  }
+  if (sortOrder === "date") {
+    next.sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
     return next;
   }
 
@@ -594,15 +602,19 @@ export function FoldersPage() {
 
               {activeFolder ? (
                 <div className="row" style={{ marginTop: 4 }}>
-                  <SelectControl
-                    className="btn menuControlSelect"
-                    value={sortOrder}
-                    onChange={(e) => setSortOrder(e.target.value as SortOrder)}
-                    aria-label="Sort folders"
-                  >
-                    <option value="recent">Recent</option>
-                    <option value="az">A - Z</option>
-                  </SelectControl>
+                  <div className="sortSelectWrap">
+                    <IconSort />
+                    <SelectControl
+                      className="btn menuControlSelect"
+                      value={sortOrder}
+                      onChange={(e) => setSortOrder(e.target.value as SortOrder)}
+                      aria-label="Sort folders"
+                    >
+                      <option value="recent">Recent</option>
+                      <option value="az">A - Z</option>
+                      <option value="date">Video Date</option>
+                    </SelectControl>
+                  </div>
                   <SelectControl
                     className="btn menuControlSelect"
                     value={filterStatus}

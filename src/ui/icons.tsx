@@ -73,6 +73,12 @@ export const IconImport = () => (
 	</svg>
 );
 
+export const IconSort = () => (
+	<svg width="18" height="18" viewBox="0 0 20 20" aria-hidden>
+		<path d="M3.5 5.5h13M3.5 10h9M3.5 14.5h5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+	</svg>
+);
+
 export const IconFolderAdd = () => (
 	<svg width="18" height="18" viewBox="0 0 20 20" aria-hidden>
 		<path

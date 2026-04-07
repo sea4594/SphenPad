@@ -325,6 +325,25 @@ button,
   flex: 0 0 auto;
 }
 
+.sortSelectWrap {
+  position: relative;
+  display: inline-flex;
+  align-items: stretch;
+}
+
+.sortSelectWrap > svg {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.sortSelectWrap > .btn {
+  padding-left: 34px;
+}
+
 .topbarModeTabs {
   flex: 1;
   min-width: 0;

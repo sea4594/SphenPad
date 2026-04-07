@@ -7,7 +7,7 @@ import { addPuzzleToFolder, createFolder, getPuzzle, listCompletedPuzzleKeys, li
 import { loadFromSudokuPad } from "../core/sudokupad";
 import { AppBrand } from "./AppBrand";
 import { GridCanvas } from "./GridCanvas";
-import { IconFolder, IconHome, IconImport, IconPlay, IconSettings } from "./icons";
+import { IconFolder, IconHome, IconImport, IconPlay, IconSettings, IconSort } from "./icons";
 import { SelectControl } from "./SelectControl";
 import { SettingsOverlay } from "./SettingsOverlay";
 import {
@@ -1127,18 +1127,21 @@ export function CtCArchivePage() {
               <div className="menuSectionTitle">CtC Archive Puzzles</div>
 
               <div className="row">
-                <SelectControl
-                  className="btn menuControlSelect"
-                  value={sortField}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    if (isSortField(value)) setSortField(value);
-                  }}
-                >
-                  <option value="date">Sort: Video date</option>
-                  <option value="title">Sort: Puzzle title</option>
-                  <option value="video_length">Sort: Video length</option>
-                </SelectControl>
+                <div className="sortSelectWrap">
+                  <IconSort />
+                  <SelectControl
+                    className="btn menuControlSelect"
+                    value={sortField}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      if (isSortField(value)) setSortField(value);
+                    }}
+                  >
+                    <option value="date">Video date</option>
+                    <option value="title">Puzzle title</option>
+                    <option value="video_length">Video length</option>
+                  </SelectControl>
+                </div>
 
                 <div className="muted">{visibleRows.length} of {filteredRows.length} shown</div>
               </div>

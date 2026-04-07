@@ -14,7 +14,7 @@ import { fmtHMS } from "../core/time";
 import { firebaseEnabled, googleLogin, googleLogout } from "../firebase/client";
 import { GridCanvas } from "./GridCanvas";
 import { AppBrand } from "./AppBrand";
-import { IconFolder, IconHome, IconImport, IconSettings } from "./icons";
+import { IconFolder, IconHome, IconImport, IconSettings, IconSort } from "./icons";
 import { SelectControl } from "./SelectControl";
 import { SettingsOverlay } from "./SettingsOverlay";
 import {
@@ -26,7 +26,7 @@ import {
   withPuzzleOriginState,
 } from "./puzzleNavState";
 
-type SortOrder = "recent" | "az";
+type SortOrder = "recent" | "az" | "date";
 type FilterStatus = "all" | "not_started" | "in_progress" | "complete";
 type PuzzlePlayStatus = Exclude<FilterStatus, "all">;
 type MainMenuSearchField = "any" | "title" | "constraints" | "author" | "collection";
@@ -64,7 +64,7 @@ const DEFAULT_MAIN_MENU_FILTER_PREFS: MainMenuFilterPrefs = {
 const NOOP = () => {};
 
 function isSortOrder(value: string): value is SortOrder {
-  return value === "recent" || value === "az";
+  return value === "recent" || value === "az" || value === "date";
 }
 
 function isFilterStatus(value: string): value is FilterStatus {
@@ -167,6 +167,10 @@ function sortPuzzles(rows: StoredPuzzle[], sortOrder: SortOrder): StoredPuzzle[]
   const next = [...rows];
   if (sortOrder === "recent") {
     next.sort((a, b) => b.updatedAt - a.updatedAt);
+    return next;
+  }
+  if (sortOrder === "date") {
+    next.sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
     return next;
   }
 
@@ -913,15 +917,19 @@ export function MainMenu() {
                       : `${rows.length} total`}
                 </div>
               </div>
-              <SelectControl
-                className="btn menuControlSelect"
-                value={sortOrder}
-                onChange={(e) => setSortOrder(e.target.value as SortOrder)}
-                aria-label="Sort puzzles"
-              >
-                <option value="recent">Recent</option>
-                <option value="az">A - Z</option>
-              </SelectControl>
+              <div className="sortSelectWrap">
+                <IconSort />
+                <SelectControl
+                  className="btn menuControlSelect"
+                  value={sortOrder}
+                  onChange={(e) => setSortOrder(e.target.value as SortOrder)}
+                  aria-label="Sort puzzles"
+                >
+                  <option value="recent">Recent</option>
+                  <option value="az">A - Z</option>
+                  <option value="date">Video Date</option>
+                </SelectControl>
+              </div>
             </div>
 
             <div className="menuSecondaryControls">
