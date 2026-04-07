@@ -40,6 +40,13 @@ export type PuzzleMeta = {
   rules?: string;
   postSolveMessage?: string;
   solveCount?: number;
+  archiveConstraints?: string[];
+  archiveVideoTitle?: string;
+  archiveVideoDate?: string;
+  archiveVideoLengthSeconds?: number | null;
+  archiveVideoHost?: string;
+  archiveYouTubeUrl?: string;
+  archiveSudokuPadUrl?: string;
 };
 
 export type PuzzleCosmetics = {

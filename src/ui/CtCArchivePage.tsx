@@ -791,12 +791,20 @@ export function CtCArchivePage() {
 
     const fallbackAuthor = clean(entry.puzzleAuthor);
     const collection = clean(entry.collection);
+    const constraints = splitConstraintTypes(entry.subTypeConstraints);
     const importedDef = {
       ...def,
       meta: {
         ...def.meta,
         ...(fallbackAuthor && !clean(def.meta?.author) ? { author: fallbackAuthor } : {}),
         ...(collection ? { collection } : {}),
+        archiveConstraints: constraints,
+        archiveVideoTitle: clean(entry.videoTitle),
+        archiveVideoDate: clean(entry.videoDate),
+        archiveVideoLengthSeconds: entry.videoLengthSeconds,
+        archiveVideoHost: clean(entry.videoHost),
+        archiveYouTubeUrl: clean(entry.youtubeUrl),
+        archiveSudokuPadUrl: clean(entry.sudokuPadUrl),
       },
     };
 

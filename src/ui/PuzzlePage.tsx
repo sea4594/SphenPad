@@ -1589,6 +1589,7 @@ export function PuzzlePage() {
 
       {pauseMenuOpen && (
         <PauseOverlay
+          def={data.def}
           meta={meta}
           sourceId={data.def.sourceId}
           started={Boolean(data.progress.startedAt)}
