@@ -52,7 +52,8 @@ export function PauseOverlay(props: {
 
   return (
     <div className="overlayBackdrop" onClick={onBackdropClick}>
-      <div className="card" role="dialog" aria-modal="true" aria-label="Pause menu" onClick={(e) => e.stopPropagation()} style={{ width: "min(860px, 100%)", maxHeight: "min(92dvh, calc(100vh - 24px))", overflow: "auto", display: "flex", flexDirection: "column" }}>
+      <div className="card" role="dialog" aria-modal="true" aria-label="Pause menu" onClick={(e) => e.stopPropagation()} style={{ width: "min(860px, 100%)", maxHeight: "min(92dvh, calc(100vh - 24px))", overflow: "hidden", display: "flex", flexDirection: "column" }}>
+        <div style={{ flex: 1, overflowY: "auto", minHeight: 0 }}>
         <div className="row" style={{ justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "nowrap" }}>
           <div style={{ fontWeight: 800, fontSize: 22, minWidth: 0, overflowWrap: "anywhere" }}>{meta?.title || "(untitled)"}</div>
         </div>
@@ -164,20 +165,21 @@ export function PauseOverlay(props: {
             </div>
           </div>
         </div>
+        </div>
 
         {!started ? (
-          <button className="btn primary" style={{ width: "100%", marginTop: 12 }} onClick={props.onStart}>
+          <button className="btn primary" style={{ width: "100%", marginTop: 12, flexShrink: 0, height: 44 }} onClick={props.onStart}>
             Start
           </button>
         ) : (
-          <div className="row" style={{ marginTop: 12, flexWrap: "wrap" }}>
-            <button className="btn primary" style={{ flex: 1, minWidth: 0 }} onClick={props.onResume}>
+          <div className="row" style={{ marginTop: 12, flexWrap: "nowrap", flexShrink: 0 }}>
+            <button className="btn primary" style={{ flex: 1, minWidth: 0, height: 44 }} onClick={props.onResume}>
               Resume
             </button>
-            <button className="btn" style={{ flex: 1, minWidth: 0 }} onClick={props.onStayPaused}>
+            <button className="btn" style={{ flex: 1, minWidth: 0, height: 44 }} onClick={props.onStayPaused}>
               Stay paused
             </button>
-            <button className="btn" style={{ flex: 1, minWidth: 0 }} onClick={props.onRestart}>
+            <button className="btn" style={{ flex: 1, minWidth: 0, height: 44 }} onClick={props.onRestart}>
               Restart
             </button>
           </div>
