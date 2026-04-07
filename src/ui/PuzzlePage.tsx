@@ -565,17 +565,17 @@ export function PuzzlePage() {
     for (let i = historyEntry.patches.length - 1; i >= 0; i--) nextProgress = applyPatch(nextProgress, invertPatch(historyEntry.patches[i]));
     if (historyEntry.selection) nextProgress = { ...nextProgress, selection: historyEntry.selection };
     
-    let entryToPush = historyEntry;
+    let redoEntries = [historyEntry];
     if (data.redo.length === 0) {
-      // Save current selection for redo back to current state (start of undo sequence)
-      entryToPush = { ...historyEntry, selection: data.progress.selection };
+      // Add separate redo action for current selection
+      redoEntries.push({ patches: [], selection: data.progress.selection });
     }
     
     persist({
       ...data,
       progress: nextProgress,
       undo: data.undo.slice(0, -1),
-      redo: [...data.redo, entryToPush],
+      redo: [...data.redo, ...redoEntries],
       updatedAt: Date.now(),
     });
   }
@@ -583,13 +583,13 @@ export function PuzzlePage() {
   function redo() {
     if (!data || data.redo.length === 0) return;
     const historyEntry = toHistoryEntry(data.redo[data.redo.length - 1]);
-    if (!historyEntry.patches.length) return;
+    if (!historyEntry.patches.length && !historyEntry.selection) return; // Invalid entry
     let nextProgress = data.progress;
-    for (const p of historyEntry.patches) nextProgress = applyPatch(nextProgress, p);
-    // For the final redo back to current state, restore the selection that was current before undoing
-    if (data.redo.length === 1 && historyEntry.selection) {
-      nextProgress = { ...nextProgress, selection: historyEntry.selection };
-    } else if (historyEntry.selection) {
+    if (historyEntry.patches.length > 0) {
+      for (const p of historyEntry.patches) nextProgress = applyPatch(nextProgress, p);
+    }
+    // For selection-only redo actions or final redo back to current state
+    if (historyEntry.selection) {
       nextProgress = { ...nextProgress, selection: historyEntry.selection };
     }
     persist({
