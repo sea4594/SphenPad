@@ -3,6 +3,7 @@ import {
   isValidElement,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ChangeEvent,
   type MouseEvent as ReactMouseEvent,
@@ -14,13 +15,27 @@ import { hasForcedPortrait, observeForcedPortrait } from "../app/forcedPortrait"
 
 type SelectControlProps = SelectHTMLAttributes<HTMLSelectElement> & {
   children: ReactNode;
+  searchable?: boolean;
+  searchPlaceholder?: string;
 };
 
 type OptionEntry = {
   value: string;
   label: ReactNode;
+  labelText: string;
   disabled: boolean;
 };
+
+function readNodeText(node: ReactNode): string {
+  if (node == null || typeof node === "boolean") return "";
+  if (typeof node === "string" || typeof node === "number") return String(node);
+  if (Array.isArray(node)) return node.map(readNodeText).join(" ");
+  if (isValidElement(node)) {
+    const props = node.props as { children?: ReactNode };
+    return readNodeText(props.children);
+  }
+  return "";
+}
 
 function toValueArray(value: SelectHTMLAttributes<HTMLSelectElement>["value"]): string[] {
   if (value == null) return [];
@@ -42,6 +57,7 @@ function readOptionEntries(children: ReactNode): OptionEntry[] {
     entries.push({
       value,
       label: optionProps.children,
+      labelText: readNodeText(optionProps.children).toLowerCase(),
       disabled: !!optionProps.disabled,
     });
   });
@@ -91,6 +107,8 @@ function pressHandlers(action: () => void) {
 
 export function SelectControl({
   children,
+  searchable = false,
+  searchPlaceholder = "Search options...",
   className,
   value,
   onChange,
@@ -104,21 +122,35 @@ export function SelectControl({
 }: SelectControlProps) {
   const forcedPortrait = useForcedPortraitMode();
   const [open, setOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
   const options = useMemo(() => readOptionEntries(children), [children]);
   const selectedValues = useMemo(() => toValueArray(value), [value]);
   const selectedValueSet = useMemo(() => new Set(selectedValues), [selectedValues]);
   const controlledValue = selectedValues[0] ?? "";
   const selectedOption = options.find((entry) => entry.value === controlledValue) ?? options[0] ?? null;
-  const canUseCustomMenu = forcedPortrait;
+  const canUseCustomMenu = forcedPortrait || searchable;
+
+  const normalizedSearchQuery = searchQuery.trim().toLowerCase();
+  const filteredOptions = useMemo(() => {
+    if (!searchable || !normalizedSearchQuery) return options;
+    return options.filter((entry) => (
+      entry.labelText.includes(normalizedSearchQuery) || entry.value.toLowerCase().includes(normalizedSearchQuery)
+    ));
+  }, [options, searchable, normalizedSearchQuery]);
 
   useEffect(() => {
     if (!open) return;
+    if (searchable) {
+      setSearchQuery("");
+      queueMicrotask(() => searchInputRef.current?.focus());
+    }
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") setOpen(false);
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [open]);
+  }, [open, searchable]);
 
   if (!canUseCustomMenu) {
     return (
@@ -248,13 +280,26 @@ export function SelectControl({
               </div>
             </div>
 
+            {searchable ? (
+              <div className="selectControlSearchRow">
+                <input
+                  ref={searchInputRef}
+                  className="url selectControlSearchInput"
+                  placeholder={searchPlaceholder}
+                  value={searchQuery}
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                  aria-label="Search options"
+                />
+              </div>
+            ) : null}
+
             <div
               className="selectControlOptionList"
               role="listbox"
               aria-label={dialogLabel}
               aria-multiselectable={multiple ? true : undefined}
             >
-              {options.map((option) => {
+              {filteredOptions.map((option) => {
                 const isSelected = multiple
                   ? selectedValueSet.has(option.value)
                   : option.value === controlledValue;
@@ -277,7 +322,7 @@ export function SelectControl({
                   </button>
                 );
               })}
-              {!options.length ? <div className="muted">No options</div> : null}
+              {!filteredOptions.length ? <div className="muted">No matching options</div> : null}
             </div>
           </div>
         </div>

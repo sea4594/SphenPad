@@ -1538,6 +1538,14 @@ input.url {
   gap: 6px;
 }
 
+.selectControlSearchRow {
+  display: block;
+}
+
+.selectControlSearchInput {
+  width: 100%;
+}
+
 .selectControlOptionButton {
   width: 100%;
   text-align: left;

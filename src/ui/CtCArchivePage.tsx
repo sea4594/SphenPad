@@ -1046,6 +1046,8 @@ export function CtCArchivePage() {
                   className="btn menuControlSelect"
                   value={hostFilter}
                   onChange={(e) => setHostFilter(e.target.value)}
+                  searchable
+                  searchPlaceholder="Search hosts..."
                 >
                   {hosts.map((v) => (
                     <option key={v} value={v}>
@@ -1061,6 +1063,8 @@ export function CtCArchivePage() {
                   className="btn menuControlSelect"
                   value={authorFilter}
                   onChange={(e) => setAuthorFilter(e.target.value)}
+                  searchable
+                  searchPlaceholder="Search authors..."
                 >
                   {authors.map((v) => (
                     <option key={v} value={v}>
@@ -1076,6 +1080,8 @@ export function CtCArchivePage() {
                   className="btn menuControlSelect"
                   value={collectionFilter}
                   onChange={(e) => setCollectionFilter(e.target.value)}
+                  searchable
+                  searchPlaceholder="Search collections..."
                 >
                   {collections.map((v) => (
                     <option key={v} value={v}>
@@ -1090,6 +1096,8 @@ export function CtCArchivePage() {
                 <SelectControl
                   className="archiveConstraintSelect"
                   multiple
+                  searchable
+                  searchPlaceholder="Search constraints..."
                   size={Math.min(8, Math.max(4, constraintOptions.length || 4))}
                   value={constraintFilters}
                   onMouseDown={onConstraintMouseDown}

@@ -874,6 +874,8 @@ export function MainMenu() {
                     className="btn menuControlSelect"
                     value={authorFilter}
                     onChange={(event) => setAuthorFilter(event.target.value)}
+                    searchable
+                    searchPlaceholder="Search authors..."
                   >
                     {authors.map((value) => (
                       <option key={value} value={value}>
@@ -889,6 +891,8 @@ export function MainMenu() {
                     className="btn menuControlSelect"
                     value={collectionFilter}
                     onChange={(event) => setCollectionFilter(event.target.value)}
+                    searchable
+                    searchPlaceholder="Search collections..."
                   >
                     {collections.map((value) => (
                       <option key={value} value={value}>
@@ -903,6 +907,8 @@ export function MainMenu() {
                   <SelectControl
                     className="archiveConstraintSelect"
                     multiple
+                    searchable
+                    searchPlaceholder="Search constraints..."
                     size={Math.min(8, Math.max(4, constraintOptions.length || 4))}
                     value={constraintFilters}
                     onMouseDown={onConstraintMouseDown}
@@ -1226,6 +1232,8 @@ export function MainMenu() {
                   className="btn menuControlSelect"
                   value={folderFilterStatus}
                   onChange={(e) => setFolderFilterStatus(e.target.value as FilterStatus)}
+                  searchable
+                  searchPlaceholder="Search statuses..."
                 >
                   <option value="all">All</option>
                   <option value="not_started">Not Started</option>
