@@ -1506,6 +1506,21 @@ input.url {
   gap: 12px;
 }
 
+.settingsAccountBlock {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid color-mix(in oklab, var(--text) 14%, transparent);
+  background: color-mix(in oklab, var(--bg) 70%, transparent);
+}
+
+.settingsAccountActions {
+  display: flex;
+  justify-content: flex-end;
+}
+
 .settingsRow {
   display: flex;
   align-items: center;

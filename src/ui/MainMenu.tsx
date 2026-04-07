@@ -10,8 +10,8 @@ import {
   type PuzzleFolder,
   upsertPuzzle,
 } from "../core/storage";
+import { setSyncedLocalStorageItem } from "../core/localDataState";
 import { fmtHMS } from "../core/time";
-import { firebaseEnabled, googleLogin, googleLogout } from "../firebase/client";
 import { GridCanvas } from "./GridCanvas";
 import { AppBrand } from "./AppBrand";
 import { IconFolder, IconHome, IconImport, IconSettings, IconSort, IconSortAsc, IconSortDesc } from "./icons";
@@ -390,7 +390,7 @@ export function MainMenu() {
   }, []);
 
   useEffect(() => {
-    localStorage.setItem(
+    setSyncedLocalStorageItem(
       MAIN_MENU_FILTER_PREFS_KEY,
       JSON.stringify({
         sortOrder,
@@ -406,7 +406,7 @@ export function MainMenu() {
   }, [sortOrder, sortDirection, filterStatusList, query, searchField, authorFilter, collectionFilter, constraintFilters]);
 
   useEffect(() => {
-    localStorage.setItem(
+    setSyncedLocalStorageItem(
       FOLDER_MENU_PREFS_KEY,
       JSON.stringify({ sortOrder: folderSortOrder, sortDirection: folderSortDirection, filterStatus: folderFilterStatus } satisfies FolderMenuPrefs),
     );
@@ -883,15 +883,6 @@ export function MainMenu() {
 
       <div className="page">
         <div className="mainMenuWrap">
-          {firebaseEnabled ? (
-            <div className="card">
-              <div className="row" style={{ justifyContent: "flex-end" }}>
-                <button className="btn" onClick={() => googleLogin().catch((e) => alert(e.message))} type="button">Google login</button>
-                <button className="btn" onClick={() => googleLogout().catch((e) => alert(e.message))} type="button">Logout</button>
-              </div>
-            </div>
-          ) : null}
-
           <div className="card menuFilterPanelCard">
             <div className="archiveControls">
               <div className="row">

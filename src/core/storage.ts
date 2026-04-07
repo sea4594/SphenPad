@@ -1,5 +1,6 @@
 import Dexie from "dexie";
 import type { Table } from "dexie";
+import { markLocalDataChanged } from "./localDataState";
 import type { PersistedPuzzle } from "./model";
 
 export type PuzzleFolder = {
@@ -11,6 +12,8 @@ export type PuzzleFolder = {
   updatedAt: number;
 };
 
+export type PuzzleSnapshotRow = { key: string; data: PersistedPuzzle };
+
 function makeFolderId() {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
     return `folder-${crypto.randomUUID()}`;
@@ -18,8 +21,12 @@ function makeFolderId() {
   return `folder-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+function signalStorageMutation(notify = true, updatedAt = Date.now()) {
+  markLocalDataChanged(updatedAt, notify);
+}
+
 class SphenDB extends Dexie {
-  puzzles!: Table<{ key: string; data: PersistedPuzzle }, string>;
+  puzzles!: Table<PuzzleSnapshotRow, string>;
   folders!: Table<PuzzleFolder, string>;
   constructor() {
     super("sphenpad");
@@ -34,8 +41,28 @@ class SphenDB extends Dexie {
 }
 export const db = new SphenDB();
 
+export async function exportStorageSnapshot() {
+  const [puzzles, folders] = await Promise.all([db.puzzles.toArray(), db.folders.toArray()]);
+  return { puzzles, folders };
+}
+
+export async function importStorageSnapshot(
+  snapshot: { puzzles: PuzzleSnapshotRow[]; folders: PuzzleFolder[] },
+  notify = true,
+  updatedAt = Date.now(),
+) {
+  await db.transaction("rw", db.puzzles, db.folders, async () => {
+    await db.puzzles.clear();
+    await db.folders.clear();
+    if (snapshot.puzzles.length) await db.puzzles.bulkPut(snapshot.puzzles);
+    if (snapshot.folders.length) await db.folders.bulkPut(snapshot.folders);
+  });
+  signalStorageMutation(notify, updatedAt);
+}
+
 export async function upsertPuzzle(key: string, data: PersistedPuzzle) {
   await db.puzzles.put({ key, data });
+  signalStorageMutation(true, data.updatedAt || Date.now());
 }
 
 export async function getPuzzle(key: string) {
@@ -80,51 +107,62 @@ export async function createFolder(name: string, parentId: string | null = null)
     updatedAt: now,
   };
   await db.folders.add(folder);
+  signalStorageMutation(true, folder.updatedAt);
   return folder;
 }
 
 export async function addPuzzleToFolder(folderId: string, puzzleKey: string) {
+  let updatedAt = Date.now();
   await db.transaction("rw", db.folders, async () => {
     const folder = await db.folders.get(folderId);
     if (!folder) throw new Error("Folder not found.");
     if (folder.puzzleKeys.includes(puzzleKey)) return;
+    updatedAt = Date.now();
     await db.folders.put({
       ...folder,
       puzzleKeys: [...folder.puzzleKeys, puzzleKey],
-      updatedAt: Date.now(),
+      updatedAt,
     });
   });
+  signalStorageMutation(true, updatedAt);
 }
 
 export async function removePuzzleFromFolder(folderId: string, puzzleKey: string) {
+  let updatedAt = Date.now();
   await db.transaction("rw", db.folders, async () => {
     const folder = await db.folders.get(folderId);
     if (!folder) throw new Error("Folder not found.");
     if (!folder.puzzleKeys.includes(puzzleKey)) return;
+    updatedAt = Date.now();
     await db.folders.put({
       ...folder,
       puzzleKeys: folder.puzzleKeys.filter((entry) => entry !== puzzleKey),
-      updatedAt: Date.now(),
+      updatedAt,
     });
   });
+  signalStorageMutation(true, updatedAt);
 }
 
 export async function renameFolder(folderId: string, name: string) {
   const trimmed = name.trim();
   if (!trimmed) throw new Error("Folder name is required.");
 
+  let updatedAt = Date.now();
   await db.transaction("rw", db.folders, async () => {
     const folder = await db.folders.get(folderId);
     if (!folder) throw new Error("Folder not found.");
+    updatedAt = Date.now();
     await db.folders.put({
       ...folder,
       name: trimmed,
-      updatedAt: Date.now(),
+      updatedAt,
     });
   });
+  signalStorageMutation(true, updatedAt);
 }
 
 export async function deleteFolder(folderId: string) {
+  const updatedAt = Date.now();
   await db.transaction("rw", db.folders, async () => {
     const folders = await db.folders.toArray();
     if (!folders.some((folder) => folder.id === folderId)) {
@@ -151,21 +189,23 @@ export async function deleteFolder(folderId: string) {
 
     await db.folders.bulkDelete(Array.from(toDelete));
   });
+  signalStorageMutation(true, updatedAt);
 }
 
 export async function deletePuzzle(key: string) {
+  const updatedAt = Date.now();
   await db.transaction("rw", db.puzzles, db.folders, async () => {
     await db.puzzles.delete(key);
 
     const folders = await db.folders.toArray();
-    const now = Date.now();
     for (const folder of folders) {
       if (!folder.puzzleKeys.includes(key)) continue;
       await db.folders.put({
         ...folder,
         puzzleKeys: folder.puzzleKeys.filter((entry) => entry !== key),
-        updatedAt: now,
+        updatedAt,
       });
     }
   });
+  signalStorageMutation(true, updatedAt);
 }

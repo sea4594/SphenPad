@@ -11,6 +11,7 @@ import {
   type PuzzleFolder,
   upsertPuzzle,
 } from "../core/storage";
+import { setSyncedLocalStorageItem } from "../core/localDataState";
 import { fmtHMS } from "../core/time";
 import { AppBrand } from "./AppBrand";
 import { GridCanvas } from "./GridCanvas";
@@ -262,7 +263,7 @@ export function FoldersPage() {
   }, []);
 
   useEffect(() => {
-    localStorage.setItem(
+    setSyncedLocalStorageItem(
       FOLDER_MENU_FILTER_PREFS_KEY,
       JSON.stringify({ sortOrder, sortDirection, filterStatusList } satisfies FolderMenuPrefs),
     );

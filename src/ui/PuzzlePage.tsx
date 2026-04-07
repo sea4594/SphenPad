@@ -31,8 +31,6 @@ import {
   IconToolLine,
   IconUndo,
 } from "./icons";
-import { auth, firebaseEnabled, pullPuzzle, pushPuzzle } from "../firebase/client";
-import { deleteCloudPuzzle } from "../firebase/client";
 import { SettingsOverlay } from "./SettingsOverlay";
 import { useTheme } from "../app/theme";
 import { readPuzzleOriginState, withPuzzleReturnState } from "./puzzleNavState";
@@ -366,8 +364,6 @@ export function PuzzlePage() {
   const metadataRefreshInFlightRef = useRef(new Set<string>());
   const definitionRefreshInFlightRef = useRef(new Set<string>());
 
-  const userId = firebaseEnabled ? auth?.currentUser?.uid : null;
-
   function blurButtonAfterPointerUp(event: React.PointerEvent<HTMLDivElement>) {
     const target = event.target;
     if (!(target instanceof Element)) return;
@@ -410,40 +406,6 @@ export function PuzzlePage() {
   useEffect(() => {
     (async () => {
       const local = await getPuzzle(key);
-      if (userId) {
-        const cloud = await pullPuzzle(userId, key);
-        if (cloud) {
-          const normalizedCloud = normalizePersistedDefinition({ ...cloud, progress: normalizeProgress(cloud.progress) });
-          const normalizedLocal = local ? normalizePersistedDefinition({ ...local, progress: normalizeProgress(local.progress) }) : null;
-
-          const localIsNewer = Boolean(normalizedLocal && normalizedLocal.updatedAt >= normalizedCloud.updatedAt);
-          const cloudMetaIncomplete = hasIncompleteMeta(normalizedCloud);
-          const localMetaComplete = Boolean(normalizedLocal && !hasIncompleteMeta(normalizedLocal));
-
-          const merged = localIsNewer && normalizedLocal
-            ? normalizedLocal
-            : cloudMetaIncomplete && localMetaComplete && normalizedLocal
-              ? {
-                  ...normalizedCloud,
-                  def: {
-                    ...normalizedCloud.def,
-                    // Keep cloud progress but use richer local puzzle metadata/definition when available.
-                    ...normalizedLocal.def,
-                    meta: {
-                      ...normalizedCloud.def.meta,
-                      ...normalizedLocal.def.meta,
-                    },
-                  },
-                }
-              : normalizedCloud;
-
-          setData(merged);
-          setPauseMenuOpen(Boolean(merged.progress.paused));
-          await upsertPuzzle(key, merged);
-          await pushPuzzle(userId, key, merged);
-          return;
-        }
-      }
       if (!local) {
         alert("Puzzle not found.");
         if (puzzleOriginState) {
@@ -461,7 +423,7 @@ export function PuzzlePage() {
       setPauseMenuOpen(Boolean(normalized.progress.paused));
       await upsertPuzzle(key, normalized);
     })();
-  }, [key, nav, userId]);
+  }, [key, nav]);
 
   useEffect(() => {
     if (!data) return;
@@ -502,14 +464,13 @@ export function PuzzlePage() {
 
         setData(next);
         await upsertPuzzle(key, next);
-        if (userId) await pushPuzzle(userId, key, next);
       } catch {
         // Keep existing metadata if refresh fails.
       } finally {
         metadataRefreshInFlightRef.current.delete(refreshKey);
       }
     })();
-  }, [data, key, userId, pauseMenuOpen]);
+  }, [data, key, pauseMenuOpen]);
 
   useEffect(() => {
     if (!data) return;
@@ -539,19 +500,17 @@ export function PuzzlePage() {
         };
         setData(next);
         await upsertPuzzle(key, next);
-        if (userId) await pushPuzzle(userId, key, next);
       } catch {
         // Keep existing cached definition if refresh fails.
       } finally {
         definitionRefreshInFlightRef.current.delete(refreshKey);
       }
     })();
-  }, [data, key, userId]);
+  }, [data, key]);
 
   async function persist(next: PersistedPuzzle) {
     setData(next);
     await upsertPuzzle(key, next);
-    if (userId) await pushPuzzle(userId, key, next);
   }
 
   useEffect(() => {
@@ -912,10 +871,8 @@ export function PuzzlePage() {
       };
 
       await deletePuzzle(key);
-      if (userId) await deleteCloudPuzzle(userId, key);
 
       await upsertPuzzle(freshKey, freshData);
-      if (userId) await pushPuzzle(userId, freshKey, freshData);
 
       if (freshKey !== key) {
         nav(`/p/${encodeURIComponent(freshKey)}`, { replace: true, state: location.state });

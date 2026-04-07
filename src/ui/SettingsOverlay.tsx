@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { useAccountSync } from "../app/accountSync";
 import { useTheme, type ThemeColor } from "../app/theme";
 
 const themeChoices: Array<{ key: ThemeColor; label: string; preview: string[] }> = [
@@ -11,6 +12,14 @@ const themeChoices: Array<{ key: ThemeColor; label: string; preview: string[] }>
 
 export function SettingsOverlay(props: { onClose: () => void }) {
   const { onClose } = props;
+  const {
+    firebaseEnabled,
+    login,
+    logout,
+    syncError,
+    syncStatus,
+    user,
+  } = useAccountSync();
   const {
     mode,
     color,
@@ -39,6 +48,42 @@ export function SettingsOverlay(props: { onClose: () => void }) {
         <div className="settingsHeader">
           <div style={{ fontWeight: 800, fontSize: 22 }}>Settings</div>
           <button className="btn" onClick={onClose}>Close</button>
+        </div>
+
+        <div className="settingsSection">
+          <div style={{ fontWeight: 700, marginBottom: 8 }}>Account</div>
+          <div className="settingsAccountBlock">
+            <div>
+              <div style={{ fontWeight: 700 }}>{user ? (user.displayName || user.email || "Signed in") : "Not signed in"}</div>
+              <div className="muted" style={{ marginTop: 4 }}>
+                {!firebaseEnabled
+                  ? "Google sync is disabled until Firebase env vars are configured."
+                  : syncStatus === "syncing"
+                    ? "Syncing your app data..."
+                    : syncError
+                      ? syncError
+                      : user
+                        ? "Your puzzles, folders, and settings sync to this Google account."
+                        : "Sign in with Google to sync everything across devices."}
+              </div>
+            </div>
+            <div className="settingsAccountActions">
+              {user ? (
+                <button className="btn" onClick={() => logout().catch((error) => alert(error instanceof Error ? error.message : String(error)))} type="button">
+                  Logout
+                </button>
+              ) : (
+                <button
+                  className="btn primary"
+                  disabled={!firebaseEnabled || syncStatus === "syncing"}
+                  onClick={() => login().catch((error) => alert(error instanceof Error ? error.message : String(error)))}
+                  type="button"
+                >
+                  Google login
+                </button>
+              )}
+            </div>
+          </div>
         </div>
 
         <div className="settingsSection">

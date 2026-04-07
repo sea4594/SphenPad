@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { setSyncedLocalStorageItem } from "../core/localDataState";
 
 export type ThemeMode = "light" | "dark";
 export type ThemeColor = "bw" | "ocean" | "forest" | "sepia" | "berry";
@@ -70,7 +71,7 @@ export function ThemeProvider(props: { children: ReactNode }) {
     document.documentElement.style.backgroundColor = bg;
     document.body.style.backgroundColor = bg;
 
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ mode, color, hideTimer, outlineDigits, conflictChecker }));
+    setSyncedLocalStorageItem(STORAGE_KEY, JSON.stringify({ mode, color, hideTimer, outlineDigits, conflictChecker }));
   }, [mode, color, hideTimer, outlineDigits, conflictChecker]);
 
   const value = useMemo(

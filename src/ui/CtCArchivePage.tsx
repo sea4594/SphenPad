@@ -1,5 +1,6 @@
 import { Fragment, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { setSyncedLocalStorageItem } from "../core/localDataState";
 import { normalizePuzzleKey } from "../core/id";
 import { type PuzzleDefinition } from "../core/model";
 import { makeInitialProgress } from "../core/scl";
@@ -367,7 +368,7 @@ export function CtCArchivePage() {
   const deferredQuery = useDeferredValue(query);
 
   useEffect(() => {
-    localStorage.setItem(
+    setSyncedLocalStorageItem(
       ARCHIVE_FILTER_PREFS_KEY,
       JSON.stringify({
         query,
