@@ -27,14 +27,15 @@ import {
 } from "./puzzleNavState";
 
 type SortOrder = "recent" | "az" | "date";
-type FilterStatus = "all" | "not_started" | "in_progress" | "complete";
-type PuzzlePlayStatus = Exclude<FilterStatus, "all">;
+type PuzzlePlayStatus = "not_started" | "in_progress" | "complete";
+type FilterStatus = PuzzlePlayStatus;
+type FolderFilterStatus = "all" | PuzzlePlayStatus;
 type MainMenuSearchField = "any" | "title" | "constraints" | "author" | "collection";
 type StoredPuzzle = Awaited<ReturnType<typeof listPuzzles>>[number];
 
 type MainMenuFilterPrefs = {
   sortOrder: SortOrder;
-  filterStatus: FilterStatus;
+  filterStatusList: FilterStatus[];
   query: string;
   searchField: MainMenuSearchField;
   authorFilter: string;
@@ -44,7 +45,7 @@ type MainMenuFilterPrefs = {
 
 type FolderMenuPrefs = {
   sortOrder: SortOrder;
-  filterStatus: FilterStatus;
+  filterStatus: "all" | FilterStatus;
 };
 
 const MAIN_MENU_FILTER_PREFS_KEY = "sphenpad-main-menu-filters-v1";
@@ -53,7 +54,7 @@ const MAIN_MENU_SEARCH_FIELDS = new Set<MainMenuSearchField>(["any", "title", "c
 
 const DEFAULT_MAIN_MENU_FILTER_PREFS: MainMenuFilterPrefs = {
   sortOrder: "recent",
-  filterStatus: "all",
+  filterStatusList: [],
   query: "",
   searchField: "any",
   authorFilter: "all",
@@ -67,8 +68,12 @@ function isSortOrder(value: string): value is SortOrder {
   return value === "recent" || value === "az" || value === "date";
 }
 
-function isFilterStatus(value: string): value is FilterStatus {
-  return value === "all" || value === "not_started" || value === "in_progress" || value === "complete";
+function isPuzzlePlayStatus(value: string): value is PuzzlePlayStatus {
+  return value === "not_started" || value === "in_progress" || value === "complete";
+}
+
+function isFilterStatus(value: string): value is "all" | FilterStatus {
+  return value === "all" || isPuzzlePlayStatus(value);
 }
 
 function isMainMenuSearchField(value: string): value is MainMenuSearchField {
@@ -86,7 +91,7 @@ function readInitialMainMenuFilterPrefs(): MainMenuFilterPrefs {
 
     const parsed = JSON.parse(raw) as {
       sortOrder?: string;
-      filterStatus?: string;
+      filterStatusList?: unknown[];
       query?: string;
       searchField?: string;
       authorFilter?: string;
@@ -94,16 +99,16 @@ function readInitialMainMenuFilterPrefs(): MainMenuFilterPrefs {
       constraintFilters?: string[];
     };
     const parsedSortOrder = parsed.sortOrder;
-    const parsedFilterStatus = parsed.filterStatus;
+    const parsedFilterStatusList = parsed.filterStatusList;
     const parsedSearchField = parsed.searchField;
 
     return {
       sortOrder: typeof parsedSortOrder === "string" && isSortOrder(parsedSortOrder)
         ? parsedSortOrder
         : DEFAULT_MAIN_MENU_FILTER_PREFS.sortOrder,
-      filterStatus: typeof parsedFilterStatus === "string" && isFilterStatus(parsedFilterStatus)
-        ? parsedFilterStatus
-        : DEFAULT_MAIN_MENU_FILTER_PREFS.filterStatus,
+      filterStatusList: Array.isArray(parsedFilterStatusList)
+        ? parsedFilterStatusList.filter((v): v is FilterStatus => typeof v === "string" && isPuzzlePlayStatus(v))
+        : DEFAULT_MAIN_MENU_FILTER_PREFS.filterStatusList,
       query: typeof parsed.query === "string" ? parsed.query : DEFAULT_MAIN_MENU_FILTER_PREFS.query,
       searchField: typeof parsedSearchField === "string" && isMainMenuSearchField(parsedSearchField)
         ? parsedSearchField
@@ -151,16 +156,15 @@ function puzzleStatus(row: StoredPuzzle): Exclude<FilterStatus, "all"> {
   return "not_started";
 }
 
-function statusLabel(status: FilterStatus): string {
+function statusLabel(status: PuzzlePlayStatus): string {
   if (status === "not_started") return "Not Started";
   if (status === "in_progress") return "In Progress";
-  if (status === "complete") return "Complete";
-  return "All";
+  return "Complete";
 }
 
-function matchesStatus(row: StoredPuzzle, status: FilterStatus): boolean {
-  if (status === "all") return true;
-  return puzzleStatus(row) === status;
+function matchesStatusList(row: StoredPuzzle, statuses: FilterStatus[]): boolean {
+  if (!statuses.length) return true;
+  return statuses.includes(puzzleStatus(row));
 }
 
 function sortPuzzles(rows: StoredPuzzle[], sortOrder: SortOrder): StoredPuzzle[] {
@@ -322,7 +326,7 @@ export function MainMenu() {
   const [folders, setFolders] = useState<PuzzleFolder[]>([]);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [sortOrder, setSortOrder] = useState<SortOrder>(initialFilterPrefs.sortOrder);
-  const [filterStatus, setFilterStatus] = useState<FilterStatus>(initialFilterPrefs.filterStatus);
+  const [filterStatusList, setFilterStatusList] = useState<FilterStatus[]>(initialFilterPrefs.filterStatusList);
   const [query, setQuery] = useState(initialFilterPrefs.query);
   const [searchField, setSearchField] = useState<MainMenuSearchField>(initialFilterPrefs.searchField);
   const [authorFilter, setAuthorFilter] = useState(initialFilterPrefs.authorFilter);
@@ -332,7 +336,7 @@ export function MainMenu() {
 
   const [foldersOpen, setFoldersOpen] = useState(false);
   const [folderSortOrder, setFolderSortOrder] = useState<SortOrder>(initialFolderPrefs.sortOrder);
-  const [folderFilterStatus, setFolderFilterStatus] = useState<FilterStatus>(initialFolderPrefs.filterStatus);
+  const [folderFilterStatus, setFolderFilterStatus] = useState<FolderFilterStatus>(initialFolderPrefs.filterStatus);
   const [activeFolderId, setActiveFolderId] = useState<string | null>(null);
   const [initialFoldersLoaded, setInitialFoldersLoaded] = useState(false);
   const [folderCreateDialogOpen, setFolderCreateDialogOpen] = useState(false);
@@ -370,7 +374,7 @@ export function MainMenu() {
       MAIN_MENU_FILTER_PREFS_KEY,
       JSON.stringify({
         sortOrder,
-        filterStatus,
+        filterStatusList,
         query,
         searchField,
         authorFilter,
@@ -378,7 +382,7 @@ export function MainMenu() {
         constraintFilters,
       } satisfies MainMenuFilterPrefs),
     );
-  }, [sortOrder, filterStatus, query, searchField, authorFilter, collectionFilter, constraintFilters]);
+  }, [sortOrder, filterStatusList, query, searchField, authorFilter, collectionFilter, constraintFilters]);
 
   useEffect(() => {
     localStorage.setItem(
@@ -492,21 +496,21 @@ export function MainMenu() {
 
   const displayRows = useMemo(() => {
     return sortPuzzles(
-      rowsMatchingSearchFilters.filter((row) => matchesStatus(row, filterStatus)),
+      rowsMatchingSearchFilters.filter((row) => matchesStatusList(row, filterStatusList)),
       sortOrder,
     );
-  }, [rowsMatchingSearchFilters, sortOrder, filterStatus]);
+  }, [rowsMatchingSearchFilters, sortOrder, filterStatusList]);
 
   const hasMainMenuSearchFilters =
     !!clean(query) ||
     searchField !== "any" ||
     authorFilter !== "all" ||
     collectionFilter !== "all" ||
-    constraintFilters.length > 0;
+    constraintFilters.length > 0 ||
+    filterStatusList.length > 0;
 
   const statusCounts = useMemo(() => {
-    const counts: Record<FilterStatus, number> = {
-      all: rowsMatchingSearchFilters.length,
+    const counts: Record<PuzzlePlayStatus, number> = {
       not_started: 0,
       in_progress: 0,
       complete: 0,
@@ -577,7 +581,7 @@ export function MainMenu() {
       .filter((row): row is StoredPuzzle => Boolean(row));
 
     return sortPuzzles(
-      resolved.filter((row) => matchesStatus(row, folderFilterStatus)),
+      resolved.filter((row) => matchesStatusList(row, folderFilterStatus === "all" ? [] : [folderFilterStatus])),
       folderSortOrder,
     );
   }, [activeFolder, puzzleByKey, folderFilterStatus, folderSortOrder]);
@@ -763,7 +767,7 @@ export function MainMenu() {
     setAuthorFilter("all");
     setCollectionFilter("all");
     setConstraintFilters([]);
-    setFilterStatus("all");
+    setFilterStatusList([]);
   }
 
   function onConstraintMouseDown(event: MouseEvent<HTMLSelectElement>) {
@@ -910,7 +914,7 @@ export function MainMenu() {
               <div>
                 <div className="menuSectionTitle">Your puzzles</div>
                 <div className="muted" style={{ fontSize: 13, marginTop: 2 }}>
-                  {filterStatus !== "all"
+                  {filterStatusList.length > 0
                     ? `${displayRows.length} of ${rowsMatchingSearchFilters.length}`
                     : hasMainMenuSearchFilters
                       ? `${displayRows.length} of ${rows.length}`
@@ -934,11 +938,13 @@ export function MainMenu() {
 
             <div className="menuSecondaryControls">
               <div className="menuStatusTabs">
-                {(["all", "not_started", "in_progress", "complete"] as const).map((status) => (
+                {(["not_started", "in_progress", "complete"] as const).map((status) => (
                   <button
                     key={status}
-                    className={`btn menuStatusTab ${filterStatus === status ? "is-active" : ""}`}
-                    onClick={() => setFilterStatus(status)}
+                    className={`btn menuStatusTab ${filterStatusList.includes(status) ? "is-active" : ""}`}
+                    onClick={() => setFilterStatusList((prev) =>
+                      prev.includes(status) ? prev.filter((s) => s !== status) : [...prev, status]
+                    )}
                     type="button"
                   >
                     {statusLabel(status)} ({statusCounts[status]})
@@ -1109,7 +1115,7 @@ export function MainMenu() {
               })}
               {!displayRows.length ? (
                 <div className="muted">
-                  {rows.length && (filterStatus !== "all" || hasMainMenuSearchFilters)
+                  {rows.length && (filterStatusList.length > 0 || hasMainMenuSearchFilters)
                     ? "No puzzles match the current search/filter."
                     : "No puzzles loaded yet."}
                 </div>

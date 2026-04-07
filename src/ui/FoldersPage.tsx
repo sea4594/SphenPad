@@ -27,13 +27,13 @@ import {
 } from "./puzzleNavState";
 
 type SortOrder = "recent" | "az" | "date";
-type FilterStatus = "all" | "not_started" | "in_progress" | "complete";
-type PuzzlePlayStatus = Exclude<FilterStatus, "all">;
+type PuzzlePlayStatus = "not_started" | "in_progress" | "complete";
+type FilterStatus = PuzzlePlayStatus;
 type StoredPuzzle = Awaited<ReturnType<typeof listPuzzles>>[number];
 
 type FolderMenuPrefs = {
   sortOrder: SortOrder;
-  filterStatus: FilterStatus;
+  filterStatusList: FilterStatus[];
 };
 
 const FOLDER_MENU_FILTER_PREFS_KEY = "sphenpad-folder-menu-filters-v1";
@@ -43,48 +43,49 @@ function isSortOrder(value: string): value is SortOrder {
   return value === "recent" || value === "az" || value === "date";
 }
 
-function isFilterStatus(value: string): value is FilterStatus {
-  return value === "all" || value === "not_started" || value === "in_progress" || value === "complete";
+function isPuzzlePlayStatus(value: string): value is PuzzlePlayStatus {
+  return value === "not_started" || value === "in_progress" || value === "complete";
 }
 
 function readInitialFolderMenuPrefs(): FolderMenuPrefs {
   try {
     const raw = localStorage.getItem(FOLDER_MENU_FILTER_PREFS_KEY);
-    if (!raw) return { sortOrder: "recent", filterStatus: "all" };
+    if (!raw) return { sortOrder: "recent", filterStatusList: [] };
 
     const parsed = JSON.parse(raw) as {
       sortOrder?: string;
-      filterStatus?: string;
+      filterStatusList?: unknown[];
     };
     const parsedSortOrder = parsed.sortOrder;
-    const parsedFilterStatus = parsed.filterStatus;
+    const parsedFilterStatusList = parsed.filterStatusList;
 
     return {
       sortOrder: typeof parsedSortOrder === "string" && isSortOrder(parsedSortOrder) ? parsedSortOrder : "recent",
-      filterStatus: typeof parsedFilterStatus === "string" && isFilterStatus(parsedFilterStatus) ? parsedFilterStatus : "all",
+      filterStatusList: Array.isArray(parsedFilterStatusList)
+        ? parsedFilterStatusList.filter((v): v is FilterStatus => typeof v === "string" && isPuzzlePlayStatus(v))
+        : [],
     };
   } catch {
-    return { sortOrder: "recent", filterStatus: "all" };
+    return { sortOrder: "recent", filterStatusList: [] };
   }
 }
 
-function puzzleStatus(row: StoredPuzzle): Exclude<FilterStatus, "all"> {
+function puzzleStatus(row: StoredPuzzle): PuzzlePlayStatus {
   const status = row.progress?.status ?? "not_started";
   if (status === "complete") return "complete";
   if (status === "in_progress") return "in_progress";
   return "not_started";
 }
 
-function statusLabel(status: FilterStatus): string {
+function statusLabel(status: PuzzlePlayStatus): string {
   if (status === "not_started") return "Not Started";
   if (status === "in_progress") return "In Progress";
-  if (status === "complete") return "Complete";
-  return "All";
+  return "Complete";
 }
 
-function matchesStatus(row: StoredPuzzle, status: FilterStatus): boolean {
-  if (status === "all") return true;
-  return puzzleStatus(row) === status;
+function matchesStatusList(row: StoredPuzzle, statuses: FilterStatus[]): boolean {
+  if (!statuses.length) return true;
+  return statuses.includes(puzzleStatus(row));
 }
 
 function sortPuzzles(rows: StoredPuzzle[], sortOrder: SortOrder): StoredPuzzle[] {
@@ -216,7 +217,7 @@ export function FoldersPage() {
   const [rows, setRows] = useState<StoredPuzzle[]>([]);
   const [folders, setFolders] = useState<PuzzleFolder[]>([]);
   const [sortOrder, setSortOrder] = useState<SortOrder>(initialPrefs.sortOrder);
-  const [filterStatus, setFilterStatus] = useState<FilterStatus>(initialPrefs.filterStatus);
+  const [filterStatusList, setFilterStatusList] = useState<FilterStatus[]>(initialPrefs.filterStatusList);
   const [activeFolderId, setActiveFolderId] = useState<string | null>(null);
 
   const [folderCreateDialogOpen, setFolderCreateDialogOpen] = useState(false);
@@ -251,9 +252,9 @@ export function FoldersPage() {
   useEffect(() => {
     localStorage.setItem(
       FOLDER_MENU_FILTER_PREFS_KEY,
-      JSON.stringify({ sortOrder, filterStatus } satisfies FolderMenuPrefs),
+      JSON.stringify({ sortOrder, filterStatusList } satisfies FolderMenuPrefs),
     );
-  }, [sortOrder, filterStatus]);
+  }, [sortOrder, filterStatusList]);
 
   useEffect(() => {
     if (!initialFoldersLoaded) return;
@@ -326,10 +327,10 @@ export function FoldersPage() {
       .filter((row): row is StoredPuzzle => Boolean(row));
 
     return sortPuzzles(
-      resolved.filter((row) => matchesStatus(row, filterStatus)),
+      resolved.filter((row) => matchesStatusList(row, filterStatusList)),
       sortOrder,
     );
-  }, [activeFolder, puzzleByKey, filterStatus, sortOrder]);
+  }, [activeFolder, puzzleByKey, filterStatusList, sortOrder]);
 
   async function onCreateFolder() {
     const folderName = folderCreateName.trim();
@@ -615,17 +616,20 @@ export function FoldersPage() {
                       <option value="date">Video Date</option>
                     </SelectControl>
                   </div>
-                  <SelectControl
-                    className="btn menuControlSelect"
-                    value={filterStatus}
-                    onChange={(e) => setFilterStatus(e.target.value as FilterStatus)}
-                    aria-label="Filter folders"
-                  >
-                    <option value="all">All</option>
-                    <option value="not_started">Not Started</option>
-                    <option value="in_progress">In Progress</option>
-                    <option value="complete">Complete</option>
-                  </SelectControl>
+                  <div className="menuStatusTabs" style={{ flex: 1 }}>
+                    {(["not_started", "in_progress", "complete"] as const).map((status) => (
+                      <button
+                        key={status}
+                        className={`btn menuStatusTab ${filterStatusList.includes(status) ? "is-active" : ""}`}
+                        onClick={() => setFilterStatusList((prev) =>
+                          prev.includes(status) ? prev.filter((s) => s !== status) : [...prev, status]
+                        )}
+                        type="button"
+                      >
+                        {statusLabel(status)}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               ) : null}
 
@@ -805,7 +809,7 @@ export function FoldersPage() {
                   })}
                   {!visibleFolderPuzzles.length ? (
                     <div className="muted" style={{ marginTop: 2 }}>
-                      {filterStatus === "all"
+                      {filterStatusList.length === 0
                         ? "This folder has no puzzles yet."
                         : "No puzzles in this folder match the current filter."}
                     </div>
