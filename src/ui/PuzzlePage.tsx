@@ -41,6 +41,16 @@ function rcKey(rc: CellRC) {
   return `${rc.r},${rc.c}`;
 }
 
+function sameSelection(a: CellRC[] | undefined, b: CellRC[] | undefined): boolean {
+  if (!a && !b) return true;
+  if (!a || !b || a.length !== b.length) return false;
+  const aKeys = new Set(a.map(rcKey));
+  for (const rc of b) {
+    if (!aKeys.has(rcKey(rc))) return false;
+  }
+  return true;
+}
+
 function segKey(a: CellRC, b: CellRC) {
   const ak = rcKey(a);
   const bk = rcKey(b);
@@ -564,18 +574,26 @@ export function PuzzlePage() {
     let nextProgress = data.progress;
     for (let i = historyEntry.patches.length - 1; i >= 0; i--) nextProgress = applyPatch(nextProgress, invertPatch(historyEntry.patches[i]));
     if (historyEntry.selection) nextProgress = { ...nextProgress, selection: historyEntry.selection };
-    
-    let redoEntries = [historyEntry];
+    const nextRedo = [...data.redo];
     if (data.redo.length === 0) {
-      // Add separate redo action for current selection
-      redoEntries.push({ patches: [], selection: data.progress.selection });
+      const selectionBeforeAction = historyEntry.selection ?? [];
+      if (!sameSelection(selectionBeforeAction, data.progress.selection)) {
+        const selectionOnlyPatch: Patch = {
+          path: ["selection"],
+          prev: selectionBeforeAction,
+          next: data.progress.selection,
+        };
+        // Keep selection restoration as its own final redo step.
+        nextRedo.push({ patches: [selectionOnlyPatch] });
+      }
     }
-    
+    nextRedo.push(historyEntry);
+
     persist({
       ...data,
       progress: nextProgress,
       undo: data.undo.slice(0, -1),
-      redo: [...data.redo, ...redoEntries],
+      redo: nextRedo,
       updatedAt: Date.now(),
     });
   }
@@ -583,15 +601,10 @@ export function PuzzlePage() {
   function redo() {
     if (!data || data.redo.length === 0) return;
     const historyEntry = toHistoryEntry(data.redo[data.redo.length - 1]);
-    if (!historyEntry.patches.length && !historyEntry.selection) return; // Invalid entry
+    if (!historyEntry.patches.length) return;
     let nextProgress = data.progress;
-    if (historyEntry.patches.length > 0) {
-      for (const p of historyEntry.patches) nextProgress = applyPatch(nextProgress, p);
-    }
-    // For selection-only redo actions or final redo back to current state
-    if (historyEntry.selection) {
-      nextProgress = { ...nextProgress, selection: historyEntry.selection };
-    }
+    for (const p of historyEntry.patches) nextProgress = applyPatch(nextProgress, p);
+    if (historyEntry.selection) nextProgress = { ...nextProgress, selection: historyEntry.selection };
     persist({
       ...data,
       progress: nextProgress,
