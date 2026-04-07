@@ -41,6 +41,7 @@ type FolderMenuPrefs = {
 };
 
 const FOLDER_MENU_FILTER_PREFS_KEY = "sphenpad-folder-menu-filters-v1";
+const FOLDER_ACTIVE_ID_KEY = "sphenpad-folders-active-id-v1";
 const NOOP = () => {};
 const FOLDER_SORT_OPTIONS: SelectControlOption[] = [
   { value: "recent", label: "Recent" },
@@ -83,6 +84,17 @@ function readInitialFolderMenuPrefs(): FolderMenuPrefs {
     };
   } catch {
     return { sortOrder: "recent", sortDirection: "desc", filterStatusList: [] };
+  }
+}
+
+function readInitialActiveFolderId(): string | null {
+  try {
+    const raw = localStorage.getItem(FOLDER_ACTIVE_ID_KEY);
+    if (typeof raw !== "string") return null;
+    const trimmed = raw.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  } catch {
+    return null;
   }
 }
 
@@ -243,6 +255,7 @@ export function FoldersPage() {
   const nav = useNavigate();
   const location = useLocation();
   const initialPrefs = useMemo(readInitialFolderMenuPrefs, []);
+  const initialActiveFolderId = useMemo(readInitialActiveFolderId, []);
   const appliedReturnStateRef = useRef(false);
   const [initialFoldersLoaded, setInitialFoldersLoaded] = useState(false);
 
@@ -251,7 +264,7 @@ export function FoldersPage() {
   const [sortOrder, setSortOrder] = useState<SortOrder>(initialPrefs.sortOrder);
   const [sortDirection, setSortDirection] = useState<SortDirection>(initialPrefs.sortDirection);
   const [filterStatusList, setFilterStatusList] = useState<FilterStatus[]>(initialPrefs.filterStatusList);
-  const [activeFolderId, setActiveFolderId] = useState<string | null>(null);
+  const [activeFolderId, setActiveFolderId] = useState<string | null>(initialActiveFolderId);
 
   const [folderCreateDialogOpen, setFolderCreateDialogOpen] = useState(false);
   const [folderCreateName, setFolderCreateName] = useState("");
@@ -288,6 +301,19 @@ export function FoldersPage() {
       JSON.stringify({ sortOrder, sortDirection, filterStatusList } satisfies FolderMenuPrefs),
     );
   }, [sortOrder, sortDirection, filterStatusList]);
+
+  useEffect(() => {
+    try {
+      if (activeFolderId) {
+        localStorage.setItem(FOLDER_ACTIVE_ID_KEY, activeFolderId);
+        return;
+      }
+
+      localStorage.removeItem(FOLDER_ACTIVE_ID_KEY);
+    } catch {
+      // Ignore localStorage errors.
+    }
+  }, [activeFolderId]);
 
   useEffect(() => {
     if (!initialFoldersLoaded) return;
