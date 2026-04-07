@@ -1,4 +1,4 @@
-import { Fragment, useDeferredValue, useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
+import { Fragment, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   addPuzzleToFolder,
@@ -15,7 +15,7 @@ import { fmtHMS } from "../core/time";
 import { GridCanvas } from "./GridCanvas";
 import { AppBrand } from "./AppBrand";
 import { IconFolder, IconHome, IconImport, IconSettings, IconSort, IconSortAsc, IconSortDesc } from "./icons";
-import { SelectControl } from "./SelectControl";
+import { SelectControl, type SelectControlOption } from "./SelectControl";
 import { SettingsOverlay } from "./SettingsOverlay";
 import {
   clearReturnStateFromHistory,
@@ -54,6 +54,22 @@ type FolderMenuPrefs = {
 const MAIN_MENU_FILTER_PREFS_KEY = "sphenpad-main-menu-filters-v1";
 const FOLDER_MENU_PREFS_KEY = "sphenpad-folder-menu-filters-v1";
 const MAIN_MENU_SEARCH_FIELDS = new Set<MainMenuSearchField>(["any", "title", "constraints", "author", "collection"]);
+const MAIN_MENU_SEARCH_FIELD_OPTIONS: SelectControlOption[] = [
+  { value: "any", label: "Search: Any field" },
+  { value: "title", label: "Title" },
+  { value: "constraints", label: "Constraints" },
+  { value: "author", label: "Author" },
+  { value: "collection", label: "Collection" },
+];
+const PUZZLE_SORT_OPTIONS: SelectControlOption[] = [
+  { value: "recent", label: "Recent" },
+  { value: "az", label: "A - Z" },
+  { value: "date", label: "Video Date" },
+];
+const FOLDER_SORT_OPTIONS: SelectControlOption[] = [
+  { value: "recent", label: "Recent" },
+  { value: "az", label: "A - Z" },
+];
 
 const DEFAULT_MAIN_MENU_FILTER_PREFS: MainMenuFilterPrefs = {
   sortOrder: "recent",
@@ -78,6 +94,15 @@ function orderSelectedFirst(options: string[], selected: string[]): string[] {
   const selectedOptions = options.filter((option) => selectedSet.has(option));
   const remainingOptions = options.filter((option) => !selectedSet.has(option));
   return [...selectedOptions, ...remainingOptions];
+}
+
+function incrementCountMap(counts: Map<string, number>, values: Iterable<string>) {
+  const seen = new Set<string>();
+  for (const value of values) {
+    if (!value || seen.has(value)) continue;
+    seen.add(value);
+    counts.set(value, (counts.get(value) ?? 0) + 1);
+  }
 }
 
 const NOOP = () => {};
@@ -540,6 +565,79 @@ export function MainMenu() {
     return orderSelectedFirst(matched, constraintFilters);
   }, [constraintOptions, constraintFilterQuery, constraintFilters]);
 
+  const authorOptionCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    const queryLower = clean(deferredQuery).toLowerCase();
+
+    for (const row of rows) {
+      const rowConstraints = constraintBulletsByPuzzle.get(row.key) ?? [];
+      const rowCollection = puzzleCollection(row);
+      if (collectionFilters.length && !collectionFilters.includes(rowCollection)) continue;
+      if (constraintFilters.length && !constraintFilters.every((selectedConstraint) => rowConstraints.includes(selectedConstraint))) continue;
+      if (!matchesMainMenuSearch(row, rowConstraints, searchField, queryLower)) continue;
+      incrementCountMap(counts, puzzleAuthors(row));
+    }
+
+    return counts;
+  }, [rows, constraintBulletsByPuzzle, collectionFilters, constraintFilters, deferredQuery, searchField]);
+
+  const collectionOptionCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    const queryLower = clean(deferredQuery).toLowerCase();
+
+    for (const row of rows) {
+      const rowConstraints = constraintBulletsByPuzzle.get(row.key) ?? [];
+      const rowAuthors = puzzleAuthors(row);
+      if (authorFilters.length && !authorFilters.some((selectedAuthor) => rowAuthors.includes(selectedAuthor))) continue;
+      if (constraintFilters.length && !constraintFilters.every((selectedConstraint) => rowConstraints.includes(selectedConstraint))) continue;
+      if (!matchesMainMenuSearch(row, rowConstraints, searchField, queryLower)) continue;
+      incrementCountMap(counts, [puzzleCollection(row)]);
+    }
+
+    return counts;
+  }, [rows, constraintBulletsByPuzzle, authorFilters, constraintFilters, deferredQuery, searchField]);
+
+  const constraintOptionCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    const queryLower = clean(deferredQuery).toLowerCase();
+
+    for (const row of rows) {
+      const rowAuthors = puzzleAuthors(row);
+      const rowCollection = puzzleCollection(row);
+      if (authorFilters.length && !authorFilters.some((selectedAuthor) => rowAuthors.includes(selectedAuthor))) continue;
+      if (collectionFilters.length && !collectionFilters.includes(rowCollection)) continue;
+      const rowConstraints = constraintBulletsByPuzzle.get(row.key) ?? [];
+      if (!matchesMainMenuSearch(row, rowConstraints, searchField, queryLower)) continue;
+      incrementCountMap(counts, rowConstraints);
+    }
+
+    return counts;
+  }, [rows, constraintBulletsByPuzzle, authorFilters, collectionFilters, deferredQuery, searchField]);
+
+  const authorFilterOptions = useMemo(() => {
+    return filteredAuthorOptions.map((value) => ({
+      value,
+      label: value,
+      count: authorOptionCounts.get(value) ?? 0,
+    } satisfies SelectControlOption));
+  }, [filteredAuthorOptions, authorOptionCounts]);
+
+  const collectionFilterOptions = useMemo(() => {
+    return filteredCollectionOptions.map((value) => ({
+      value,
+      label: value,
+      count: collectionOptionCounts.get(value) ?? 0,
+    } satisfies SelectControlOption));
+  }, [filteredCollectionOptions, collectionOptionCounts]);
+
+  const constraintFilterOptions = useMemo(() => {
+    return filteredConstraintOptions.map((value) => ({
+      value,
+      label: value,
+      count: constraintOptionCounts.get(value) ?? 0,
+    } satisfies SelectControlOption));
+  }, [filteredConstraintOptions, constraintOptionCounts]);
+
   useEffect(() => {
     if (!rows.length) return;
 
@@ -665,19 +763,45 @@ export function MainMenu() {
     );
   }, [folders, activeFolderId, folderSortOrder, folderSortDirection]);
 
-  const visibleFolderPuzzles = useMemo(() => {
+  const activeFolderResolvedPuzzles = useMemo(() => {
     if (!activeFolder) return [];
 
-    const resolved = activeFolder.puzzleKeys
+    return activeFolder.puzzleKeys
       .map((key) => puzzleByKey.get(key))
       .filter((row): row is StoredPuzzle => Boolean(row));
+  }, [activeFolder, puzzleByKey]);
 
+  const folderStatusCounts = useMemo(() => {
+    const counts: Record<FolderFilterStatus, number> = {
+      all: activeFolderResolvedPuzzles.length,
+      not_started: 0,
+      in_progress: 0,
+      complete: 0,
+    };
+
+    for (const row of activeFolderResolvedPuzzles) {
+      counts[puzzleStatus(row)] += 1;
+    }
+
+    return counts;
+  }, [activeFolderResolvedPuzzles]);
+
+  const folderFilterOptions = useMemo(() => {
+    return [
+      { value: "all", label: "All", count: folderStatusCounts.all },
+      { value: "not_started", label: "Not Started", count: folderStatusCounts.not_started },
+      { value: "in_progress", label: "In Progress", count: folderStatusCounts.in_progress },
+      { value: "complete", label: "Complete", count: folderStatusCounts.complete },
+    ] satisfies SelectControlOption[];
+  }, [folderStatusCounts]);
+
+  const visibleFolderPuzzles = useMemo(() => {
     return sortPuzzles(
-      resolved.filter((row) => matchesStatusList(row, folderFilterStatus === "all" ? [] : [folderFilterStatus])),
+      activeFolderResolvedPuzzles.filter((row) => matchesStatusList(row, folderFilterStatus === "all" ? [] : [folderFilterStatus])),
       folderSortOrder,
       folderSortDirection,
     );
-  }, [activeFolder, puzzleByKey, folderFilterStatus, folderSortOrder, folderSortDirection]);
+  }, [activeFolderResolvedPuzzles, folderFilterStatus, folderSortOrder, folderSortDirection]);
 
   const addDialogChildFolders = useMemo(() => {
     return sortFolders(
@@ -918,42 +1042,6 @@ export function MainMenu() {
     setFilterStatusList([]);
   }
 
-  function onConstraintMouseDown(event: MouseEvent<HTMLSelectElement>) {
-    const target = event.target;
-    if (!(target instanceof HTMLOptionElement)) return;
-    event.preventDefault();
-    const value = target.value;
-    setConstraintFilters((current) => (
-      current.includes(value)
-        ? current.filter((entry) => entry !== value)
-        : [...current, value]
-    ));
-  }
-
-  function onAuthorMouseDown(event: MouseEvent<HTMLSelectElement>) {
-    const target = event.target;
-    if (!(target instanceof HTMLOptionElement)) return;
-    event.preventDefault();
-    const value = target.value;
-    setAuthorFilters((current) => (
-      current.includes(value)
-        ? current.filter((entry) => entry !== value)
-        : [...current, value]
-    ));
-  }
-
-  function onCollectionMouseDown(event: MouseEvent<HTMLSelectElement>) {
-    const target = event.target;
-    if (!(target instanceof HTMLOptionElement)) return;
-    event.preventDefault();
-    const value = target.value;
-    setCollectionFilters((current) => (
-      current.includes(value)
-        ? current.filter((entry) => entry !== value)
-        : [...current, value]
-    ));
-  }
-
   return (
     <div className="shell">
       <div className="topbar">
@@ -992,17 +1080,11 @@ export function MainMenu() {
                 <SelectControl
                   className="btn menuControlSelect"
                   value={searchField}
-                  onChange={(event) => {
-                    const value = event.target.value;
+                  onValueChange={(value) => {
                     if (isMainMenuSearchField(value)) setSearchField(value);
                   }}
-                >
-                  <option value="any">Search: Any field</option>
-                  <option value="title">Title</option>
-                  <option value="constraints">Constraints</option>
-                  <option value="author">Author</option>
-                  <option value="collection">Collection</option>
-                </SelectControl>
+                  options={MAIN_MENU_SEARCH_FIELD_OPTIONS}
+                />
               </div>
 
               <div className="archiveFilterRow">
@@ -1020,19 +1102,10 @@ export function MainMenu() {
                     multiple
                     size={Math.min(8, Math.max(4, filteredAuthorOptions.length || 4))}
                     value={authorFilters}
-                    onMouseDown={onAuthorMouseDown}
-                    onChange={(event) => {
-                      const nextSelected = Array.from(event.target.selectedOptions, (option) => option.value);
-                      setAuthorFilters(nextSelected);
-                    }}
+                    onValuesChange={setAuthorFilters}
                     aria-label="Filter puzzles by author"
-                  >
-                    {filteredAuthorOptions.map((value) => (
-                      <option key={value} value={value}>
-                        {value}
-                      </option>
-                    ))}
-                  </SelectControl>
+                    options={authorFilterOptions}
+                  />
                   <span className="muted archiveFilterHint">
                     {authorFilters.length ? `${authorFilters.length} selected` : "All"}
                   </span>
@@ -1052,19 +1125,10 @@ export function MainMenu() {
                     multiple
                     size={Math.min(8, Math.max(4, filteredCollectionOptions.length || 4))}
                     value={collectionFilters}
-                    onMouseDown={onCollectionMouseDown}
-                    onChange={(event) => {
-                      const nextSelected = Array.from(event.target.selectedOptions, (option) => option.value);
-                      setCollectionFilters(nextSelected);
-                    }}
+                    onValuesChange={setCollectionFilters}
                     aria-label="Filter puzzles by collection"
-                  >
-                    {filteredCollectionOptions.map((value) => (
-                      <option key={value} value={value}>
-                        {value}
-                      </option>
-                    ))}
-                  </SelectControl>
+                    options={collectionFilterOptions}
+                  />
                   <span className="muted archiveFilterHint">
                     {collectionFilters.length ? `${collectionFilters.length} selected` : "All"}
                   </span>
@@ -1084,19 +1148,10 @@ export function MainMenu() {
                     multiple
                     size={Math.min(8, Math.max(4, filteredConstraintOptions.length || 4))}
                     value={constraintFilters}
-                    onMouseDown={onConstraintMouseDown}
-                    onChange={(event) => {
-                      const nextSelected = Array.from(event.target.selectedOptions, (option) => option.value);
-                      setConstraintFilters(nextSelected);
-                    }}
+                    onValuesChange={setConstraintFilters}
                     aria-label="Filter puzzles by constraints"
-                  >
-                    {filteredConstraintOptions.map((value) => (
-                      <option key={value} value={value}>
-                        {value}
-                      </option>
-                    ))}
-                  </SelectControl>
+                    options={constraintFilterOptions}
+                  />
                   <span className="muted archiveFilterHint">
                     {constraintOptions.length
                       ? (constraintFilters.length ? `${constraintFilters.length} selected` : "All")
@@ -1131,13 +1186,10 @@ export function MainMenu() {
                   <SelectControl
                     className="btn menuControlSelect"
                     value={sortOrder}
-                    onChange={(e) => setSortOrder(e.target.value as SortOrder)}
+                    onValueChange={(value) => setSortOrder(value as SortOrder)}
                     aria-label="Sort puzzles"
-                  >
-                    <option value="recent">Recent</option>
-                    <option value="az">A - Z</option>
-                    <option value="date">Video Date</option>
-                  </SelectControl>
+                    options={PUZZLE_SORT_OPTIONS}
+                  />
                 </div>
                 <button
                   className="btn sortDirectionButton"
@@ -1383,11 +1435,9 @@ export function MainMenu() {
                   <SelectControl
                     className="btn menuControlSelect"
                     value={folderSortOrder}
-                    onChange={(e) => setFolderSortOrder(e.target.value as SortOrder)}
-                  >
-                    <option value="recent">Recent</option>
-                    <option value="az">A - Z</option>
-                  </SelectControl>
+                    onValueChange={(value) => setFolderSortOrder(value as SortOrder)}
+                    options={FOLDER_SORT_OPTIONS}
+                  />
                   <button
                     className="btn sortDirectionButton"
                     onClick={() => setFolderSortDirection((current) => (current === "asc" ? "desc" : "asc"))}
@@ -1404,15 +1454,11 @@ export function MainMenu() {
                 <SelectControl
                   className="btn menuControlSelect"
                   value={folderFilterStatus}
-                  onChange={(e) => setFolderFilterStatus(e.target.value as FilterStatus)}
+                  onValueChange={(value) => setFolderFilterStatus(value as FolderFilterStatus)}
                   searchable
                   searchPlaceholder="Search statuses..."
-                >
-                  <option value="all">All</option>
-                  <option value="not_started">Not Started</option>
-                  <option value="in_progress">In Progress</option>
-                  <option value="complete">Complete</option>
-                </SelectControl>
+                  options={folderFilterOptions}
+                />
               </label>
             </div>
 

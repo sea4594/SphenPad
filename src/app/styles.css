@@ -344,6 +344,10 @@ button,
   padding-left: 34px;
 }
 
+.sortSelectWrap > .selectControl > .selectControlTrigger {
+  padding-left: 34px;
+}
+
 .sortControlGroup {
   display: inline-flex;
   align-items: stretch;
@@ -553,6 +557,132 @@ input.url {
 
 .menuControlSelect {
   cursor: pointer;
+}
+
+.selectControl {
+  position: relative;
+  min-width: 0;
+}
+
+.selectControl.btn {
+  padding: 0;
+}
+
+.selectControl--single {
+  display: inline-flex;
+  align-items: stretch;
+}
+
+.selectControlTrigger {
+  width: 100%;
+  min-width: 0;
+  min-height: inherit;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  text-align: left;
+}
+
+.selectControlTrigger:focus,
+.selectControlTrigger:focus-visible {
+  outline: none;
+}
+
+.selectControlTriggerLabel {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.selectControlChevron {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.selectControlPopover {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 20;
+  display: grid;
+  gap: 4px;
+  padding: 6px;
+  background: linear-gradient(180deg, var(--panel-soft), var(--panel));
+  border: 1px solid color-mix(in oklab, var(--text) 18%, transparent);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.24);
+  max-height: min(320px, 50dvh);
+  overflow: auto;
+}
+
+.selectControl--multiple {
+  display: block;
+  padding: 0;
+}
+
+.selectControlList {
+  display: grid;
+  gap: 4px;
+  padding: 6px;
+  min-height: 0;
+  max-height: calc(var(--select-control-visible-rows, 4) * 34px + 12px);
+  overflow: auto;
+}
+
+.selectControlOption {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 7px 8px;
+  text-align: left;
+}
+
+.selectControlOption:focus,
+.selectControlOption:focus-visible {
+  outline: none;
+}
+
+.selectControlOption.is-selected {
+  background: color-mix(in oklab, var(--accent) 22%, transparent);
+}
+
+.selectControlOption.is-disabled,
+.selectControl.is-disabled .selectControlTrigger {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.selectControlOptionLabel {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.selectControlOptionMeta {
+  justify-self: end;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.selectControlEmpty {
+  padding: 7px 8px;
+  font-size: 12px;
 }
 
 .menuStatusTabs {
@@ -963,7 +1093,6 @@ input.url {
 }
 
 .archiveConstraintSelect {
-  padding: 6px;
   border-radius: 0;
   border: 1px solid color-mix(in oklab, var(--text) 24%, transparent);
   background: var(--panel-soft);
@@ -977,12 +1106,8 @@ input.url {
   -webkit-user-select: auto;
 }
 
-.archiveConstraintSelect option {
-  padding: 3px 4px;
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.archiveConstraintSelect .selectControlList {
+  max-height: calc(var(--select-control-visible-rows, 4) * 34px + 12px);
 }
 
 .archiveFilterHint {

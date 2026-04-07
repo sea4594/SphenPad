@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
+import { Fragment, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { setSyncedLocalStorageItem } from "../core/localDataState";
 import { normalizePuzzleKey } from "../core/id";
@@ -9,7 +9,7 @@ import { loadFromSudokuPad } from "../core/sudokupad";
 import { AppBrand } from "./AppBrand";
 import { GridCanvas } from "./GridCanvas";
 import { IconFolder, IconHome, IconImport, IconPlay, IconSettings, IconSort, IconSortAsc, IconSortDesc } from "./icons";
-import { SelectControl } from "./SelectControl";
+import { SelectControl, type SelectControlOption } from "./SelectControl";
 import { SettingsOverlay } from "./SettingsOverlay";
 import {
   clearReturnStateFromHistory,
@@ -88,6 +88,20 @@ const SEARCH_FIELDS = new Set<SearchField>([
 ]);
 
 const SORT_FIELDS = new Set<SortField>(["title", "video_length", "date"]);
+const ARCHIVE_SEARCH_FIELD_OPTIONS: SelectControlOption[] = [
+  { value: "any", label: "Search: Any field" },
+  { value: "title", label: "Title" },
+  { value: "constraints", label: "Constraints" },
+  { value: "video_title", label: "Video title" },
+  { value: "author", label: "Puzzle author" },
+  { value: "host", label: "Video host" },
+  { value: "collection", label: "Collection" },
+];
+const ARCHIVE_SORT_OPTIONS: SelectControlOption[] = [
+  { value: "date", label: "Video date" },
+  { value: "title", label: "Puzzle title" },
+  { value: "video_length", label: "Video length" },
+];
 
 const SUDOKUPAD_ICON_URL =
   "https://sudokupad.app/images/sudokupad_square_logo.png";
@@ -128,6 +142,15 @@ function orderSelectedFirst(options: string[], selected: string[]): string[] {
   const selectedOptions = options.filter((option) => selectedSet.has(option));
   const remainingOptions = options.filter((option) => !selectedSet.has(option));
   return [...selectedOptions, ...remainingOptions];
+}
+
+function incrementCountMap(counts: Map<string, number>, values: Iterable<string>) {
+  const seen = new Set<string>();
+  for (const value of values) {
+    if (!value || seen.has(value)) continue;
+    seen.add(value);
+    counts.set(value, (counts.get(value) ?? 0) + 1);
+  }
 }
 
 function getRenderConfig() {
@@ -544,6 +567,117 @@ export function CtCArchivePage() {
     return orderSelectedFirst(matched, constraintFilters);
   }, [constraintOptions, constraintFilterQuery, constraintFilters]);
 
+  const hostOptionCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    const q = clean(deferredQuery).toLowerCase();
+    const minSeconds = minLength ? parseMinutesToSeconds(minLength) : null;
+    const maxSeconds = maxLength ? parseMinutesToSeconds(maxLength) : null;
+
+    for (const row of rows) {
+      const rowAuthors = splitSemicolonValues(row.puzzleAuthor);
+      if (authorFilters.length && !authorFilters.some((selectedAuthor) => rowAuthors.includes(selectedAuthor))) continue;
+      if (collectionFilters.length && !collectionFilters.includes(row.collection)) continue;
+      if (constraintFilters.length && !constraintFilters.every((selectedConstraint) => row.constraintTypes.includes(selectedConstraint))) continue;
+      if (minSeconds != null && (row.videoLengthSeconds == null || row.videoLengthSeconds < minSeconds)) continue;
+      if (maxSeconds != null && (row.videoLengthSeconds == null || row.videoLengthSeconds > maxSeconds)) continue;
+      if (!matchesSearch(row, searchField, q)) continue;
+      incrementCountMap(counts, [row.videoHost]);
+    }
+
+    return counts;
+  }, [rows, deferredQuery, searchField, authorFilters, collectionFilters, constraintFilters, minLength, maxLength]);
+
+  const authorOptionCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    const q = clean(deferredQuery).toLowerCase();
+    const minSeconds = minLength ? parseMinutesToSeconds(minLength) : null;
+    const maxSeconds = maxLength ? parseMinutesToSeconds(maxLength) : null;
+
+    for (const row of rows) {
+      if (hostFilters.length && !hostFilters.includes(row.videoHost)) continue;
+      if (collectionFilters.length && !collectionFilters.includes(row.collection)) continue;
+      if (constraintFilters.length && !constraintFilters.every((selectedConstraint) => row.constraintTypes.includes(selectedConstraint))) continue;
+      if (minSeconds != null && (row.videoLengthSeconds == null || row.videoLengthSeconds < minSeconds)) continue;
+      if (maxSeconds != null && (row.videoLengthSeconds == null || row.videoLengthSeconds > maxSeconds)) continue;
+      if (!matchesSearch(row, searchField, q)) continue;
+      incrementCountMap(counts, splitSemicolonValues(row.puzzleAuthor));
+    }
+
+    return counts;
+  }, [rows, deferredQuery, searchField, hostFilters, collectionFilters, constraintFilters, minLength, maxLength]);
+
+  const collectionOptionCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    const q = clean(deferredQuery).toLowerCase();
+    const minSeconds = minLength ? parseMinutesToSeconds(minLength) : null;
+    const maxSeconds = maxLength ? parseMinutesToSeconds(maxLength) : null;
+
+    for (const row of rows) {
+      const rowAuthors = splitSemicolonValues(row.puzzleAuthor);
+      if (hostFilters.length && !hostFilters.includes(row.videoHost)) continue;
+      if (authorFilters.length && !authorFilters.some((selectedAuthor) => rowAuthors.includes(selectedAuthor))) continue;
+      if (constraintFilters.length && !constraintFilters.every((selectedConstraint) => row.constraintTypes.includes(selectedConstraint))) continue;
+      if (minSeconds != null && (row.videoLengthSeconds == null || row.videoLengthSeconds < minSeconds)) continue;
+      if (maxSeconds != null && (row.videoLengthSeconds == null || row.videoLengthSeconds > maxSeconds)) continue;
+      if (!matchesSearch(row, searchField, q)) continue;
+      incrementCountMap(counts, [row.collection]);
+    }
+
+    return counts;
+  }, [rows, deferredQuery, searchField, hostFilters, authorFilters, constraintFilters, minLength, maxLength]);
+
+  const constraintOptionCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    const q = clean(deferredQuery).toLowerCase();
+    const minSeconds = minLength ? parseMinutesToSeconds(minLength) : null;
+    const maxSeconds = maxLength ? parseMinutesToSeconds(maxLength) : null;
+
+    for (const row of rows) {
+      const rowAuthors = splitSemicolonValues(row.puzzleAuthor);
+      if (hostFilters.length && !hostFilters.includes(row.videoHost)) continue;
+      if (authorFilters.length && !authorFilters.some((selectedAuthor) => rowAuthors.includes(selectedAuthor))) continue;
+      if (collectionFilters.length && !collectionFilters.includes(row.collection)) continue;
+      if (minSeconds != null && (row.videoLengthSeconds == null || row.videoLengthSeconds < minSeconds)) continue;
+      if (maxSeconds != null && (row.videoLengthSeconds == null || row.videoLengthSeconds > maxSeconds)) continue;
+      if (!matchesSearch(row, searchField, q)) continue;
+      incrementCountMap(counts, row.constraintTypes);
+    }
+
+    return counts;
+  }, [rows, deferredQuery, searchField, hostFilters, authorFilters, collectionFilters, minLength, maxLength]);
+
+  const hostFilterOptions = useMemo(() => {
+    return filteredHostOptions.map((value) => ({
+      value,
+      label: value,
+      count: hostOptionCounts.get(value) ?? 0,
+    } satisfies SelectControlOption));
+  }, [filteredHostOptions, hostOptionCounts]);
+
+  const authorFilterOptions = useMemo(() => {
+    return filteredAuthorOptions.map((value) => ({
+      value,
+      label: value,
+      count: authorOptionCounts.get(value) ?? 0,
+    } satisfies SelectControlOption));
+  }, [filteredAuthorOptions, authorOptionCounts]);
+
+  const collectionFilterOptions = useMemo(() => {
+    return filteredCollectionOptions.map((value) => ({
+      value,
+      label: displayCollection(value) || "None",
+      count: collectionOptionCounts.get(value) ?? 0,
+    } satisfies SelectControlOption));
+  }, [filteredCollectionOptions, collectionOptionCounts]);
+
+  const constraintFilterOptions = useMemo(() => {
+    return filteredConstraintOptions.map((value) => ({
+      value,
+      label: value,
+      count: constraintOptionCounts.get(value) ?? 0,
+    } satisfies SelectControlOption));
+  }, [filteredConstraintOptions, constraintOptionCounts]);
+
   useEffect(() => {
     if (!rows.length) return;
 
@@ -793,54 +927,6 @@ export function CtCArchivePage() {
     setConstraintFilterQuery("");
     setMinLength("");
     setMaxLength("");
-  }, []);
-
-  const onConstraintMouseDown = useCallback((event: MouseEvent<HTMLSelectElement>) => {
-    const target = event.target;
-    if (!(target instanceof HTMLOptionElement)) return;
-    event.preventDefault();
-    const value = target.value;
-    setConstraintFilters((current) => (
-      current.includes(value)
-        ? current.filter((entry) => entry !== value)
-        : [...current, value]
-    ));
-  }, []);
-
-  const onHostMouseDown = useCallback((event: MouseEvent<HTMLSelectElement>) => {
-    const target = event.target;
-    if (!(target instanceof HTMLOptionElement)) return;
-    event.preventDefault();
-    const value = target.value;
-    setHostFilters((current) => (
-      current.includes(value)
-        ? current.filter((entry) => entry !== value)
-        : [...current, value]
-    ));
-  }, []);
-
-  const onAuthorMouseDown = useCallback((event: MouseEvent<HTMLSelectElement>) => {
-    const target = event.target;
-    if (!(target instanceof HTMLOptionElement)) return;
-    event.preventDefault();
-    const value = target.value;
-    setAuthorFilters((current) => (
-      current.includes(value)
-        ? current.filter((entry) => entry !== value)
-        : [...current, value]
-    ));
-  }, []);
-
-  const onCollectionMouseDown = useCallback((event: MouseEvent<HTMLSelectElement>) => {
-    const target = event.target;
-    if (!(target instanceof HTMLOptionElement)) return;
-    event.preventDefault();
-    const value = target.value;
-    setCollectionFilters((current) => (
-      current.includes(value)
-        ? current.filter((entry) => entry !== value)
-        : [...current, value]
-    ));
   }, []);
 
   async function onLoad() {
@@ -1167,19 +1253,11 @@ export function CtCArchivePage() {
               <SelectControl
                 className="btn menuControlSelect"
                 value={searchField}
-                onChange={(e) => {
-                  const value = e.target.value;
+                onValueChange={(value) => {
                   if (isSearchField(value)) setSearchField(value);
                 }}
-              >
-                <option value="any">Search: Any field</option>
-                <option value="title">Title</option>
-                <option value="constraints">Constraints</option>
-                <option value="video_title">Video title</option>
-                <option value="author">Puzzle author</option>
-                <option value="host">Video host</option>
-                <option value="collection">Collection</option>
-              </SelectControl>
+                options={ARCHIVE_SEARCH_FIELD_OPTIONS}
+              />
             </div>
 
             <div className="archiveFilterRow">
@@ -1197,19 +1275,10 @@ export function CtCArchivePage() {
                   multiple
                   size={Math.min(8, Math.max(4, filteredHostOptions.length || 4))}
                   value={hostFilters}
-                  onMouseDown={onHostMouseDown}
-                  onChange={(e) => {
-                    const nextSelected = Array.from(e.target.selectedOptions, (option) => option.value);
-                    setHostFilters(nextSelected);
-                  }}
+                  onValuesChange={setHostFilters}
                   aria-label="Filter by host"
-                >
-                  {filteredHostOptions.map((v) => (
-                    <option key={v} value={v}>
-                      {v}
-                    </option>
-                  ))}
-                </SelectControl>
+                  options={hostFilterOptions}
+                />
                 <span className="muted archiveFilterHint">
                   {hostFilters.length ? `${hostFilters.length} selected` : "All"}
                 </span>
@@ -1229,19 +1298,10 @@ export function CtCArchivePage() {
                   multiple
                   size={Math.min(8, Math.max(4, filteredAuthorOptions.length || 4))}
                   value={authorFilters}
-                  onMouseDown={onAuthorMouseDown}
-                  onChange={(e) => {
-                    const nextSelected = Array.from(e.target.selectedOptions, (option) => option.value);
-                    setAuthorFilters(nextSelected);
-                  }}
+                  onValuesChange={setAuthorFilters}
                   aria-label="Filter by author"
-                >
-                  {filteredAuthorOptions.map((v) => (
-                    <option key={v} value={v}>
-                      {v}
-                    </option>
-                  ))}
-                </SelectControl>
+                  options={authorFilterOptions}
+                />
                 <span className="muted archiveFilterHint">
                   {authorFilters.length ? `${authorFilters.length} selected` : "All"}
                 </span>
@@ -1261,19 +1321,10 @@ export function CtCArchivePage() {
                   multiple
                   size={Math.min(8, Math.max(4, filteredCollectionOptions.length || 4))}
                   value={collectionFilters}
-                  onMouseDown={onCollectionMouseDown}
-                  onChange={(e) => {
-                    const nextSelected = Array.from(e.target.selectedOptions, (option) => option.value);
-                    setCollectionFilters(nextSelected);
-                  }}
+                  onValuesChange={setCollectionFilters}
                   aria-label="Filter by collection"
-                >
-                  {filteredCollectionOptions.map((v) => (
-                    <option key={v} value={v}>
-                      {displayCollection(v) || "None"}
-                    </option>
-                  ))}
-                </SelectControl>
+                  options={collectionFilterOptions}
+                />
                 <span className="muted archiveFilterHint">
                   {collectionFilters.length ? `${collectionFilters.length} selected` : "All"}
                 </span>
@@ -1293,19 +1344,10 @@ export function CtCArchivePage() {
                   multiple
                   size={Math.min(8, Math.max(4, filteredConstraintOptions.length || 4))}
                   value={constraintFilters}
-                  onMouseDown={onConstraintMouseDown}
-                  onChange={(e) => {
-                    const nextSelected = Array.from(e.target.selectedOptions, (option) => option.value);
-                    setConstraintFilters(nextSelected);
-                  }}
+                  onValuesChange={setConstraintFilters}
                   aria-label="Filter by constraints"
-                >
-                  {filteredConstraintOptions.map((value) => (
-                    <option key={value} value={value}>
-                      {value}
-                    </option>
-                  ))}
-                </SelectControl>
+                  options={constraintFilterOptions}
+                />
                 <span className="muted archiveFilterHint">
                   {constraintFilters.length ? `${constraintFilters.length} selected` : "All"}
                 </span>
@@ -1360,15 +1402,11 @@ export function CtCArchivePage() {
                     <SelectControl
                       className="btn menuControlSelect"
                       value={sortField}
-                      onChange={(e) => {
-                        const value = e.target.value;
+                      onValueChange={(value) => {
                         if (isSortField(value)) setSortField(value);
                       }}
-                    >
-                      <option value="date">Video date</option>
-                      <option value="title">Puzzle title</option>
-                      <option value="video_length">Video length</option>
-                    </SelectControl>
+                      options={ARCHIVE_SORT_OPTIONS}
+                    />
                   </div>
                   <button
                     className="btn sortDirectionButton"

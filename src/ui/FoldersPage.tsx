@@ -16,7 +16,7 @@ import { fmtHMS } from "../core/time";
 import { AppBrand } from "./AppBrand";
 import { GridCanvas } from "./GridCanvas";
 import { IconFolder, IconHome, IconImport, IconSettings, IconSort, IconSortAsc, IconSortDesc } from "./icons";
-import { SelectControl } from "./SelectControl";
+import { SelectControl, type SelectControlOption } from "./SelectControl";
 import { SettingsOverlay } from "./SettingsOverlay";
 import {
   clearReturnStateFromHistory,
@@ -41,6 +41,11 @@ type FolderMenuPrefs = {
 
 const FOLDER_MENU_FILTER_PREFS_KEY = "sphenpad-folder-menu-filters-v1";
 const NOOP = () => {};
+const FOLDER_SORT_OPTIONS: SelectControlOption[] = [
+  { value: "recent", label: "Recent" },
+  { value: "az", label: "A - Z" },
+  { value: "date", label: "Video Date" },
+];
 
 function isSortOrder(value: string): value is SortOrder {
   return value === "recent" || value === "az" || value === "date";
@@ -360,6 +365,24 @@ export function FoldersPage() {
       sortDirection,
     );
   }, [activeFolder, puzzleByKey, filterStatusList, sortOrder, sortDirection]);
+
+  const folderStatusCounts = useMemo(() => {
+    const counts: Record<PuzzlePlayStatus, number> = {
+      not_started: 0,
+      in_progress: 0,
+      complete: 0,
+    };
+
+    if (!activeFolder) return counts;
+
+    for (const key of activeFolder.puzzleKeys) {
+      const row = puzzleByKey.get(key);
+      if (!row) continue;
+      counts[puzzleStatus(row)] += 1;
+    }
+
+    return counts;
+  }, [activeFolder, puzzleByKey]);
 
   async function onCreateFolder() {
     const folderName = folderCreateName.trim();
@@ -732,13 +755,10 @@ export function FoldersPage() {
                         <SelectControl
                           className="btn menuControlSelect"
                           value={sortOrder}
-                          onChange={(e) => setSortOrder(e.target.value as SortOrder)}
+                          onValueChange={(value) => setSortOrder(value as SortOrder)}
                           aria-label="Sort folders"
-                        >
-                          <option value="recent">Recent</option>
-                          <option value="az">A - Z</option>
-                          <option value="date">Video Date</option>
-                        </SelectControl>
+                          options={FOLDER_SORT_OPTIONS}
+                        />
                       </div>
                       <button
                         className="btn sortDirectionButton"
@@ -761,7 +781,7 @@ export function FoldersPage() {
                         )}
                         type="button"
                       >
-                        {statusLabel(status)}
+                        {statusLabel(status)} ({folderStatusCounts[status]})
                       </button>
                     ))}
                   </div>
