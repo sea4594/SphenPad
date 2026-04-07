@@ -1234,7 +1234,7 @@ input.url {
 }
 
 .archiveRulesDialog {
-  width: min(980px, 100%);
+  width: min(760px, 100%);
   max-height: min(92dvh, 900px);
   overflow: auto;
   display: flex;
