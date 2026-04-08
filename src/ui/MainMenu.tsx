@@ -25,11 +25,7 @@ import {
   currentRoutePath,
   readCurrentScrollPosition,
   readPuzzleReturnState,
-  restoreWindowScroll,
   withPuzzleOriginState,
-  loadMainPageScroll,
-  saveMainPageScroll,
-  setupPageScrollAutoSave,
 } from "./puzzleNavState";
 
 type SortOrder = "recent" | "az" | "date";
@@ -410,7 +406,6 @@ export function MainMenu(props: { isVisible?: boolean }) {
   const initialFilterPrefs = useMemo(readInitialMainMenuFilterPrefs, []);
   const initialFolderPrefs = useMemo(readInitialFolderMenuPrefs, []);
   const appliedReturnStateRef = useRef(false);
-  const scrollCleanupRef = useRef<(() => void) | null>(null);
 
   const [rows, setRows] = useState<StoredPuzzle[]>([]);
   const [folders, setFolders] = useState<PuzzleFolder[]>([]);
@@ -526,28 +521,8 @@ export function MainMenu(props: { isVisible?: boolean }) {
 
     setFoldersOpen(foldersOpenTarget);
     setActiveFolderId(activeFolderIdTarget);
-    restoreWindowScroll(returned.scrollY);
     clearReturnStateFromHistory();
   }, [isVisible, location.state]);
-
-  useEffect(() => {
-    if (!isVisible) return;
-    const savedScroll = loadMainPageScroll("main-menu");
-    restoreWindowScroll(savedScroll);
-  }, [isVisible]);
-
-  useEffect(() => {
-    if (!isVisible) return;
-    scrollCleanupRef.current = setupPageScrollAutoSave("main-menu");
-    return () => {
-      scrollCleanupRef.current?.();
-    };
-  }, [isVisible]);
-
-  useEffect(() => {
-    if (isVisible) return;
-    saveMainPageScroll("main-menu", readCurrentScrollPosition());
-  }, [isVisible]);
 
   const folderById = useMemo(() => {
     return new Map(folders.map((folder) => [folder.id, folder]));
@@ -892,14 +867,10 @@ export function MainMenu(props: { isVisible?: boolean }) {
   }
 
   function navigateToFolders() {
-    const scrollY = readCurrentScrollPosition();
-    saveMainPageScroll("main-menu", scrollY);
     nav("/folders");
   }
 
   function navigateToArchive() {
-    const scrollY = readCurrentScrollPosition();
-    saveMainPageScroll("main-menu", scrollY);
     nav("/archive");
   }
 

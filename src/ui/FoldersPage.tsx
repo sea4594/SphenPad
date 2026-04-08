@@ -25,11 +25,7 @@ import {
   currentRoutePath,
   readCurrentScrollPosition,
   readPuzzleReturnState,
-  restoreWindowScroll,
   withPuzzleOriginState,
-  loadMainPageScroll,
-  saveMainPageScroll,
-  setupPageScrollAutoSave,
 } from "./puzzleNavState";
 
 type SortOrder = "recent" | "az" | "date";
@@ -264,7 +260,6 @@ export function FoldersPage(props: { isVisible?: boolean }) {
   const initialPrefs = useMemo(readInitialFolderMenuPrefs, []);
   const initialActiveFolderId = useMemo(readInitialActiveFolderId, []);
   const appliedReturnStateRef = useRef(false);
-  const scrollCleanupRef = useRef<(() => void) | null>(null);
   const [initialFoldersLoaded, setInitialFoldersLoaded] = useState(false);
 
   const [rows, setRows] = useState<StoredPuzzle[]>([]);
@@ -346,28 +341,8 @@ export function FoldersPage(props: { isVisible?: boolean }) {
     const activeFolderIdTarget = returned.context?.activeFolderId ?? null;
 
     setActiveFolderId(activeFolderIdTarget);
-    restoreWindowScroll(returned.scrollY);
     clearReturnStateFromHistory();
   }, [isVisible, location.state]);
-
-  useEffect(() => {
-    if (!isVisible) return;
-    const savedScroll = loadMainPageScroll("folders");
-    restoreWindowScroll(savedScroll);
-  }, [isVisible]);
-
-  useEffect(() => {
-    if (!isVisible) return;
-    scrollCleanupRef.current = setupPageScrollAutoSave("folders");
-    return () => {
-      scrollCleanupRef.current?.();
-    };
-  }, [isVisible]);
-
-  useEffect(() => {
-    if (isVisible) return;
-    saveMainPageScroll("folders", readCurrentScrollPosition());
-  }, [isVisible]);
 
   const folderById = useMemo(() => {
     return new Map(folders.map((folder) => [folder.id, folder]));
@@ -719,14 +694,10 @@ export function FoldersPage(props: { isVisible?: boolean }) {
   }
 
   function navigateToMainMenu() {
-    const scrollY = readCurrentScrollPosition();
-    saveMainPageScroll("folders", scrollY);
     nav("/");
   }
 
   function navigateToArchive() {
-    const scrollY = readCurrentScrollPosition();
-    saveMainPageScroll("folders", scrollY);
     nav("/archive");
   }
 
