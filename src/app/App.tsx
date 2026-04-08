@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type CSSProperties } from "react";
 import { Route, Routes, HashRouter, useLocation, useNavigate } from "react-router-dom";
 import { CtCArchivePage } from "../ui/CtCArchivePage";
 import { FoldersPage } from "../ui/FoldersPage";
@@ -54,15 +54,23 @@ function MainPagesHost(props: { activePath: string }) {
   const showFolders = !isPuzzlePath && activePath === "/folders";
   const showArchive = !isPuzzlePath && activePath === "/archive";
 
+  const layerStyle = (visible: boolean): CSSProperties => ({
+    position: "absolute",
+    inset: 0,
+    visibility: visible ? "visible" : "hidden",
+    pointerEvents: visible ? "auto" : "none",
+    overflow: "hidden",
+  });
+
   return (
-    <div style={{ height: "100%", width: "100%" }}>
-      <div style={{ display: showMainMenu ? "block" : "none", height: "100%", width: "100%" }} aria-hidden={!showMainMenu}>
+    <div style={{ position: "absolute", inset: 0, overflow: "hidden", zIndex: 1 }}>
+      <div style={layerStyle(showMainMenu)} aria-hidden={!showMainMenu}>
         <MainMenu isVisible={showMainMenu} />
       </div>
-      <div style={{ display: showFolders ? "block" : "none", height: "100%", width: "100%" }} aria-hidden={!showFolders}>
+      <div style={layerStyle(showFolders)} aria-hidden={!showFolders}>
         <FoldersPage isVisible={showFolders} />
       </div>
-      <div style={{ display: showArchive ? "block" : "none", height: "100%", width: "100%" }} aria-hidden={!showArchive}>
+      <div style={layerStyle(showArchive)} aria-hidden={!showArchive}>
         <CtCArchivePage isVisible={showArchive} />
       </div>
     </div>
@@ -73,13 +81,22 @@ function MainPagesShell() {
   const location = useLocation();
 
   return (
-    <>
+    <div style={{ position: "relative", width: "100%", height: "100%", overflow: "hidden" }}>
       <RoutePersistence />
       <MainPagesHost activePath={location.pathname} />
-      <Routes>
-        <Route path="/p/:puzzleId" element={<PuzzlePage />} />
-      </Routes>
-    </>
+      <div style={{ position: "absolute", inset: 0, zIndex: 2, pointerEvents: "none" }}>
+        <Routes>
+          <Route
+            path="/p/:puzzleId"
+            element={(
+              <div style={{ width: "100%", height: "100%", pointerEvents: "auto" }}>
+                <PuzzlePage />
+              </div>
+            )}
+          />
+        </Routes>
+      </div>
+    </div>
   );
 }
 

@@ -377,6 +377,7 @@ export function CtCArchivePage(props: { isVisible?: boolean }) {
   const { isVisible = true } = props;
   const nav = useNavigate();
   const location = useLocation();
+  const [hasActivated, setHasActivated] = useState(isVisible);
   const [renderConfig] = useState(getRenderConfig);
   const initialFilterPrefs = useMemo(readInitialArchiveFilterPrefs, []);
   const appliedReturnStateRef = useRef(false);
@@ -424,6 +425,10 @@ export function CtCArchivePage(props: { isVisible?: boolean }) {
   const loadCountRef = useRef<number>(0);
   const pendingQueueRef = useRef<PreparedArchiveEntry[]>([]);
   const deferredQuery = useDeferredValue(query);
+
+  useEffect(() => {
+    if (isVisible) setHasActivated(true);
+  }, [isVisible]);
 
   useEffect(() => {
     return () => {
@@ -514,6 +519,7 @@ export function CtCArchivePage(props: { isVisible?: boolean }) {
   }
 
   useEffect(() => {
+    if (!hasActivated) return;
     void refreshRows();
 
     const run = () => {
@@ -533,7 +539,7 @@ export function CtCArchivePage(props: { isVisible?: boolean }) {
 
     const timer = window.setTimeout(run, 150);
     return () => window.clearTimeout(timer);
-  }, []);
+  }, [hasActivated]);
 
   const hosts = useMemo(
     () => Array.from(new Set(rows.map((r) => r.videoHost).filter(Boolean))).sort((a, b) => a.localeCompare(b)),
@@ -859,6 +865,7 @@ export function CtCArchivePage(props: { isVisible?: boolean }) {
   }, [previewedPuzzles, processPreviewQueue]);
 
   useEffect(() => {
+    if (!hasActivated) return;
     const observerOptions = {
       root: null,
       rootMargin: "50px",
@@ -891,7 +898,7 @@ export function CtCArchivePage(props: { isVisible?: boolean }) {
         observerRef.current.disconnect();
       }
     };
-  }, [visibleRows, queuePreviewLoad]);
+  }, [hasActivated, visibleRows, queuePreviewLoad]);
 
   const hasMoreRows = visibleRowsCount < filteredRows.length;
 

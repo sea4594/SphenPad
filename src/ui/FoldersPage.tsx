@@ -259,6 +259,7 @@ export function FoldersPage(props: { isVisible?: boolean }) {
   const location = useLocation();
   const initialPrefs = useMemo(readInitialFolderMenuPrefs, []);
   const initialActiveFolderId = useMemo(readInitialActiveFolderId, []);
+  const [hasActivated, setHasActivated] = useState(isVisible);
   const appliedReturnStateRef = useRef(false);
   const [initialFoldersLoaded, setInitialFoldersLoaded] = useState(false);
 
@@ -287,6 +288,10 @@ export function FoldersPage(props: { isVisible?: boolean }) {
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
+  useEffect(() => {
+    if (isVisible) setHasActivated(true);
+  }, [isVisible]);
+
   async function refresh() {
     const [nextRows, nextFolders] = await Promise.all([listPuzzles(), listFolders()]);
     setRows(nextRows);
@@ -295,8 +300,9 @@ export function FoldersPage(props: { isVisible?: boolean }) {
   }
 
   useEffect(() => {
+    if (!hasActivated) return;
     void refresh();
-  }, []);
+  }, [hasActivated]);
 
   useEffect(() => {
     setSyncedLocalStorageItem(
