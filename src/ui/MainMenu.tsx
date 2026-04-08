@@ -22,11 +22,14 @@ import { SelectControl, type SelectControlOption } from "./SelectControl";
 import { SettingsOverlay } from "./SettingsOverlay";
 import {
   clearReturnStateFromHistory,
+  clearMainPageReturnStateFromHistory,
   currentRoutePath,
   readCurrentScrollPosition,
   readPuzzleReturnState,
+  readMainPageReturnState,
   restoreWindowScroll,
   withPuzzleOriginState,
+  withMainPageReturnState,
 } from "./puzzleNavState";
 
 type SortOrder = "recent" | "az" | "date";
@@ -530,6 +533,16 @@ export function MainMenu() {
     clearReturnStateFromHistory();
   }, [location.state]);
 
+  useEffect(() => {
+    const mainPageReturn = readMainPageReturnState(location.state);
+    if (!mainPageReturn || mainPageReturn.page !== "main-menu") return;
+
+    console.log("[MainMenu] Restoring main page return state:", `scrollY=${mainPageReturn.scrollY}`);
+    
+    restoreWindowScroll(mainPageReturn.scrollY);
+    clearMainPageReturnStateFromHistory();
+  }, [location.state]);
+
   const folderById = useMemo(() => {
     return new Map(folders.map((folder) => [folder.id, folder]));
   }, [folders]);
@@ -879,6 +892,25 @@ export function MainMenu() {
     });
   }
 
+  function navigateToFolders() {
+    const scrollY = readCurrentScrollPosition();
+    console.log("[MainMenu] Navigating to Folders, scroll captured:", scrollY);
+    nav("/folders", {
+      state: withMainPageReturnState(location.state, "main-menu", scrollY, {
+        foldersOpen,
+        activeFolderId,
+      }),
+    });
+  }
+
+  function navigateToArchive() {
+    const scrollY = readCurrentScrollPosition();
+    console.log("[MainMenu] Navigating to Archive, scroll captured:", scrollY);
+    nav("/archive", {
+      state: withMainPageReturnState(location.state, "main-menu", scrollY),
+    });
+  }
+
   function sudokuPadUrlFor(row: StoredPuzzle): string | null {
     const source = (row.def?.sourceId ?? row.key).trim();
     if (!source) return null;
@@ -1124,11 +1156,11 @@ export function MainMenu() {
             <IconHome />
             <span>Puzzles</span>
           </button>
-          <button className="btn topbarModeTab" onClick={() => nav("/folders")} type="button">
+          <button className="btn topbarModeTab" onClick={navigateToFolders} type="button">
             <IconFolder />
             <span>Folders</span>
           </button>
-          <button className="btn topbarModeTab" onClick={() => nav("/archive")} type="button">
+          <button className="btn topbarModeTab" onClick={navigateToArchive} type="button">
             <IconImport />
             <span>Import</span>
           </button>

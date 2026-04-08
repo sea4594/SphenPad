@@ -22,11 +22,14 @@ import { SelectControl, type SelectControlOption } from "./SelectControl";
 import { SettingsOverlay } from "./SettingsOverlay";
 import {
   clearReturnStateFromHistory,
+  clearMainPageReturnStateFromHistory,
   currentRoutePath,
   readCurrentScrollPosition,
   readPuzzleReturnState,
+  readMainPageReturnState,
   restoreWindowScroll,
   withPuzzleOriginState,
+  withMainPageReturnState,
 } from "./puzzleNavState";
 
 type SortOrder = "recent" | "az" | "date";
@@ -347,6 +350,16 @@ export function FoldersPage() {
     setActiveFolderId(activeFolderIdTarget);
     restoreWindowScroll(returned.scrollY);
     clearReturnStateFromHistory();
+  }, [location.state]);
+
+  useEffect(() => {
+    const mainPageReturn = readMainPageReturnState(location.state);
+    if (!mainPageReturn || mainPageReturn.page !== "folders") return;
+
+    console.log("[FoldersPage] Restoring main page return state:", `scrollY=${mainPageReturn.scrollY}`);
+    
+    restoreWindowScroll(mainPageReturn.scrollY);
+    clearMainPageReturnStateFromHistory();
   }, [location.state]);
 
   const folderById = useMemo(() => {
@@ -704,12 +717,32 @@ export function FoldersPage() {
     });
   }
 
+  function navigateToMainMenu() {
+    const scrollY = readCurrentScrollPosition();
+    console.log("[FoldersPage] Navigating to Main Menu, scroll captured:", scrollY);
+    nav("/", {
+      state: withMainPageReturnState(location.state, "folders", scrollY, {
+        activeFolderId,
+      }),
+    });
+  }
+
+  function navigateToArchive() {
+    const scrollY = readCurrentScrollPosition();
+    console.log("[FoldersPage] Navigating to Archive, scroll captured:", scrollY);
+    nav("/archive", {
+      state: withMainPageReturnState(location.state, "folders", scrollY, {
+        activeFolderId,
+      }),
+    });
+  }
+
   return (
     <div className="shell">
       <div className="topbar">
         <AppBrand />
         <div className="topbarModeTabs" role="tablist" aria-label="Main navigation">
-          <button className="btn topbarModeTab" onClick={() => nav("/")} type="button">
+          <button className="btn topbarModeTab" onClick={navigateToMainMenu} type="button">
             <IconHome />
             <span>Puzzles</span>
           </button>
@@ -717,7 +750,7 @@ export function FoldersPage() {
             <IconFolder />
             <span>Folders</span>
           </button>
-          <button className="btn topbarModeTab" onClick={() => nav("/archive")} type="button">
+          <button className="btn topbarModeTab" onClick={navigateToArchive} type="button">
             <IconImport />
             <span>Import</span>
           </button>

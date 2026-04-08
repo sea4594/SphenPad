@@ -14,11 +14,14 @@ import { SelectControl, type SelectControlOption } from "./SelectControl";
 import { SettingsOverlay } from "./SettingsOverlay";
 import {
   clearReturnStateFromHistory,
+  clearMainPageReturnStateFromHistory,
   currentRoutePath,
   readCurrentScrollPosition,
   readPuzzleReturnState,
+  readMainPageReturnState,
   restoreWindowScroll,
   withPuzzleOriginState,
+  withMainPageReturnState,
 } from "./puzzleNavState";
 
 type ArchiveEntry = {
@@ -472,6 +475,16 @@ export function CtCArchivePage() {
     restoreWindowScroll(returned.scrollY);
     clearReturnStateFromHistory();
   }, [location.state, renderConfig.initialVisibleRows]);
+
+  useEffect(() => {
+    const mainPageReturn = readMainPageReturnState(location.state);
+    if (!mainPageReturn || mainPageReturn.page !== "archive") return;
+
+    console.log("[CtCArchivePage] Restoring main page return state:", `scrollY=${mainPageReturn.scrollY}`);
+    
+    restoreWindowScroll(mainPageReturn.scrollY);
+    clearMainPageReturnStateFromHistory();
+  }, [location.state]);
 
   async function refreshCompleted() {
     const completed = await listCompletedPuzzleKeys();
@@ -1192,6 +1205,26 @@ export function CtCArchivePage() {
     }
   }
 
+  function navigateToMainMenu() {
+    const scrollY = readCurrentScrollPosition();
+    console.log("[CtCArchivePage] Navigating to Main Menu, scroll captured:", scrollY);
+    nav("/", {
+      state: withMainPageReturnState(location.state, "archive", scrollY, {
+        visibleRowsCount,
+      }),
+    });
+  }
+
+  function navigateToFolders() {
+    const scrollY = readCurrentScrollPosition();
+    console.log("[CtCArchivePage] Navigating to Folders, scroll captured:", scrollY);
+    nav("/folders", {
+      state: withMainPageReturnState(location.state, "archive", scrollY, {
+        visibleRowsCount,
+      }),
+    });
+  }
+
   const attachCardObserver = useCallback(
     (element: HTMLDivElement | null, entryId: string) => {
       if (!element || !observerRef.current) return;
@@ -1206,11 +1239,11 @@ export function CtCArchivePage() {
       <div className="topbar">
         <AppBrand />
         <div className="topbarModeTabs" role="tablist" aria-label="Main navigation">
-          <button className="btn topbarModeTab" onClick={() => nav("/")} type="button">
+          <button className="btn topbarModeTab" onClick={navigateToMainMenu} type="button">
             <IconHome />
             <span>Puzzles</span>
           </button>
-          <button className="btn topbarModeTab" onClick={() => nav("/folders")} type="button">
+          <button className="btn topbarModeTab" onClick={navigateToFolders} type="button">
             <IconFolder />
             <span>Folders</span>
           </button>
