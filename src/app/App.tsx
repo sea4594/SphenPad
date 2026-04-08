@@ -39,27 +39,46 @@ function RoutePersistence() {
   return null;
 }
 
-function MainPagesHost() {
-  const location = useLocation();
+function MainPagesHost(props: { activePath: string }) {
+  const { activePath } = props;
   const navigate = useNavigate();
-  const path = location.pathname;
+  const isPuzzlePath = activePath.startsWith("/p/");
+  const isMainPath = activePath === "/" || activePath === "/folders" || activePath === "/archive";
 
   useEffect(() => {
-    if (path === "/" || path === "/folders" || path === "/archive") return;
+    if (isMainPath || isPuzzlePath) return;
     navigate("/", { replace: true });
-  }, [navigate, path]);
+  }, [isMainPath, isPuzzlePath, navigate]);
+
+  const showMainMenu = !isPuzzlePath && activePath === "/";
+  const showFolders = !isPuzzlePath && activePath === "/folders";
+  const showArchive = !isPuzzlePath && activePath === "/archive";
+
+  return (
+    <div style={{ height: "100%", width: "100%" }}>
+      <div style={{ display: showMainMenu ? "block" : "none", height: "100%", width: "100%" }} aria-hidden={!showMainMenu}>
+        <MainMenu isVisible={showMainMenu} />
+      </div>
+      <div style={{ display: showFolders ? "block" : "none", height: "100%", width: "100%" }} aria-hidden={!showFolders}>
+        <FoldersPage isVisible={showFolders} />
+      </div>
+      <div style={{ display: showArchive ? "block" : "none", height: "100%", width: "100%" }} aria-hidden={!showArchive}>
+        <CtCArchivePage isVisible={showArchive} />
+      </div>
+    </div>
+  );
+}
+
+function MainPagesShell() {
+  const location = useLocation();
 
   return (
     <>
-      <div style={{ display: path === "/" ? "block" : "none" }} aria-hidden={path !== "/"}>
-        <MainMenu isVisible={path === "/"} />
-      </div>
-      <div style={{ display: path === "/folders" ? "block" : "none" }} aria-hidden={path !== "/folders"}>
-        <FoldersPage isVisible={path === "/folders"} />
-      </div>
-      <div style={{ display: path === "/archive" ? "block" : "none" }} aria-hidden={path !== "/archive"}>
-        <CtCArchivePage isVisible={path === "/archive"} />
-      </div>
+      <RoutePersistence />
+      <MainPagesHost activePath={location.pathname} />
+      <Routes>
+        <Route path="/p/:puzzleId" element={<PuzzlePage />} />
+      </Routes>
     </>
   );
 }
@@ -85,11 +104,7 @@ function AppRoutes() {
   return (
     <ThemeProvider>
       <HashRouter>
-        <RoutePersistence />
-        <Routes>
-          <Route path="/p/:puzzleId" element={<PuzzlePage />} />
-          <Route path="*" element={<MainPagesHost />} />
-        </Routes>
+        <MainPagesShell />
       </HashRouter>
     </ThemeProvider>
   );
