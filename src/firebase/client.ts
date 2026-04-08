@@ -43,6 +43,13 @@ export const app: FirebaseApp | null = firebaseEnabled ? initializeApp(firebaseC
 export const auth: Auth | null = firebaseEnabled && app ? getAuth(app) : null;
 export const db: Firestore | null = firebaseEnabled && app ? getFirestore(app) : null;
 
+function shouldUseRedirectLogin() {
+  if (typeof navigator === "undefined") return false;
+  const ua = navigator.userAgent || "";
+  const isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  return isIOS;
+}
+
 function isPopupFallbackError(error: unknown) {
   if (!error || typeof error !== "object") return false;
   const code = (error as { code?: unknown }).code;
@@ -125,6 +132,16 @@ function parseLocalStorageRecord(value: unknown): CloudAppSnapshot["localStorage
 
 export async function googleLogin() {
   if (!firebaseEnabled || !auth) return null;
+
+  if (shouldUseRedirectLogin()) {
+    try {
+      await setPersistence(auth, browserLocalPersistence);
+    } catch {
+      // Best-effort only.
+    }
+    await signInWithRedirect(auth, provider);
+    return null;
+  }
 
   try {
     const result = await signInWithPopup(auth, provider);

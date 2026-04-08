@@ -69,6 +69,7 @@ export function AccountSyncProvider(props: { children: ReactNode }) {
   const syncRequestedRef = useRef(false);
   const restoringRef = useRef(false);
   const initializingForUidRef = useRef<string | null>(null);
+  const loginInFlightRef = useRef(false);
   const cloudPuzzleKeysRef = useRef<string[]>([]);
   const lastSuccessfulSyncAtRef = useRef(0);
 
@@ -281,12 +282,14 @@ export function AccountSyncProvider(props: { children: ReactNode }) {
       syncError,
       loginPending,
       login: async () => {
-        if (loginPending) return;
+        if (loginInFlightRef.current) return;
         setSyncError("");
+        loginInFlightRef.current = true;
         setLoginPending(true);
         try {
           await googleLogin();
         } finally {
+          loginInFlightRef.current = false;
           setLoginPending(false);
         }
       },
