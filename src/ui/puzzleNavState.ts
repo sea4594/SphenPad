@@ -137,9 +137,9 @@ export function restoreWindowScroll(scrollY: number) {
     return readCurrentScrollPosition();
   };
 
-  window.setTimeout(() => {
+  const runRestorePass = () => {
     let attempts = 0;
-    const maxAttempts = 8;
+    const maxAttempts = 12;
 
     const restoreAttempt = () => {
       const actualTop = applyScroll();
@@ -149,7 +149,13 @@ export function restoreWindowScroll(scrollY: number) {
     };
 
     restoreAttempt();
-  }, 0);
+  };
+
+  // First pass for immediate paint, then delayed passes for pages that render content
+  // asynchronously and would otherwise "snap" away from the target position.
+  window.setTimeout(runRestorePass, 0);
+  window.setTimeout(runRestorePass, 120);
+  window.setTimeout(runRestorePass, 320);
 }
 
 export function clearReturnStateFromHistory() {
@@ -195,23 +201,47 @@ export function setupPageScrollAutoSave(page: MainPageName): () => void {
   if (typeof window === "undefined" || typeof document === "undefined") return () => {};
 
   let saveTimeout: number | null = null;
+  const trackedElements = getScrollableElements();
+
+  const saveNow = () => {
+    const scrollY = readCurrentScrollPosition();
+    saveMainPageScroll(page, scrollY);
+  };
 
   const handleScroll = () => {
     if (saveTimeout !== null) {
       window.clearTimeout(saveTimeout);
     }
     saveTimeout = window.setTimeout(() => {
-      const scrollY = readCurrentScrollPosition();
-      saveMainPageScroll(page, scrollY);
+      saveNow();
     }, 200);
   };
 
+  const handleVisibilityChange = () => {
+    if (document.visibilityState === "hidden") saveNow();
+  };
+
+  const handlePageHide = () => {
+    saveNow();
+  };
+
   window.addEventListener("scroll", handleScroll);
+  window.addEventListener("pagehide", handlePageHide);
+  document.addEventListener("visibilitychange", handleVisibilityChange);
+  for (const el of trackedElements) {
+    el.addEventListener("scroll", handleScroll, { passive: true });
+  }
 
   return () => {
     window.removeEventListener("scroll", handleScroll);
+    window.removeEventListener("pagehide", handlePageHide);
+    document.removeEventListener("visibilitychange", handleVisibilityChange);
+    for (const el of trackedElements) {
+      el.removeEventListener("scroll", handleScroll);
+    }
     if (saveTimeout !== null) {
       window.clearTimeout(saveTimeout);
     }
+    saveNow();
   };
 }
