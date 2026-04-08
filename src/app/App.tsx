@@ -50,15 +50,24 @@ function MainPages() {
     }
   }, [pathname]);
 
+  // Whenever we switch between home pages, the newly-visible page's canvases
+  // need to remeasure (display:none gave them zero dimensions on mount).
+  // Dispatching a resize event triggers GridCanvas's window resize listener
+  // to call getBoundingClientRect() now that the element is visible again.
+  useEffect(() => {
+    if (!isMainRoute(pathname)) return;
+    window.dispatchEvent(new Event("resize"));
+  }, [pathname]);
+
   return (
-    <div style={{ position: "relative", height: "100%", width: "100%" }}>
-      <div style={{ position: "absolute", top: 0, right: 0, bottom: 0, left: 0, visibility: pathname === "/" ? undefined : "hidden" }}>
+    <div style={{ height: "100%", width: "100%" }}>
+      <div style={{ display: pathname === "/" ? undefined : "none", height: "100%" }}>
         <MainMenu />
       </div>
-      <div style={{ position: "absolute", top: 0, right: 0, bottom: 0, left: 0, visibility: pathname === "/folders" ? undefined : "hidden" }}>
+      <div style={{ display: pathname === "/folders" ? undefined : "none", height: "100%" }}>
         <FoldersPage />
       </div>
-      <div style={{ position: "absolute", top: 0, right: 0, bottom: 0, left: 0, visibility: pathname === "/archive" ? undefined : "hidden" }}>
+      <div style={{ display: pathname === "/archive" ? undefined : "none", height: "100%" }}>
         <CtCArchivePage />
       </div>
     </div>
