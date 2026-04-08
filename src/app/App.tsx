@@ -52,13 +52,13 @@ function MainPages() {
 
   return (
     <>
-      <div style={{ display: pathname === "/" ? undefined : "none" }}>
+      <div style={{ display: pathname === "/" ? undefined : "none", height: "100%" }}>
         <MainMenu />
       </div>
-      <div style={{ display: pathname === "/folders" ? undefined : "none" }}>
+      <div style={{ display: pathname === "/folders" ? undefined : "none", height: "100%" }}>
         <FoldersPage />
       </div>
-      <div style={{ display: pathname === "/archive" ? undefined : "none" }}>
+      <div style={{ display: pathname === "/archive" ? undefined : "none", height: "100%" }}>
         <CtCArchivePage />
       </div>
     </>
