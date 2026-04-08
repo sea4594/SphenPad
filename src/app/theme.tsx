@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { setSyncedLocalStorageItem } from "../core/localDataState";
+import { onSyncedLocalDataApplied, setSyncedLocalStorageItem } from "../core/localDataState";
 
 export type ThemeMode = "light" | "dark";
 export type ThemeColor = "bw" | "ocean" | "forest" | "sepia" | "berry";
@@ -53,6 +53,18 @@ export function ThemeProvider(props: { children: ReactNode }) {
   const [hideTimer, setHideTimer] = useState<boolean>(initialTheme.hideTimer);
   const [outlineDigits, setOutlineDigits] = useState<boolean>(initialTheme.outlineDigits);
   const [conflictChecker, setConflictChecker] = useState<boolean>(initialTheme.conflictChecker);
+
+  useEffect(() => {
+    const applyThemeFromStorage = () => {
+      const next = readInitialTheme();
+      setMode(next.mode);
+      setColor(next.color);
+      setHideTimer(next.hideTimer);
+      setOutlineDigits(next.outlineDigits);
+      setConflictChecker(next.conflictChecker);
+    };
+    return onSyncedLocalDataApplied(applyThemeFromStorage);
+  }, []);
 
   useEffect(() => {
     document.documentElement.dataset.mode = mode;

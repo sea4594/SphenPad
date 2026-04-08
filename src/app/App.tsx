@@ -1,5 +1,5 @@
-import { useEffect } from "react";
-import { Navigate, Route, Routes, HashRouter } from "react-router-dom";
+import { useEffect, useRef } from "react";
+import { Navigate, Route, Routes, HashRouter, useLocation, useNavigate } from "react-router-dom";
 import { CtCArchivePage } from "../ui/CtCArchivePage";
 import { FoldersPage } from "../ui/FoldersPage";
 import { MainMenu } from "../ui/MainMenu";
@@ -8,8 +8,39 @@ import { AccountSyncProvider, useAccountSync } from "./accountSync";
 import { clearForcedPortrait } from "./forcedPortrait";
 import { ThemeProvider } from "./theme";
 
+const LAST_ROUTE_KEY = "sphenpad-last-route-v1";
+
+function RoutePersistence() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const initializedRef = useRef(false);
+
+  useEffect(() => {
+    if (initializedRef.current) return;
+    initializedRef.current = true;
+    try {
+      const saved = localStorage.getItem(LAST_ROUTE_KEY);
+      if (!saved || location.pathname !== "/") return;
+      if (saved === "/") return;
+      navigate(saved, { replace: true });
+    } catch {
+      // Ignore localStorage read errors.
+    }
+  }, [location.pathname, navigate]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(LAST_ROUTE_KEY, `${location.pathname}${location.search}${location.hash}`);
+    } catch {
+      // Ignore localStorage write errors.
+    }
+  }, [location.pathname, location.search, location.hash]);
+
+  return null;
+}
+
 function AppRoutes() {
-  const { appStateNonce, ready, user } = useAccountSync();
+  const { ready, user } = useAccountSync();
 
   if (!ready) {
     return (
@@ -27,8 +58,9 @@ function AppRoutes() {
   }
 
   return (
-    <ThemeProvider key={appStateNonce}>
+    <ThemeProvider>
       <HashRouter>
+        <RoutePersistence />
         <Routes>
           <Route path="/" element={<MainMenu />} />
           <Route path="/folders" element={<FoldersPage />} />

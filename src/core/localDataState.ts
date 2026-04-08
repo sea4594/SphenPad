@@ -9,6 +9,7 @@ export const SYNCED_LOCAL_STORAGE_KEYS = [
 ] as const;
 
 const LOCAL_SYNC_META_KEY = "sphenpad-sync-meta-v1";
+const LOCAL_DATA_APPLIED_EVENT = "sphenpad:local-data-applied";
 
 export type SyncedLocalStorageKey = (typeof SYNCED_LOCAL_STORAGE_KEYS)[number];
 
@@ -83,4 +84,13 @@ export function applySyncedLocalStorage(
     else localStorage.removeItem(key);
   }
   markLocalDataChanged(updatedAt, notify);
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event(LOCAL_DATA_APPLIED_EVENT));
+  }
+}
+
+export function onSyncedLocalDataApplied(listener: () => void) {
+  if (typeof window === "undefined") return () => {};
+  window.addEventListener(LOCAL_DATA_APPLIED_EVENT, listener);
+  return () => window.removeEventListener(LOCAL_DATA_APPLIED_EVENT, listener);
 }

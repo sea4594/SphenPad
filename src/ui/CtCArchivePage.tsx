@@ -471,12 +471,7 @@ export function CtCArchivePage() {
 
     appliedReturnStateRef.current = true;
     const savedVisibleRowsCount = returned.context?.visibleRowsCount;
-    
-    console.log(
-      "[CtCArchivePage] Restoring state:",
-      `visibleRowsCount=${savedVisibleRowsCount || "(not set)"}`
-    );
-    
+
     if (typeof savedVisibleRowsCount === "number" && Number.isFinite(savedVisibleRowsCount)) {
       setVisibleRowsCount(Math.max(renderConfig.initialVisibleRows, Math.trunc(savedVisibleRowsCount)));
     }
@@ -980,13 +975,7 @@ export function CtCArchivePage() {
       });
 
       const scrollY = readCurrentScrollPosition();
-      console.log(
-        "[CtCArchivePage] Capturing origin state for puzzle:",
-        `key=${key}`,
-        `visibleRowsCount=${visibleRowsCount}`,
-        `scrollY=${scrollY}`
-      );
-      
+
       nav(`/p/${encodeURIComponent(key)}`, {
         state: withPuzzleOriginState(location.state, {
           version: 1,

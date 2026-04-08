@@ -13,6 +13,10 @@ export type PuzzleFolder = {
 };
 
 export type PuzzleSnapshotRow = { key: string; data: PersistedPuzzle };
+export type StoredPuzzleRow = { key: string } & PersistedPuzzle;
+
+let puzzlesListCache: StoredPuzzleRow[] | null = null;
+let foldersListCache: PuzzleFolder[] | null = null;
 
 function makeFolderId() {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
@@ -22,6 +26,8 @@ function makeFolderId() {
 }
 
 function signalStorageMutation(notify = true, updatedAt = Date.now()) {
+  puzzlesListCache = null;
+  foldersListCache = null;
   markLocalDataChanged(updatedAt, notify);
 }
 
@@ -52,12 +58,28 @@ export async function importStorageSnapshot(
   updatedAt = Date.now(),
 ) {
   await db.transaction("rw", db.puzzles, db.folders, async () => {
-    await db.puzzles.clear();
-    await db.folders.clear();
     if (snapshot.puzzles.length) await db.puzzles.bulkPut(snapshot.puzzles);
     if (snapshot.folders.length) await db.folders.bulkPut(snapshot.folders);
+
+    const [currentPuzzleKeys, currentFolderIds] = await Promise.all([
+      db.puzzles.toCollection().primaryKeys() as Promise<string[]>,
+      db.folders.toCollection().primaryKeys() as Promise<string[]>,
+    ]);
+
+    const nextPuzzleKeys = new Set(snapshot.puzzles.map((row) => row.key));
+    const nextFolderIds = new Set(snapshot.folders.map((folder) => folder.id));
+    const puzzleKeysToDelete = currentPuzzleKeys.filter((key) => !nextPuzzleKeys.has(key));
+    const folderIdsToDelete = currentFolderIds.filter((id) => !nextFolderIds.has(id));
+
+    if (puzzleKeysToDelete.length) await db.puzzles.bulkDelete(puzzleKeysToDelete);
+    if (folderIdsToDelete.length) await db.folders.bulkDelete(folderIdsToDelete);
   });
+
   signalStorageMutation(notify, updatedAt);
+  puzzlesListCache = snapshot.puzzles
+    .map((r) => ({ key: r.key, ...r.data }))
+    .sort((a, b) => b.updatedAt - a.updatedAt);
+  foldersListCache = [...snapshot.folders];
 }
 
 export async function upsertPuzzle(key: string, data: PersistedPuzzle) {
@@ -69,11 +91,14 @@ export async function getPuzzle(key: string) {
   return (await db.puzzles.get(key))?.data ?? null;
 }
 
-export async function listPuzzles() {
+export async function listPuzzles(): Promise<StoredPuzzleRow[]> {
+  if (puzzlesListCache) return puzzlesListCache;
   const rows = await db.puzzles.toArray();
-  return rows
+  const list: StoredPuzzleRow[] = rows
     .map((r) => ({ key: r.key, ...r.data }))
     .sort((a, b) => b.updatedAt - a.updatedAt);
+  puzzlesListCache = list;
+  return list;
 }
 
 export async function listCompletedPuzzleKeys() {
@@ -85,7 +110,10 @@ export async function listCompletedPuzzleKeys() {
 }
 
 export async function listFolders() {
-  return db.folders.toArray();
+  if (foldersListCache) return foldersListCache;
+  const list = await db.folders.toArray();
+  foldersListCache = list;
+  return list;
 }
 
 export async function createFolder(name: string, parentId: string | null = null) {

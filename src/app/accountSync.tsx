@@ -30,7 +30,6 @@ type AccountSyncContextValue = {
   user: User | null;
   syncStatus: SyncStatus;
   syncError: string;
-  appStateNonce: number;
   login: () => Promise<void>;
   logout: () => Promise<void>;
 };
@@ -42,13 +41,25 @@ function snapshotPuzzleKeys(snapshot: CloudAppSnapshot | null): string[] {
   return snapshot.puzzles.map((row) => row.key);
 }
 
+function snapshotSignature(snapshot: CloudAppSnapshot) {
+  const puzzleSig = snapshot.puzzles
+    .map((row) => `${row.key}:${row.data.updatedAt || 0}`)
+    .sort()
+    .join("|");
+  const folderSig = snapshot.folders
+    .map((folder) => `${folder.id}:${folder.updatedAt}`)
+    .sort()
+    .join("|");
+  const localStorageSig = JSON.stringify(snapshot.localStorage);
+  return `${snapshot.updatedAt}::${localStorageSig}::${folderSig}::${puzzleSig}`;
+}
+
 export function AccountSyncProvider(props: { children: ReactNode }) {
   const { children } = props;
   const [ready, setReady] = useState(true);
   const [user, setUser] = useState<User | null>(null);
   const [syncStatus, setSyncStatus] = useState<SyncStatus>("idle");
   const [syncError, setSyncError] = useState("");
-  const [appStateNonce, setAppStateNonce] = useState(0);
   const initializedUserIdRef = useRef<string | null>(null);
   const readyRef = useRef(ready);
   const syncTimeoutRef = useRef<number | null>(null);
@@ -101,26 +112,29 @@ export function AccountSyncProvider(props: { children: ReactNode }) {
           folders: [],
           puzzles: [],
         };
-        await importLocalAppSnapshot(safeCloud, false);
+        if (snapshotSignature(localSnapshot) !== snapshotSignature(safeCloud)) {
+          await importLocalAppSnapshot(safeCloud, false);
+        }
         cloudPuzzleKeysRef.current = snapshotPuzzleKeys(cloudSnapshot);
         lastSuccessfulSyncAtRef.current = safeCloud.updatedAt;
-        setAppStateNonce((n) => n + 1);
       } else if (!cloudSnapshot) {
         // No cloud data for this account yet — upload everything local (first login ever, or
         // first login on this account from this device with anonymous local data).
         await uploadLocalSnapshot(activeUser);
       } else if (!hasLocalAppSnapshotData(localSnapshot)) {
         // Cloud has data but local is empty — straightforward restore.
-        await importLocalAppSnapshot(cloudSnapshot, false);
+        if (snapshotSignature(localSnapshot) !== snapshotSignature(cloudSnapshot)) {
+          await importLocalAppSnapshot(cloudSnapshot, false);
+        }
         lastSuccessfulSyncAtRef.current = cloudSnapshot.updatedAt;
-        setAppStateNonce((n) => n + 1);
       } else {
         // Both sides have data (first login on this device with prior local work, OR same
         // account re-login after offline work, OR any diverged state).
         // Merge: union of all puzzles and folders, per-item newer timestamp wins.
         const merged = mergeSnapshots(localSnapshot, cloudSnapshot);
-        await importLocalAppSnapshot(merged, false);
-        setAppStateNonce((n) => n + 1);
+        if (snapshotSignature(localSnapshot) !== snapshotSignature(merged)) {
+          await importLocalAppSnapshot(merged, false);
+        }
         // Push the merged result back so the cloud also reflects any locally-only items.
         await pushCloudState(activeUser.uid, merged, cloudPuzzleKeysRef.current);
         cloudPuzzleKeysRef.current = merged.puzzles.map((r: { key: string }) => r.key);
@@ -263,7 +277,6 @@ export function AccountSyncProvider(props: { children: ReactNode }) {
       user,
       syncStatus,
       syncError,
-      appStateNonce,
       login: async () => {
         setSyncError("");
         await googleLogin();
@@ -274,7 +287,7 @@ export function AccountSyncProvider(props: { children: ReactNode }) {
         await googleLogout();
       },
     }),
-    [appStateNonce, ready, syncError, syncStatus, user],
+    [ready, syncError, syncStatus, user],
   );
 
   return <AccountSyncContext.Provider value={value}>{children}</AccountSyncContext.Provider>;

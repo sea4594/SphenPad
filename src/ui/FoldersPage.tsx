@@ -201,8 +201,8 @@ function extractConstraintBullets(def: StoredPuzzle["def"]): string[] {
   if (cosmetics.cages?.length) out.add("Killer cages");
   if (cosmetics.arrows?.length) out.add("Arrow constraints");
   if (cosmetics.dots?.length) {
-    const hasBlack = cosmetics.dots.some((d) => d.kind === "black");
-    const hasWhite = cosmetics.dots.some((d) => d.kind === "white");
+    const hasBlack = cosmetics.dots.some((d: { kind?: string }) => d.kind === "black");
+    const hasWhite = cosmetics.dots.some((d: { kind?: string }) => d.kind === "white");
     if (hasBlack && hasWhite) out.add("Black and white dots");
     else if (hasBlack) out.add("Black dots");
     else if (hasWhite) out.add("White dots");
@@ -342,12 +342,7 @@ export function FoldersPage() {
 
     appliedReturnStateRef.current = true;
     const activeFolderIdTarget = returned.context?.activeFolderId ?? null;
-    
-    console.log(
-      "[FoldersPage] Restoring state:",
-      `activeFolderId=${activeFolderIdTarget}`
-    );
-    
+
     setActiveFolderId(activeFolderIdTarget);
     restoreWindowScroll(returned.scrollY);
     clearReturnStateFromHistory();
@@ -700,13 +695,7 @@ export function FoldersPage() {
 
   function openPuzzle(key: string) {
     const scrollY = readCurrentScrollPosition();
-    console.log(
-      "[FoldersPage] Capturing origin state for puzzle:",
-      `key=${key}`,
-      `activeFolderId=${activeFolderId}`,
-      `scrollY=${scrollY}`
-    );
-    
+
     nav(`/p/${encodeURIComponent(key)}`, {
       state: withPuzzleOriginState(location.state, {
         version: 1,
