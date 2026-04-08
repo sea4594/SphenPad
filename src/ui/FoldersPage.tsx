@@ -11,8 +11,8 @@ import {
   type PuzzleFolder,
   upsertPuzzle,
 } from "../core/storage";
-import { onLocalAppSnapshotImported } from "../core/appState";
 import { setSyncedLocalStorageItem } from "../core/localDataState";
+import { onStorageRefreshNeeded } from "../core/syncSignal";
 import { fillProgressWithSolutionDigits } from "../core/solutionFill";
 import { fmtHMS } from "../core/time";
 import { AppBrand } from "./AppBrand";
@@ -26,7 +26,11 @@ import {
   currentRoutePath,
   readCurrentScrollPosition,
   readPuzzleReturnState,
+  restoreWindowScroll,
   withPuzzleOriginState,
+  loadMainPageScroll,
+  saveMainPageScroll,
+  setupPageScrollAutoSave,
 } from "./puzzleNavState";
 
 type SortOrder = "recent" | "az" | "date";
@@ -198,8 +202,8 @@ function extractConstraintBullets(def: StoredPuzzle["def"]): string[] {
   if (cosmetics.cages?.length) out.add("Killer cages");
   if (cosmetics.arrows?.length) out.add("Arrow constraints");
   if (cosmetics.dots?.length) {
-    const hasBlack = cosmetics.dots.some((d: { kind?: string }) => d.kind === "black");
-    const hasWhite = cosmetics.dots.some((d: { kind?: string }) => d.kind === "white");
+    const hasBlack = cosmetics.dots.some((d) => d.kind === "black");
+    const hasWhite = cosmetics.dots.some((d) => d.kind === "white");
     if (hasBlack && hasWhite) out.add("Black and white dots");
     else if (hasBlack) out.add("Black dots");
     else if (hasWhite) out.add("White dots");
@@ -254,14 +258,13 @@ function extractConstraintBullets(def: StoredPuzzle["def"]): string[] {
   return Array.from(out);
 }
 
-export function FoldersPage(props: { isVisible?: boolean }) {
-  const { isVisible = true } = props;
+export function FoldersPage() {
   const nav = useNavigate();
   const location = useLocation();
   const initialPrefs = useMemo(readInitialFolderMenuPrefs, []);
   const initialActiveFolderId = useMemo(readInitialActiveFolderId, []);
-  const [hasActivated, setHasActivated] = useState(isVisible);
   const appliedReturnStateRef = useRef(false);
+  const scrollCleanupRef = useRef<(() => void) | null>(null);
   const [initialFoldersLoaded, setInitialFoldersLoaded] = useState(false);
 
   const [rows, setRows] = useState<StoredPuzzle[]>([]);
@@ -289,10 +292,6 @@ export function FoldersPage(props: { isVisible?: boolean }) {
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
-  useEffect(() => {
-    if (isVisible) setHasActivated(true);
-  }, [isVisible]);
-
   async function refresh() {
     const [nextRows, nextFolders] = await Promise.all([listPuzzles(), listFolders()]);
     setRows(nextRows);
@@ -301,16 +300,14 @@ export function FoldersPage(props: { isVisible?: boolean }) {
   }
 
   useEffect(() => {
-    if (!hasActivated) return;
     void refresh();
-  }, [hasActivated]);
+  }, []);
 
   useEffect(() => {
-    if (!hasActivated) return;
-    return onLocalAppSnapshotImported(() => {
+    return onStorageRefreshNeeded(() => {
       void refresh();
     });
-  }, [hasActivated]);
+  }, []);
 
   useEffect(() => {
     setSyncedLocalStorageItem(
@@ -346,17 +343,34 @@ export function FoldersPage(props: { isVisible?: boolean }) {
   }, [activeFolderId]);
 
   useEffect(() => {
-    if (!isVisible) return;
     if (appliedReturnStateRef.current) return;
     const returned = readPuzzleReturnState(location.state);
     if (!returned || returned.page !== "folders") return;
 
     appliedReturnStateRef.current = true;
     const activeFolderIdTarget = returned.context?.activeFolderId ?? null;
-
+    
+    console.log(
+      "[FoldersPage] Restoring state:",
+      `activeFolderId=${activeFolderIdTarget}`
+    );
+    
     setActiveFolderId(activeFolderIdTarget);
+    restoreWindowScroll(returned.scrollY);
     clearReturnStateFromHistory();
-  }, [isVisible, location.state]);
+  }, [location.state]);
+
+  useEffect(() => {
+    const savedScroll = loadMainPageScroll("folders");
+    restoreWindowScroll(savedScroll);
+  }, []);
+
+  useEffect(() => {
+    scrollCleanupRef.current = setupPageScrollAutoSave("folders");
+    return () => {
+      scrollCleanupRef.current?.();
+    };
+  }, []);
 
   const folderById = useMemo(() => {
     return new Map(folders.map((folder) => [folder.id, folder]));
@@ -693,7 +707,13 @@ export function FoldersPage(props: { isVisible?: boolean }) {
 
   function openPuzzle(key: string) {
     const scrollY = readCurrentScrollPosition();
-
+    console.log(
+      "[FoldersPage] Capturing origin state for puzzle:",
+      `key=${key}`,
+      `activeFolderId=${activeFolderId}`,
+      `scrollY=${scrollY}`
+    );
+    
     nav(`/p/${encodeURIComponent(key)}`, {
       state: withPuzzleOriginState(location.state, {
         version: 1,
@@ -708,10 +728,14 @@ export function FoldersPage(props: { isVisible?: boolean }) {
   }
 
   function navigateToMainMenu() {
+    const scrollY = readCurrentScrollPosition();
+    saveMainPageScroll("folders", scrollY);
     nav("/");
   }
 
   function navigateToArchive() {
+    const scrollY = readCurrentScrollPosition();
+    saveMainPageScroll("folders", scrollY);
     nav("/archive");
   }
 

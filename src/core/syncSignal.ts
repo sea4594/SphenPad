@@ -18,3 +18,24 @@ export function notifyCloudSyncNeeded() {
     }
   }
 }
+
+const refreshListeners = new Set<SyncListener>();
+
+/** Subscribe to notifications that local storage data has been rewritten by a cloud sync. */
+export function onStorageRefreshNeeded(listener: SyncListener) {
+  refreshListeners.add(listener);
+  return () => {
+    refreshListeners.delete(listener);
+  };
+}
+
+/** Notify all UI listeners that IndexedDB data has been replaced and should be re-queried. */
+export function notifyStorageRefreshNeeded() {
+  for (const listener of refreshListeners) {
+    try {
+      listener();
+    } catch {
+      // Ignore listener failures so other subscribers still run.
+    }
+  }
+}

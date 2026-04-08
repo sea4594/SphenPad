@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import twemoji from "twemoji";
 import { mapForcedPortraitPoint, readForcedPortraitDirection } from "../app/forcedPortrait";
 import type { CellRC, PuzzleDefinition, PuzzleProgress } from "../core/model";
@@ -322,7 +322,7 @@ export function GridCanvas(props: {
     return `#${body}${a}`;
   }
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const el = wrapRef.current;
     if (!el) return;
     const update = () => {

@@ -1,7 +1,7 @@
 import { Fragment, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { setSyncedLocalStorageItem } from "../core/localDataState";
-import { onLocalAppSnapshotImported } from "../core/appState";
+import { onStorageRefreshNeeded } from "../core/syncSignal";
 import { normalizePuzzleKey } from "../core/id";
 import { type PuzzleDefinition } from "../core/model";
 import { makeInitialProgress } from "../core/scl";
@@ -18,7 +18,11 @@ import {
   currentRoutePath,
   readCurrentScrollPosition,
   readPuzzleReturnState,
+  restoreWindowScroll,
   withPuzzleOriginState,
+  loadMainPageScroll,
+  saveMainPageScroll,
+  setupPageScrollAutoSave,
 } from "./puzzleNavState";
 
 type ArchiveEntry = {
@@ -374,14 +378,13 @@ async function loadCachedPuzzlePayload(entry: ArchiveEntry): Promise<string | nu
   }
 }
 
-export function CtCArchivePage(props: { isVisible?: boolean }) {
-  const { isVisible = true } = props;
+export function CtCArchivePage() {
   const nav = useNavigate();
   const location = useLocation();
-  const [hasActivated, setHasActivated] = useState(isVisible);
   const [renderConfig] = useState(getRenderConfig);
   const initialFilterPrefs = useMemo(readInitialArchiveFilterPrefs, []);
   const appliedReturnStateRef = useRef(false);
+  const scrollCleanupRef = useRef<(() => void) | null>(null);
 
   const [rows, setRows] = useState<PreparedArchiveEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -428,10 +431,6 @@ export function CtCArchivePage(props: { isVisible?: boolean }) {
   const deferredQuery = useDeferredValue(query);
 
   useEffect(() => {
-    if (isVisible) setHasActivated(true);
-  }, [isVisible]);
-
-  useEffect(() => {
     return () => {
       isMountedRef.current = false;
     };
@@ -467,19 +466,36 @@ export function CtCArchivePage(props: { isVisible?: boolean }) {
   ]);
 
   useEffect(() => {
-    if (!isVisible) return;
     if (appliedReturnStateRef.current) return;
     const returned = readPuzzleReturnState(location.state);
     if (!returned || returned.page !== "archive") return;
 
     appliedReturnStateRef.current = true;
     const savedVisibleRowsCount = returned.context?.visibleRowsCount;
-
+    
+    console.log(
+      "[CtCArchivePage] Restoring state:",
+      `visibleRowsCount=${savedVisibleRowsCount || "(not set)"}`
+    );
+    
     if (typeof savedVisibleRowsCount === "number" && Number.isFinite(savedVisibleRowsCount)) {
       setVisibleRowsCount(Math.max(renderConfig.initialVisibleRows, Math.trunc(savedVisibleRowsCount)));
     }
+    restoreWindowScroll(returned.scrollY);
     clearReturnStateFromHistory();
-  }, [isVisible, location.state, renderConfig.initialVisibleRows]);
+  }, [location.state, renderConfig.initialVisibleRows]);
+
+  useEffect(() => {
+    const savedScroll = loadMainPageScroll("archive");
+    restoreWindowScroll(savedScroll);
+  }, []);
+
+  useEffect(() => {
+    scrollCleanupRef.current = setupPageScrollAutoSave("archive");
+    return () => {
+      scrollCleanupRef.current?.();
+    };
+  }, []);
 
   async function refreshCompleted() {
     const completed = await listCompletedPuzzleKeys();
@@ -520,7 +536,6 @@ export function CtCArchivePage(props: { isVisible?: boolean }) {
   }
 
   useEffect(() => {
-    if (!hasActivated) return;
     void refreshRows();
 
     const run = () => {
@@ -540,15 +555,14 @@ export function CtCArchivePage(props: { isVisible?: boolean }) {
 
     const timer = window.setTimeout(run, 150);
     return () => window.clearTimeout(timer);
-  }, [hasActivated]);
+  }, []);
 
   useEffect(() => {
-    if (!hasActivated) return;
-    return onLocalAppSnapshotImported(() => {
+    return onStorageRefreshNeeded(() => {
       void refreshCompleted();
       void refreshFolders();
     });
-  }, [hasActivated]);
+  }, []);
 
   const hosts = useMemo(
     () => Array.from(new Set(rows.map((r) => r.videoHost).filter(Boolean))).sort((a, b) => a.localeCompare(b)),
@@ -874,7 +888,6 @@ export function CtCArchivePage(props: { isVisible?: boolean }) {
   }, [previewedPuzzles, processPreviewQueue]);
 
   useEffect(() => {
-    if (!hasActivated) return;
     const observerOptions = {
       root: null,
       rootMargin: "50px",
@@ -907,7 +920,7 @@ export function CtCArchivePage(props: { isVisible?: boolean }) {
         observerRef.current.disconnect();
       }
     };
-  }, [hasActivated, visibleRows, queuePreviewLoad]);
+  }, [visibleRows, queuePreviewLoad]);
 
   const hasMoreRows = visibleRowsCount < filteredRows.length;
 
@@ -975,7 +988,13 @@ export function CtCArchivePage(props: { isVisible?: boolean }) {
       });
 
       const scrollY = readCurrentScrollPosition();
-
+      console.log(
+        "[CtCArchivePage] Capturing origin state for puzzle:",
+        `key=${key}`,
+        `visibleRowsCount=${visibleRowsCount}`,
+        `scrollY=${scrollY}`
+      );
+      
       nav(`/p/${encodeURIComponent(key)}`, {
         state: withPuzzleOriginState(location.state, {
           version: 1,
@@ -1214,10 +1233,14 @@ export function CtCArchivePage(props: { isVisible?: boolean }) {
   }
 
   function navigateToMainMenu() {
+    const scrollY = readCurrentScrollPosition();
+    saveMainPageScroll("archive", scrollY);
     nav("/");
   }
 
   function navigateToFolders() {
+    const scrollY = readCurrentScrollPosition();
+    saveMainPageScroll("archive", scrollY);
     nav("/folders");
   }
 

@@ -11,6 +11,7 @@ import type { User } from "firebase/auth";
 import { exportLocalAppSnapshot, hasLocalAppSnapshotData, importLocalAppSnapshot, mergeSnapshots } from "../core/appState";
 import { getLocalDataOwnerId, readLocalDataUpdatedAt, setLocalDataOwnerId } from "../core/localDataState";
 import { onCloudSyncNeeded } from "../core/syncSignal";
+import { notifyStorageRefreshNeeded } from "../core/syncSignal";
 import {
   firebaseEnabled,
   googleLogin,
@@ -108,6 +109,7 @@ export function AccountSyncProvider(props: { children: ReactNode }) {
         await importLocalAppSnapshot(safeCloud, false);
         cloudPuzzleKeysRef.current = snapshotPuzzleKeys(cloudSnapshot);
         lastSuccessfulSyncAtRef.current = safeCloud.updatedAt;
+        notifyStorageRefreshNeeded();
         setAppStateNonce((n) => n + 1);
       } else if (!cloudSnapshot) {
         // No cloud data for this account yet — upload everything local (first login ever, or
@@ -117,6 +119,7 @@ export function AccountSyncProvider(props: { children: ReactNode }) {
         // Cloud has data but local is empty — straightforward restore.
         await importLocalAppSnapshot(cloudSnapshot, false);
         lastSuccessfulSyncAtRef.current = cloudSnapshot.updatedAt;
+        notifyStorageRefreshNeeded();
         setAppStateNonce((n) => n + 1);
       } else {
         // Both sides have data (first login on this device with prior local work, OR same
@@ -124,6 +127,7 @@ export function AccountSyncProvider(props: { children: ReactNode }) {
         // Merge: union of all puzzles and folders, per-item newer timestamp wins.
         const merged = mergeSnapshots(localSnapshot, cloudSnapshot);
         await importLocalAppSnapshot(merged, false);
+        notifyStorageRefreshNeeded();
         setAppStateNonce((n) => n + 1);
         // Push the merged result back so the cloud also reflects any locally-only items.
         await pushCloudState(activeUser.uid, merged, cloudPuzzleKeysRef.current);
