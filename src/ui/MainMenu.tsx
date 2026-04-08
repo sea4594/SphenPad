@@ -10,6 +10,7 @@ import {
   type PuzzleFolder,
   upsertPuzzle,
 } from "../core/storage";
+import { onLocalAppSnapshotImported } from "../core/appState";
 import { setSyncedLocalStorageItem } from "../core/localDataState";
 import { fillProgressWithSolutionDigits } from "../core/solutionFill";
 import { fmtHMS } from "../core/time";
@@ -458,6 +459,13 @@ export function MainMenu(props: { isVisible?: boolean }) {
   useEffect(() => {
     void refreshPuzzles();
     void refreshFolders();
+  }, []);
+
+  useEffect(() => {
+    return onLocalAppSnapshotImported(() => {
+      void refreshPuzzles();
+      void refreshFolders();
+    });
   }, []);
 
   useEffect(() => {

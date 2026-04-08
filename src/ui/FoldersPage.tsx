@@ -11,6 +11,7 @@ import {
   type PuzzleFolder,
   upsertPuzzle,
 } from "../core/storage";
+import { onLocalAppSnapshotImported } from "../core/appState";
 import { setSyncedLocalStorageItem } from "../core/localDataState";
 import { fillProgressWithSolutionDigits } from "../core/solutionFill";
 import { fmtHMS } from "../core/time";
@@ -302,6 +303,13 @@ export function FoldersPage(props: { isVisible?: boolean }) {
   useEffect(() => {
     if (!hasActivated) return;
     void refresh();
+  }, [hasActivated]);
+
+  useEffect(() => {
+    if (!hasActivated) return;
+    return onLocalAppSnapshotImported(() => {
+      void refresh();
+    });
   }, [hasActivated]);
 
   useEffect(() => {

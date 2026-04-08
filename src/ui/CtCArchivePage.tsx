@@ -1,6 +1,7 @@
 import { Fragment, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { setSyncedLocalStorageItem } from "../core/localDataState";
+import { onLocalAppSnapshotImported } from "../core/appState";
 import { normalizePuzzleKey } from "../core/id";
 import { type PuzzleDefinition } from "../core/model";
 import { makeInitialProgress } from "../core/scl";
@@ -539,6 +540,14 @@ export function CtCArchivePage(props: { isVisible?: boolean }) {
 
     const timer = window.setTimeout(run, 150);
     return () => window.clearTimeout(timer);
+  }, [hasActivated]);
+
+  useEffect(() => {
+    if (!hasActivated) return;
+    return onLocalAppSnapshotImported(() => {
+      void refreshCompleted();
+      void refreshFolders();
+    });
   }, [hasActivated]);
 
   const hosts = useMemo(

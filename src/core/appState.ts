@@ -8,6 +8,8 @@ import {
 import type { PersistedPuzzle } from "./model";
 import { exportStorageSnapshot, importStorageSnapshot, type PuzzleFolder } from "./storage";
 
+const APP_SNAPSHOT_IMPORTED_EVENT = "sphenpad:app-snapshot-imported";
+
 export type PuzzleSnapshotRow = {
   key: string;
   data: PersistedPuzzle;
@@ -42,6 +44,15 @@ export async function importLocalAppSnapshot(snapshot: LocalAppSnapshot, notify 
   applySyncedLocalStorage(snapshot.localStorage, snapshot.updatedAt, false);
   await importStorageSnapshot({ puzzles: snapshot.puzzles, folders: snapshot.folders }, false, snapshot.updatedAt);
   markLocalDataChanged(snapshot.updatedAt, notify);
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event(APP_SNAPSHOT_IMPORTED_EVENT));
+  }
+}
+
+export function onLocalAppSnapshotImported(listener: () => void) {
+  if (typeof window === "undefined") return () => {};
+  window.addEventListener(APP_SNAPSHOT_IMPORTED_EVENT, listener);
+  return () => window.removeEventListener(APP_SNAPSHOT_IMPORTED_EVENT, listener);
 }
 
 export function hasLocalAppSnapshotData(snapshot: LocalAppSnapshot): boolean {
