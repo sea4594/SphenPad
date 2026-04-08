@@ -84,9 +84,9 @@ export function App() {
     <AccountSyncProvider>
       <ThemeProvider>
         <HashRouter>
+          <MainPages />
           <Routes>
             <Route path="/p/:puzzleId" element={<PuzzlePage />} />
-            <Route path="*" element={<MainPages />} />
           </Routes>
         </HashRouter>
       </ThemeProvider>
