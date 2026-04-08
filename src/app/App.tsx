@@ -51,17 +51,17 @@ function MainPages() {
   }, [pathname]);
 
   return (
-    <>
-      <div style={{ display: pathname === "/" ? undefined : "none", height: "100%" }}>
+    <div style={{ position: "relative", height: "100%", width: "100%" }}>
+      <div style={{ position: "absolute", top: 0, right: 0, bottom: 0, left: 0, visibility: pathname === "/" ? undefined : "hidden" }}>
         <MainMenu />
       </div>
-      <div style={{ display: pathname === "/folders" ? undefined : "none", height: "100%" }}>
+      <div style={{ position: "absolute", top: 0, right: 0, bottom: 0, left: 0, visibility: pathname === "/folders" ? undefined : "hidden" }}>
         <FoldersPage />
       </div>
-      <div style={{ display: pathname === "/archive" ? undefined : "none", height: "100%" }}>
+      <div style={{ position: "absolute", top: 0, right: 0, bottom: 0, left: 0, visibility: pathname === "/archive" ? undefined : "hidden" }}>
         <CtCArchivePage />
       </div>
-    </>
+    </div>
   );
 }
 
