@@ -12,10 +12,10 @@ const themeChoices: Array<{ key: ThemeColor; label: string; preview: string[] }>
 
 export function SettingsOverlay(props: { onClose: () => void }) {
   const { onClose } = props;
+  const appCommitSha = __APP_COMMIT_SHA__ || "unknown";
   const {
     firebaseEnabled,
     login,
-    loginPending,
     logout,
     syncError,
     syncStatus,
@@ -47,7 +47,10 @@ export function SettingsOverlay(props: { onClose: () => void }) {
     <div className="overlayBackdrop" onClick={onClose}>
       <div className="card settingsCard" role="dialog" aria-modal="true" aria-label="Settings" onClick={(e) => e.stopPropagation()}>
         <div className="settingsHeader">
-          <div style={{ fontWeight: 800, fontSize: 22 }}>Settings</div>
+          <div>
+            <div style={{ fontWeight: 800, fontSize: 22 }}>Settings</div>
+            <div className="muted" style={{ marginTop: 2, fontSize: 12 }}>Commit: {appCommitSha}</div>
+          </div>
           <button className="btn" onClick={onClose}>Close</button>
         </div>
 
@@ -76,11 +79,11 @@ export function SettingsOverlay(props: { onClose: () => void }) {
               ) : (
                 <button
                   className="btn primary"
-                  disabled={!firebaseEnabled || syncStatus === "syncing" || loginPending}
+                  disabled={!firebaseEnabled || syncStatus === "syncing"}
                   onClick={() => login().catch((error) => alert(error instanceof Error ? error.message : String(error)))}
                   type="button"
                 >
-                  {loginPending ? "Opening Google..." : "Google login"}
+                  Google login
                 </button>
               )}
             </div>
