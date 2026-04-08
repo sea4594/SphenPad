@@ -409,6 +409,7 @@ export function MainMenu() {
   const initialFilterPrefs = useMemo(readInitialMainMenuFilterPrefs, []);
   const initialFolderPrefs = useMemo(readInitialFolderMenuPrefs, []);
   const appliedReturnStateRef = useRef(false);
+  const appliedMainPageReturnRef = useRef(false);
 
   const [rows, setRows] = useState<StoredPuzzle[]>([]);
   const [folders, setFolders] = useState<PuzzleFolder[]>([]);
@@ -534,9 +535,11 @@ export function MainMenu() {
   }, [location.state]);
 
   useEffect(() => {
+    if (appliedMainPageReturnRef.current) return;
     const mainPageReturn = readMainPageReturnState(location.state);
     if (!mainPageReturn || mainPageReturn.page !== "main-menu") return;
 
+    appliedMainPageReturnRef.current = true;
     console.log("[MainMenu] Restoring main page return state:", `scrollY=${mainPageReturn.scrollY}`);
     
     restoreWindowScroll(mainPageReturn.scrollY);

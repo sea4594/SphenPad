@@ -383,11 +383,13 @@ export function CtCArchivePage() {
   const [renderConfig] = useState(getRenderConfig);
   const initialFilterPrefs = useMemo(readInitialArchiveFilterPrefs, []);
   const appliedReturnStateRef = useRef(false);
+  const appliedMainPageReturnRef = useRef(false);
 
   const [rows, setRows] = useState<PreparedArchiveEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [url, setUrl] = useState("");
+  const isMountedRef = useRef(true);
   const [busy, setBusy] = useState("");
   const [importingId, setImportingId] = useState("");
   const [completedKeys, setCompletedKeys] = useState<Set<string>>(new Set());
@@ -426,6 +428,12 @@ export function CtCArchivePage() {
   const loadCountRef = useRef<number>(0);
   const pendingQueueRef = useRef<PreparedArchiveEntry[]>([]);
   const deferredQuery = useDeferredValue(query);
+
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     setSyncedLocalStorageItem(
@@ -477,9 +485,11 @@ export function CtCArchivePage() {
   }, [location.state, renderConfig.initialVisibleRows]);
 
   useEffect(() => {
+    if (appliedMainPageReturnRef.current) return;
     const mainPageReturn = readMainPageReturnState(location.state);
     if (!mainPageReturn || mainPageReturn.page !== "archive") return;
 
+    appliedMainPageReturnRef.current = true;
     console.log("[CtCArchivePage] Restoring main page return state:", `scrollY=${mainPageReturn.scrollY}`);
     
     restoreWindowScroll(mainPageReturn.scrollY);
@@ -493,15 +503,20 @@ export function CtCArchivePage() {
 
   async function refreshFolders() {
     const nextFolders = await listFolders();
-    setFolders(nextFolders);
+    if (isMountedRef.current) {
+      setFolders(nextFolders);
+    }
   }
 
   async function refreshRows() {
+    if (!isMountedRef.current) return;
     setLoading(true);
     setError("");
 
     try {
       const manifestEntries = await loadManifest();
+      if (!isMountedRef.current) return;
+      
       if (!manifestEntries) {
         setRows([]);
         setError("Unable to load archive manifest. Run npm run sync-archive-cache and rebuild.");
@@ -509,9 +524,13 @@ export function CtCArchivePage() {
       }
       setRows(manifestEntries.map(prepareArchiveEntry));
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : String(e));
+      if (isMountedRef.current) {
+        setError(e instanceof Error ? e.message : String(e));
+      }
     } finally {
-      setLoading(false);
+      if (isMountedRef.current) {
+        setLoading(false);
+      }
     }
   }
 

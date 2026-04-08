@@ -263,6 +263,7 @@ export function FoldersPage() {
   const initialPrefs = useMemo(readInitialFolderMenuPrefs, []);
   const initialActiveFolderId = useMemo(readInitialActiveFolderId, []);
   const appliedReturnStateRef = useRef(false);
+  const appliedMainPageReturnRef = useRef(false);
   const [initialFoldersLoaded, setInitialFoldersLoaded] = useState(false);
 
   const [rows, setRows] = useState<StoredPuzzle[]>([]);
@@ -353,9 +354,11 @@ export function FoldersPage() {
   }, [location.state]);
 
   useEffect(() => {
+    if (appliedMainPageReturnRef.current) return;
     const mainPageReturn = readMainPageReturnState(location.state);
     if (!mainPageReturn || mainPageReturn.page !== "folders") return;
 
+    appliedMainPageReturnRef.current = true;
     console.log("[FoldersPage] Restoring main page return state:", `scrollY=${mainPageReturn.scrollY}`);
     
     restoreWindowScroll(mainPageReturn.scrollY);

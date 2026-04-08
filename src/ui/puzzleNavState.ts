@@ -226,6 +226,8 @@ function normalizeMainPageReturnState(raw: unknown): MainPageReturnState | null 
 
 export function withMainPageReturnState(routeState: unknown, page: MainPageName, scrollY: number, context?: PuzzleOriginContext): Record<string, unknown> {
   const next = asStateObject(routeState);
+  // Remove old main page return state to prevent accumulation
+  delete next[MAIN_PAGE_RETURN_STATE_KEY];
   next[MAIN_PAGE_RETURN_STATE_KEY] = {
     version: 1,
     page,
