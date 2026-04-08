@@ -984,14 +984,6 @@ export function GridCanvas(props: {
 
     const drawConstraintLine = (ln: NonNullable<PuzzleDefinition["cosmetics"]["lines"]>[number]) => {
       if (ln.wayPoints.length < 2) return;
-      if (fogDefined) {
-        const outsideBoard = ln.wayPoints.some((point) => point.x < 0 || point.y < 0 || point.x > cols || point.y > rows);
-        const thickness = ln.thickness ?? 0;
-        const minStructuralOutsideThickness = cosmeticUnit * 0.08;
-        // In fog mode, discard only thin decorative paths outside the board bounds.
-        // These are the paths that leak into whitespace around the puzzle frame/notepad.
-        if (outsideBoard && thickness < minStructuralOutsideThickness) return;
-      }
       const lineOpacity = Number.isFinite(ln.opacity) ? Math.max(0, Math.min(1, Number(ln.opacity))) : 1;
 
       const hasSvgPath = typeof ln.svgPathData === "string" && ln.svgPathData.length > 0;
@@ -1367,45 +1359,7 @@ export function GridCanvas(props: {
     drawVisualLayer("over");
 
     const drawGridPuzzleFeatures = () => {
-      // For compatibility, keep this for any grid-targeted overlays.
-      // In fog puzzles, suppress only grid-targeted geometry that lives outside
-      // the board area to prevent leakage into decorative whitespace.
-      if (!fogDefined) {
-        drawVisualLayer("grid");
-        return;
-      }
-
-      const lineInsideBoard = (line: NonNullable<PuzzleDefinition["cosmetics"]["lines"]>[number]) => {
-        return line.wayPoints.every((point) => point.x >= 0 && point.y >= 0 && point.x <= cols && point.y <= rows);
-      };
-
-      const layerInsideBoard = (item: LayerItem) => {
-        const width = Number.isFinite(item.width) ? Number(item.width) : 0;
-        const height = Number.isFinite(item.height) ? Number(item.height) : 0;
-        const halfWidth = Math.max(0, width / 2);
-        const halfHeight = Math.max(0, height / 2);
-        const minX = item.center.x - halfWidth;
-        const maxX = item.center.x + halfWidth;
-        const minY = item.center.y - halfHeight;
-        const maxY = item.center.y + halfHeight;
-        return minX >= 0 && minY >= 0 && maxX <= cols && maxY <= rows;
-      };
-
-      for (const entry of collectVisualLayerEntries("grid")) {
-        if (entry.kind === "line") {
-          if (!lineInsideBoard(entry.item)) continue;
-          drawConstraintLine(entry.item);
-        } else if (entry.kind === "cage") {
-          drawCage(entry.item);
-        } else if (entry.kind === "arrow") {
-          drawArrow(entry.item);
-        } else if (entry.kind === "dot") {
-          drawDot(entry.item);
-        } else {
-          if (!layerInsideBoard(entry.item)) continue;
-          drawLayerItem(entry.item);
-        }
-      }
+      drawVisualLayer("grid");
     };
 
     const drawTopPuzzleFeatures = () => {
