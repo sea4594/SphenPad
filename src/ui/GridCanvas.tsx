@@ -961,6 +961,11 @@ export function GridCanvas(props: {
       return classifyRenderTarget(target);
     };
 
+    const fogDefined =
+      def.cosmetics.fogEnabled === true ||
+      (def.cosmetics.fogLights?.length ?? 0) > 0 ||
+      (def.cosmetics.fogTriggerEffects?.length ?? 0) > 0;
+
     const hasMatchingCornerLabel = (cageCells: CellRC[], sum: string) => {
       const labels = [...(def.cosmetics.overlays ?? []), ...(def.cosmetics.underlays ?? [])];
       const expected = String(sum).trim();
@@ -1420,11 +1425,6 @@ export function GridCanvas(props: {
 
       ctx.clip();
     };
-
-    const fogDefined =
-      def.cosmetics.fogEnabled === true ||
-      (def.cosmetics.fogLights?.length ?? 0) > 0 ||
-      (def.cosmetics.fogTriggerEffects?.length ?? 0) > 0;
 
     // Keep a dedicated grid-target pass between highlights and the built-in grid.
     drawGridPuzzleFeatures();
