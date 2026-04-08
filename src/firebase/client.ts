@@ -166,13 +166,13 @@ export async function pullCloudState(userId: string): Promise<CloudAppSnapshot |
     getDocs(collection(db, "users", userId, "puzzles")),
   ]);
 
-  if (!stateSnap.exists()) return null;
-
-  const stateData = stateSnap.data() as {
-    updatedAt?: unknown;
-    localStorage?: unknown;
-    folders?: unknown;
-  };
+  const stateData = stateSnap.exists()
+    ? (stateSnap.data() as {
+        updatedAt?: unknown;
+        localStorage?: unknown;
+        folders?: unknown;
+      })
+    : null;
 
   const puzzles = puzzleDocs.docs.flatMap((entry) => {
     const payload = entry.data().payload;
@@ -180,11 +180,22 @@ export async function pullCloudState(userId: string): Promise<CloudAppSnapshot |
     return [{ key: puzzleDocIdToKey(entry.id), data: deserializePuzzle(payload) }];
   });
 
+  const hasAnyCloudData = Boolean(stateSnap.exists() || puzzles.length > 0);
+  if (!hasAnyCloudData) return null;
+
+  const maxPuzzleUpdatedAt = puzzles.reduce((max, row) => {
+    const updatedAt = row.data.updatedAt || 0;
+    return updatedAt > max ? updatedAt : max;
+  }, 0);
+
   return {
     version: 1,
-    updatedAt: typeof stateData.updatedAt === "number" ? stateData.updatedAt : 0,
-    localStorage: parseLocalStorageRecord(stateData.localStorage),
-    folders: parseFolders(stateData.folders),
+    updatedAt:
+      stateData && typeof stateData.updatedAt === "number"
+        ? stateData.updatedAt
+        : maxPuzzleUpdatedAt,
+    localStorage: parseLocalStorageRecord(stateData?.localStorage),
+    folders: parseFolders(stateData?.folders),
     puzzles,
   };
 }
