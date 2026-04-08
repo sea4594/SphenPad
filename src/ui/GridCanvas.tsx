@@ -1367,21 +1367,17 @@ export function GridCanvas(props: {
       const boardTop = cellY(0);
       const boardRight = cellX(cols);
       const boardBottom = cellY(rows);
-      // Safari/iPhone can leak sub-pixel fragments at the board edge; reserve a tiny guard band.
-      const edgeGuard = Math.max(0.7, 1 / Math.max(1, devicePixelRatio));
 
       ctx.beginPath();
 
       // Keep everything outside the board visible regardless of fog state.
-      if (boardTop > edgeGuard) ctx.rect(0, 0, widthPx, boardTop - edgeGuard);
-      if (boardBottom < heightPx - edgeGuard) {
-        ctx.rect(0, boardBottom + edgeGuard, widthPx, heightPx - (boardBottom + edgeGuard));
-      }
+      if (boardTop > 0) ctx.rect(0, 0, widthPx, boardTop);
+      if (boardBottom < heightPx) ctx.rect(0, boardBottom, widthPx, heightPx - boardBottom);
       if (boardLeft > 0 && boardBottom > boardTop) {
-        ctx.rect(0, boardTop + edgeGuard, Math.max(0, boardLeft - edgeGuard), Math.max(0, boardBottom - boardTop - edgeGuard * 2));
+        ctx.rect(0, boardTop, boardLeft, boardBottom - boardTop);
       }
       if (boardRight < widthPx && boardBottom > boardTop) {
-        ctx.rect(boardRight + edgeGuard, boardTop + edgeGuard, Math.max(0, widthPx - (boardRight + edgeGuard)), Math.max(0, boardBottom - boardTop - edgeGuard * 2));
+        ctx.rect(boardRight, boardTop, widthPx - boardRight, boardBottom - boardTop);
       }
 
       // Inside the board, only lit cells are visible through fog.
@@ -1393,33 +1389,6 @@ export function GridCanvas(props: {
       }
 
       ctx.clip();
-    };
-
-    const maskOutsideBoardEdgeBleed = () => {
-      const boardLeft = cellX(0);
-      const boardTop = cellY(0);
-      const boardRight = cellX(cols);
-      const boardBottom = cellY(rows);
-      // Cover tiny anti-aliased overdraw just outside the grid border.
-      const mask = Math.max(1, scaledCosmeticPx(1.1, { previewMin: 1, normalMin: 1 }));
-
-      ctx.save();
-      ctx.fillStyle = "#ffffff";
-      if (boardTop > 0) {
-        ctx.fillRect(0, 0, widthPx, Math.min(heightPx, boardTop + mask));
-      }
-      if (boardBottom < heightPx) {
-        const y = Math.max(0, boardBottom - mask);
-        ctx.fillRect(0, y, widthPx, Math.max(0, heightPx - y));
-      }
-      if (boardLeft > 0 && boardBottom > boardTop) {
-        ctx.fillRect(0, Math.max(0, boardTop - mask), Math.min(widthPx, boardLeft + mask), Math.max(0, boardBottom - boardTop + mask * 2));
-      }
-      if (boardRight < widthPx && boardBottom > boardTop) {
-        const x = Math.max(0, boardRight - mask);
-        ctx.fillRect(x, Math.max(0, boardTop - mask), Math.max(0, widthPx - x), Math.max(0, boardBottom - boardTop + mask * 2));
-      }
-      ctx.restore();
     };
 
     const fogDefined =
@@ -1853,7 +1822,6 @@ export function GridCanvas(props: {
 
       if (def.cosmetics.gridVisible !== false) {
         drawGridLines();
-        maskOutsideBoardEdgeBleed();
       }
 
       // Keep top puzzle feature layers above the grid under fog.
