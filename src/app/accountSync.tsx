@@ -220,8 +220,12 @@ export function AccountSyncProvider(props: { children: ReactNode }) {
         setUser(redirectUser);
         if (initializedUserIdRef.current === redirectUser.uid && readyRef.current) return;
         await initializeUserState(redirectUser);
-      } catch {
-        // Ignore redirect resolution errors and rely on auth state listener.
+      } catch (error) {
+        if (cancelled) return;
+        const message = error instanceof Error ? error.message : String(error);
+        setSyncStatus("error");
+        setSyncError(`Google login redirect failed: ${message}`);
+        setReady(true);
       }
     })();
 

@@ -1,9 +1,11 @@
 import { initializeApp } from "firebase/app";
 import {
+  browserLocalPersistence,
   getAuth,
   getRedirectResult,
   GoogleAuthProvider,
   onAuthStateChanged,
+  setPersistence,
   signInWithPopup,
   signInWithRedirect,
   signOut,
@@ -41,16 +43,10 @@ export const app: FirebaseApp | null = firebaseEnabled ? initializeApp(firebaseC
 export const auth: Auth | null = firebaseEnabled && app ? getAuth(app) : null;
 export const db: Firestore | null = firebaseEnabled && app ? getFirestore(app) : null;
 
-function shouldUseRedirectLogin() {
-  if (typeof navigator === "undefined") return false;
-  const ua = navigator.userAgent || "";
-  return /iPad|iPhone|iPod/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-}
-
 function isPopupFallbackError(error: unknown) {
   if (!error || typeof error !== "object") return false;
   const code = (error as { code?: unknown }).code;
-  return code === "auth/popup-blocked" || code === "auth/web-storage-unsupported";
+  return code === "auth/popup-blocked" || code === "auth/web-storage-unsupported" || code === "auth/operation-not-supported-in-this-environment";
 }
 
 function chunk<T>(items: T[], size: number): T[][] {
@@ -109,9 +105,12 @@ function parseLocalStorageRecord(value: unknown): CloudAppSnapshot["localStorage
 
 export async function googleLogin() {
   if (!firebaseEnabled || !auth) return null;
-  if (shouldUseRedirectLogin()) {
-    await signInWithRedirect(auth, provider);
-    return null;
+
+  // Prefer popup even on iPhone; redirect can be less reliable in some Safari contexts.
+  try {
+    await setPersistence(auth, browserLocalPersistence);
+  } catch {
+    // If persistence setup fails we still attempt sign-in.
   }
 
   try {
