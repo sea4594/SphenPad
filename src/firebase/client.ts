@@ -1,9 +1,11 @@
 import { initializeApp } from "firebase/app";
 import {
+  browserLocalPersistence,
   getAuth,
   getRedirectResult,
   GoogleAuthProvider,
   onAuthStateChanged,
+  setPersistence,
   signInWithPopup,
   signInWithRedirect,
   signOut,
@@ -44,13 +46,21 @@ export const db: Firestore | null = firebaseEnabled && app ? getFirestore(app) :
 function shouldUseRedirectLogin() {
   if (typeof navigator === "undefined") return false;
   const ua = navigator.userAgent || "";
-  return /iPad|iPhone|iPod/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  const isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  return isIOS;
 }
 
 function isPopupFallbackError(error: unknown) {
   if (!error || typeof error !== "object") return false;
   const code = (error as { code?: unknown }).code;
-  return code === "auth/popup-blocked" || code === "auth/web-storage-unsupported";
+  return code === "auth/popup-blocked" || code === "auth/web-storage-unsupported" || code === "auth/operation-not-supported-in-this-environment";
+}
+
+function isPopupBenignCancel(error: unknown) {
+  if (!error || typeof error !== "object") return false;
+  const code = (error as { code?: unknown }).code;
+  // These occur when a second popup request interrupts the first, or the user closes it.
+  return code === "auth/cancelled-popup-request" || code === "auth/popup-closed-by-user";
 }
 
 function chunk<T>(items: T[], size: number): T[][] {
@@ -88,6 +98,19 @@ function deserializePuzzle(payload: string) {
   return JSON.parse(payload, jsonReviver) as PersistedPuzzle;
 }
 
+function puzzleKeyToDocId(key: string) {
+  // Firestore document IDs cannot contain '/'.
+  return encodeURIComponent(key);
+}
+
+function puzzleDocIdToKey(docId: string) {
+  try {
+    return decodeURIComponent(docId);
+  } catch {
+    return docId;
+  }
+}
+
 function parseFolders(value: unknown): PuzzleFolder[] {
   if (!Array.isArray(value)) return [];
   return value.filter((entry): entry is PuzzleFolder => {
@@ -109,16 +132,34 @@ function parseLocalStorageRecord(value: unknown): CloudAppSnapshot["localStorage
 
 export async function googleLogin() {
   if (!firebaseEnabled || !auth) return null;
+
   if (shouldUseRedirectLogin()) {
+    try {
+      await setPersistence(auth, browserLocalPersistence);
+    } catch {
+      // Best-effort only.
+    }
     await signInWithRedirect(auth, provider);
     return null;
   }
 
   try {
     const result = await signInWithPopup(auth, provider);
+    // Apply local persistence after successful interactive sign-in.
+    try {
+      await setPersistence(auth, browserLocalPersistence);
+    } catch {
+      // Persistence failure should not block successful sign-in.
+    }
     return result.user;
   } catch (error) {
+    if (isPopupBenignCancel(error)) return null;
     if (isPopupFallbackError(error)) {
+      try {
+        await setPersistence(auth, browserLocalPersistence);
+      } catch {
+        // Best-effort only.
+      }
       await signInWithRedirect(auth, provider);
       return null;
     }
@@ -156,25 +197,36 @@ export async function pullCloudState(userId: string): Promise<CloudAppSnapshot |
     getDocs(collection(db, "users", userId, "puzzles")),
   ]);
 
-  if (!stateSnap.exists()) return null;
-
-  const stateData = stateSnap.data() as {
-    updatedAt?: unknown;
-    localStorage?: unknown;
-    folders?: unknown;
-  };
+  const stateData = stateSnap.exists()
+    ? (stateSnap.data() as {
+        updatedAt?: unknown;
+        localStorage?: unknown;
+        folders?: unknown;
+      })
+    : null;
 
   const puzzles = puzzleDocs.docs.flatMap((entry) => {
     const payload = entry.data().payload;
     if (typeof payload !== "string" || !payload.length) return [];
-    return [{ key: entry.id, data: deserializePuzzle(payload) }];
+    return [{ key: puzzleDocIdToKey(entry.id), data: deserializePuzzle(payload) }];
   });
+
+  const hasAnyCloudData = Boolean(stateSnap.exists() || puzzles.length > 0);
+  if (!hasAnyCloudData) return null;
+
+  const maxPuzzleUpdatedAt = puzzles.reduce((max, row) => {
+    const updatedAt = row.data.updatedAt || 0;
+    return updatedAt > max ? updatedAt : max;
+  }, 0);
 
   return {
     version: 1,
-    updatedAt: typeof stateData.updatedAt === "number" ? stateData.updatedAt : 0,
-    localStorage: parseLocalStorageRecord(stateData.localStorage),
-    folders: parseFolders(stateData.folders),
+    updatedAt:
+      stateData && typeof stateData.updatedAt === "number"
+        ? stateData.updatedAt
+        : maxPuzzleUpdatedAt,
+    localStorage: parseLocalStorageRecord(stateData?.localStorage),
+    folders: parseFolders(stateData?.folders),
     puzzles,
   };
 }
@@ -183,6 +235,8 @@ export async function pushCloudState(userId: string, snapshot: CloudAppSnapshot,
   if (!firebaseEnabled || !db) return;
 
   const nextPuzzleKeys = snapshot.puzzles.map((row) => row.key);
+  const nextPuzzleDocIds = new Set(nextPuzzleKeys.map(puzzleKeyToDocId));
+  const previousPuzzleDocIds = new Set(previousPuzzleKeys.map(puzzleKeyToDocId));
   const stateRef = doc(db, "users", userId, "app", "state");
   await setDoc(stateRef, {
     version: snapshot.version,
@@ -193,16 +247,20 @@ export async function pushCloudState(userId: string, snapshot: CloudAppSnapshot,
   });
 
   const operations = [
-    ...snapshot.puzzles.map((row) => ({ type: "set" as const, key: row.key, payload: serializePuzzle(row.data) })),
-    ...previousPuzzleKeys
-      .filter((key) => !nextPuzzleKeys.includes(key))
-      .map((key) => ({ type: "delete" as const, key })),
+    ...snapshot.puzzles.map((row) => ({
+      type: "set" as const,
+      docId: puzzleKeyToDocId(row.key),
+      payload: serializePuzzle(row.data),
+    })),
+    ...Array.from(previousPuzzleDocIds)
+      .filter((docId) => !nextPuzzleDocIds.has(docId))
+      .map((docId) => ({ type: "delete" as const, docId })),
   ];
 
   for (const batchItems of chunk(operations, MAX_BATCH_SIZE)) {
     const batch = writeBatch(db);
     for (const item of batchItems) {
-      const puzzleRef = doc(db, "users", userId, "puzzles", item.key);
+      const puzzleRef = doc(db, "users", userId, "puzzles", item.docId);
       if (item.type === "set") {
         batch.set(puzzleRef, { updatedAt: snapshot.updatedAt, payload: item.payload });
       } else {
