@@ -253,12 +253,14 @@ function extractConstraintBullets(def: StoredPuzzle["def"]): string[] {
   return Array.from(out);
 }
 
-export function FoldersPage() {
+export function FoldersPage(props: { active?: boolean }) {
+  const active = props.active ?? true;
   const nav = useNavigate();
   const location = useLocation();
   const initialPrefs = useMemo(readInitialFolderMenuPrefs, []);
   const initialActiveFolderId = useMemo(readInitialActiveFolderId, []);
   const appliedReturnStateRef = useRef(false);
+  const pendingRefreshRef = useRef(false);
   const [initialFoldersLoaded, setInitialFoldersLoaded] = useState(false);
 
   const [rows, setRows] = useState<StoredPuzzle[]>([]);
@@ -294,14 +296,25 @@ export function FoldersPage() {
   }
 
   useEffect(() => {
+    if (!active) return;
     void refresh();
-  }, []);
+  }, [active]);
+
+  useEffect(() => {
+    if (!active || !pendingRefreshRef.current) return;
+    pendingRefreshRef.current = false;
+    void refresh();
+  }, [active]);
 
   useEffect(() => {
     return onStorageRefreshNeeded(() => {
+      if (!active) {
+        pendingRefreshRef.current = true;
+        return;
+      }
       void refresh();
     });
-  }, []);
+  }, [active]);
 
   useEffect(() => {
     setSyncedLocalStorageItem(

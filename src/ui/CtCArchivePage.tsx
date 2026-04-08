@@ -374,7 +374,8 @@ async function loadCachedPuzzlePayload(entry: ArchiveEntry): Promise<string | nu
   }
 }
 
-export function CtCArchivePage() {
+export function CtCArchivePage(props: { active?: boolean }) {
+  const active = props.active ?? true;
   const nav = useNavigate();
   const location = useLocation();
   const [renderConfig] = useState(getRenderConfig);
@@ -423,6 +424,7 @@ export function CtCArchivePage() {
   const loadingQueueRef = useRef<Set<string>>(new Set());
   const loadCountRef = useRef<number>(0);
   const pendingQueueRef = useRef<PreparedArchiveEntry[]>([]);
+  const pendingRefreshRef = useRef(false);
   const deferredQuery = useDeferredValue(query);
 
   useEffect(() => {
@@ -513,6 +515,7 @@ export function CtCArchivePage() {
   }
 
   useEffect(() => {
+    if (!active) return;
     void refreshRows();
 
     const run = () => {
@@ -532,14 +535,25 @@ export function CtCArchivePage() {
 
     const timer = window.setTimeout(run, 150);
     return () => window.clearTimeout(timer);
-  }, []);
+  }, [active]);
+
+  useEffect(() => {
+    if (!active || !pendingRefreshRef.current) return;
+    pendingRefreshRef.current = false;
+    void refreshCompleted();
+    void refreshFolders();
+  }, [active]);
 
   useEffect(() => {
     return onStorageRefreshNeeded(() => {
+      if (!active) {
+        pendingRefreshRef.current = true;
+        return;
+      }
       void refreshCompleted();
       void refreshFolders();
     });
-  }, []);
+  }, [active]);
 
   const hosts = useMemo(
     () => Array.from(new Set(rows.map((r) => r.videoHost).filter(Boolean))).sort((a, b) => a.localeCompare(b)),
@@ -840,6 +854,7 @@ export function CtCArchivePage() {
   }, [previewedPuzzles]);
 
   const processPreviewQueue = useCallback(async () => {
+    if (!active) return;
     if (loadCountRef.current >= 2 || pendingQueueRef.current.length === 0) return;
 
     const entry = pendingQueueRef.current.shift();
@@ -854,17 +869,25 @@ export function CtCArchivePage() {
         await processPreviewQueue();
       }
     }
-  }, [loadPuzzlePreview]);
+  }, [active, loadPuzzlePreview]);
 
   const queuePreviewLoad = useCallback((entry: PreparedArchiveEntry) => {
+    if (!active) return;
     if (loadingQueueRef.current.has(entry.id) || previewedPuzzles.has(entry.id)) return;
 
     loadingQueueRef.current.add(entry.id);
     pendingQueueRef.current.push(entry);
     void processPreviewQueue();
-  }, [previewedPuzzles, processPreviewQueue]);
+  }, [active, previewedPuzzles, processPreviewQueue]);
 
   useEffect(() => {
+    if (active) return;
+    pendingQueueRef.current = [];
+    loadingQueueRef.current.clear();
+  }, [active]);
+
+  useEffect(() => {
+    if (!active) return;
     const observerOptions = {
       root: null,
       rootMargin: "50px",
@@ -897,7 +920,7 @@ export function CtCArchivePage() {
         observerRef.current.disconnect();
       }
     };
-  }, [visibleRows, queuePreviewLoad]);
+  }, [active, visibleRows, queuePreviewLoad]);
 
   const hasMoreRows = visibleRowsCount < filteredRows.length;
 

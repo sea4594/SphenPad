@@ -400,12 +400,14 @@ function extractConstraintBullets(def: StoredPuzzle["def"]): string[] {
   return Array.from(out);
 }
 
-export function MainMenu() {
+export function MainMenu(props: { active?: boolean }) {
+  const active = props.active ?? true;
   const nav = useNavigate();
   const location = useLocation();
   const initialFilterPrefs = useMemo(readInitialMainMenuFilterPrefs, []);
   const initialFolderPrefs = useMemo(readInitialFolderMenuPrefs, []);
   const appliedReturnStateRef = useRef(false);
+  const pendingRefreshRef = useRef(false);
 
   const [rows, setRows] = useState<StoredPuzzle[]>([]);
   const [folders, setFolders] = useState<PuzzleFolder[]>([]);
@@ -456,16 +458,28 @@ export function MainMenu() {
   }
 
   useEffect(() => {
+    if (!active) return;
     void refreshPuzzles();
     void refreshFolders();
-  }, []);
+  }, [active]);
+
+  useEffect(() => {
+    if (!active || !pendingRefreshRef.current) return;
+    pendingRefreshRef.current = false;
+    void refreshPuzzles();
+    void refreshFolders();
+  }, [active]);
 
   useEffect(() => {
     return onStorageRefreshNeeded(() => {
+      if (!active) {
+        pendingRefreshRef.current = true;
+        return;
+      }
       void refreshPuzzles();
       void refreshFolders();
     });
-  }, []);
+  }, [active]);
 
   useEffect(() => {
     if (typeof window === "undefined" || typeof window.matchMedia !== "function") return;

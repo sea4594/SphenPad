@@ -64,11 +64,14 @@ export function readSyncedLocalStorage(): Partial<Record<SyncedLocalStorageKey, 
 }
 
 export function setSyncedLocalStorageItem(key: SyncedLocalStorageKey, value: string, notify = true) {
+  const previous = localStorage.getItem(key);
+  if (previous === value) return;
   localStorage.setItem(key, value);
   markLocalDataChanged(Date.now(), notify);
 }
 
 export function removeSyncedLocalStorageItem(key: SyncedLocalStorageKey, notify = true) {
+  if (localStorage.getItem(key) === null) return;
   localStorage.removeItem(key);
   markLocalDataChanged(Date.now(), notify);
 }
