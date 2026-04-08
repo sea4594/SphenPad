@@ -16,6 +16,7 @@ export function SettingsOverlay(props: { onClose: () => void }) {
   const {
     firebaseEnabled,
     login,
+    loginPending,
     logout,
     syncError,
     syncStatus,
@@ -79,11 +80,11 @@ export function SettingsOverlay(props: { onClose: () => void }) {
               ) : (
                 <button
                   className="btn primary"
-                  disabled={!firebaseEnabled || syncStatus === "syncing"}
+                  disabled={!firebaseEnabled || syncStatus === "syncing" || loginPending}
                   onClick={() => login().catch((error) => alert(error instanceof Error ? error.message : String(error)))}
                   type="button"
                 >
-                  Google login
+                  {loginPending ? "Opening Google..." : "Google login"}
                 </button>
               )}
             </div>

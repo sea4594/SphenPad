@@ -31,6 +31,7 @@ type AccountSyncContextValue = {
   syncStatus: SyncStatus;
   syncError: string;
   appStateNonce: number;
+  loginPending: boolean;
   login: () => Promise<void>;
   logout: () => Promise<void>;
 };
@@ -49,6 +50,7 @@ export function AccountSyncProvider(props: { children: ReactNode }) {
   const [syncStatus, setSyncStatus] = useState<SyncStatus>("idle");
   const [syncError, setSyncError] = useState("");
   const [appStateNonce, setAppStateNonce] = useState(0);
+  const [loginPending, setLoginPending] = useState(false);
   const initializedUserIdRef = useRef<string | null>(null);
   const readyRef = useRef(ready);
   const syncTimeoutRef = useRef<number | null>(null);
@@ -56,6 +58,7 @@ export function AccountSyncProvider(props: { children: ReactNode }) {
   const syncRequestedRef = useRef(false);
   const restoringRef = useRef(false);
   const initializingForUidRef = useRef<string | null>(null);
+  const loginInFlightRef = useRef(false);
   const cloudPuzzleKeysRef = useRef<string[]>([]);
   const lastSuccessfulSyncAtRef = useRef(0);
 
@@ -263,9 +266,18 @@ export function AccountSyncProvider(props: { children: ReactNode }) {
       syncStatus,
       syncError,
       appStateNonce,
+      loginPending,
       login: async () => {
+        if (loginInFlightRef.current) return;
         setSyncError("");
-        await googleLogin();
+        loginInFlightRef.current = true;
+        setLoginPending(true);
+        try {
+          await googleLogin();
+        } finally {
+          loginInFlightRef.current = false;
+          setLoginPending(false);
+        }
       },
       logout: async () => {
         clearScheduledSync();
@@ -273,7 +285,7 @@ export function AccountSyncProvider(props: { children: ReactNode }) {
         await googleLogout();
       },
     }),
-    [appStateNonce, ready, syncError, syncStatus, user],
+    [appStateNonce, ready, syncError, syncStatus, user, loginPending],
   );
 
   return <AccountSyncContext.Provider value={value}>{children}</AccountSyncContext.Provider>;
