@@ -3,12 +3,17 @@ import { useNavigate } from "react-router-dom";
 export function AppBrand() {
   const nav = useNavigate();
 
+  const getActivePage = () => {
+    const visibleLayer = document.querySelector<HTMLElement>('[data-main-page-visible="true"]');
+    return visibleLayer?.querySelector<HTMLElement>(".page") ?? null;
+  };
+
   const handleClick = () => {
-    const page = document.querySelector<HTMLElement>('.page');
+    const page = getActivePage();
     if (page && page.scrollTop > 10) {
-      page.scrollTo({ top: 0, behavior: 'smooth' });
+      page.scrollTo({ top: 0, behavior: "smooth" });
     } else {
-      nav('/');
+      nav("/");
     }
   };
 

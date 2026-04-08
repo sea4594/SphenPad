@@ -404,6 +404,7 @@ export function MainMenu(props: { isVisible?: boolean }) {
   const { isVisible = true } = props;
   const nav = useNavigate();
   const location = useLocation();
+  const [hasActivated, setHasActivated] = useState(isVisible);
   const initialFilterPrefs = useMemo(readInitialMainMenuFilterPrefs, []);
   const initialFolderPrefs = useMemo(readInitialFolderMenuPrefs, []);
   const appliedReturnStateRef = useRef(false);
@@ -457,16 +458,22 @@ export function MainMenu(props: { isVisible?: boolean }) {
   }
 
   useEffect(() => {
-    void refreshPuzzles();
-    void refreshFolders();
-  }, []);
+    if (isVisible) setHasActivated(true);
+  }, [isVisible]);
 
   useEffect(() => {
+    if (!hasActivated) return;
+    void refreshPuzzles();
+    void refreshFolders();
+  }, [hasActivated]);
+
+  useEffect(() => {
+    if (!isVisible) return;
     return onLocalAppSnapshotImported(() => {
       void refreshPuzzles();
       void refreshFolders();
     });
-  }, []);
+  }, [isVisible]);
 
   useEffect(() => {
     if (typeof window === "undefined" || typeof window.matchMedia !== "function") return;

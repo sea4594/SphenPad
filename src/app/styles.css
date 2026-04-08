@@ -326,8 +326,8 @@ button,
 }
 
 .brandIcon {
-  width: 30px;
-  height: 30px;
+  width: 100%;
+  height: 100%;
   display: block;
   object-fit: cover;
   flex: 0 0 auto;

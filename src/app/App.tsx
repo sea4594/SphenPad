@@ -64,13 +64,28 @@ function MainPagesHost(props: { activePath: string }) {
 
   return (
     <div style={{ position: "absolute", inset: 0, overflow: "hidden", zIndex: 1 }}>
-      <div style={layerStyle(showMainMenu)} aria-hidden={!showMainMenu}>
+      <div
+        style={layerStyle(showMainMenu)}
+        aria-hidden={!showMainMenu}
+        data-main-page-layer="main-menu"
+        data-main-page-visible={showMainMenu ? "true" : "false"}
+      >
         <MainMenu isVisible={showMainMenu} />
       </div>
-      <div style={layerStyle(showFolders)} aria-hidden={!showFolders}>
+      <div
+        style={layerStyle(showFolders)}
+        aria-hidden={!showFolders}
+        data-main-page-layer="folders"
+        data-main-page-visible={showFolders ? "true" : "false"}
+      >
         <FoldersPage isVisible={showFolders} />
       </div>
-      <div style={layerStyle(showArchive)} aria-hidden={!showArchive}>
+      <div
+        style={layerStyle(showArchive)}
+        aria-hidden={!showArchive}
+        data-main-page-layer="archive"
+        data-main-page-visible={showArchive ? "true" : "false"}
+      >
         <CtCArchivePage isVisible={showArchive} />
       </div>
     </div>
@@ -131,6 +146,35 @@ export function App() {
   useEffect(() => {
     const root = document.documentElement;
     clearForcedPortrait(root);
+  }, []);
+
+  useEffect(() => {
+    const getActivePage = () => {
+      const visibleLayer = document.querySelector<HTMLElement>('[data-main-page-visible="true"]');
+      return visibleLayer?.querySelector<HTMLElement>(".page") ?? null;
+    };
+
+    const onTopEdgeTap = (event: MouseEvent | TouchEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (target?.closest("button,a,input,select,textarea,[role='button']")) return;
+
+      const touch = event instanceof TouchEvent ? event.changedTouches[0] : null;
+      const y = touch ? touch.clientY : (event as MouseEvent).clientY;
+      const safeTopRaw = getComputedStyle(document.documentElement).getPropertyValue("--safe-top").trim();
+      const safeTop = Number.parseFloat(safeTopRaw) || 0;
+      if (y > safeTop + 12) return;
+
+      const page = getActivePage();
+      if (!page) return;
+      page.scrollTo({ top: 0, behavior: "smooth" });
+    };
+
+    window.addEventListener("click", onTopEdgeTap, { passive: true });
+    window.addEventListener("touchend", onTopEdgeTap, { passive: true });
+    return () => {
+      window.removeEventListener("click", onTopEdgeTap);
+      window.removeEventListener("touchend", onTopEdgeTap);
+    };
   }, []);
 
   return (
