@@ -43,24 +43,10 @@ export const app: FirebaseApp | null = firebaseEnabled ? initializeApp(firebaseC
 export const auth: Auth | null = firebaseEnabled && app ? getAuth(app) : null;
 export const db: Firestore | null = firebaseEnabled && app ? getFirestore(app) : null;
 
-function shouldUseRedirectLogin() {
-  if (typeof navigator === "undefined") return false;
-  const ua = navigator.userAgent || "";
-  const isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-  return isIOS;
-}
-
 function isPopupFallbackError(error: unknown) {
   if (!error || typeof error !== "object") return false;
   const code = (error as { code?: unknown }).code;
   return code === "auth/popup-blocked" || code === "auth/web-storage-unsupported" || code === "auth/operation-not-supported-in-this-environment";
-}
-
-function isPopupBenignCancel(error: unknown) {
-  if (!error || typeof error !== "object") return false;
-  const code = (error as { code?: unknown }).code;
-  // These occur when a second popup request interrupts the first, or the user closes it.
-  return code === "auth/cancelled-popup-request" || code === "auth/popup-closed-by-user";
 }
 
 function chunk<T>(items: T[], size: number): T[][] {
@@ -133,30 +119,18 @@ function parseLocalStorageRecord(value: unknown): CloudAppSnapshot["localStorage
 export async function googleLogin() {
   if (!firebaseEnabled || !auth) return null;
 
-  if (shouldUseRedirectLogin()) {
-    // iOS Safari is sensitive to async work before redirect in a user gesture.
-    // Keep this path minimal to avoid dropped login attempts.
-    await signInWithRedirect(auth, provider);
-    return null;
+  // Prefer popup even on iPhone; redirect can be less reliable in some Safari contexts.
+  try {
+    await setPersistence(auth, browserLocalPersistence);
+  } catch {
+    // If persistence setup fails we still attempt sign-in.
   }
 
   try {
     const result = await signInWithPopup(auth, provider);
-    // Apply local persistence after successful interactive sign-in.
-    try {
-      await setPersistence(auth, browserLocalPersistence);
-    } catch {
-      // Persistence failure should not block successful sign-in.
-    }
     return result.user;
   } catch (error) {
-    if (isPopupBenignCancel(error)) return null;
     if (isPopupFallbackError(error)) {
-      try {
-        await setPersistence(auth, browserLocalPersistence);
-      } catch {
-        // Best-effort only.
-      }
       await signInWithRedirect(auth, provider);
       return null;
     }
@@ -167,9 +141,7 @@ export async function googleLogin() {
 export async function resolveGoogleRedirectLogin() {
   if (!firebaseEnabled || !auth) return null;
   const result = await getRedirectResult(auth);
-  // On some iOS/Safari flows, redirect completes with currentUser populated
-  // but getRedirectResult returns null.
-  return result?.user ?? auth.currentUser ?? null;
+  return result?.user ?? null;
 }
 
 export function onGoogleAuthStateChanged(listener: (user: User | null) => void) {
@@ -178,11 +150,6 @@ export function onGoogleAuthStateChanged(listener: (user: User | null) => void) 
     return () => {};
   }
   return onAuthStateChanged(auth, listener);
-}
-
-export function getCurrentGoogleUser() {
-  if (!firebaseEnabled || !auth) return null;
-  return auth.currentUser;
 }
 
 export async function googleLogout() {

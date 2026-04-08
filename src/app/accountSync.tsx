@@ -13,7 +13,6 @@ import { getLocalDataOwnerId, readLocalDataUpdatedAt, setLocalDataOwnerId } from
 import { onCloudSyncNeeded } from "../core/syncSignal";
 import {
   firebaseEnabled,
-  getCurrentGoogleUser,
   googleLogin,
   googleLogout,
   onGoogleAuthStateChanged,
@@ -31,7 +30,6 @@ type AccountSyncContextValue = {
   user: User | null;
   syncStatus: SyncStatus;
   syncError: string;
-  loginPending: boolean;
   login: () => Promise<void>;
   logout: () => Promise<void>;
 };
@@ -62,7 +60,6 @@ export function AccountSyncProvider(props: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [syncStatus, setSyncStatus] = useState<SyncStatus>("idle");
   const [syncError, setSyncError] = useState("");
-  const [loginPending, setLoginPending] = useState(false);
   const initializedUserIdRef = useRef<string | null>(null);
   const readyRef = useRef(ready);
   const syncTimeoutRef = useRef<number | null>(null);
@@ -70,7 +67,6 @@ export function AccountSyncProvider(props: { children: ReactNode }) {
   const syncRequestedRef = useRef(false);
   const restoringRef = useRef(false);
   const initializingForUidRef = useRef<string | null>(null);
-  const loginInFlightRef = useRef(false);
   const cloudPuzzleKeysRef = useRef<string[]>([]);
   const lastSuccessfulSyncAtRef = useRef(0);
 
@@ -211,15 +207,6 @@ export function AccountSyncProvider(props: { children: ReactNode }) {
 
     let cancelled = false;
 
-    const hydrateFromCurrentUser = async () => {
-      if (cancelled) return;
-      const currentUser = getCurrentGoogleUser();
-      if (!currentUser) return;
-      setUser(currentUser);
-      if (initializedUserIdRef.current === currentUser.uid && readyRef.current) return;
-      await initializeUserState(currentUser);
-    };
-
     const unsubscribe = onGoogleAuthStateChanged((nextUser) => {
       if (cancelled) return;
       setUser(nextUser);
@@ -257,25 +244,9 @@ export function AccountSyncProvider(props: { children: ReactNode }) {
       }
     })();
 
-    void hydrateFromCurrentUser();
-
-    const onPageShow = () => {
-      void hydrateFromCurrentUser();
-    };
-    const onVisibilityChange = () => {
-      if (document.visibilityState !== "visible") return;
-      void hydrateFromCurrentUser();
-    };
-    window.addEventListener("pageshow", onPageShow);
-    window.addEventListener("focus", onPageShow);
-    document.addEventListener("visibilitychange", onVisibilityChange);
-
     return () => {
       cancelled = true;
       clearScheduledSync();
-      window.removeEventListener("pageshow", onPageShow);
-      window.removeEventListener("focus", onPageShow);
-      document.removeEventListener("visibilitychange", onVisibilityChange);
       unsubscribe();
     };
   }, []);
@@ -306,18 +277,9 @@ export function AccountSyncProvider(props: { children: ReactNode }) {
       user,
       syncStatus,
       syncError,
-      loginPending,
       login: async () => {
-        if (loginInFlightRef.current) return;
         setSyncError("");
-        loginInFlightRef.current = true;
-        setLoginPending(true);
-        try {
-          await googleLogin();
-        } finally {
-          loginInFlightRef.current = false;
-          setLoginPending(false);
-        }
+        await googleLogin();
       },
       logout: async () => {
         clearScheduledSync();
@@ -325,7 +287,7 @@ export function AccountSyncProvider(props: { children: ReactNode }) {
         await googleLogout();
       },
     }),
-    [ready, syncError, syncStatus, user, loginPending],
+    [ready, syncError, syncStatus, user],
   );
 
   return <AccountSyncContext.Provider value={value}>{children}</AccountSyncContext.Provider>;
