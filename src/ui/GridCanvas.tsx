@@ -1353,10 +1353,6 @@ export function GridCanvas(props: {
     // Draw all arrows/lines/cages/dots by their target/layer
     drawVisualLayer("arrows");
     drawVisualLayer("cages");
-    drawVisualLayer("grid");
-
-    // Overlays (including circles, rectangles, text) always on top unless specifically targeted as underlay
-    drawVisualLayer("over");
 
     const drawGridPuzzleFeatures = () => {
       drawVisualLayer("grid");
@@ -1380,12 +1376,16 @@ export function GridCanvas(props: {
       ctx.clip();
     };
 
-    // Keep a dedicated grid-target pass between highlights and the built-in grid.
-    drawGridPuzzleFeatures();
+    // In non-fog puzzles, render grid-target features and overlays in a single pass.
+    // Fog puzzles render these in the fog section to keep clipping/order consistent.
+    if (!fogDefined) {
+      // Keep a dedicated grid-target pass between highlights and the built-in grid.
+      drawGridPuzzleFeatures();
 
-    // Grid below top puzzle artwork so features are not bisected by grid lines.
-    drawGridLines();
-    if (!fogDefined) drawTopPuzzleFeatures();
+      // Grid below top puzzle artwork so features are not bisected by grid lines.
+      drawGridLines();
+      drawTopPuzzleFeatures();
+    }
 
     const drawSegmentLine = (
       start: { x: number; y: number },
