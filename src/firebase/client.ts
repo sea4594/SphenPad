@@ -90,6 +90,19 @@ function deserializePuzzle(payload: string) {
   return JSON.parse(payload, jsonReviver) as PersistedPuzzle;
 }
 
+function puzzleKeyToDocId(key: string) {
+  // Firestore document IDs cannot contain '/'.
+  return encodeURIComponent(key);
+}
+
+function puzzleDocIdToKey(docId: string) {
+  try {
+    return decodeURIComponent(docId);
+  } catch {
+    return docId;
+  }
+}
+
 function parseFolders(value: unknown): PuzzleFolder[] {
   if (!Array.isArray(value)) return [];
   return value.filter((entry): entry is PuzzleFolder => {
@@ -169,7 +182,7 @@ export async function pullCloudState(userId: string): Promise<CloudAppSnapshot |
   const puzzles = puzzleDocs.docs.flatMap((entry) => {
     const payload = entry.data().payload;
     if (typeof payload !== "string" || !payload.length) return [];
-    return [{ key: entry.id, data: deserializePuzzle(payload) }];
+    return [{ key: puzzleDocIdToKey(entry.id), data: deserializePuzzle(payload) }];
   });
 
   return {
@@ -185,6 +198,8 @@ export async function pushCloudState(userId: string, snapshot: CloudAppSnapshot,
   if (!firebaseEnabled || !db) return;
 
   const nextPuzzleKeys = snapshot.puzzles.map((row) => row.key);
+  const nextPuzzleDocIds = new Set(nextPuzzleKeys.map(puzzleKeyToDocId));
+  const previousPuzzleDocIds = new Set(previousPuzzleKeys.map(puzzleKeyToDocId));
   const stateRef = doc(db, "users", userId, "app", "state");
   await setDoc(stateRef, {
     version: snapshot.version,
@@ -195,16 +210,20 @@ export async function pushCloudState(userId: string, snapshot: CloudAppSnapshot,
   });
 
   const operations = [
-    ...snapshot.puzzles.map((row) => ({ type: "set" as const, key: row.key, payload: serializePuzzle(row.data) })),
-    ...previousPuzzleKeys
-      .filter((key) => !nextPuzzleKeys.includes(key))
-      .map((key) => ({ type: "delete" as const, key })),
+    ...snapshot.puzzles.map((row) => ({
+      type: "set" as const,
+      docId: puzzleKeyToDocId(row.key),
+      payload: serializePuzzle(row.data),
+    })),
+    ...Array.from(previousPuzzleDocIds)
+      .filter((docId) => !nextPuzzleDocIds.has(docId))
+      .map((docId) => ({ type: "delete" as const, docId })),
   ];
 
   for (const batchItems of chunk(operations, MAX_BATCH_SIZE)) {
     const batch = writeBatch(db);
     for (const item of batchItems) {
-      const puzzleRef = doc(db, "users", userId, "puzzles", item.key);
+      const puzzleRef = doc(db, "users", userId, "puzzles", item.docId);
       if (item.type === "set") {
         batch.set(puzzleRef, { updatedAt: snapshot.updatedAt, payload: item.payload });
       } else {
