@@ -13,6 +13,7 @@ import { getLocalDataOwnerId, readLocalDataUpdatedAt, setLocalDataOwnerId } from
 import { onCloudSyncNeeded } from "../core/syncSignal";
 import {
   firebaseEnabled,
+  getCurrentGoogleUser,
   googleLogin,
   googleLogout,
   onGoogleAuthStateChanged,
@@ -210,6 +211,15 @@ export function AccountSyncProvider(props: { children: ReactNode }) {
 
     let cancelled = false;
 
+    const hydrateFromCurrentUser = async () => {
+      if (cancelled) return;
+      const currentUser = getCurrentGoogleUser();
+      if (!currentUser) return;
+      setUser(currentUser);
+      if (initializedUserIdRef.current === currentUser.uid && readyRef.current) return;
+      await initializeUserState(currentUser);
+    };
+
     const unsubscribe = onGoogleAuthStateChanged((nextUser) => {
       if (cancelled) return;
       setUser(nextUser);
@@ -247,9 +257,25 @@ export function AccountSyncProvider(props: { children: ReactNode }) {
       }
     })();
 
+    void hydrateFromCurrentUser();
+
+    const onPageShow = () => {
+      void hydrateFromCurrentUser();
+    };
+    const onVisibilityChange = () => {
+      if (document.visibilityState !== "visible") return;
+      void hydrateFromCurrentUser();
+    };
+    window.addEventListener("pageshow", onPageShow);
+    window.addEventListener("focus", onPageShow);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
     return () => {
       cancelled = true;
       clearScheduledSync();
+      window.removeEventListener("pageshow", onPageShow);
+      window.removeEventListener("focus", onPageShow);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
       unsubscribe();
     };
   }, []);

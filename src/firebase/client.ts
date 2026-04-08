@@ -134,11 +134,8 @@ export async function googleLogin() {
   if (!firebaseEnabled || !auth) return null;
 
   if (shouldUseRedirectLogin()) {
-    try {
-      await setPersistence(auth, browserLocalPersistence);
-    } catch {
-      // Best-effort only.
-    }
+    // iOS Safari is sensitive to async work before redirect in a user gesture.
+    // Keep this path minimal to avoid dropped login attempts.
     await signInWithRedirect(auth, provider);
     return null;
   }
@@ -181,6 +178,11 @@ export function onGoogleAuthStateChanged(listener: (user: User | null) => void) 
     return () => {};
   }
   return onAuthStateChanged(auth, listener);
+}
+
+export function getCurrentGoogleUser() {
+  if (!firebaseEnabled || !auth) return null;
+  return auth.currentUser;
 }
 
 export async function googleLogout() {
