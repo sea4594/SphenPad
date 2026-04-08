@@ -22,14 +22,14 @@ import { SelectControl, type SelectControlOption } from "./SelectControl";
 import { SettingsOverlay } from "./SettingsOverlay";
 import {
   clearReturnStateFromHistory,
-  clearMainPageReturnStateFromHistory,
   currentRoutePath,
   readCurrentScrollPosition,
   readPuzzleReturnState,
-  readMainPageReturnState,
   restoreWindowScroll,
   withPuzzleOriginState,
-  withMainPageReturnState,
+  loadMainPageScroll,
+  saveMainPageScroll,
+  setupPageScrollAutoSave,
 } from "./puzzleNavState";
 
 type SortOrder = "recent" | "az" | "date";
@@ -263,7 +263,7 @@ export function FoldersPage() {
   const initialPrefs = useMemo(readInitialFolderMenuPrefs, []);
   const initialActiveFolderId = useMemo(readInitialActiveFolderId, []);
   const appliedReturnStateRef = useRef(false);
-  const appliedMainPageReturnRef = useRef(false);
+  const scrollCleanupRef = useRef<(() => void) | null>(null);
   const [initialFoldersLoaded, setInitialFoldersLoaded] = useState(false);
 
   const [rows, setRows] = useState<StoredPuzzle[]>([]);
@@ -354,16 +354,16 @@ export function FoldersPage() {
   }, [location.state]);
 
   useEffect(() => {
-    if (appliedMainPageReturnRef.current) return;
-    const mainPageReturn = readMainPageReturnState(location.state);
-    if (!mainPageReturn || mainPageReturn.page !== "folders") return;
+    const savedScroll = loadMainPageScroll("folders");
+    restoreWindowScroll(savedScroll);
+  }, []);
 
-    appliedMainPageReturnRef.current = true;
-    console.log("[FoldersPage] Restoring main page return state:", `scrollY=${mainPageReturn.scrollY}`);
-    
-    restoreWindowScroll(mainPageReturn.scrollY);
-    clearMainPageReturnStateFromHistory();
-  }, [location.state]);
+  useEffect(() => {
+    scrollCleanupRef.current = setupPageScrollAutoSave("folders");
+    return () => {
+      scrollCleanupRef.current?.();
+    };
+  }, []);
 
   const folderById = useMemo(() => {
     return new Map(folders.map((folder) => [folder.id, folder]));
@@ -722,22 +722,14 @@ export function FoldersPage() {
 
   function navigateToMainMenu() {
     const scrollY = readCurrentScrollPosition();
-    console.log("[FoldersPage] Navigating to Main Menu, scroll captured:", scrollY);
-    nav("/", {
-      state: withMainPageReturnState(location.state, "folders", scrollY, {
-        activeFolderId,
-      }),
-    });
+    saveMainPageScroll("folders", scrollY);
+    nav("/");
   }
 
   function navigateToArchive() {
     const scrollY = readCurrentScrollPosition();
-    console.log("[FoldersPage] Navigating to Archive, scroll captured:", scrollY);
-    nav("/archive", {
-      state: withMainPageReturnState(location.state, "folders", scrollY, {
-        activeFolderId,
-      }),
-    });
+    saveMainPageScroll("folders", scrollY);
+    nav("/archive");
   }
 
   return (

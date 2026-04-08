@@ -16,16 +16,8 @@ export type PuzzleOriginState = {
 
 const PUZZLE_ORIGIN_STATE_KEY = "sphenpadPuzzleOriginState";
 const PUZZLE_RETURN_STATE_KEY = "sphenpadPuzzleReturnState";
-const MAIN_PAGE_RETURN_STATE_KEY = "sphenpadMainPageReturnState";
 
 type MainPageName = "main-menu" | "folders" | "archive";
-
-type MainPageReturnState = {
-  version: 1;
-  page: MainPageName;
-  scrollY: number;
-  context?: PuzzleOriginContext;
-};
 
 function readWindowScrollTop(): number {
   if (typeof window === "undefined") return 0;
@@ -200,74 +192,57 @@ export function clearReturnStateFromHistory() {
   }
 }
 
-function normalizeMainPageReturnState(raw: unknown): MainPageReturnState | null {
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
-  const candidate = raw as {
-    version?: unknown;
-    page?: unknown;
-    scrollY?: unknown;
-    context?: unknown;
-  };
-  if (candidate.version !== 1) return null;
-  if (candidate.page !== "main-menu" && candidate.page !== "folders" && candidate.page !== "archive") return null;
-  if (typeof candidate.scrollY !== "number" || !Number.isFinite(candidate.scrollY)) return null;
+// Simple localStorage-based scroll position persistence for main pages.
+const MAIN_PAGE_SCROLL_KEY_PREFIX = "sphenpadMainPageScroll_";
 
-  const context = (candidate.context && typeof candidate.context === "object" && !Array.isArray(candidate.context))
-    ? candidate.context as PuzzleOriginContext
-    : undefined;
-
-  return {
-    version: 1,
-    page: candidate.page,
-    scrollY: Math.max(0, candidate.scrollY),
-    context,
-  };
+export function getMainPageScrollStorageKey(page: MainPageName): string {
+  return `${MAIN_PAGE_SCROLL_KEY_PREFIX}${page}`;
 }
 
-export function withMainPageReturnState(routeState: unknown, page: MainPageName, scrollY: number, context?: PuzzleOriginContext): Record<string, unknown> {
-  const next = asStateObject(routeState);
-  // Remove old main page return state to prevent accumulation
-  delete next[MAIN_PAGE_RETURN_STATE_KEY];
-  next[MAIN_PAGE_RETURN_STATE_KEY] = {
-    version: 1,
-    page,
-    scrollY: Math.max(0, scrollY),
-    context,
-  };
-  console.log(
-    "[PuzzleNav] Main page return state captured:",
-    `page=${page}`,
-    `scrollY=${scrollY}`,
-    context ? `context=${JSON.stringify(context)}` : ""
-  );
-  return next;
-}
-
-export function readMainPageReturnState(routeState: unknown): MainPageReturnState | null {
-  const stateObj = asStateObject(routeState);
-  const returnState = normalizeMainPageReturnState(stateObj[MAIN_PAGE_RETURN_STATE_KEY]);
-  if (returnState) {
-    console.log(
-      "[PuzzleNav] Main page return state read:",
-      `page=${returnState.page}`,
-      `scrollY=${returnState.scrollY}`,
-      returnState.context ? `context=${JSON.stringify(returnState.context)}` : ""
-    );
-  }
-  return returnState;
-}
-
-export function clearMainPageReturnStateFromHistory() {
-  if (typeof window === "undefined" || typeof window.history === "undefined") return;
+export function saveMainPageScroll(page: MainPageName, scrollY: number): void {
+  if (typeof localStorage === "undefined") return;
   try {
-    // Get current state and remove the main page return state key
-    const currentState = window.history.state as Record<string, unknown> | null;
-    if (currentState && MAIN_PAGE_RETURN_STATE_KEY in currentState) {
-      const nextState = { ...currentState };
-      delete nextState[MAIN_PAGE_RETURN_STATE_KEY];
-      window.history.replaceState(nextState, "", window.location.href);
+    localStorage.setItem(getMainPageScrollStorageKey(page), String(Math.max(0, scrollY)));
+  } catch {
+    // Silently fail if localStorage is not available.
+  }
+}
+
+export function loadMainPageScroll(page: MainPageName): number {
+  if (typeof localStorage === "undefined") return 0;
+  try {
+    const stored = localStorage.getItem(getMainPageScrollStorageKey(page));
+    if (typeof stored === "string") {
+      const parsed = parseInt(stored, 10);
+      return Number.isFinite(parsed) ? Math.max(0, parsed) : 0;
     }
   } catch {
-    // Silently fail if replaceState is not allowed
+    // Silently fail if localStorage is not available.
   }
+  return 0;
+}
+
+export function setupPageScrollAutoSave(page: MainPageName): () => void {
+  if (typeof window === "undefined" || typeof document === "undefined") return () => {};
+
+  let saveTimeout: number | null = null;
+
+  const handleScroll = () => {
+    if (saveTimeout !== null) {
+      window.clearTimeout(saveTimeout);
+    }
+    saveTimeout = window.setTimeout(() => {
+      const scrollY = readCurrentScrollPosition();
+      saveMainPageScroll(page, scrollY);
+    }, 200);
+  };
+
+  window.addEventListener("scroll", handleScroll);
+
+  return () => {
+    window.removeEventListener("scroll", handleScroll);
+    if (saveTimeout !== null) {
+      window.clearTimeout(saveTimeout);
+    }
+  };
 }
