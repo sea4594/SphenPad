@@ -30,6 +30,7 @@ type AccountSyncContextValue = {
   user: User | null;
   syncStatus: SyncStatus;
   syncError: string;
+  loginPending: boolean;
   login: () => Promise<void>;
   logout: () => Promise<void>;
 };
@@ -60,6 +61,7 @@ export function AccountSyncProvider(props: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [syncStatus, setSyncStatus] = useState<SyncStatus>("idle");
   const [syncError, setSyncError] = useState("");
+  const [loginPending, setLoginPending] = useState(false);
   const initializedUserIdRef = useRef<string | null>(null);
   const readyRef = useRef(ready);
   const syncTimeoutRef = useRef<number | null>(null);
@@ -277,9 +279,16 @@ export function AccountSyncProvider(props: { children: ReactNode }) {
       user,
       syncStatus,
       syncError,
+      loginPending,
       login: async () => {
+        if (loginPending) return;
         setSyncError("");
-        await googleLogin();
+        setLoginPending(true);
+        try {
+          await googleLogin();
+        } finally {
+          setLoginPending(false);
+        }
       },
       logout: async () => {
         clearScheduledSync();
@@ -287,7 +296,7 @@ export function AccountSyncProvider(props: { children: ReactNode }) {
         await googleLogout();
       },
     }),
-    [ready, syncError, syncStatus, user],
+    [ready, syncError, syncStatus, user, loginPending],
   );
 
   return <AccountSyncContext.Provider value={value}>{children}</AccountSyncContext.Provider>;

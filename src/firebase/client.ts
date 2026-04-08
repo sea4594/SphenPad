@@ -49,6 +49,13 @@ function isPopupFallbackError(error: unknown) {
   return code === "auth/popup-blocked" || code === "auth/web-storage-unsupported" || code === "auth/operation-not-supported-in-this-environment";
 }
 
+function isPopupBenignCancel(error: unknown) {
+  if (!error || typeof error !== "object") return false;
+  const code = (error as { code?: unknown }).code;
+  // These occur when a second popup request interrupts the first, or the user closes it.
+  return code === "auth/cancelled-popup-request" || code === "auth/popup-closed-by-user";
+}
+
 function chunk<T>(items: T[], size: number): T[][] {
   const chunks: T[][] = [];
   for (let index = 0; index < items.length; index += size) {
@@ -119,18 +126,23 @@ function parseLocalStorageRecord(value: unknown): CloudAppSnapshot["localStorage
 export async function googleLogin() {
   if (!firebaseEnabled || !auth) return null;
 
-  // Prefer popup even on iPhone; redirect can be less reliable in some Safari contexts.
-  try {
-    await setPersistence(auth, browserLocalPersistence);
-  } catch {
-    // If persistence setup fails we still attempt sign-in.
-  }
-
   try {
     const result = await signInWithPopup(auth, provider);
+    // Apply local persistence after successful interactive sign-in.
+    try {
+      await setPersistence(auth, browserLocalPersistence);
+    } catch {
+      // Persistence failure should not block successful sign-in.
+    }
     return result.user;
   } catch (error) {
+    if (isPopupBenignCancel(error)) return null;
     if (isPopupFallbackError(error)) {
+      try {
+        await setPersistence(auth, browserLocalPersistence);
+      } catch {
+        // Best-effort only.
+      }
       await signInWithRedirect(auth, provider);
       return null;
     }
