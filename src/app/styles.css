@@ -149,9 +149,7 @@ body,
 }
 
 #root {
-  height: 100%;
-  height: 100svh;
-  min-height: 100%;
+  height: 100dvh;
   min-height: 100svh;
   overflow: hidden;
 }
@@ -162,8 +160,7 @@ html {
 }
 
 body {
-  min-height: 100svh;
-  overflow: hidden;
+  overflow-x: hidden;
 }
 
 html[data-mobile-filter-open="true"],
@@ -413,7 +410,7 @@ button,
 }
 
 .page {
-  padding: 14px 14px 0;
+  padding: 14px;
   display: grid;
   gap: 12px;
   min-height: 0;
@@ -421,8 +418,6 @@ button,
   max-width: 100%;
   overflow: auto;
   overflow-x: hidden;
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior-y: contain;
 }
 
 .row {
@@ -1988,7 +1983,7 @@ input.url {
   }
 
   .page {
-    padding: 10px 10px 0;
+    padding: 10px;
   }
 
   input.url {
@@ -2009,7 +2004,7 @@ input.url {
     --panel-row: calc(var(--panel-cell) * var(--panel-cell-ratio));
     --mobile-controls-h-raw: calc((var(--panel-row) * 5) + (var(--panel-gap) * 4) + (var(--panel-pad) * 2));
     --mobile-controls-h: clamp(210px, var(--mobile-controls-h-raw), 46vmax);
-    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) var(--mobile-controls-h);
     height: 100%;
     gap: 0;
     overflow: hidden;
@@ -2031,14 +2026,14 @@ input.url {
 
   .kbdPanel {
     grid-template-rows: 1fr;
-    height: 100%;
-    max-height: none;
+    height: var(--mobile-controls-h);
+    max-height: 46vmax;
     width: 100%;
     overflow: hidden;
     min-height: 0;
     gap: 0;
-    align-self: stretch;
-    align-content: stretch;
+    align-self: end;
+    align-content: end;
   }
 
   .controlStack {
