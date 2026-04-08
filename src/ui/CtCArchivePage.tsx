@@ -18,11 +18,7 @@ import {
   currentRoutePath,
   readCurrentScrollPosition,
   readPuzzleReturnState,
-  restoreWindowScroll,
   withPuzzleOriginState,
-  loadMainPageScroll,
-  saveMainPageScroll,
-  setupPageScrollAutoSave,
 } from "./puzzleNavState";
 
 type ArchiveEntry = {
@@ -384,7 +380,6 @@ export function CtCArchivePage() {
   const [renderConfig] = useState(getRenderConfig);
   const initialFilterPrefs = useMemo(readInitialArchiveFilterPrefs, []);
   const appliedReturnStateRef = useRef(false);
-  const scrollCleanupRef = useRef<(() => void) | null>(null);
 
   const [rows, setRows] = useState<PreparedArchiveEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -472,33 +467,15 @@ export function CtCArchivePage() {
 
     appliedReturnStateRef.current = true;
     const savedVisibleRowsCount = returned.context?.visibleRowsCount;
-    
-    console.log(
-      "[CtCArchivePage] Restoring state:",
-      `visibleRowsCount=${savedVisibleRowsCount || "(not set)"}`
-    );
-    
     if (typeof savedVisibleRowsCount === "number" && Number.isFinite(savedVisibleRowsCount)) {
       setVisibleRowsCount(Math.max(renderConfig.initialVisibleRows, Math.trunc(savedVisibleRowsCount)));
     }
-    restoreWindowScroll(returned.scrollY);
     clearReturnStateFromHistory();
   }, [location.state, renderConfig.initialVisibleRows]);
 
-  useEffect(() => {
-    const savedScroll = loadMainPageScroll("archive");
-    restoreWindowScroll(savedScroll);
-  }, []);
-
-  useEffect(() => {
-    scrollCleanupRef.current = setupPageScrollAutoSave("archive");
-    return () => {
-      scrollCleanupRef.current?.();
-    };
-  }, []);
-
   async function refreshCompleted() {
     const completed = await listCompletedPuzzleKeys();
+    if (!isMountedRef.current) return;
     setCompletedKeys(new Set(completed));
   }
 
@@ -1233,14 +1210,10 @@ export function CtCArchivePage() {
   }
 
   function navigateToMainMenu() {
-    const scrollY = readCurrentScrollPosition();
-    saveMainPageScroll("archive", scrollY);
     nav("/");
   }
 
   function navigateToFolders() {
-    const scrollY = readCurrentScrollPosition();
-    saveMainPageScroll("archive", scrollY);
     nav("/folders");
   }
 

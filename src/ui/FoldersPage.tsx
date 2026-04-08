@@ -22,15 +22,10 @@ import { PopupMenuButton } from "./PopupMenuButton";
 import { SelectControl, type SelectControlOption } from "./SelectControl";
 import { SettingsOverlay } from "./SettingsOverlay";
 import {
-  clearReturnStateFromHistory,
   currentRoutePath,
   readCurrentScrollPosition,
   readPuzzleReturnState,
-  restoreWindowScroll,
   withPuzzleOriginState,
-  loadMainPageScroll,
-  saveMainPageScroll,
-  setupPageScrollAutoSave,
 } from "./puzzleNavState";
 
 type SortOrder = "recent" | "az" | "date";
@@ -264,7 +259,6 @@ export function FoldersPage() {
   const initialPrefs = useMemo(readInitialFolderMenuPrefs, []);
   const initialActiveFolderId = useMemo(readInitialActiveFolderId, []);
   const appliedReturnStateRef = useRef(false);
-  const scrollCleanupRef = useRef<(() => void) | null>(null);
   const [initialFoldersLoaded, setInitialFoldersLoaded] = useState(false);
 
   const [rows, setRows] = useState<StoredPuzzle[]>([]);
@@ -356,21 +350,8 @@ export function FoldersPage() {
     );
     
     setActiveFolderId(activeFolderIdTarget);
-    restoreWindowScroll(returned.scrollY);
-    clearReturnStateFromHistory();
   }, [location.state]);
 
-  useEffect(() => {
-    const savedScroll = loadMainPageScroll("folders");
-    restoreWindowScroll(savedScroll);
-  }, []);
-
-  useEffect(() => {
-    scrollCleanupRef.current = setupPageScrollAutoSave("folders");
-    return () => {
-      scrollCleanupRef.current?.();
-    };
-  }, []);
 
   const folderById = useMemo(() => {
     return new Map(folders.map((folder) => [folder.id, folder]));
@@ -728,14 +709,10 @@ export function FoldersPage() {
   }
 
   function navigateToMainMenu() {
-    const scrollY = readCurrentScrollPosition();
-    saveMainPageScroll("folders", scrollY);
     nav("/");
   }
 
   function navigateToArchive() {
-    const scrollY = readCurrentScrollPosition();
-    saveMainPageScroll("folders", scrollY);
     nav("/archive");
   }
 

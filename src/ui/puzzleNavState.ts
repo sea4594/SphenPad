@@ -17,8 +17,6 @@ export type PuzzleOriginState = {
 const PUZZLE_ORIGIN_STATE_KEY = "sphenpadPuzzleOriginState";
 const PUZZLE_RETURN_STATE_KEY = "sphenpadPuzzleReturnState";
 
-type MainPageName = "main-menu" | "folders" | "archive";
-
 function readWindowScrollTop(): number {
   if (typeof window === "undefined") return 0;
   return Math.max(
@@ -120,44 +118,6 @@ export function readCurrentScrollPosition(): number {
   return Math.max(...candidatePositions);
 }
 
-export function restoreWindowScroll(scrollY: number) {
-  const top = Math.max(0, Math.trunc(scrollY));
-  if (typeof window === "undefined" || typeof document === "undefined") return;
-
-  const applyScroll = () => {
-    window.scrollTo({ top, left: 0, behavior: "auto" });
-    for (const el of getScrollableElements()) {
-      if (typeof el.scrollTo === "function") {
-        el.scrollTo({ top, left: 0, behavior: "auto" });
-      } else {
-        el.scrollTop = top;
-      }
-    }
-
-    return readCurrentScrollPosition();
-  };
-
-  const runRestorePass = () => {
-    let attempts = 0;
-    const maxAttempts = 12;
-
-    const restoreAttempt = () => {
-      const actualTop = applyScroll();
-      attempts += 1;
-      if (Math.abs(actualTop - top) <= 1 || attempts >= maxAttempts) return;
-      window.requestAnimationFrame(restoreAttempt);
-    };
-
-    restoreAttempt();
-  };
-
-  // First pass for immediate paint, then delayed passes for pages that render content
-  // asynchronously and would otherwise "snap" away from the target position.
-  window.setTimeout(runRestorePass, 0);
-  window.setTimeout(runRestorePass, 120);
-  window.setTimeout(runRestorePass, 320);
-}
-
 export function clearReturnStateFromHistory() {
   if (typeof window === "undefined" || typeof window.history === "undefined") return;
   try {
@@ -165,83 +125,4 @@ export function clearReturnStateFromHistory() {
   } catch {
     // Silently fail if replaceState is not allowed
   }
-}
-
-// Simple localStorage-based scroll position persistence for main pages.
-const MAIN_PAGE_SCROLL_KEY_PREFIX = "sphenpadMainPageScroll_";
-
-export function getMainPageScrollStorageKey(page: MainPageName): string {
-  return `${MAIN_PAGE_SCROLL_KEY_PREFIX}${page}`;
-}
-
-export function saveMainPageScroll(page: MainPageName, scrollY: number): void {
-  if (typeof localStorage === "undefined") return;
-  try {
-    localStorage.setItem(getMainPageScrollStorageKey(page), String(Math.max(0, scrollY)));
-  } catch {
-    // Silently fail if localStorage is not available.
-  }
-}
-
-export function loadMainPageScroll(page: MainPageName): number {
-  if (typeof localStorage === "undefined") return 0;
-  try {
-    const stored = localStorage.getItem(getMainPageScrollStorageKey(page));
-    if (typeof stored === "string") {
-      const parsed = parseInt(stored, 10);
-      return Number.isFinite(parsed) ? Math.max(0, parsed) : 0;
-    }
-  } catch {
-    // Silently fail if localStorage is not available.
-  }
-  return 0;
-}
-
-export function setupPageScrollAutoSave(page: MainPageName): () => void {
-  if (typeof window === "undefined" || typeof document === "undefined") return () => {};
-
-  let saveTimeout: number | null = null;
-  const trackedElements = getScrollableElements();
-
-  const saveNow = () => {
-    const scrollY = readCurrentScrollPosition();
-    saveMainPageScroll(page, scrollY);
-  };
-
-  const handleScroll = () => {
-    if (saveTimeout !== null) {
-      window.clearTimeout(saveTimeout);
-    }
-    saveTimeout = window.setTimeout(() => {
-      saveNow();
-    }, 200);
-  };
-
-  const handleVisibilityChange = () => {
-    if (document.visibilityState === "hidden") saveNow();
-  };
-
-  const handlePageHide = () => {
-    saveNow();
-  };
-
-  window.addEventListener("scroll", handleScroll);
-  window.addEventListener("pagehide", handlePageHide);
-  document.addEventListener("visibilitychange", handleVisibilityChange);
-  for (const el of trackedElements) {
-    el.addEventListener("scroll", handleScroll, { passive: true });
-  }
-
-  return () => {
-    window.removeEventListener("scroll", handleScroll);
-    window.removeEventListener("pagehide", handlePageHide);
-    document.removeEventListener("visibilitychange", handleVisibilityChange);
-    for (const el of trackedElements) {
-      el.removeEventListener("scroll", handleScroll);
-    }
-    if (saveTimeout !== null) {
-      window.clearTimeout(saveTimeout);
-    }
-    saveNow();
-  };
 }
