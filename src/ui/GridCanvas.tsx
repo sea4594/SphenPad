@@ -961,11 +961,6 @@ export function GridCanvas(props: {
       return classifyRenderTarget(target);
     };
 
-    const fogDefined =
-      def.cosmetics.fogEnabled === true ||
-      (def.cosmetics.fogLights?.length ?? 0) > 0 ||
-      (def.cosmetics.fogTriggerEffects?.length ?? 0) > 0;
-
     const hasMatchingCornerLabel = (cageCells: CellRC[], sum: string) => {
       const labels = [...(def.cosmetics.overlays ?? []), ...(def.cosmetics.underlays ?? [])];
       const expected = String(sum).trim();
@@ -1353,8 +1348,13 @@ export function GridCanvas(props: {
     // Draw all arrows/lines/cages/dots by their target/layer
     drawVisualLayer("arrows");
     drawVisualLayer("cages");
+    drawVisualLayer("grid");
+
+    // Overlays (including circles, rectangles, text) always on top unless specifically targeted as underlay
+    drawVisualLayer("over");
 
     const drawGridPuzzleFeatures = () => {
+      // For compatibility, keep this for any grid-targeted overlays
       drawVisualLayer("grid");
     };
 
@@ -1363,7 +1363,22 @@ export function GridCanvas(props: {
     };
 
     const clipToFogVisibleAreas = (litMask: boolean[][]) => {
+      const boardLeft = cellX(0);
+      const boardTop = cellY(0);
+      const boardRight = cellX(cols);
+      const boardBottom = cellY(rows);
+
       ctx.beginPath();
+
+      // Keep everything outside the board visible regardless of fog state.
+      if (boardTop > 0) ctx.rect(0, 0, widthPx, boardTop);
+      if (boardBottom < heightPx) ctx.rect(0, boardBottom, widthPx, heightPx - boardBottom);
+      if (boardLeft > 0 && boardBottom > boardTop) {
+        ctx.rect(0, boardTop, boardLeft, boardBottom - boardTop);
+      }
+      if (boardRight < widthPx && boardBottom > boardTop) {
+        ctx.rect(boardRight, boardTop, widthPx - boardRight, boardBottom - boardTop);
+      }
 
       // Inside the board, only lit cells are visible through fog.
       for (let r = 0; r < rows; r++) {
@@ -1376,16 +1391,17 @@ export function GridCanvas(props: {
       ctx.clip();
     };
 
-    // In non-fog puzzles, render grid-target features and overlays in a single pass.
-    // Fog puzzles render these in the fog section to keep clipping/order consistent.
-    if (!fogDefined) {
-      // Keep a dedicated grid-target pass between highlights and the built-in grid.
-      drawGridPuzzleFeatures();
+    const fogDefined =
+      def.cosmetics.fogEnabled === true ||
+      (def.cosmetics.fogLights?.length ?? 0) > 0 ||
+      (def.cosmetics.fogTriggerEffects?.length ?? 0) > 0;
 
-      // Grid below top puzzle artwork so features are not bisected by grid lines.
-      drawGridLines();
-      drawTopPuzzleFeatures();
-    }
+    // Keep a dedicated grid-target pass between highlights and the built-in grid.
+    drawGridPuzzleFeatures();
+
+    // Grid below top puzzle artwork so features are not bisected by grid lines.
+    drawGridLines();
+    if (!fogDefined) drawTopPuzzleFeatures();
 
     const drawSegmentLine = (
       start: { x: number; y: number },
