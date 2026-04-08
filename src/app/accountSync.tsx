@@ -55,6 +55,7 @@ export function AccountSyncProvider(props: { children: ReactNode }) {
   const syncInFlightRef = useRef(false);
   const syncRequestedRef = useRef(false);
   const restoringRef = useRef(false);
+  const initializingForUidRef = useRef<string | null>(null);
   const cloudPuzzleKeysRef = useRef<string[]>([]);
   const lastSuccessfulSyncAtRef = useRef(0);
 
@@ -73,6 +74,8 @@ export function AccountSyncProvider(props: { children: ReactNode }) {
   }
 
   async function initializeUserState(activeUser: User) {
+    if (initializingForUidRef.current === activeUser.uid) return;
+    initializingForUidRef.current = activeUser.uid;
     restoringRef.current = true;
     setReady(false);
     setSyncError("");
@@ -137,6 +140,7 @@ export function AccountSyncProvider(props: { children: ReactNode }) {
       setSyncError(message);
       setReady(true);
     } finally {
+      initializingForUidRef.current = null;
       restoringRef.current = false;
     }
   }
@@ -189,7 +193,6 @@ export function AccountSyncProvider(props: { children: ReactNode }) {
     if (!firebaseEnabled) return;
 
     let cancelled = false;
-    void resolveGoogleRedirectLogin().catch(() => {});
 
     const unsubscribe = onGoogleAuthStateChanged((nextUser) => {
       if (cancelled) return;
@@ -209,6 +212,18 @@ export function AccountSyncProvider(props: { children: ReactNode }) {
       if (initializedUserIdRef.current === nextUser.uid && readyRef.current) return;
       void initializeUserState(nextUser);
     });
+
+    void (async () => {
+      try {
+        const redirectUser = await resolveGoogleRedirectLogin();
+        if (cancelled || !redirectUser) return;
+        setUser(redirectUser);
+        if (initializedUserIdRef.current === redirectUser.uid && readyRef.current) return;
+        await initializeUserState(redirectUser);
+      } catch {
+        // Ignore redirect resolution errors and rely on auth state listener.
+      }
+    })();
 
     return () => {
       cancelled = true;
