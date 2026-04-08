@@ -377,7 +377,8 @@ async function loadCachedPuzzlePayload(entry: ArchiveEntry): Promise<string | nu
   }
 }
 
-export function CtCArchivePage() {
+export function CtCArchivePage(props: { isVisible?: boolean }) {
+  const { isVisible = true } = props;
   const nav = useNavigate();
   const location = useLocation();
   const [renderConfig] = useState(getRenderConfig);
@@ -465,6 +466,7 @@ export function CtCArchivePage() {
   ]);
 
   useEffect(() => {
+    if (!isVisible) return;
     if (appliedReturnStateRef.current) return;
     const returned = readPuzzleReturnState(location.state);
     if (!returned || returned.page !== "archive") return;
@@ -477,19 +479,26 @@ export function CtCArchivePage() {
     }
     restoreWindowScroll(returned.scrollY);
     clearReturnStateFromHistory();
-  }, [location.state, renderConfig.initialVisibleRows]);
+  }, [isVisible, location.state, renderConfig.initialVisibleRows]);
 
   useEffect(() => {
+    if (!isVisible) return;
     const savedScroll = loadMainPageScroll("archive");
     restoreWindowScroll(savedScroll);
-  }, []);
+  }, [isVisible]);
 
   useEffect(() => {
+    if (!isVisible) return;
     scrollCleanupRef.current = setupPageScrollAutoSave("archive");
     return () => {
       scrollCleanupRef.current?.();
     };
-  }, []);
+  }, [isVisible]);
+
+  useEffect(() => {
+    if (isVisible) return;
+    saveMainPageScroll("archive", readCurrentScrollPosition());
+  }, [isVisible]);
 
   async function refreshCompleted() {
     const completed = await listCompletedPuzzleKeys();

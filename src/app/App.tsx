@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { Navigate, Route, Routes, HashRouter, useLocation, useNavigate } from "react-router-dom";
+import { Route, Routes, HashRouter, useLocation, useNavigate } from "react-router-dom";
 import { CtCArchivePage } from "../ui/CtCArchivePage";
 import { FoldersPage } from "../ui/FoldersPage";
 import { MainMenu } from "../ui/MainMenu";
@@ -39,6 +39,31 @@ function RoutePersistence() {
   return null;
 }
 
+function MainPagesHost() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const path = location.pathname;
+
+  useEffect(() => {
+    if (path === "/" || path === "/folders" || path === "/archive") return;
+    navigate("/", { replace: true });
+  }, [navigate, path]);
+
+  return (
+    <>
+      <div style={{ display: path === "/" ? "block" : "none" }} aria-hidden={path !== "/"}>
+        <MainMenu isVisible={path === "/"} />
+      </div>
+      <div style={{ display: path === "/folders" ? "block" : "none" }} aria-hidden={path !== "/folders"}>
+        <FoldersPage isVisible={path === "/folders"} />
+      </div>
+      <div style={{ display: path === "/archive" ? "block" : "none" }} aria-hidden={path !== "/archive"}>
+        <CtCArchivePage isVisible={path === "/archive"} />
+      </div>
+    </>
+  );
+}
+
 function AppRoutes() {
   const { ready, user } = useAccountSync();
 
@@ -62,11 +87,8 @@ function AppRoutes() {
       <HashRouter>
         <RoutePersistence />
         <Routes>
-          <Route path="/" element={<MainMenu />} />
-          <Route path="/folders" element={<FoldersPage />} />
-          <Route path="/archive" element={<CtCArchivePage />} />
           <Route path="/p/:puzzleId" element={<PuzzlePage />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
+          <Route path="*" element={<MainPagesHost />} />
         </Routes>
       </HashRouter>
     </ThemeProvider>

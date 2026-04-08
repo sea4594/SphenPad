@@ -403,7 +403,8 @@ function extractConstraintBullets(def: StoredPuzzle["def"]): string[] {
   return Array.from(out);
 }
 
-export function MainMenu() {
+export function MainMenu(props: { isVisible?: boolean }) {
+  const { isVisible = true } = props;
   const nav = useNavigate();
   const location = useLocation();
   const initialFilterPrefs = useMemo(readInitialMainMenuFilterPrefs, []);
@@ -514,6 +515,7 @@ export function MainMenu() {
   }, [activeFolderId, foldersOpen]);
 
   useEffect(() => {
+    if (!isVisible) return;
     if (appliedReturnStateRef.current) return;
     const returned = readPuzzleReturnState(location.state);
     if (!returned || returned.page !== "main-menu") return;
@@ -526,19 +528,26 @@ export function MainMenu() {
     setActiveFolderId(activeFolderIdTarget);
     restoreWindowScroll(returned.scrollY);
     clearReturnStateFromHistory();
-  }, [location.state]);
+  }, [isVisible, location.state]);
 
   useEffect(() => {
+    if (!isVisible) return;
     const savedScroll = loadMainPageScroll("main-menu");
     restoreWindowScroll(savedScroll);
-  }, []);
+  }, [isVisible]);
 
   useEffect(() => {
+    if (!isVisible) return;
     scrollCleanupRef.current = setupPageScrollAutoSave("main-menu");
     return () => {
       scrollCleanupRef.current?.();
     };
-  }, []);
+  }, [isVisible]);
+
+  useEffect(() => {
+    if (isVisible) return;
+    saveMainPageScroll("main-menu", readCurrentScrollPosition());
+  }, [isVisible]);
 
   const folderById = useMemo(() => {
     return new Map(folders.map((folder) => [folder.id, folder]));
