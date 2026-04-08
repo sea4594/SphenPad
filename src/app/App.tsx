@@ -84,10 +84,21 @@ export function App() {
     <AccountSyncProvider>
       <ThemeProvider>
         <HashRouter>
-          <Routes>
-            <Route path="/p/:puzzleId" element={<PuzzlePage />} />
-            <Route path="*" element={<MainPages />} />
-          </Routes>
+          <div style={{ position: "relative", height: "100%", width: "100%" }}>
+            <MainPages />
+            <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
+              <Routes>
+                <Route
+                  path="/p/:puzzleId"
+                  element={(
+                    <div style={{ height: "100%", pointerEvents: "auto" }}>
+                      <PuzzlePage />
+                    </div>
+                  )}
+                />
+              </Routes>
+            </div>
+          </div>
         </HashRouter>
       </ThemeProvider>
     </AccountSyncProvider>
