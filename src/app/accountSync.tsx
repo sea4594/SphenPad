@@ -44,7 +44,7 @@ function snapshotPuzzleKeys(snapshot: CloudAppSnapshot | null): string[] {
 
 export function AccountSyncProvider(props: { children: ReactNode }) {
   const { children } = props;
-  const [ready, setReady] = useState(!firebaseEnabled);
+  const [ready, setReady] = useState(true);
   const [user, setUser] = useState<User | null>(null);
   const [syncStatus, setSyncStatus] = useState<SyncStatus>("idle");
   const [syncError, setSyncError] = useState("");
@@ -77,7 +77,6 @@ export function AccountSyncProvider(props: { children: ReactNode }) {
     if (initializingForUidRef.current === activeUser.uid) return;
     initializingForUidRef.current = activeUser.uid;
     restoringRef.current = true;
-    setReady(false);
     setSyncError("");
     setSyncStatus("syncing");
 
@@ -209,6 +208,8 @@ export function AccountSyncProvider(props: { children: ReactNode }) {
         return;
       }
 
+      // Keep startup non-blocking: show local data immediately and sync/merge in background.
+      if (!readyRef.current) setReady(true);
       if (initializedUserIdRef.current === nextUser.uid && readyRef.current) return;
       void initializeUserState(nextUser);
     });
