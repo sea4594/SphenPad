@@ -18,8 +18,8 @@ function isMainRoute(path: string): path is MainRoute {
 
 /**
  * Renders all three main pages simultaneously so they stay mounted and preserve
- * their state. Only the active page is visible; the others are hidden via
- * display:none (React state is fully preserved).
+ * their state. Only the active page is interactive/visible; inactive pages stay
+ * laid out in the background so puzzle previews remain warm.
  */
 function MainPages() {
   const location = useLocation();
@@ -50,24 +50,39 @@ function MainPages() {
     }
   }, [pathname]);
 
-  // Whenever we switch between home pages, the newly-visible page's canvases
-  // need to remeasure (display:none gave them zero dimensions on mount).
-  // Dispatching a resize event triggers GridCanvas's window resize listener
-  // to call getBoundingClientRect() now that the element is visible again.
-  useEffect(() => {
-    if (!isMainRoute(pathname)) return;
-    window.dispatchEvent(new Event("resize"));
-  }, [pathname]);
-
   return (
-    <div style={{ height: "100%", width: "100%" }}>
-      <div style={{ display: pathname === "/" ? undefined : "none", height: "100%" }}>
+    <div style={{ position: "relative", height: "100%", width: "100%" }}>
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          height: "100%",
+          visibility: pathname === "/" ? "visible" : "hidden",
+          pointerEvents: pathname === "/" ? "auto" : "none",
+        }}
+      >
         <MainMenu active={pathname === "/"} />
       </div>
-      <div style={{ display: pathname === "/folders" ? undefined : "none", height: "100%" }}>
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          height: "100%",
+          visibility: pathname === "/folders" ? "visible" : "hidden",
+          pointerEvents: pathname === "/folders" ? "auto" : "none",
+        }}
+      >
         <FoldersPage active={pathname === "/folders"} />
       </div>
-      <div style={{ display: pathname === "/archive" ? undefined : "none", height: "100%" }}>
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          height: "100%",
+          visibility: pathname === "/archive" ? "visible" : "hidden",
+          pointerEvents: pathname === "/archive" ? "auto" : "none",
+        }}
+      >
         <CtCArchivePage active={pathname === "/archive"} />
       </div>
     </div>

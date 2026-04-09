@@ -14,7 +14,6 @@ import { CompletionOverlay } from "./CompletionOverlay";
 import { CheckAnswersOverlay } from "./CheckAnswersOverlay";
 import { Keyboard } from "./Keyboard";
 import { GridCanvas } from "./GridCanvas";
-import { AppBrand } from "./AppBrand";
 import {
   IconCheck,
   IconPause,
@@ -1417,14 +1416,7 @@ export function PuzzlePage() {
 
   useEffect(() => () => stopHoldRepeat(), []);
 
-  if (!data) {
-    return (
-      <div className="shell">
-        <div className="topbar"><AppBrand /></div>
-        <div className="page"><div className="muted">Loading...</div></div>
-      </div>
-    );
-  }
+  if (!data) return null;
 
   return (
     <div className="shell puzzleShell" onPointerUpCapture={blurButtonAfterPointerUp} onContextMenu={(e) => e.preventDefault()}>
