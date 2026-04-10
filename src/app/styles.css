@@ -171,8 +171,8 @@ body,
 }
 
 #root {
-  height: 100vh;
-  min-height: 100vh;
+  height: var(--app-vh, 100dvh);
+  min-height: var(--app-vh, 100svh);
   overflow: hidden;
 }
 

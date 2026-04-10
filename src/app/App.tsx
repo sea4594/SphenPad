@@ -92,6 +92,32 @@ function MainPages() {
 export function App() {
   useEffect(() => {
     const root = document.documentElement;
+
+    const syncViewportHeight = () => {
+      const viewport = window.visualViewport;
+      const height = Math.max(window.innerHeight, viewport?.height ?? 0);
+      root.style.setProperty("--app-vh", `${Math.round(height)}px`);
+    };
+
+    syncViewportHeight();
+
+    const viewport = window.visualViewport;
+    window.addEventListener("resize", syncViewportHeight);
+    window.addEventListener("orientationchange", syncViewportHeight);
+    viewport?.addEventListener("resize", syncViewportHeight);
+    viewport?.addEventListener("scroll", syncViewportHeight);
+
+    return () => {
+      window.removeEventListener("resize", syncViewportHeight);
+      window.removeEventListener("orientationchange", syncViewportHeight);
+      viewport?.removeEventListener("resize", syncViewportHeight);
+      viewport?.removeEventListener("scroll", syncViewportHeight);
+      root.style.removeProperty("--app-vh");
+    };
+  }, []);
+
+  useEffect(() => {
+    const root = document.documentElement;
     clearForcedPortrait(root);
   }, []);
 
