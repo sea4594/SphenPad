@@ -1078,8 +1078,7 @@ export function CtCArchivePage(props: { active?: boolean }) {
     await waitForNextFrame();
 
     try {
-      const imported = await importArchiveEntry(entry);
-      setUiMessage(`Imported: ${imported.title}`);
+      await importArchiveEntry(entry);
     } catch (e: unknown) {
       setUiMessage(e instanceof Error ? e.message : String(e));
     } finally {
@@ -1532,7 +1531,6 @@ export function CtCArchivePage(props: { active?: boolean }) {
             </div>
 
             {error && <div className="muted" style={{ marginTop: 10 }}>{error}</div>}
-            {loading && <div className="muted" style={{ marginTop: 10 }}>Loading archive…</div>}
             {!!uiMessage && <div className="muted" style={{ marginTop: 10 }}>{uiMessage}</div>}
 
             <div className="menuPuzzleList">
