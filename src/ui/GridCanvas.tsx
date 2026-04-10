@@ -339,7 +339,9 @@ export function GridCanvas(props: {
       const width = Math.max(1, Math.floor(wrapRect.width) || el.clientWidth || pane.clientWidth || window.innerWidth);
 
       const topbar = document.querySelector(".topbar") as HTMLElement | null;
-      const normalizedViewportHeight = isMobile ? longSide : visualViewportHeight;
+      // Use the visible viewport height directly on mobile to avoid oversizing the board
+      // and forcing browser downscaling on iOS.
+      const normalizedViewportHeight = visualViewportHeight;
       const viewportHeight = Math.max(180, normalizedViewportHeight - (topbar?.offsetHeight ?? 0) - 16);
       const measuredHeight = Math.max(
         boardCard?.clientHeight ?? 0,
@@ -455,6 +457,7 @@ export function GridCanvas(props: {
     }
 
     const unitScale = cellPx / cosmeticUnit;
+    const mobileFidelityMode = !previewMode && mobileViewport;
     const scaledCosmeticPx = (
       sourcePx: number,
       options?: { previewMin?: number; normalMin?: number; max?: number },
@@ -462,7 +465,12 @@ export function GridCanvas(props: {
       const previewMin = options?.previewMin ?? 0;
       const normalMin = options?.normalMin ?? 0;
       const max = options?.max ?? Number.POSITIVE_INFINITY;
-      return Math.min(max, Math.max(previewMode ? previewMin : normalMin, sourcePx * unitScale));
+      const minClamp = previewMode
+        ? previewMin
+        : mobileFidelityMode
+          ? Math.min(previewMin, normalMin)
+          : normalMin;
+      return Math.min(max, Math.max(minClamp, sourcePx * unitScale));
     };
     const scaledCellPx = (
       ratio: number,
@@ -471,7 +479,12 @@ export function GridCanvas(props: {
       const previewMin = options?.previewMin ?? 0;
       const normalMin = options?.normalMin ?? 0;
       const max = options?.max ?? Number.POSITIVE_INFINITY;
-      return Math.min(max, Math.max(previewMode ? previewMin : normalMin, cellPx * ratio));
+      const minClamp = previewMode
+        ? previewMin
+        : mobileFidelityMode
+          ? Math.min(previewMin, normalMin)
+          : normalMin;
+      return Math.min(max, Math.max(minClamp, cellPx * ratio));
     };
 
     const drawCellHighlights = (r: number, c: number, colors: string[], alpha = highlightAlpha) => {
@@ -910,7 +923,8 @@ export function GridCanvas(props: {
         const px = (item.textSize ?? 16) * (cellPx / cosmeticUnit);
         const text = String(item.text);
         const hasEmoji = /\p{Extended_Pictographic}/u.test(text);
-        const textPx = Math.max(previewMode ? 4.5 : 10, px);
+        const minTextPx = previewMode ? 4.5 : mobileFidelityMode ? 4.5 : 10;
+        const textPx = Math.max(minTextPx, px);
         ctx.font = hasEmoji
           ? `${textPx}px ${emojiTextFont}`
           : `600 ${textPx}px ${gridTextFont}, ${emojiTextFont}`;
@@ -1555,10 +1569,22 @@ export function GridCanvas(props: {
       const first = cage.cells[0] as CellRC;
       cageLabelCells.add(`${first.r},${first.c}`);
     }
-    const valueFontPx = Math.max(previewMode ? 4.5 : 11, Math.min(previewMode ? 30 : 50, Math.round(cellPx * 0.67)));
-    const noteFontPx = Math.max(previewMode ? 3 : 6, Math.min(previewMode ? 10 : 19, Math.round(cellPx * 0.26)));
-    const candidateFontPx = Math.max(previewMode ? 2.2 : 5, Math.min(previewMode ? 8 : 12, Math.round(cellPx * 0.18)));
-    const digitOutlineWidth = Math.max(previewMode ? 0.18 : 0.45, Math.min(previewMode ? 0.6 : 0.9, cellPx * 0.015));
+    const valueFontPx = Math.max(
+      previewMode ? 4.5 : mobileFidelityMode ? 4.5 : 11,
+      Math.min(previewMode ? 30 : 50, Math.round(cellPx * 0.67))
+    );
+    const noteFontPx = Math.max(
+      previewMode ? 3 : mobileFidelityMode ? 3 : 6,
+      Math.min(previewMode ? 10 : 19, Math.round(cellPx * 0.26))
+    );
+    const candidateFontPx = Math.max(
+      previewMode ? 2.2 : mobileFidelityMode ? 2.2 : 5,
+      Math.min(previewMode ? 8 : 12, Math.round(cellPx * 0.18))
+    );
+    const digitOutlineWidth = Math.max(
+      previewMode ? 0.18 : mobileFidelityMode ? 0.18 : 0.45,
+      Math.min(previewMode ? 0.6 : 0.9, cellPx * 0.015)
+    );
     const drawDigitText = (text: string, x: number, y: number) => {
       if (outlineDigits) {
         ctx.save();
