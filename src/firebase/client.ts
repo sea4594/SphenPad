@@ -42,6 +42,21 @@ export const firebaseEnabled = Boolean(firebaseConfig.apiKey && firebaseConfig.a
 export const app: FirebaseApp | null = firebaseEnabled ? initializeApp(firebaseConfig) : null;
 export const auth: Auth | null = firebaseEnabled && app ? getAuth(app) : null;
 export const db: Firestore | null = firebaseEnabled && app ? getFirestore(app) : null;
+let persistenceReadyPromise: Promise<void> | null = null;
+
+function ensureAuthPersistence() {
+  if (!firebaseEnabled || !auth) return Promise.resolve();
+  if (!persistenceReadyPromise) {
+    persistenceReadyPromise = setPersistence(auth, browserLocalPersistence).catch(() => {
+      // If persistence cannot be configured (e.g. restricted storage), continue best-effort.
+    });
+  }
+  return persistenceReadyPromise;
+}
+
+if (firebaseEnabled && auth) {
+  void ensureAuthPersistence();
+}
 
 function isPopupFallbackError(error: unknown) {
   if (!error || typeof error !== "object") return false;
@@ -124,18 +139,15 @@ function parseLocalStorageRecord(value: unknown): CloudAppSnapshot["localStorage
 
 export async function googleLogin() {
   if (!firebaseEnabled || !auth) return null;
+  await ensureAuthPersistence();
 
   try {
     const result = await signInWithPopup(auth, provider);
-    try {
-      await setPersistence(auth, browserLocalPersistence);
-    } catch {
-      // Persistence failure should not block successful sign-in.
-    }
     return result.user;
   } catch (error) {
     if (isPopupBenignCancel(error)) return null;
     if (isPopupFallbackError(error)) {
+      await ensureAuthPersistence();
       await signInWithRedirect(auth, provider);
       return null;
     }
@@ -145,6 +157,7 @@ export async function googleLogin() {
 
 export async function resolveGoogleRedirectLogin() {
   if (!firebaseEnabled || !auth) return null;
+  await ensureAuthPersistence();
   const result = await getRedirectResult(auth);
   return result?.user ?? null;
 }
@@ -154,6 +167,7 @@ export function onGoogleAuthStateChanged(listener: (user: User | null) => void) 
     listener(null);
     return () => {};
   }
+  void ensureAuthPersistence();
   return onAuthStateChanged(auth, listener);
 }
 

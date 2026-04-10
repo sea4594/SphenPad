@@ -8,12 +8,16 @@ import { AccountSyncProvider } from "./accountSync";
 import { clearForcedPortrait } from "./forcedPortrait";
 import { ThemeProvider } from "./theme";
 
-const LAST_PAGE_KEY = "sphenpad-last-main-page-v1";
+const LAST_ROUTE_KEY = "sphenpad-last-route-v1";
 const MAIN_ROUTES = ["/", "/folders", "/archive"] as const;
 type MainRoute = (typeof MAIN_ROUTES)[number];
 
 function isMainRoute(path: string): path is MainRoute {
   return (MAIN_ROUTES as readonly string[]).includes(path);
+}
+
+function isRestorableRoute(path: string) {
+  return isMainRoute(path) || path.startsWith("/p/");
 }
 
 /**
@@ -24,14 +28,14 @@ function isMainRoute(path: string): path is MainRoute {
 function MainPages() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { pathname } = location;
+  const { pathname, search, hash } = location;
 
-  // On first mount: restore last-visited page when the app opens at the root.
+  // On first mount: restore the last in-app route when the app opens at root.
   useEffect(() => {
     if (pathname !== "/") return;
     try {
-      const saved = localStorage.getItem(LAST_PAGE_KEY);
-      if (saved && isMainRoute(saved) && saved !== "/") {
+      const saved = localStorage.getItem(LAST_ROUTE_KEY)?.trim() ?? "";
+      if (saved && isRestorableRoute(saved) && saved !== "/") {
         navigate(saved, { replace: true });
       }
     } catch {
@@ -40,15 +44,16 @@ function MainPages() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Persist the current main page so we can restore it when the app reopens.
+  // Persist the current route (main pages and puzzle pages) for reopen restore.
   useEffect(() => {
-    if (!isMainRoute(pathname)) return;
+    const route = `${pathname}${search}${hash}`;
+    if (!isRestorableRoute(pathname)) return;
     try {
-      localStorage.setItem(LAST_PAGE_KEY, pathname);
+      localStorage.setItem(LAST_ROUTE_KEY, route);
     } catch {
       // Silently ignore storage errors.
     }
-  }, [pathname]);
+  }, [pathname, search, hash]);
 
   return (
     <div style={{ position: "relative", height: "100%", width: "100%" }}>
