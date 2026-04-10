@@ -1,7 +1,6 @@
 import { useEffect } from "react";
 import { useAccountSync } from "../app/accountSync";
 import { useTheme, type ThemeColor } from "../app/theme";
-import { SelectControl, type SelectControlOption } from "./SelectControl";
 
 type ThemePreset = {
   id: string;
@@ -20,12 +19,6 @@ const themePresets: ThemePreset[] = [
   { id: "forest-light", label: "Forest", mode: "light", color: "forest", preview: ["#ffffff", "#93A390", "#5E6E5B"] },
   { id: "berry-light", label: "Berry", mode: "light", color: "berry", preview: ["#ffffff", "#DEBFCE", "#9E6A84"] },
 ];
-
-const themePresetOptions: SelectControlOption[] = themePresets.map((preset) => ({
-  value: preset.id,
-  label: preset.label,
-  preview: preset.preview,
-}));
 
 export function SettingsOverlay(props: { onClose: () => void }) {
   const { onClose } = props;
@@ -117,13 +110,16 @@ export function SettingsOverlay(props: { onClose: () => void }) {
 
           <div className="settingsSection">
             <div style={{ fontWeight: 700, marginBottom: 8 }}>Theme</div>
-            <SelectControl
-              className="btn settingsThemeSelect"
+            <select
+              className="settingsThemeNativeSelect"
               aria-label="Select app theme"
               value={activePreset.id}
-              options={themePresetOptions}
-              onValueChange={applyThemePreset}
-            />
+              onChange={(event) => applyThemePreset(event.target.value)}
+            >
+              {themePresets.map((preset) => (
+                <option key={preset.id} value={preset.id}>{preset.label}</option>
+              ))}
+            </select>
 
             <div className="settingsRow" style={{ marginTop: 4 }}>
               <div className="muted">Hide timer</div>

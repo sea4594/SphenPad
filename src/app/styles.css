@@ -1940,42 +1940,43 @@ input.url {
   height: 32px;
   border-radius: 0;
   padding: 3px;
-  border: 1px solid var(--switch-off-border);
-  background: var(--switch-off-bg);
+  border: 1px solid #9ca3af;
+  background: #4b5563;
   display: flex;
   align-items: center;
   transition: background 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
 }
 
 .switch.is-on {
-  background: var(--switch-on-bg);
-  border-color: var(--switch-on-border);
-  box-shadow: inset 0 0 0 1px color-mix(in oklab, #fff 20%, transparent);
+  background: #16a34a;
+  border-color: #86efac;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.25);
 }
 
 .switchThumb {
   width: 24px;
   height: 24px;
   border-radius: 0;
-  background: var(--switch-thumb-off);
-  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--text) 20%, transparent);
+  background: #e5e7eb;
+  box-shadow: inset 0 0 0 1px rgba(17, 24, 39, 0.28);
   transform: translateX(0);
   transition: transform 120ms ease, background 120ms ease;
 }
 
 .switch.is-on .switchThumb {
-  background: var(--switch-thumb-on);
+  background: #ffffff;
   transform: translateX(26px);
 }
 
-.settingsThemeSelect {
+.settingsThemeNativeSelect {
   width: 100%;
-}
-
-.settingsThemeSelect .selectControlPopover {
-  position: static;
-  margin-top: 6px;
-  max-height: min(260px, 34dvh);
+  min-height: 42px;
+  border-radius: 0;
+  border: 1px solid var(--ui-border-strong);
+  background: var(--panel-soft);
+  color: var(--text);
+  padding: 10px 12px;
+  line-height: 1.2;
 }
 
 .themeGrid {
