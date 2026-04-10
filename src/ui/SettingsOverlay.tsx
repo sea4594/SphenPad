@@ -78,85 +78,86 @@ export function SettingsOverlay(props: { onClose: () => void }) {
           <button className="btn" onClick={onClose}>Close</button>
         </div>
 
-        <div className="settingsSection">
-          <div style={{ fontWeight: 700, marginBottom: 8 }}>Account</div>
-          <div className="settingsAccountBlock">
-            <div>
-              <div style={{ fontWeight: 700 }}>{user ? (user.displayName || user.email || "Signed in") : "Not signed in"}</div>
-              <div className="muted" style={{ marginTop: 4 }}>
-                {!firebaseEnabled
-                  ? "Google sync is disabled until Firebase env vars are configured."
-                  : syncStatus === "syncing"
-                    ? "Syncing your app data..."
-                    : syncError
-                      ? syncError
-                      : user
-                        ? "Your puzzles, folders, and settings sync to this Google account."
-                        : "Sign in with Google to sync everything across devices."}
+        <div className="settingsBody">
+          <div className="settingsSection">
+            <div style={{ fontWeight: 700, marginBottom: 8 }}>Account</div>
+            <div className="settingsAccountBlock">
+              <div>
+                <div style={{ fontWeight: 700 }}>{user ? (user.displayName || user.email || "Signed in") : "Not signed in"}</div>
+                <div className="muted" style={{ marginTop: 4 }}>
+                  {!firebaseEnabled
+                    ? "Google sync is disabled until Firebase env vars are configured."
+                    : syncStatus === "syncing"
+                      ? "Syncing your app data..."
+                      : syncError
+                        ? syncError
+                        : user
+                          ? "Your puzzles, folders, and settings sync to this Google account."
+                          : "Sign in with Google to sync everything across devices."}
+                </div>
+              </div>
+              <div className="settingsAccountActions">
+                {user ? (
+                  <button className="btn" onClick={() => logout().catch((error) => alert(error instanceof Error ? error.message : String(error)))} type="button">
+                    Logout
+                  </button>
+                ) : (
+                  <button
+                    className="btn primary"
+                    disabled={!firebaseEnabled || syncStatus === "syncing" || loginPending}
+                    onClick={() => login().catch((error) => alert(error instanceof Error ? error.message : String(error)))}
+                    type="button"
+                  >
+                    {loginPending ? "Opening Google..." : "Google login"}
+                  </button>
+                )}
               </div>
             </div>
-            <div className="settingsAccountActions">
-              {user ? (
-                <button className="btn" onClick={() => logout().catch((error) => alert(error instanceof Error ? error.message : String(error)))} type="button">
-                  Logout
-                </button>
-              ) : (
-                <button
-                  className="btn primary"
-                  disabled={!firebaseEnabled || syncStatus === "syncing" || loginPending}
-                  onClick={() => login().catch((error) => alert(error instanceof Error ? error.message : String(error)))}
-                  type="button"
-                >
-                  {loginPending ? "Opening Google..." : "Google login"}
-                </button>
-              )}
+          </div>
+
+          <div className="settingsSection">
+            <div style={{ fontWeight: 700, marginBottom: 8 }}>Theme</div>
+            <SelectControl
+              className="btn settingsThemeSelect"
+              aria-label="Select app theme"
+              value={activePreset.id}
+              options={themePresetOptions}
+              onValueChange={applyThemePreset}
+            />
+
+            <div className="settingsRow" style={{ marginTop: 4 }}>
+              <div className="muted">Hide timer</div>
+              <button
+                className={"switch" + (hideTimer ? " is-on" : "")}
+                onClick={() => setHideTimer(!hideTimer)}
+                aria-label="Toggle live timer visibility"
+              >
+                <span className="switchThumb" />
+              </button>
+            </div>
+
+            <div className="settingsRow" style={{ marginTop: 4 }}>
+              <div className="muted">Outline digits</div>
+              <button
+                className={"switch" + (outlineDigits ? " is-on" : "")}
+                onClick={() => setOutlineDigits(!outlineDigits)}
+                aria-label="Toggle digit outline"
+              >
+                <span className="switchThumb" />
+              </button>
+            </div>
+
+            <div className="settingsRow" style={{ marginTop: 4 }}>
+              <div className="muted">Conflict checker</div>
+              <button
+                className={"switch" + (conflictChecker ? " is-on" : "")}
+                onClick={() => setConflictChecker(!conflictChecker)}
+                aria-label="Toggle conflict checker"
+              >
+                <span className="switchThumb" />
+              </button>
             </div>
           </div>
-        </div>
-
-        <div className="settingsSection">
-          <div style={{ fontWeight: 700, marginBottom: 8 }}>Theme</div>
-          <SelectControl
-            className="btn settingsThemeSelect"
-            aria-label="Select app theme"
-            value={activePreset.id}
-            options={themePresetOptions}
-            onValueChange={applyThemePreset}
-          />
-
-          <div className="settingsRow" style={{ marginTop: 4 }}>
-            <div className="muted">Hide timer</div>
-            <button
-              className={"switch" + (hideTimer ? " is-on" : "")}
-              onClick={() => setHideTimer(!hideTimer)}
-              aria-label="Toggle live timer visibility"
-            >
-              <span className="switchThumb" />
-            </button>
-          </div>
-
-          <div className="settingsRow" style={{ marginTop: 4 }}>
-            <div className="muted">Outline digits</div>
-            <button
-              className={"switch" + (outlineDigits ? " is-on" : "")}
-              onClick={() => setOutlineDigits(!outlineDigits)}
-              aria-label="Toggle digit outline"
-            >
-              <span className="switchThumb" />
-            </button>
-          </div>
-
-          <div className="settingsRow" style={{ marginTop: 4 }}>
-            <div className="muted">Conflict checker</div>
-            <button
-              className={"switch" + (conflictChecker ? " is-on" : "")}
-              onClick={() => setConflictChecker(!conflictChecker)}
-              aria-label="Toggle conflict checker"
-            >
-              <span className="switchThumb" />
-            </button>
-          </div>
-
         </div>
       </div>
     </div>
