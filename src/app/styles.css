@@ -464,6 +464,9 @@ button,
   justify-content: center;
   gap: 6px;
   text-align: center;
+  background: color-mix(in oklab, var(--panel-soft) 82%, #000 18%);
+  color: color-mix(in oklab, var(--text) 72%, var(--muted) 28%);
+  --btn-edge-color: color-mix(in oklab, var(--text) 20%, transparent);
 }
 
 .topbarSettingsButton {
@@ -626,6 +629,9 @@ input.url {
   justify-content: center;
   gap: 6px;
   text-align: center;
+  background: color-mix(in oklab, var(--panel-soft) 82%, #000 18%);
+  color: color-mix(in oklab, var(--text) 72%, var(--muted) 28%);
+  --btn-edge-color: color-mix(in oklab, var(--text) 20%, transparent);
 }
 
 .menuPuzzleList {
@@ -812,12 +818,26 @@ input.url {
   line-height: 1.1;
   font-size: 13px;
   text-align: center;
+  background: color-mix(in oklab, var(--panel-soft) 82%, #000 18%);
+  color: color-mix(in oklab, var(--text) 72%, var(--muted) 28%);
+  --btn-edge-color: color-mix(in oklab, var(--text) 20%, transparent);
 }
 
 .menuStatusTab.is-active {
-  background: color-mix(in oklab, var(--accent) 48%, var(--panel));
-  border-color: color-mix(in oklab, var(--accent) 84%, transparent);
-  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--accent) 88%, transparent);
+  background: color-mix(in oklab, var(--accent) 78%, #111 22%);
+  color: #ffffff;
+  border-color: color-mix(in oklab, var(--accent) 94%, #ffffff 6%);
+  --btn-edge-color: color-mix(in oklab, var(--accent) 94%, #ffffff 6%);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, #fff 28%, transparent);
+}
+
+.topbarModeTab.btn.primary,
+.menuModeTab.btn.primary {
+  background: color-mix(in oklab, var(--accent) 78%, #111 22%);
+  color: #ffffff;
+  border-color: color-mix(in oklab, var(--accent) 94%, #ffffff 6%);
+  --btn-edge-color: color-mix(in oklab, var(--accent) 94%, #ffffff 6%);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, #fff 28%, transparent);
 }
 
 .menuFolderButton {
