@@ -125,8 +125,9 @@ export function GridCanvas(props: {
   const [mobileViewport, setMobileViewport] = useState(() => isLikelyMobileDevice());
 
   const basePad = Math.max(14, Math.round(cellPx * 0.32));
+  const previewPadMin = strictScale ? 4 : 3;
   const pad = previewMode
-    ? Math.max(2, Math.round(basePad * 0.16))
+    ? Math.max(previewPadMin, Math.round(basePad * 0.16))
     : mobileViewport
       ? Math.max(3, Math.round(basePad * 0.2))
       : basePad;
