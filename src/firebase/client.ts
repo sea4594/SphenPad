@@ -237,10 +237,25 @@ export async function pullCloudState(userId: string): Promise<CloudAppSnapshot |
 export async function pushCloudState(userId: string, snapshot: CloudAppSnapshot, previousPuzzleKeys: string[] = []) {
   if (!firebaseEnabled || !db) return;
 
+  const stateRef = doc(db, "users", userId, "app", "state");
+  let effectivePreviousPuzzleKeys = previousPuzzleKeys;
+  if (!effectivePreviousPuzzleKeys.length) {
+    const existingState = await getDoc(stateRef);
+    if (existingState.exists()) {
+      const existingStateData = existingState.data() as { puzzleKeys?: unknown };
+      if (Array.isArray(existingStateData.puzzleKeys)) {
+        effectivePreviousPuzzleKeys = existingStateData.puzzleKeys.filter((entry): entry is string => typeof entry === "string");
+      } else {
+        // Legacy cloud state may not have puzzleKeys; fall back to listing current cloud puzzle docs.
+        const existingPuzzleDocs = await getDocs(collection(db, "users", userId, "puzzles"));
+        effectivePreviousPuzzleKeys = existingPuzzleDocs.docs.map((entry) => puzzleDocIdToKey(entry.id));
+      }
+    }
+  }
+
   const nextPuzzleKeys = snapshot.puzzles.map((row) => row.key);
   const nextPuzzleDocIds = new Set(nextPuzzleKeys.map(puzzleKeyToDocId));
-  const previousPuzzleDocIds = new Set(previousPuzzleKeys.map(puzzleKeyToDocId));
-  const stateRef = doc(db, "users", userId, "app", "state");
+  const previousPuzzleDocIds = new Set(effectivePreviousPuzzleKeys.map(puzzleKeyToDocId));
   await setDoc(stateRef, {
     version: snapshot.version,
     updatedAt: snapshot.updatedAt,
