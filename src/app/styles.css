@@ -2098,8 +2098,8 @@ input.url {
   }
 
   .keyGrid {
-    gap: 4px !important;
-    grid-template-rows: repeat(4, minmax(34px, 1fr)) !important;
+    gap: 2px !important;
+    grid-template-rows: repeat(4, minmax(28px, 1fr)) !important;
   }
 
   .keyButton,
