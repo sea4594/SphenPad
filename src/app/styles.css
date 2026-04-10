@@ -2019,7 +2019,7 @@ input.url {
   }
 
   .gridLayout {
-    --panel-gap: 6px;
+    --panel-gap: 2px;
     --panel-pad: 6px;
     --panel-cell-ratio: 0.644;
     --panel-cell: calc((100vmin - (var(--panel-pad) * 2) - (var(--panel-gap) * 3)) / 4);
@@ -2100,10 +2100,6 @@ input.url {
   .keyGrid {
     gap: 2px !important;
     grid-template-rows: repeat(4, minmax(28px, 1fr)) !important;
-  }
-
-  .panelMainGrid .keyGrid {
-    gap: 2px !important;
   }
 
   .keyButton,
