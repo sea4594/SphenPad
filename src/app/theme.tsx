@@ -10,6 +10,7 @@ type ThemeContextValue = {
   hideTimer: boolean;
   outlineDigits: boolean;
   conflictChecker: boolean;
+  setTheme: (mode: ThemeMode, color: ThemeColor) => void;
   setMode: (mode: ThemeMode) => void;
   setColor: (color: ThemeColor) => void;
   setHideTimer: (hideTimer: boolean) => void;
@@ -60,16 +61,18 @@ export function ThemeProvider(props: { children: ReactNode }) {
   const [outlineDigits, setOutlineDigits] = useState<boolean>(initialTheme.outlineDigits);
   const [conflictChecker, setConflictChecker] = useState<boolean>(initialTheme.conflictChecker);
 
-  const setMode = (nextMode: ThemeMode) => {
-    const normalized = normalizeThemeSelection(nextMode, color);
+  const setTheme = (nextMode: ThemeMode, nextColor: ThemeColor) => {
+    const normalized = normalizeThemeSelection(nextMode, nextColor);
     setModeState(normalized.mode);
     setColorState(normalized.color);
   };
 
+  const setMode = (nextMode: ThemeMode) => {
+    setTheme(nextMode, color);
+  };
+
   const setColor = (nextColor: ThemeColor) => {
-    const normalized = normalizeThemeSelection(mode, nextColor);
-    setModeState(normalized.mode);
-    setColorState(normalized.color);
+    setTheme(mode, nextColor);
   };
 
   useEffect(() => {
@@ -105,7 +108,7 @@ export function ThemeProvider(props: { children: ReactNode }) {
   }, [mode, color, hideTimer, outlineDigits, conflictChecker]);
 
   const value = useMemo(
-    () => ({ mode, color, hideTimer, outlineDigits, conflictChecker, setMode, setColor, setHideTimer, setOutlineDigits, setConflictChecker }),
+    () => ({ mode, color, hideTimer, outlineDigits, conflictChecker, setTheme, setMode, setColor, setHideTimer, setOutlineDigits, setConflictChecker }),
     [mode, color, hideTimer, outlineDigits, conflictChecker],
   );
   return <ThemeContext.Provider value={value}>{props.children}</ThemeContext.Provider>;

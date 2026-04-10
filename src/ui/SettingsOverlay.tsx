@@ -8,21 +8,23 @@ type ThemePreset = {
   label: string;
   mode: "light" | "dark";
   color: ThemeColor;
+  preview: string[];
 };
 
 const themePresets: ThemePreset[] = [
-  { id: "bw-light", label: "Light", mode: "light", color: "bw" },
-  { id: "bw-dark", label: "Dark", mode: "dark", color: "bw" },
-  { id: "clay-light", label: "Clay", mode: "light", color: "clay" },
-  { id: "ocean-light", label: "Ocean (light)", mode: "light", color: "ocean" },
-  { id: "ocean-dark", label: "Ocean (dark)", mode: "dark", color: "ocean" },
-  { id: "forest-light", label: "Forest", mode: "light", color: "forest" },
-  { id: "berry-light", label: "Berry", mode: "light", color: "berry" },
+  { id: "bw-light", label: "Light", mode: "light", color: "bw", preview: ["#ffffff", "#d8d8d8", "#1f1f1f"] },
+  { id: "bw-dark", label: "Dark", mode: "dark", color: "bw", preview: ["#000000", "#3a3a3a", "#f8f8f8"] },
+  { id: "clay-light", label: "Clay", mode: "light", color: "clay", preview: ["#ffffff", "#E8DFDA", "#CBB5A9"] },
+  { id: "ocean-light", label: "Ocean (light)", mode: "light", color: "ocean", preview: ["#ffffff", "#93A7BF", "#475F73"] },
+  { id: "ocean-dark", label: "Ocean (dark)", mode: "dark", color: "ocean", preview: ["#000000", "#475F73", "#93A7BF"] },
+  { id: "forest-light", label: "Forest", mode: "light", color: "forest", preview: ["#ffffff", "#93A390", "#5E6E5B"] },
+  { id: "berry-light", label: "Berry", mode: "light", color: "berry", preview: ["#ffffff", "#DEBFCE", "#9E6A84"] },
 ];
 
 const themePresetOptions: SelectControlOption[] = themePresets.map((preset) => ({
   value: preset.id,
   label: preset.label,
+  preview: preset.preview,
 }));
 
 export function SettingsOverlay(props: { onClose: () => void }) {
@@ -43,8 +45,7 @@ export function SettingsOverlay(props: { onClose: () => void }) {
     hideTimer,
     outlineDigits,
     conflictChecker,
-    setMode,
-    setColor,
+    setTheme,
     setHideTimer,
     setOutlineDigits,
     setConflictChecker,
@@ -54,8 +55,7 @@ export function SettingsOverlay(props: { onClose: () => void }) {
   const applyThemePreset = (presetId: string) => {
     const preset = themePresets.find((item) => item.id === presetId);
     if (!preset) return;
-    setMode(preset.mode);
-    setColor(preset.color);
+    setTheme(preset.mode, preset.color);
   };
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {

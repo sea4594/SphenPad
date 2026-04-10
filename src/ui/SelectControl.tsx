@@ -4,6 +4,7 @@ export type SelectControlOption = {
   value: string;
   label: string;
   count?: number;
+  preview?: string[];
   disabled?: boolean;
 };
 
@@ -61,6 +62,11 @@ export function SelectControl(props: SelectControlProps) {
     }
     return options.find((option) => option.value === props.value)?.label ?? props.value;
   }, [multiple, options, props]);
+
+  const selectedOption = useMemo(
+    () => (multiple ? null : options.find((option) => option.value === props.value) ?? null),
+    [multiple, options, props],
+  );
 
   useEffect(() => {
     if (multiple || !open) return;
@@ -155,6 +161,13 @@ export function SelectControl(props: SelectControlProps) {
             type="button"
           >
             <span className="selectControlTriggerLabel">{selectedLabel}</span>
+            {selectedOption?.preview?.length ? (
+              <span className="selectControlPreview" aria-hidden="true">
+                {selectedOption.preview.slice(0, 3).map((colorToken) => (
+                  <span key={colorToken} style={{ background: colorToken }} />
+                ))}
+              </span>
+            ) : null}
             <span className="selectControlChevron" aria-hidden="true">▾</span>
           </button>
           {open ? (
@@ -181,7 +194,15 @@ export function SelectControl(props: SelectControlProps) {
                     type="button"
                   >
                     <span className="selectControlOptionLabel">{option.label}</span>
-                    {option.count != null ? <span className="selectControlOptionMeta">{option.count}</span> : null}
+                    {option.count != null ? (
+                      <span className="selectControlOptionMeta">{option.count}</span>
+                    ) : option.preview?.length ? (
+                      <span className="selectControlPreview" aria-hidden="true">
+                        {option.preview.slice(0, 3).map((colorToken) => (
+                          <span key={colorToken} style={{ background: colorToken }} />
+                        ))}
+                      </span>
+                    ) : null}
                   </button>
                 );
               })}

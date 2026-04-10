@@ -638,6 +638,20 @@ input.url {
   font-size: 11px;
 }
 
+.selectControlPreview {
+  display: inline-grid;
+  grid-auto-flow: column;
+  gap: 3px;
+  align-items: center;
+}
+
+.selectControlPreview > span {
+  width: 12px;
+  height: 12px;
+  border-radius: 0;
+  border: 1px solid color-mix(in oklab, #000 28%, transparent);
+}
+
 .selectControlPopover {
   position: absolute;
   top: calc(100% + 4px);
