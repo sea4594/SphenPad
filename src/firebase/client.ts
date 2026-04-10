@@ -36,6 +36,10 @@ const provider = new GoogleAuthProvider();
 const MAX_BATCH_SIZE = 400;
 
 export type CloudAppSnapshot = LocalAppSnapshot;
+export type CloudStateMetadata = {
+  updatedAt: number;
+  puzzleKeys: string[];
+};
 
 export const firebaseEnabled = Boolean(firebaseConfig.apiKey && firebaseConfig.authDomain && firebaseConfig.projectId);
 
@@ -174,6 +178,28 @@ export function onGoogleAuthStateChanged(listener: (user: User | null) => void) 
 export async function googleLogout() {
   if (!firebaseEnabled || !auth) return;
   await signOut(auth);
+}
+
+export async function pullCloudStateMetadata(userId: string): Promise<CloudStateMetadata | null> {
+  if (!firebaseEnabled || !db) return null;
+
+  const stateRef = doc(db, "users", userId, "app", "state");
+  const stateSnap = await getDoc(stateRef);
+  if (!stateSnap.exists()) return null;
+
+  const stateData = stateSnap.data() as {
+    updatedAt?: unknown;
+    puzzleKeys?: unknown;
+  };
+
+  const puzzleKeys = Array.isArray(stateData.puzzleKeys)
+    ? stateData.puzzleKeys.filter((entry): entry is string => typeof entry === "string")
+    : [];
+
+  return {
+    updatedAt: typeof stateData.updatedAt === "number" ? stateData.updatedAt : 0,
+    puzzleKeys,
+  };
 }
 
 export async function pullCloudState(userId: string): Promise<CloudAppSnapshot | null> {
