@@ -2103,6 +2103,11 @@ input.url {
     grid-template-rows: repeat(4, minmax(28px, 1fr)) !important;
   }
 
+  .panelMainGrid .keyGrid {
+    gap: var(--panel-gap) !important;
+    grid-template-rows: repeat(4, minmax(28px, 1fr)) !important;
+  }
+
   .keyButton,
   .lineKindSelect {
     min-height: 0;
