@@ -2023,7 +2023,7 @@ input.url {
     --panel-pad: 6px;
     --panel-cell-ratio: 0.644;
     --panel-cell: calc((100vmin - (var(--panel-pad) * 2) - (var(--panel-gap) * 3)) / 4);
-    --panel-row: calc(var(--panel-cell) * var(--panel-cell-ratio));
+    --panel-row: calc(var(--panel-cell) * var(--panel-cell-ratio) * 0.93);
     --mobile-controls-h-raw: calc((var(--panel-row) * 5) + (var(--panel-gap) * 4) + (var(--panel-pad) * 2));
     --mobile-controls-h: clamp(210px, var(--mobile-controls-h-raw), 46vmax);
     grid-template-rows: minmax(0, 1fr) var(--mobile-controls-h);
@@ -2104,7 +2104,6 @@ input.url {
 
   .panelMainGrid .keyGrid {
     gap: 2px !important;
-    grid-template-rows: repeat(4, minmax(28px, 1fr)) !important;
   }
 
   .keyButton,
