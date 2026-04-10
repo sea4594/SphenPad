@@ -166,10 +166,7 @@ body,
   min-height: 100%;
   overflow-x: hidden;
   overscroll-behavior: none;
-  background:
-    radial-gradient(1100px 650px at -15% -20%, var(--gradient-a) 0%, transparent 66%),
-    radial-gradient(1000px 700px at 120% -10%, var(--gradient-b) 0%, transparent 70%),
-    var(--bg);
+  background: var(--bg);
   color: var(--text);
 }
 
@@ -427,7 +424,7 @@ button,
 .muted { color: var(--muted); }
 
 .card {
-  background: linear-gradient(180deg, var(--panel-soft), var(--panel));
+  background: var(--panel);
   border: 1px solid var(--ui-border);
   border-radius: 0;
   padding: 12px;
@@ -649,7 +646,7 @@ input.url {
   display: grid;
   gap: 4px;
   padding: 6px;
-  background: linear-gradient(180deg, var(--panel-soft), var(--panel));
+  background: var(--panel);
   border: 1px solid var(--ui-border-strong);
   box-shadow: var(--ui-elev-shadow);
   max-height: min(320px, 50dvh);
