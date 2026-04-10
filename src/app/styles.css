@@ -19,6 +19,9 @@
   --switch-on-border: #8db1f0;
   --switch-thumb-off: #d9e0ec;
   --switch-thumb-on: #ffffff;
+  --toggle-on-bg: color-mix(in oklab, var(--accent) 78%, #111 22%);
+  --toggle-on-border: color-mix(in oklab, var(--accent) 94%, #ffffff 6%);
+  --toggle-on-text: #ffffff;
   --safe-top: env(safe-area-inset-top);
   --safe-bottom: env(safe-area-inset-bottom);
   --safe-left: env(safe-area-inset-left);
@@ -62,6 +65,9 @@ html[data-theme="bw"][data-mode="dark"] {
   --switch-on-border: #ffffff;
   --switch-thumb-off: #9ca3af;
   --switch-thumb-on: #111827;
+  --toggle-on-bg: #f3f4f6;
+  --toggle-on-border: #ffffff;
+  --toggle-on-text: #111827;
 }
 
 html[data-theme="bw"][data-mode="light"] {
@@ -108,6 +114,9 @@ html[data-theme="ocean"][data-mode="dark"] {
   --switch-on-border: #ffffff;
   --switch-thumb-off: #8ca0b4;
   --switch-thumb-on: #0f1d2b;
+  --toggle-on-bg: #dbe7f2;
+  --toggle-on-border: #ffffff;
+  --toggle-on-text: #0f1d2b;
 }
 
 html[data-theme="forest"][data-mode="dark"] {
@@ -464,9 +473,6 @@ button,
   justify-content: center;
   gap: 6px;
   text-align: center;
-  background: color-mix(in oklab, var(--panel-soft) 82%, #000 18%);
-  color: color-mix(in oklab, var(--text) 72%, var(--muted) 28%);
-  --btn-edge-color: color-mix(in oklab, var(--text) 20%, transparent);
 }
 
 .topbarSettingsButton {
@@ -629,9 +635,6 @@ input.url {
   justify-content: center;
   gap: 6px;
   text-align: center;
-  background: color-mix(in oklab, var(--panel-soft) 82%, #000 18%);
-  color: color-mix(in oklab, var(--text) 72%, var(--muted) 28%);
-  --btn-edge-color: color-mix(in oklab, var(--text) 20%, transparent);
 }
 
 .menuPuzzleList {
@@ -818,25 +821,22 @@ input.url {
   line-height: 1.1;
   font-size: 13px;
   text-align: center;
-  background: color-mix(in oklab, var(--panel-soft) 82%, #000 18%);
-  color: color-mix(in oklab, var(--text) 72%, var(--muted) 28%);
-  --btn-edge-color: color-mix(in oklab, var(--text) 20%, transparent);
 }
 
 .menuStatusTab.is-active {
-  background: color-mix(in oklab, var(--accent) 78%, #111 22%);
-  color: #ffffff;
-  border-color: color-mix(in oklab, var(--accent) 94%, #ffffff 6%);
-  --btn-edge-color: color-mix(in oklab, var(--accent) 94%, #ffffff 6%);
+  background: var(--toggle-on-bg);
+  color: var(--toggle-on-text);
+  border-color: var(--toggle-on-border);
+  --btn-edge-color: var(--toggle-on-border);
   box-shadow: inset 0 0 0 1px color-mix(in oklab, #fff 28%, transparent);
 }
 
 .topbarModeTab.btn.primary,
 .menuModeTab.btn.primary {
-  background: color-mix(in oklab, var(--accent) 78%, #111 22%);
-  color: #ffffff;
-  border-color: color-mix(in oklab, var(--accent) 94%, #ffffff 6%);
-  --btn-edge-color: color-mix(in oklab, var(--accent) 94%, #ffffff 6%);
+  background: var(--toggle-on-bg);
+  color: var(--toggle-on-text);
+  border-color: var(--toggle-on-border);
+  --btn-edge-color: var(--toggle-on-border);
   box-shadow: inset 0 0 0 1px color-mix(in oklab, #fff 28%, transparent);
 }
 
