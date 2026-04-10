@@ -525,7 +525,8 @@ input.url {
 }
 
 .btn.primary {
-  background: color-mix(in oklab, var(--accent) 28%, transparent);
+  background: color-mix(in oklab, var(--accent) 46%, var(--panel));
+  color: color-mix(in oklab, var(--text) 96%, #fff 4%);
   --btn-edge-color: color-mix(in oklab, var(--accent) 84%, transparent);
 }
 
@@ -688,7 +689,8 @@ input.url {
 }
 
 .selectControlOption.is-selected {
-  background: color-mix(in oklab, var(--accent) 22%, transparent);
+  background: color-mix(in oklab, var(--accent) 44%, var(--panel));
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--accent) 86%, transparent);
 }
 
 .selectControlOption.is-disabled,
@@ -744,8 +746,9 @@ input.url {
 }
 
 .menuStatusTab.is-active {
-  background: color-mix(in oklab, var(--accent) 26%, transparent);
+  background: color-mix(in oklab, var(--accent) 48%, var(--panel));
   border-color: color-mix(in oklab, var(--accent) 84%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--accent) 88%, transparent);
 }
 
 .menuFolderButton {
@@ -1864,28 +1867,36 @@ input.url {
   height: 32px;
   border-radius: 0;
   padding: 3px;
-  border: 1px solid color-mix(in oklab, var(--text) 18%, transparent);
-  background: var(--switch-track);
+  border: 1px solid var(--ui-border-strong);
+  background: color-mix(in oklab, var(--panel) 88%, transparent);
   display: flex;
   align-items: center;
-  transition: background 120ms ease;
+  transition: background 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
 }
 
 .switch.is-on {
-  background: color-mix(in oklab, var(--accent) 70%, transparent);
+  background: color-mix(in oklab, var(--accent) 80%, var(--panel));
+  border-color: color-mix(in oklab, var(--accent) 90%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--accent) 80%, transparent);
 }
 
 .switchThumb {
   width: 24px;
   height: 24px;
   border-radius: 0;
-  background: #fff;
+  background: color-mix(in oklab, var(--text) 92%, #fff 8%);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--text) 20%, transparent);
   transform: translateX(0);
-  transition: transform 120ms ease;
+  transition: transform 120ms ease, background 120ms ease;
 }
 
 .switch.is-on .switchThumb {
+  background: color-mix(in oklab, #fff 96%, var(--accent) 4%);
   transform: translateX(26px);
+}
+
+.settingsThemeSelect {
+  width: 100%;
 }
 
 .themeGrid {

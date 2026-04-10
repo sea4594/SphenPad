@@ -1,14 +1,29 @@
 import { useEffect } from "react";
 import { useAccountSync } from "../app/accountSync";
 import { useTheme, type ThemeColor } from "../app/theme";
+import { SelectControl, type SelectControlOption } from "./SelectControl";
 
-const themeChoices: Array<{ key: ThemeColor; label: string; preview: string[] }> = [
-  { key: "bw", label: "Black & White", preview: ["#ffffff", "#b3b3b3", "#1f1f1f"] },
-  { key: "ocean", label: "Ocean", preview: ["#93A7BF", "#6F869C", "#475F73"] },
-  { key: "forest", label: "Forest", preview: ["#93A390", "#778874", "#5E6E5B"] },
-  { key: "clay", label: "Clay", preview: ["#E8DFDA", "#D9CAC1", "#CBB5A9"] },
-  { key: "berry", label: "Berry", preview: ["#DEBFCE", "#BF90A8", "#9E6A84"] },
+type ThemePreset = {
+  id: string;
+  label: string;
+  mode: "light" | "dark";
+  color: ThemeColor;
+};
+
+const themePresets: ThemePreset[] = [
+  { id: "bw-light", label: "Light", mode: "light", color: "bw" },
+  { id: "bw-dark", label: "Dark", mode: "dark", color: "bw" },
+  { id: "clay-light", label: "Clay", mode: "light", color: "clay" },
+  { id: "ocean-light", label: "Ocean (light)", mode: "light", color: "ocean" },
+  { id: "ocean-dark", label: "Ocean (dark)", mode: "dark", color: "ocean" },
+  { id: "forest-light", label: "Forest", mode: "light", color: "forest" },
+  { id: "berry-light", label: "Berry", mode: "light", color: "berry" },
 ];
+
+const themePresetOptions: SelectControlOption[] = themePresets.map((preset) => ({
+  value: preset.id,
+  label: preset.label,
+}));
 
 export function SettingsOverlay(props: { onClose: () => void }) {
   const { onClose } = props;
@@ -34,6 +49,14 @@ export function SettingsOverlay(props: { onClose: () => void }) {
     setOutlineDigits,
     setConflictChecker,
   } = useTheme();
+  const activePreset = themePresets.find((preset) => preset.mode === mode && preset.color === color) ?? themePresets[0];
+
+  const applyThemePreset = (presetId: string) => {
+    const preset = themePresets.find((item) => item.id === presetId);
+    if (!preset) return;
+    setMode(preset.mode);
+    setColor(preset.color);
+  };
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
@@ -93,34 +116,13 @@ export function SettingsOverlay(props: { onClose: () => void }) {
 
         <div className="settingsSection">
           <div style={{ fontWeight: 700, marginBottom: 8 }}>Theme</div>
-
-          <div className="settingsRow">
-            <div className="muted">Light / Dark</div>
-            <button
-              className={"switch" + (mode === "dark" ? " is-on" : "")}
-              onClick={() => setMode(mode === "dark" ? "light" : "dark")}
-              aria-label="Toggle light and dark mode"
-            >
-              <span className="switchThumb" />
-            </button>
-          </div>
-
-          <div className="themeGrid">
-            {themeChoices.map((choice) => (
-              <button
-                key={choice.key}
-                className={"themeChoice" + (choice.key === color ? " active" : "")}
-                onClick={() => setColor(choice.key)}
-              >
-                <span>{choice.label}</span>
-                <span className="themePreview">
-                  {choice.preview.map((p) => (
-                    <span key={p} style={{ background: p }} />
-                  ))}
-                </span>
-              </button>
-            ))}
-          </div>
+          <SelectControl
+            className="btn settingsThemeSelect"
+            aria-label="Select app theme"
+            value={activePreset.id}
+            options={themePresetOptions}
+            onValueChange={applyThemePreset}
+          />
 
           <div className="settingsRow" style={{ marginTop: 4 }}>
             <div className="muted">Hide timer</div>

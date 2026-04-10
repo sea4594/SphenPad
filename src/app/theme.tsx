@@ -21,6 +21,11 @@ const STORAGE_KEY = "sphenpad-theme-v1";
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
+function normalizeThemeSelection(mode: ThemeMode, color: ThemeColor): { mode: ThemeMode; color: ThemeColor } {
+  if (color === "bw" || color === "ocean") return { mode, color };
+  return { mode: "light", color };
+}
+
 function readInitialTheme(): { mode: ThemeMode; color: ThemeColor; hideTimer: boolean; outlineDigits: boolean; conflictChecker: boolean } {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -37,10 +42,11 @@ function readInitialTheme(): { mode: ThemeMode; color: ThemeColor; hideTimer: bo
     const color: ThemeColor = ["bw", "ocean", "forest", "clay", "berry"].includes(mappedColor ?? "")
       ? (mappedColor as ThemeColor)
       : "ocean";
+    const normalizedTheme = normalizeThemeSelection(mode, color);
     const hideTimer = typeof parsed.hideTimer === "boolean" ? parsed.hideTimer : false;
     const outlineDigits = typeof parsed.outlineDigits === "boolean" ? parsed.outlineDigits : true;
     const conflictChecker = typeof parsed.conflictChecker === "boolean" ? parsed.conflictChecker : true;
-    return { mode, color, hideTimer, outlineDigits, conflictChecker };
+    return { mode: normalizedTheme.mode, color: normalizedTheme.color, hideTimer, outlineDigits, conflictChecker };
   } catch {
     return { mode: "light", color: "ocean", hideTimer: false, outlineDigits: true, conflictChecker: true };
   }
@@ -48,17 +54,29 @@ function readInitialTheme(): { mode: ThemeMode; color: ThemeColor; hideTimer: bo
 
 export function ThemeProvider(props: { children: ReactNode }) {
   const initialTheme = readInitialTheme();
-  const [mode, setMode] = useState<ThemeMode>(initialTheme.mode);
-  const [color, setColor] = useState<ThemeColor>(initialTheme.color);
+  const [mode, setModeState] = useState<ThemeMode>(initialTheme.mode);
+  const [color, setColorState] = useState<ThemeColor>(initialTheme.color);
   const [hideTimer, setHideTimer] = useState<boolean>(initialTheme.hideTimer);
   const [outlineDigits, setOutlineDigits] = useState<boolean>(initialTheme.outlineDigits);
   const [conflictChecker, setConflictChecker] = useState<boolean>(initialTheme.conflictChecker);
 
+  const setMode = (nextMode: ThemeMode) => {
+    const normalized = normalizeThemeSelection(nextMode, color);
+    setModeState(normalized.mode);
+    setColorState(normalized.color);
+  };
+
+  const setColor = (nextColor: ThemeColor) => {
+    const normalized = normalizeThemeSelection(mode, nextColor);
+    setModeState(normalized.mode);
+    setColorState(normalized.color);
+  };
+
   useEffect(() => {
     const applyThemeFromStorage = () => {
       const next = readInitialTheme();
-      setMode(next.mode);
-      setColor(next.color);
+      setModeState(next.mode);
+      setColorState(next.color);
       setHideTimer(next.hideTimer);
       setOutlineDigits(next.outlineDigits);
       setConflictChecker(next.conflictChecker);
