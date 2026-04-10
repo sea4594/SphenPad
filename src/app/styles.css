@@ -10,6 +10,9 @@
   --danger: #e86474;
   --gradient-a: #2e3b57;
   --gradient-b: #33413a;
+  --ui-border: color-mix(in oklab, var(--text) 16%, transparent);
+  --ui-border-strong: color-mix(in oklab, var(--text) 28%, transparent);
+  --ui-elev-shadow: 0 10px 26px rgba(0, 0, 0, 0.22);
   --switch-track: rgba(255, 255, 255, 0.24);
   --safe-top: env(safe-area-inset-top);
   --safe-bottom: env(safe-area-inset-bottom);
@@ -25,8 +28,19 @@
   box-sizing: border-box;
 }
 
-html[data-mode="dark"] { color-scheme: dark; }
-html[data-mode="light"] { color-scheme: light; }
+html[data-mode="dark"] {
+  color-scheme: dark;
+  --ui-border: color-mix(in oklab, var(--text) 28%, transparent);
+  --ui-border-strong: color-mix(in oklab, var(--text) 44%, transparent);
+  --ui-elev-shadow: 0 14px 34px rgba(0, 0, 0, 0.42);
+}
+
+html[data-mode="light"] {
+  color-scheme: light;
+  --ui-border: color-mix(in oklab, #000 14%, transparent);
+  --ui-border-strong: color-mix(in oklab, #000 24%, transparent);
+  --ui-elev-shadow: 0 10px 24px rgba(27, 34, 44, 0.12);
+}
 
 html[data-theme="bw"][data-mode="dark"] {
   --bg: #1b1b1b;
@@ -52,94 +66,94 @@ html[data-theme="bw"][data-mode="light"] {
 }
 
 html[data-theme="ocean"][data-mode="light"] {
-  --bg: #93a7bf;
-  --panel: #becddd;
-  --panel-soft: #adbed1;
-  --text: #1d3044;
-  --muted: #31495f;
+  --bg: #f7fafd;
+  --panel: #ffffff;
+  --panel-soft: #eff4f9;
+  --text: #1f3142;
+  --muted: #4e6277;
   --accent: #475f73;
-  --gradient-a: #bfd0e2;
-  --gradient-b: #7d95ad;
+  --gradient-a: #d9e4ef;
+  --gradient-b: #93a7bf;
   --switch-track: rgba(0, 0, 0, 0.24);
 }
 
 html[data-theme="ocean"][data-mode="dark"] {
-  --bg: #475f73;
-  --panel: #688299;
-  --panel-soft: #587288;
-  --text: #f4f8fc;
-  --muted: #d6e1ea;
+  --bg: #1c2630;
+  --panel: #314150;
+  --panel-soft: #3d5164;
+  --text: #f2f7fc;
+  --muted: #c4d2df;
   --accent: #93a7bf;
-  --gradient-a: #7e97ae;
-  --gradient-b: #5e778d;
+  --gradient-a: #405469;
+  --gradient-b: #2a3846;
 }
 
 html[data-theme="forest"][data-mode="dark"] {
-  --bg: #5e6e5b;
-  --panel: #7b8a78;
-  --panel-soft: #6c7b69;
-  --text: #f4f6f3;
-  --muted: #d5dcd4;
+  --bg: #1e2720;
+  --panel: #344136;
+  --panel-soft: #3f5041;
+  --text: #f2f6f1;
+  --muted: #c5d0c3;
   --accent: #93a390;
-  --gradient-a: #8ea18b;
-  --gradient-b: #6f826c;
+  --gradient-a: #435546;
+  --gradient-b: #2c382e;
 }
 
 html[data-theme="forest"][data-mode="light"] {
-  --bg: #93a390;
-  --panel: #bdc9bb;
-  --panel-soft: #aebcab;
-  --text: #1f2d1c;
-  --muted: #374c33;
+  --bg: #f7faf7;
+  --panel: #ffffff;
+  --panel-soft: #eef3ee;
+  --text: #223021;
+  --muted: #50614f;
   --accent: #5e6e5b;
-  --gradient-a: #c3cec1;
-  --gradient-b: #839781;
+  --gradient-a: #dde7db;
+  --gradient-b: #93a390;
   --switch-track: rgba(0, 0, 0, 0.24);
 }
 
 html[data-theme="clay"][data-mode="dark"] {
-  --bg: #cbb5a9;
-  --panel: #decdc4;
-  --panel-soft: #d5c2b8;
-  --text: #372c26;
-  --muted: #5f4f46;
+  --bg: #2a2422;
+  --panel: #5b4f49;
+  --panel-soft: #6c5f58;
+  --text: #f8f1ed;
+  --muted: #dbcfc8;
   --accent: #e8dfda;
-  --gradient-a: #eadfd9;
-  --gradient-b: #c1ab9f;
+  --gradient-a: #776760;
+  --gradient-b: #4d423d;
 }
 
 html[data-theme="clay"][data-mode="light"] {
-  --bg: #e8dfda;
-  --panel: #f6f1ee;
-  --panel-soft: #eee6e1;
+  --bg: #fdfbf9;
+  --panel: #ffffff;
+  --panel-soft: #f6f0ed;
   --text: #433630;
-  --muted: #70615a;
+  --muted: #71635b;
   --accent: #cbb5a9;
-  --gradient-a: #f7f1ee;
-  --gradient-b: #d7c9c0;
+  --gradient-a: #f5eeea;
+  --gradient-b: #e8dfda;
   --switch-track: rgba(0, 0, 0, 0.24);
 }
 
 html[data-theme="berry"][data-mode="dark"] {
-  --bg: #9e6a84;
-  --panel: #bb8ea4;
-  --panel-soft: #ad7e96;
-  --text: #fff5fa;
-  --muted: #f1dfea;
+  --bg: #251f24;
+  --panel: #4a3440;
+  --panel-soft: #5a3f4e;
+  --text: #fff5fb;
+  --muted: #ead6e2;
   --accent: #debfce;
-  --gradient-a: #d1afbf;
-  --gradient-b: #aa7992;
+  --gradient-a: #6b4b5d;
+  --gradient-b: #3b2a33;
 }
 
 html[data-theme="berry"][data-mode="light"] {
-  --bg: #debfce;
-  --panel: #eedce5;
-  --panel-soft: #e8d0dc;
-  --text: #492e3e;
-  --muted: #785467;
+  --bg: #fdf9fb;
+  --panel: #ffffff;
+  --panel-soft: #f5edf1;
+  --text: #4a2f3f;
+  --muted: #79586a;
   --accent: #9e6a84;
-  --gradient-a: #f3e3ea;
-  --gradient-b: #cfa8bc;
+  --gradient-a: #f5e7ee;
+  --gradient-b: #debfce;
   --switch-track: rgba(0, 0, 0, 0.24);
 }
 
@@ -291,7 +305,7 @@ button,
   padding: max(8px, var(--safe-top)) 14px 10px 14px;
   background: color-mix(in oklab, var(--bg) 88%, transparent);
   backdrop-filter: blur(8px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid var(--ui-border);
   position: sticky;
   top: 0;
   z-index: 20;
@@ -329,7 +343,7 @@ button,
   height: 44px;
   background: none;
   border: 1px solid transparent;
-  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--text) 24%, transparent);
+  box-shadow: inset 0 0 0 1px var(--ui-border-strong);
   padding: 0;
   cursor: pointer;
   color: inherit;
@@ -414,10 +428,10 @@ button,
 
 .card {
   background: linear-gradient(180deg, var(--panel-soft), var(--panel));
-  border: 1px solid color-mix(in oklab, var(--text) 14%, transparent);
+  border: 1px solid var(--ui-border);
   border-radius: 0;
   padding: 12px;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  box-shadow: var(--ui-elev-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
 .page {
@@ -450,12 +464,12 @@ input.url {
   width: 100%;
   padding: 12px;
   border-radius: 0;
-  border: 1px solid color-mix(in oklab, var(--text) 34%, transparent);
+  border: 1px solid var(--ui-border-strong);
   background: color-mix(in oklab, var(--panel-soft) 82%, #ffffff 18%);
 }
 
 .btn {
-  --btn-edge-color: color-mix(in oklab, var(--text) 24%, transparent);
+  --btn-edge-color: var(--ui-border-strong);
   padding: 10px 12px;
   border-radius: 0;
   border: 1px solid transparent;
@@ -636,8 +650,8 @@ input.url {
   gap: 4px;
   padding: 6px;
   background: linear-gradient(180deg, var(--panel-soft), var(--panel));
-  border: 1px solid color-mix(in oklab, var(--text) 18%, transparent);
-  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.24);
+  border: 1px solid var(--ui-border-strong);
+  box-shadow: var(--ui-elev-shadow);
   max-height: min(320px, 50dvh);
   overflow: auto;
 }
@@ -716,7 +730,7 @@ input.url {
   gap: 10px;
   margin-top: 18px;
   padding-top: 14px;
-  border-top: 1px solid color-mix(in oklab, var(--text) 16%, transparent);
+  border-top: 1px solid var(--ui-border);
 }
 
 .menuFilterPanelCard {
@@ -1147,7 +1161,7 @@ input.url {
   min-height: 0;
   overflow: auto;
   display: block;
-  border: 1px solid color-mix(in oklab, var(--text) 20%, transparent);
+  border: 1px solid var(--ui-border-strong);
   border-radius: 10px;
   background: color-mix(in oklab, var(--panel-soft) 92%, transparent);
   overscroll-behavior: contain;
@@ -1175,7 +1189,7 @@ input.url {
   align-items: center;
   text-align: left;
   border: 0;
-  border-bottom: 1px solid color-mix(in oklab, var(--text) 14%, transparent);
+  border-bottom: 1px solid var(--ui-border);
   background: transparent;
   color: inherit;
   min-height: 40px;
@@ -1212,7 +1226,7 @@ input.url {
 
 .archiveConstraintSelect {
   border-radius: 0;
-  border: 1px solid color-mix(in oklab, var(--text) 24%, transparent);
+  border: 1px solid var(--ui-border-strong);
   background: var(--panel-soft);
   color: inherit;
   line-height: 1.25;
