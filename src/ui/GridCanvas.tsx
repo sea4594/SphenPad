@@ -105,8 +105,9 @@ export function GridCanvas(props: {
   onDoubleCell: (rc: CellRC) => void;
   interactive?: boolean;
   previewMode?: boolean;
+  strictScale?: boolean;
 }) {
-  const { def, progress, interactive = true, previewMode = false } = props;
+  const { def, progress, interactive = true, previewMode = false, strictScale = false } = props;
   const { outlineDigits, conflictChecker } = useTheme();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const wrapRef = useRef<HTMLDivElement | null>(null);
@@ -465,7 +466,9 @@ export function GridCanvas(props: {
       const previewMin = options?.previewMin ?? 0;
       const normalMin = options?.normalMin ?? 0;
       const max = options?.max ?? Number.POSITIVE_INFINITY;
-      const minClamp = previewMode
+      const minClamp = strictScale
+        ? 0
+        : previewMode
         ? previewMin
         : mobileFidelityMode
           ? Math.min(previewMin, normalMin)
@@ -479,7 +482,9 @@ export function GridCanvas(props: {
       const previewMin = options?.previewMin ?? 0;
       const normalMin = options?.normalMin ?? 0;
       const max = options?.max ?? Number.POSITIVE_INFINITY;
-      const minClamp = previewMode
+      const minClamp = strictScale
+        ? 0
+        : previewMode
         ? previewMin
         : mobileFidelityMode
           ? Math.min(previewMin, normalMin)
@@ -923,7 +928,7 @@ export function GridCanvas(props: {
         const px = (item.textSize ?? 16) * (cellPx / cosmeticUnit);
         const text = String(item.text);
         const hasEmoji = /\p{Extended_Pictographic}/u.test(text);
-        const minTextPx = previewMode ? 4.5 : mobileFidelityMode ? 4.5 : 10;
+        const minTextPx = strictScale ? 0 : previewMode ? 4.5 : mobileFidelityMode ? 4.5 : 10;
         const textPx = Math.max(minTextPx, px);
         ctx.font = hasEmoji
           ? `${textPx}px ${emojiTextFont}`
@@ -1569,22 +1574,30 @@ export function GridCanvas(props: {
       const first = cage.cells[0] as CellRC;
       cageLabelCells.add(`${first.r},${first.c}`);
     }
-    const valueFontPx = Math.max(
-      previewMode ? 4.5 : mobileFidelityMode ? 4.5 : 11,
-      Math.min(previewMode ? 30 : 50, Math.round(cellPx * 0.67))
-    );
-    const noteFontPx = Math.max(
-      previewMode ? 3 : mobileFidelityMode ? 3 : 6,
-      Math.min(previewMode ? 10 : 19, Math.round(cellPx * 0.26))
-    );
-    const candidateFontPx = Math.max(
-      previewMode ? 2.2 : mobileFidelityMode ? 2.2 : 5,
-      Math.min(previewMode ? 8 : 12, Math.round(cellPx * 0.18))
-    );
-    const digitOutlineWidth = Math.max(
-      previewMode ? 0.18 : mobileFidelityMode ? 0.18 : 0.45,
-      Math.min(previewMode ? 0.6 : 0.9, cellPx * 0.015)
-    );
+    const valueFontPx = strictScale
+      ? Math.max(1, Math.min(previewMode ? 30 : 50, Math.round(cellPx * 0.67)))
+      : Math.max(
+        previewMode ? 4.5 : mobileFidelityMode ? 4.5 : 11,
+        Math.min(previewMode ? 30 : 50, Math.round(cellPx * 0.67))
+      );
+    const noteFontPx = strictScale
+      ? Math.max(0.9, Math.min(previewMode ? 10 : 19, Math.round(cellPx * 0.26)))
+      : Math.max(
+        previewMode ? 3 : mobileFidelityMode ? 3 : 6,
+        Math.min(previewMode ? 10 : 19, Math.round(cellPx * 0.26))
+      );
+    const candidateFontPx = strictScale
+      ? Math.max(0.7, Math.min(previewMode ? 8 : 12, Math.round(cellPx * 0.18)))
+      : Math.max(
+        previewMode ? 2.2 : mobileFidelityMode ? 2.2 : 5,
+        Math.min(previewMode ? 8 : 12, Math.round(cellPx * 0.18))
+      );
+    const digitOutlineWidth = strictScale
+      ? Math.max(0.06, Math.min(previewMode ? 0.6 : 0.9, cellPx * 0.015))
+      : Math.max(
+        previewMode ? 0.18 : mobileFidelityMode ? 0.18 : 0.45,
+        Math.min(previewMode ? 0.6 : 0.9, cellPx * 0.015)
+      );
     const drawDigitText = (text: string, x: number, y: number) => {
       if (outlineDigits) {
         ctx.save();

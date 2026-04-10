@@ -1409,6 +1409,7 @@ export function MainMenu(props: { active?: boolean }) {
                           onDoubleCell={NOOP}
                           interactive={false}
                           previewMode
+                          strictScale
                         />
                       </div>
 
@@ -1619,6 +1620,7 @@ export function MainMenu(props: { active?: boolean }) {
                                 onDoubleCell={NOOP}
                                 interactive={false}
                                 previewMode
+                                strictScale
                               />
                             </div>
 

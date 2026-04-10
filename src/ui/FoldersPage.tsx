@@ -905,6 +905,7 @@ export function FoldersPage(props: { active?: boolean }) {
                               onDoubleCell={NOOP}
                               interactive={false}
                               previewMode
+                              strictScale
                             />
                           </div>
 

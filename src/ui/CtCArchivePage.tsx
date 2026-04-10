@@ -1655,6 +1655,7 @@ export function CtCArchivePage(props: { active?: boolean }) {
                                 onDoubleCell={() => {}}
                                 interactive={false}
                                 previewMode
+                                strictScale
                               />
                             </div>
                           ) : (
