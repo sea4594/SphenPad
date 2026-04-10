@@ -4,10 +4,10 @@ import { useTheme, type ThemeColor } from "../app/theme";
 
 const themeChoices: Array<{ key: ThemeColor; label: string; preview: string[] }> = [
   { key: "bw", label: "Black & White", preview: ["#ffffff", "#b3b3b3", "#1f1f1f"] },
-  { key: "ocean", label: "Ocean", preview: ["#8bc7ff", "#4c87d9", "#17345f"] },
-  { key: "forest", label: "Forest", preview: ["#9ce8c1", "#4ea37a", "#1d4733"] },
-  { key: "sepia", label: "Sepia Paper", preview: ["#f4ead5", "#c9aa7e", "#684f32"] },
-  { key: "berry", label: "Berry", preview: ["#ffbfd8", "#cb5f93", "#4a213f"] },
+  { key: "ocean", label: "Ocean", preview: ["#93A7BF", "#6F869C", "#475F73"] },
+  { key: "forest", label: "Forest", preview: ["#93A390", "#778874", "#5E6E5B"] },
+  { key: "clay", label: "Clay", preview: ["#E8DFDA", "#D9CAC1", "#CBB5A9"] },
+  { key: "berry", label: "Berry", preview: ["#DEBFCE", "#BF90A8", "#9E6A84"] },
 ];
 
 export function SettingsOverlay(props: { onClose: () => void }) {

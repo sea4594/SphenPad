@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useMemo, useState, type ReactNode
 import { onSyncedLocalDataApplied, setSyncedLocalStorageItem } from "../core/localDataState";
 
 export type ThemeMode = "light" | "dark";
-export type ThemeColor = "bw" | "ocean" | "forest" | "sepia" | "berry";
+export type ThemeColor = "bw" | "ocean" | "forest" | "clay" | "berry";
 
 type ThemeContextValue = {
   mode: ThemeMode;
@@ -27,14 +27,14 @@ function readInitialTheme(): { mode: ThemeMode; color: ThemeColor; hideTimer: bo
     if (!raw) return { mode: "light", color: "ocean", hideTimer: false, outlineDigits: true, conflictChecker: true };
     const parsed = JSON.parse(raw) as {
       mode?: ThemeMode;
-      color?: ThemeColor | "sunset";
+      color?: ThemeColor | "sunset" | "sepia";
       hideTimer?: boolean;
       outlineDigits?: boolean;
       conflictChecker?: boolean;
     };
     const mode: ThemeMode = parsed.mode === "light" || parsed.mode === "dark" ? parsed.mode : "light";
-    const mappedColor = parsed.color === "sunset" ? "sepia" : parsed.color;
-    const color: ThemeColor = ["bw", "ocean", "forest", "sepia", "berry"].includes(mappedColor ?? "")
+    const mappedColor = parsed.color === "sunset" || parsed.color === "sepia" ? "clay" : parsed.color;
+    const color: ThemeColor = ["bw", "ocean", "forest", "clay", "berry"].includes(mappedColor ?? "")
       ? (mappedColor as ThemeColor)
       : "ocean";
     const hideTimer = typeof parsed.hideTimer === "boolean" ? parsed.hideTimer : false;
