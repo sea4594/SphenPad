@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, startTransition, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { setSyncedLocalStorageItem } from "../core/localDataState";
 import { onStorageRefreshNeeded } from "../core/syncSignal";
@@ -1232,11 +1232,11 @@ export function CtCArchivePage(props: { active?: boolean }) {
   }
 
   function navigateToMainMenu() {
-    nav("/");
+    startTransition(() => nav("/"));
   }
 
   function navigateToFolders() {
-    nav("/folders");
+    startTransition(() => nav("/folders"));
   }
 
   const attachCardObserver = useCallback(
@@ -1261,7 +1261,7 @@ export function CtCArchivePage(props: { active?: boolean }) {
             <IconFolder />
             <span>Folders</span>
           </button>
-          <button className="btn primary topbarModeTab" onClick={() => nav("/archive")} type="button">
+          <button className="btn primary topbarModeTab" onClick={() => startTransition(() => nav("/archive"))} type="button">
             <IconImport />
             <span>Import</span>
           </button>

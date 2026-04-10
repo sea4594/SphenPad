@@ -1,3 +1,4 @@
+import { startTransition } from "react";
 import { useNavigate } from "react-router-dom";
 
 export function AppBrand() {
@@ -13,7 +14,7 @@ export function AppBrand() {
     if (page && page.scrollTop > 10) {
       page.scrollTo({ top: 0, behavior: "smooth" });
     } else {
-      nav("/");
+      startTransition(() => nav("/"));
     }
   };
 

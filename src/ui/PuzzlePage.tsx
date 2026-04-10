@@ -1,6 +1,6 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { startTransition, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { getPuzzle, upsertPuzzle } from "../core/storage";
 import type { CellRC, PersistedPuzzle, PuzzleProgress, LineStroke, PuzzleDefinition } from "../core/model";
@@ -422,7 +422,7 @@ export function PuzzlePage() {
           });
           return;
         }
-        nav("/");
+        startTransition(() => nav("/"));
         return;
       }
       const normalized = normalizePersistedDefinition({ ...local, progress: normalizeProgress(local.progress) });
@@ -1427,7 +1427,7 @@ export function PuzzlePage() {
             console.log(`[PuzzlePage] User exiting puzzle, key=${key}`);
             if (!puzzleOriginState) {
               console.log(`[PuzzlePage] No origin state available - returning to main menu`);
-              nav("/");
+              startTransition(() => nav("/"));
               return;
             }
             console.log(

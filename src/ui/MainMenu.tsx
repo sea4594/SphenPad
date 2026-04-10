@@ -1,4 +1,4 @@
-import { Fragment, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, startTransition, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   addPuzzleToFolder,
@@ -891,11 +891,11 @@ export function MainMenu(props: { active?: boolean }) {
   }
 
   function navigateToFolders() {
-    nav("/folders");
+    startTransition(() => nav("/folders"));
   }
 
   function navigateToArchive() {
-    nav("/archive");
+    startTransition(() => nav("/archive"));
   }
 
   function sudokuPadUrlFor(row: StoredPuzzle): string | null {
@@ -1139,7 +1139,7 @@ export function MainMenu(props: { active?: boolean }) {
       <div className="topbar">
         <AppBrand />
         <div className="topbarModeTabs" role="tablist" aria-label="Main navigation">
-          <button className="btn primary topbarModeTab" onClick={() => nav("/")} type="button">
+          <button className="btn primary topbarModeTab" onClick={() => startTransition(() => nav("/"))} type="button">
             <IconHome />
             <span>Puzzles</span>
           </button>

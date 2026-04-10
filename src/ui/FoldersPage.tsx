@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, startTransition, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   createFolder,
@@ -722,11 +722,11 @@ export function FoldersPage(props: { active?: boolean }) {
   }
 
   function navigateToMainMenu() {
-    nav("/");
+    startTransition(() => nav("/"));
   }
 
   function navigateToArchive() {
-    nav("/archive");
+    startTransition(() => nav("/archive"));
   }
 
   return (
@@ -738,7 +738,7 @@ export function FoldersPage(props: { active?: boolean }) {
             <IconHome />
             <span>Puzzles</span>
           </button>
-          <button className="btn primary topbarModeTab" onClick={() => nav("/folders")} type="button">
+          <button className="btn primary topbarModeTab" onClick={() => startTransition(() => nav("/folders"))} type="button">
             <IconFolder />
             <span>Folders</span>
           </button>
