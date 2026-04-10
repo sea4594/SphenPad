@@ -170,19 +170,22 @@ export function GridCanvas(props: {
       includePoint(cx, cy);
       const textSize = Number.isFinite(item?.textSize) ? Number(item.textSize) : 16;
       const textHalfHeight = Math.max(0.42, (textSize / cosmeticUnit) * 0.98);
-      const textHalfWidth = Math.max(0.5, Math.min(5.2, (Math.max(1, text.length) * textSize) / 108));
+      // Keep text bounds generous to avoid clipping decorative labels around the board.
+      const textHalfWidth = Math.max(0.5, (Math.max(1, text.length) * textSize) / 92);
+      const rotatedTextHalfW = textHalfWidth * cosA + textHalfHeight * sinA;
+      const rotatedTextHalfH = textHalfWidth * sinA + textHalfHeight * cosA;
       if (w <= 0 && h <= 0) {
-        includePoint(cx - textHalfWidth, cy - textHalfHeight);
-        includePoint(cx + textHalfWidth, cy + textHalfHeight);
+        includePoint(cx - rotatedTextHalfW, cy - rotatedTextHalfH);
+        includePoint(cx + rotatedTextHalfW, cy + rotatedTextHalfH);
         return;
       }
       includePoint(
-        cx - Math.max(boundsHalfW + borderPad, hasText ? textHalfWidth : 0),
-        cy - Math.max(boundsHalfH + borderPad, hasText ? textHalfHeight : 0)
+        cx - Math.max(boundsHalfW + borderPad, hasText ? rotatedTextHalfW : 0),
+        cy - Math.max(boundsHalfH + borderPad, hasText ? rotatedTextHalfH : 0)
       );
       includePoint(
-        cx + Math.max(boundsHalfW + borderPad, hasText ? textHalfWidth : 0),
-        cy + Math.max(boundsHalfH + borderPad, hasText ? textHalfHeight : 0)
+        cx + Math.max(boundsHalfW + borderPad, hasText ? rotatedTextHalfW : 0),
+        cy + Math.max(boundsHalfH + borderPad, hasText ? rotatedTextHalfH : 0)
       );
     };
 
@@ -195,6 +198,15 @@ export function GridCanvas(props: {
         includePoint(p.x - strokePad, p.y - strokePad);
         includePoint(p.x + strokePad, p.y + strokePad);
       }
+    }
+
+    // Small safety bleed for previews prevents edge clipping from parser/bounds uncertainty.
+    if (previewMode) {
+      const bleed = 0.65;
+      minX -= bleed;
+      minY -= bleed;
+      maxX += bleed;
+      maxY += bleed;
     }
 
     return { minX, minY, maxX, maxY };
