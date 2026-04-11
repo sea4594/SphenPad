@@ -898,6 +898,10 @@ export function MainMenu(props: { active?: boolean }) {
     startTransition(() => nav("/archive"));
   }
 
+  function scrollCurrentPageToTop() {
+    scrollActiveMainPageToTop("smooth");
+  }
+
   function onTopbarTap(event: React.MouseEvent<HTMLDivElement>) {
     const target = event.target as HTMLElement | null;
     if (target?.closest("button, a, input, select, textarea, [role='button']")) return;
@@ -1145,7 +1149,7 @@ export function MainMenu(props: { active?: boolean }) {
       <div className="topbar" onClick={onTopbarTap}>
         <AppBrand />
         <div className="topbarModeTabs" role="tablist" aria-label="Main navigation">
-          <button className="btn primary topbarModeTab" onClick={() => startTransition(() => nav("/"))} type="button">
+          <button className="btn primary topbarModeTab" onClick={scrollCurrentPageToTop} type="button">
             <IconHome />
             <span>Puzzles</span>
           </button>

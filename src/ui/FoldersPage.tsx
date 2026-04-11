@@ -729,6 +729,10 @@ export function FoldersPage(props: { active?: boolean }) {
     startTransition(() => nav("/archive"));
   }
 
+  function scrollCurrentPageToTop() {
+    scrollActiveMainPageToTop("smooth");
+  }
+
   function onTopbarTap(event: React.MouseEvent<HTMLDivElement>) {
     const target = event.target as HTMLElement | null;
     if (target?.closest("button, a, input, select, textarea, [role='button']")) return;
@@ -744,7 +748,7 @@ export function FoldersPage(props: { active?: boolean }) {
             <IconHome />
             <span>Puzzles</span>
           </button>
-          <button className="btn primary topbarModeTab" onClick={() => startTransition(() => nav("/folders"))} type="button">
+          <button className="btn primary topbarModeTab" onClick={scrollCurrentPageToTop} type="button">
             <IconFolder />
             <span>Folders</span>
           </button>

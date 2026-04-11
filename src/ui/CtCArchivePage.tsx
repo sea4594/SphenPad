@@ -1239,6 +1239,10 @@ export function CtCArchivePage(props: { active?: boolean }) {
     startTransition(() => nav("/folders"));
   }
 
+  function scrollCurrentPageToTop() {
+    scrollActiveMainPageToTop("smooth");
+  }
+
   function onTopbarTap(event: React.MouseEvent<HTMLDivElement>) {
     const target = event.target as HTMLElement | null;
     if (target?.closest("button, a, input, select, textarea, [role='button']")) return;
@@ -1267,7 +1271,7 @@ export function CtCArchivePage(props: { active?: boolean }) {
             <IconFolder />
             <span>Folders</span>
           </button>
-          <button className="btn primary topbarModeTab" onClick={() => startTransition(() => nav("/archive"))} type="button">
+          <button className="btn primary topbarModeTab" onClick={scrollCurrentPageToTop} type="button">
             <IconImport />
             <span>Import</span>
           </button>
