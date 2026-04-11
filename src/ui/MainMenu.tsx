@@ -408,6 +408,7 @@ export function MainMenu(props: { active?: boolean }) {
   const initialFolderPrefs = useMemo(readInitialFolderMenuPrefs, []);
   const appliedReturnStateRef = useRef(false);
   const pendingRefreshRef = useRef(false);
+  const wasActiveRef = useRef(active);
 
   const [rows, setRows] = useState<StoredPuzzle[]>([]);
   const [folders, setFolders] = useState<PuzzleFolder[]>([]);
@@ -458,7 +459,17 @@ export function MainMenu(props: { active?: boolean }) {
   }
 
   useEffect(() => {
-    if (!active) return;
+    // Keep this page warm even when hidden so switching tabs feels instant.
+    void refreshPuzzles();
+    void refreshFolders();
+  }, []);
+
+  useEffect(() => {
+    if (!active || wasActiveRef.current) {
+      wasActiveRef.current = active;
+      return;
+    }
+    wasActiveRef.current = active;
     void refreshPuzzles();
     void refreshFolders();
   }, [active]);

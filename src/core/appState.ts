@@ -6,7 +6,7 @@ import {
   type SyncedLocalStorageKey,
 } from "./localDataState";
 import type { PersistedPuzzle } from "./model";
-import { exportStorageSnapshot, importStorageSnapshot, type PuzzleFolder } from "./storage";
+import { exportStorageSnapshot, importStorageSnapshot, readStorageCounts, type PuzzleFolder } from "./storage";
 
 const APP_SNAPSHOT_IMPORTED_EVENT = "sphenpad:app-snapshot-imported";
 
@@ -22,6 +22,29 @@ export type LocalAppSnapshot = {
   folders: PuzzleFolder[];
   puzzles: PuzzleSnapshotRow[];
 };
+
+export type LocalAppSnapshotMetadata = {
+  updatedAt: number;
+  puzzleCount: number;
+  folderCount: number;
+  localStorageCount: number;
+  hasData: boolean;
+};
+
+export async function exportLocalAppSnapshotMetadata(): Promise<LocalAppSnapshotMetadata> {
+  const [counts, localStorage] = await Promise.all([readStorageCounts(), Promise.resolve(readSyncedLocalStorage())]);
+  const localStorageCount = Object.keys(localStorage).length;
+  const updatedAt = readLocalDataUpdatedAt();
+  const hasData = updatedAt > 0 || counts.puzzleCount > 0 || counts.folderCount > 0 || localStorageCount > 0;
+
+  return {
+    updatedAt,
+    puzzleCount: counts.puzzleCount,
+    folderCount: counts.folderCount,
+    localStorageCount,
+    hasData,
+  };
+}
 
 export async function exportLocalAppSnapshot(): Promise<LocalAppSnapshot> {
   const storageSnapshot = await exportStorageSnapshot();

@@ -8,8 +8,8 @@ import {
   type ReactNode,
 } from "react";
 import type { User } from "firebase/auth";
-import { exportLocalAppSnapshot, hasLocalAppSnapshotData, importLocalAppSnapshot, mergeSnapshots } from "../core/appState";
-import { getLocalDataOwnerId, readLocalDataUpdatedAt, readSyncedLocalStorage, setLocalDataOwnerId } from "../core/localDataState";
+import { exportLocalAppSnapshot, exportLocalAppSnapshotMetadata, hasLocalAppSnapshotData, importLocalAppSnapshot, mergeSnapshots } from "../core/appState";
+import { getLocalDataOwnerId, readLocalDataUpdatedAt, setLocalDataOwnerId } from "../core/localDataState";
 import { onCloudSyncNeeded } from "../core/syncSignal";
 import { notifyStorageRefreshNeeded } from "../core/syncSignal";
 import {
@@ -103,13 +103,15 @@ export function AccountSyncProvider(props: { children: ReactNode }) {
     setSyncStatus("syncing");
 
     try {
-      const cloudMetadata = await pullCloudStateMetadata(activeUser.uid);
+      const [cloudMetadata, localMetadata] = await Promise.all([
+        pullCloudStateMetadata(activeUser.uid),
+        exportLocalAppSnapshotMetadata(),
+      ]);
 
       const localOwnerId = getLocalDataOwnerId();
       const localBelongsToOtherAccount = localOwnerId !== null && localOwnerId !== activeUser.uid;
-      const localUpdatedAt = readLocalDataUpdatedAt();
-      const localSettingsCount = Object.keys(readSyncedLocalStorage()).length;
-      const localLikelyHasData = localUpdatedAt > 0 || localSettingsCount > 0;
+      const localUpdatedAt = localMetadata.updatedAt;
+      const localLikelyHasData = localMetadata.hasData;
       const cloudLikelyHasData = Boolean(cloudMetadata?.hasData);
 
       if (

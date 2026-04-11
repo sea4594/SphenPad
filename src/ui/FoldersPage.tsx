@@ -261,6 +261,7 @@ export function FoldersPage(props: { active?: boolean }) {
   const initialActiveFolderId = useMemo(readInitialActiveFolderId, []);
   const appliedReturnStateRef = useRef(false);
   const pendingRefreshRef = useRef(false);
+  const wasActiveRef = useRef(active);
   const [initialFoldersLoaded, setInitialFoldersLoaded] = useState(false);
 
   const [rows, setRows] = useState<StoredPuzzle[]>([]);
@@ -296,7 +297,16 @@ export function FoldersPage(props: { active?: boolean }) {
   }
 
   useEffect(() => {
-    if (!active) return;
+    // Keep this page warm even when hidden so switching tabs feels instant.
+    void refresh();
+  }, []);
+
+  useEffect(() => {
+    if (!active || wasActiveRef.current) {
+      wasActiveRef.current = active;
+      return;
+    }
+    wasActiveRef.current = active;
     void refresh();
   }, [active]);
 

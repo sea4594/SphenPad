@@ -381,6 +381,7 @@ export function CtCArchivePage(props: { active?: boolean }) {
   const [renderConfig] = useState(getRenderConfig);
   const initialFilterPrefs = useMemo(readInitialArchiveFilterPrefs, []);
   const appliedReturnStateRef = useRef(false);
+  const wasActiveRef = useRef(active);
 
   const [rows, setRows] = useState<PreparedArchiveEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -514,10 +515,7 @@ export function CtCArchivePage(props: { active?: boolean }) {
     }
   }
 
-  useEffect(() => {
-    if (!active) return;
-    void refreshRows();
-
+  function scheduleBackgroundRefreshes() {
     const run = () => {
       void refreshCompleted();
       void refreshFolders();
@@ -525,7 +523,7 @@ export function CtCArchivePage(props: { active?: boolean }) {
 
     if (typeof window === "undefined") {
       run();
-      return;
+      return () => {};
     }
 
     if (typeof window.requestIdleCallback === "function") {
@@ -535,7 +533,27 @@ export function CtCArchivePage(props: { active?: boolean }) {
 
     const timer = window.setTimeout(run, 150);
     return () => window.clearTimeout(timer);
-  }, [active]);
+  }
+
+  useEffect(() => {
+    // Keep this page warm even when hidden so switching tabs feels instant.
+    void refreshRows();
+    return scheduleBackgroundRefreshes();
+  }, []);
+
+  useEffect(() => {
+    if (!active || wasActiveRef.current) {
+      wasActiveRef.current = active;
+      return;
+    }
+    wasActiveRef.current = active;
+
+    if (!rows.length && !loading) {
+      void refreshRows();
+    }
+
+    return scheduleBackgroundRefreshes();
+  }, [active, rows.length, loading]);
 
   useEffect(() => {
     if (!active || !pendingRefreshRef.current) return;

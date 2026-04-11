@@ -52,6 +52,11 @@ export async function exportStorageSnapshot() {
   return { puzzles, folders };
 }
 
+export async function readStorageCounts() {
+  const [puzzleCount, folderCount] = await Promise.all([db.puzzles.count(), db.folders.count()]);
+  return { puzzleCount, folderCount };
+}
+
 export async function importStorageSnapshot(
   snapshot: { puzzles: PuzzleSnapshotRow[]; folders: PuzzleFolder[] },
   notify = true,
