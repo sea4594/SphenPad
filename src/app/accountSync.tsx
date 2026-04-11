@@ -9,7 +9,7 @@ import {
 } from "react";
 import type { User } from "firebase/auth";
 import { exportLocalAppSnapshot, hasLocalAppSnapshotData, importLocalAppSnapshot, mergeSnapshots } from "../core/appState";
-import { getLocalDataOwnerId, readLocalDataUpdatedAt, setLocalDataOwnerId } from "../core/localDataState";
+import { getLocalDataOwnerId, readLocalDataUpdatedAt, readSyncedLocalStorage, setLocalDataOwnerId } from "../core/localDataState";
 import { onCloudSyncNeeded } from "../core/syncSignal";
 import { notifyStorageRefreshNeeded } from "../core/syncSignal";
 import {
@@ -49,6 +49,16 @@ function snapshotPuzzleKeys(snapshot: CloudAppSnapshot | null): string[] {
 function metadataPuzzleKeys(snapshot: CloudStateMetadata | null): string[] {
   if (!snapshot) return [];
   return snapshot.puzzleKeys;
+}
+
+function makeEmptySnapshot(): CloudAppSnapshot {
+  return {
+    version: 1,
+    updatedAt: 0,
+    localStorage: {},
+    folders: [],
+    puzzles: [],
+  };
 }
 
 export function AccountSyncProvider(props: { children: ReactNode }) {
@@ -93,63 +103,93 @@ export function AccountSyncProvider(props: { children: ReactNode }) {
     setSyncStatus("syncing");
 
     try {
-      const [cloudMetadata, localSnapshot] = await Promise.all([
-        pullCloudStateMetadata(activeUser.uid),
-        exportLocalAppSnapshot(),
-      ]);
+      const cloudMetadata = await pullCloudStateMetadata(activeUser.uid);
 
       const localOwnerId = getLocalDataOwnerId();
       const localBelongsToOtherAccount = localOwnerId !== null && localOwnerId !== activeUser.uid;
+      const localUpdatedAt = readLocalDataUpdatedAt();
+      const localSettingsCount = Object.keys(readSyncedLocalStorage()).length;
+      const localLikelyHasData = localUpdatedAt > 0 || localSettingsCount > 0;
+      const cloudLikelyHasData = Boolean(cloudMetadata?.hasData);
 
       if (
         cloudMetadata &&
         !localBelongsToOtherAccount &&
         localOwnerId === activeUser.uid &&
-        hasLocalAppSnapshotData(localSnapshot) &&
-        localSnapshot.updatedAt === cloudMetadata.updatedAt
+        localLikelyHasData &&
+        localUpdatedAt === cloudMetadata.updatedAt
       ) {
         // Fast path: local and cloud snapshots already match for this account.
         // Skip full cloud document pull and avoid expensive merge/rewrite/push work.
         cloudPuzzleKeysRef.current = metadataPuzzleKeys(cloudMetadata);
         lastSuccessfulSyncAtRef.current = cloudMetadata.updatedAt;
-      } else {
-        const cloudSnapshot = await pullCloudState(activeUser.uid);
-        cloudPuzzleKeysRef.current = snapshotPuzzleKeys(cloudSnapshot);
-
-        if (localBelongsToOtherAccount) {
-          // Case: local data is from a different Google account — restore this account's cloud,
-          // discard local so account A's data can never pollute account B (or vice-versa).
-          const safeCloud = cloudSnapshot ?? {
-            version: 1 as const,
-            updatedAt: 0,
-            localStorage: {},
-            folders: [],
-            puzzles: [],
-          };
+      } else if (localBelongsToOtherAccount) {
+        // Local belongs to another account; restore current account cloud data.
+        if (!cloudLikelyHasData) {
+          const empty = makeEmptySnapshot();
+          await importLocalAppSnapshot(empty, false);
+          cloudPuzzleKeysRef.current = [];
+          lastSuccessfulSyncAtRef.current = 0;
+        } else {
+          const cloudSnapshot = await pullCloudState(activeUser.uid);
+          const safeCloud = cloudSnapshot ?? makeEmptySnapshot();
           await importLocalAppSnapshot(safeCloud, false);
           cloudPuzzleKeysRef.current = snapshotPuzzleKeys(cloudSnapshot);
           lastSuccessfulSyncAtRef.current = safeCloud.updatedAt;
-          notifyStorageRefreshNeeded();
-          setAppStateNonce((n) => n + 1);
-        } else if (!cloudSnapshot) {
-          // No cloud data for this account yet — upload everything local (first login ever, or
-          // first login on this account from this device with anonymous local data).
+        }
+        notifyStorageRefreshNeeded();
+        setAppStateNonce((n) => n + 1);
+      } else if (!cloudMetadata) {
+        // No cloud doc exists for this account yet.
+        if (localLikelyHasData) {
           await uploadLocalSnapshot(activeUser);
-        } else if (!hasLocalAppSnapshotData(localSnapshot)) {
-          // Cloud has data but local is empty — straightforward restore.
+        } else {
+          cloudPuzzleKeysRef.current = [];
+          lastSuccessfulSyncAtRef.current = 0;
+        }
+      } else if (!cloudLikelyHasData) {
+        // Cloud doc exists but has no meaningful data.
+        if (localLikelyHasData) {
+          await uploadLocalSnapshot(activeUser);
+        } else {
+          cloudPuzzleKeysRef.current = metadataPuzzleKeys(cloudMetadata);
+          lastSuccessfulSyncAtRef.current = cloudMetadata.updatedAt;
+        }
+      } else if (localOwnerId === activeUser.uid && localLikelyHasData && localUpdatedAt > cloudMetadata.updatedAt) {
+        // Local is newer for this account; upload without first hydrating the full cloud snapshot.
+        await uploadLocalSnapshot(activeUser);
+      } else if (!localLikelyHasData || (localOwnerId === activeUser.uid && localUpdatedAt < cloudMetadata.updatedAt)) {
+        // Cloud is newer (or local appears empty); restore cloud without loading full local snapshot first.
+        const cloudSnapshot = await pullCloudState(activeUser.uid);
+        const safeCloud = cloudSnapshot ?? makeEmptySnapshot();
+        await importLocalAppSnapshot(safeCloud, false);
+        cloudPuzzleKeysRef.current = snapshotPuzzleKeys(cloudSnapshot);
+        lastSuccessfulSyncAtRef.current = safeCloud.updatedAt;
+        notifyStorageRefreshNeeded();
+        setAppStateNonce((n) => n + 1);
+      } else {
+        // Ambiguous diverged state (commonly first login with local anonymous progress):
+        // pay full cost once and merge both sides safely.
+        const [cloudSnapshot, localSnapshot] = await Promise.all([
+          pullCloudState(activeUser.uid),
+          exportLocalAppSnapshot(),
+        ]);
+        cloudPuzzleKeysRef.current = snapshotPuzzleKeys(cloudSnapshot);
+        if (!cloudSnapshot && hasLocalAppSnapshotData(localSnapshot)) {
+          await uploadLocalSnapshot(activeUser);
+        } else if (cloudSnapshot && !hasLocalAppSnapshotData(localSnapshot)) {
           await importLocalAppSnapshot(cloudSnapshot, false);
           lastSuccessfulSyncAtRef.current = cloudSnapshot.updatedAt;
           notifyStorageRefreshNeeded();
           setAppStateNonce((n) => n + 1);
+        } else if (!cloudSnapshot) {
+          cloudPuzzleKeysRef.current = [];
+          lastSuccessfulSyncAtRef.current = 0;
         } else {
-          // Both sides have data (first login on this device with prior local work, OR same
-          // account re-login after offline work, OR any diverged state).
-          // Merge: union of all puzzles and folders, per-item newer timestamp wins.
           const merged = mergeSnapshots(localSnapshot, cloudSnapshot);
           await importLocalAppSnapshot(merged, false);
           notifyStorageRefreshNeeded();
           setAppStateNonce((n) => n + 1);
-          // Push the merged result back so the cloud also reflects any locally-only items.
           await pushCloudState(activeUser.uid, merged, cloudPuzzleKeysRef.current);
           cloudPuzzleKeysRef.current = merged.puzzles.map((r: { key: string }) => r.key);
           lastSuccessfulSyncAtRef.current = merged.updatedAt;

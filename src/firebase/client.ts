@@ -39,6 +39,7 @@ export type CloudAppSnapshot = LocalAppSnapshot;
 export type CloudStateMetadata = {
   updatedAt: number;
   puzzleKeys: string[];
+  hasData: boolean;
 };
 
 export const firebaseEnabled = Boolean(firebaseConfig.apiKey && firebaseConfig.authDomain && firebaseConfig.projectId);
@@ -190,15 +191,22 @@ export async function pullCloudStateMetadata(userId: string): Promise<CloudState
   const stateData = stateSnap.data() as {
     updatedAt?: unknown;
     puzzleKeys?: unknown;
+    folders?: unknown;
+    localStorage?: unknown;
   };
 
   const puzzleKeys = Array.isArray(stateData.puzzleKeys)
     ? stateData.puzzleKeys.filter((entry): entry is string => typeof entry === "string")
     : [];
+  const folderCount = Array.isArray(stateData.folders) ? stateData.folders.length : 0;
+  const localStorageCount =
+    stateData.localStorage && typeof stateData.localStorage === "object" ? Object.keys(stateData.localStorage as object).length : 0;
+  const updatedAt = typeof stateData.updatedAt === "number" ? stateData.updatedAt : 0;
 
   return {
-    updatedAt: typeof stateData.updatedAt === "number" ? stateData.updatedAt : 0,
+    updatedAt,
     puzzleKeys,
+    hasData: updatedAt > 0 || puzzleKeys.length > 0 || folderCount > 0 || localStorageCount > 0,
   };
 }
 
