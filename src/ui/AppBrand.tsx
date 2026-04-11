@@ -1,19 +1,23 @@
 import { startTransition } from "react";
 import { useNavigate } from "react-router-dom";
 
+export function getActiveMainPage(): HTMLElement | null {
+  const visibleLayer = document.querySelector<HTMLElement>('[data-main-page-visible="true"]');
+  return visibleLayer?.querySelector<HTMLElement>(".page") ?? null;
+}
+
+export function scrollActiveMainPageToTop(behavior: ScrollBehavior = "smooth"): boolean {
+  const page = getActiveMainPage();
+  if (!page || page.scrollTop <= 2) return false;
+  page.scrollTo({ top: 0, behavior });
+  return true;
+}
+
 export function AppBrand() {
   const nav = useNavigate();
 
-  const getActivePage = () => {
-    const visibleLayer = document.querySelector<HTMLElement>('[data-main-page-visible="true"]');
-    return visibleLayer?.querySelector<HTMLElement>(".page") ?? null;
-  };
-
   const handleClick = () => {
-    const page = getActivePage();
-    if (page && page.scrollTop > 10) {
-      page.scrollTo({ top: 0, behavior: "smooth" });
-    } else {
+    if (!scrollActiveMainPageToTop("smooth")) {
       startTransition(() => nav("/"));
     }
   };

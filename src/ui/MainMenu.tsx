@@ -15,7 +15,7 @@ import { onStorageRefreshNeeded } from "../core/syncSignal";
 import { fillProgressWithSolutionDigits } from "../core/solutionFill";
 import { fmtHMS } from "../core/time";
 import { GridCanvas } from "./GridCanvas";
-import { AppBrand } from "./AppBrand";
+import { AppBrand, scrollActiveMainPageToTop } from "./AppBrand";
 import { IconFolder, IconHome, IconImport, IconSettings, IconSort, IconSortAsc, IconSortDesc } from "./icons";
 import { MobileMultiSelectFilter } from "./MobileMultiSelectFilter";
 import { PopupMenuButton } from "./PopupMenuButton";
@@ -898,6 +898,12 @@ export function MainMenu(props: { active?: boolean }) {
     startTransition(() => nav("/archive"));
   }
 
+  function onTopbarTap(event: React.MouseEvent<HTMLDivElement>) {
+    const target = event.target as HTMLElement | null;
+    if (target?.closest("button, a, input, select, textarea, [role='button']")) return;
+    scrollActiveMainPageToTop("smooth");
+  }
+
   function sudokuPadUrlFor(row: StoredPuzzle): string | null {
     const source = (row.def?.sourceId ?? row.key).trim();
     if (!source) return null;
@@ -1136,7 +1142,7 @@ export function MainMenu(props: { active?: boolean }) {
 
   return (
     <div className="shell">
-      <div className="topbar">
+      <div className="topbar" onClick={onTopbarTap}>
         <AppBrand />
         <div className="topbarModeTabs" role="tablist" aria-label="Main navigation">
           <button className="btn primary topbarModeTab" onClick={() => startTransition(() => nav("/"))} type="button">

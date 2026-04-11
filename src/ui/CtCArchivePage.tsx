@@ -7,7 +7,7 @@ import { type PuzzleDefinition } from "../core/model";
 import { makeInitialProgress } from "../core/scl";
 import { addPuzzleToFolder, createFolder, getPuzzle, listCompletedPuzzleKeys, listFolders, type PuzzleFolder, upsertPuzzle } from "../core/storage";
 import { loadFromSudokuPad } from "../core/sudokupad";
-import { AppBrand } from "./AppBrand";
+import { AppBrand, scrollActiveMainPageToTop } from "./AppBrand";
 import { GridCanvas } from "./GridCanvas";
 import { IconFolder, IconHome, IconImport, IconPlay, IconSettings, IconSort, IconSortAsc, IconSortDesc } from "./icons";
 import { MobileMultiSelectFilter } from "./MobileMultiSelectFilter";
@@ -1239,6 +1239,12 @@ export function CtCArchivePage(props: { active?: boolean }) {
     startTransition(() => nav("/folders"));
   }
 
+  function onTopbarTap(event: React.MouseEvent<HTMLDivElement>) {
+    const target = event.target as HTMLElement | null;
+    if (target?.closest("button, a, input, select, textarea, [role='button']")) return;
+    scrollActiveMainPageToTop("smooth");
+  }
+
   const attachCardObserver = useCallback(
     (element: HTMLDivElement | null, entryId: string) => {
       if (!element || !observerRef.current) return;
@@ -1250,7 +1256,7 @@ export function CtCArchivePage(props: { active?: boolean }) {
 
   return (
     <div className="shell">
-      <div className="topbar">
+      <div className="topbar" onClick={onTopbarTap}>
         <AppBrand />
         <div className="topbarModeTabs" role="tablist" aria-label="Main navigation">
           <button className="btn topbarModeTab" onClick={navigateToMainMenu} type="button">

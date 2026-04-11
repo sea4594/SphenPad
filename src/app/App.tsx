@@ -58,6 +58,7 @@ function MainPages() {
   return (
     <div style={{ position: "relative", height: "100%", width: "100%" }}>
       <div
+        data-main-page-visible={pathname === "/" ? "true" : "false"}
         style={{
           position: "absolute",
           inset: 0,
@@ -69,6 +70,7 @@ function MainPages() {
         <MainMenu active={pathname === "/"} />
       </div>
       <div
+        data-main-page-visible={pathname === "/folders" ? "true" : "false"}
         style={{
           position: "absolute",
           inset: 0,
@@ -80,6 +82,7 @@ function MainPages() {
         <FoldersPage active={pathname === "/folders"} />
       </div>
       <div
+        data-main-page-visible={pathname === "/archive" ? "true" : "false"}
         style={{
           position: "absolute",
           inset: 0,

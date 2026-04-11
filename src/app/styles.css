@@ -22,6 +22,9 @@
   --toggle-on-bg: color-mix(in oklab, var(--accent) 78%, #111 22%);
   --toggle-on-border: color-mix(in oklab, var(--accent) 94%, #ffffff 6%);
   --toggle-on-text: #ffffff;
+  --control-toggle-on-bg: color-mix(in oklab, var(--accent) 74%, #111 26%);
+  --control-toggle-on-border: color-mix(in oklab, var(--accent) 90%, #fff 10%);
+  --control-toggle-on-text: #ffffff;
   --safe-top: env(safe-area-inset-top);
   --safe-bottom: env(safe-area-inset-bottom);
   --safe-left: env(safe-area-inset-left);
@@ -68,6 +71,9 @@ html[data-theme="bw"][data-mode="dark"] {
   --toggle-on-bg: #f3f4f6;
   --toggle-on-border: #ffffff;
   --toggle-on-text: #111827;
+  --control-toggle-on-bg: #f3f4f6;
+  --control-toggle-on-border: #ffffff;
+  --control-toggle-on-text: #111827;
 }
 
 html[data-theme="bw"][data-mode="light"] {
@@ -80,6 +86,9 @@ html[data-theme="bw"][data-mode="light"] {
   --gradient-a: #ececec;
   --gradient-b: #d8d8d8;
   --switch-track: rgba(0, 0, 0, 0.28);
+  --control-toggle-on-bg: #2f2f2f;
+  --control-toggle-on-border: #000000;
+  --control-toggle-on-text: #ffffff;
 }
 
 html[data-theme="ocean"][data-mode="light"] {
@@ -97,6 +106,9 @@ html[data-theme="ocean"][data-mode="light"] {
   --switch-on-border: #93a7bf;
   --switch-thumb-off: #edf2f7;
   --switch-thumb-on: #ffffff;
+  --control-toggle-on-bg: #475f73;
+  --control-toggle-on-border: #2f4357;
+  --control-toggle-on-text: #ffffff;
 }
 
 html[data-theme="ocean"][data-mode="dark"] {
@@ -117,6 +129,9 @@ html[data-theme="ocean"][data-mode="dark"] {
   --toggle-on-bg: #dbe7f2;
   --toggle-on-border: #ffffff;
   --toggle-on-text: #0f1d2b;
+  --control-toggle-on-bg: #dbe7f2;
+  --control-toggle-on-border: #ffffff;
+  --control-toggle-on-text: #0f1d2b;
 }
 
 html[data-theme="forest"][data-mode="dark"] {
@@ -134,6 +149,9 @@ html[data-theme="forest"][data-mode="dark"] {
   --switch-on-border: #d8e0d6;
   --switch-thumb-off: #ccd6ca;
   --switch-thumb-on: #ffffff;
+  --control-toggle-on-bg: #cfd9cc;
+  --control-toggle-on-border: #f2f6f0;
+  --control-toggle-on-text: #1d2b1b;
 }
 
 html[data-theme="forest"][data-mode="light"] {
@@ -151,6 +169,9 @@ html[data-theme="forest"][data-mode="light"] {
   --switch-on-border: #93a390;
   --switch-thumb-off: #f0f4ef;
   --switch-thumb-on: #ffffff;
+  --control-toggle-on-bg: #5e6e5b;
+  --control-toggle-on-border: #445240;
+  --control-toggle-on-text: #ffffff;
 }
 
 html[data-theme="clay"][data-mode="dark"] {
@@ -168,6 +189,9 @@ html[data-theme="clay"][data-mode="dark"] {
   --switch-on-border: #ffffff;
   --switch-thumb-off: #dccdc4;
   --switch-thumb-on: #4a3a33;
+  --control-toggle-on-bg: #f2e8e2;
+  --control-toggle-on-border: #ffffff;
+  --control-toggle-on-text: #3b2f29;
 }
 
 html[data-theme="clay"][data-mode="light"] {
@@ -185,6 +209,9 @@ html[data-theme="clay"][data-mode="light"] {
   --switch-on-border: #e8dfda;
   --switch-thumb-off: #f8f3ef;
   --switch-thumb-on: #ffffff;
+  --control-toggle-on-bg: #7f675c;
+  --control-toggle-on-border: #5f4a40;
+  --control-toggle-on-text: #ffffff;
 }
 
 html[data-theme="berry"][data-mode="dark"] {
@@ -202,6 +229,9 @@ html[data-theme="berry"][data-mode="dark"] {
   --switch-on-border: #fff1f8;
   --switch-thumb-off: #e4d1dd;
   --switch-thumb-on: #512f42;
+  --control-toggle-on-bg: #f2deea;
+  --control-toggle-on-border: #fff5fb;
+  --control-toggle-on-text: #4a2f3f;
 }
 
 html[data-theme="berry"][data-mode="light"] {
@@ -219,6 +249,9 @@ html[data-theme="berry"][data-mode="light"] {
   --switch-on-border: #ebd4df;
   --switch-thumb-off: #f6edf2;
   --switch-thumb-on: #ffffff;
+  --control-toggle-on-bg: #9e6a84;
+  --control-toggle-on-border: #7f546a;
+  --control-toggle-on-text: #ffffff;
 }
 
 html,
@@ -840,6 +873,17 @@ input.url {
   box-shadow: inset 0 0 0 1px color-mix(in oklab, #fff 28%, transparent);
 }
 
+.puzzlePage .controlStack .btn.primary,
+.puzzlePage .kbdPanel .btn.primary,
+.puzzlePage .mobileControlPanel .btn.primary,
+.puzzlePage .toolSwitcher .btn.primary {
+  background: var(--control-toggle-on-bg);
+  color: var(--control-toggle-on-text);
+  border-color: var(--control-toggle-on-border);
+  --btn-edge-color: var(--control-toggle-on-border);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, #fff 24%, transparent);
+}
+
 .menuFolderButton {
   display: inline-flex;
   align-items: center;
@@ -995,11 +1039,10 @@ input.url {
 }
 
 .menuPuzzlePreview canvas {
-  width: 100% !important;
-  height: 100% !important;
+  width: auto !important;
+  height: auto !important;
   max-width: 100% !important;
   max-height: 100% !important;
-  object-fit: contain;
 }
 
 .foldersOverlayBackdrop {
@@ -1572,11 +1615,10 @@ input.url {
 }
 
 .archivePreview canvas {
-  width: 100% !important;
-  height: 100% !important;
+  width: auto !important;
+  height: auto !important;
   max-width: 100% !important;
   max-height: 100% !important;
-  object-fit: contain;
 }
 
 .archiveRulesDialog {
