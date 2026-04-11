@@ -1598,20 +1598,20 @@ export function PuzzlePage() {
 
       {restartPromptOpen ? (
         <div className="overlayBackdrop" onClick={closeRestartPrompt}>
-          <div className="card settingsCard" onClick={(e) => e.stopPropagation()}>
+          <div className="card restartPromptCard" onClick={(e) => e.stopPropagation()}>
             <div className="settingsHeader">
               <div style={{ fontWeight: 700, fontSize: 21 }}>Restart Puzzle</div>
               <button className="btn" onClick={closeRestartPrompt} type="button">x</button>
             </div>
-            <div className="settingsSection">
+            <div className="settingsSection restartPromptBody">
               <div className="muted">Reload the puzzle from the local cache and choose how to handle the timer:</div>
-              <button className="btn primary" onClick={() => void restartPuzzleFromCache(true)} disabled={reloadingPuzzle} type="button">
+              <button className="btn primary restartPromptAction" onClick={() => void restartPuzzleFromCache(true)} disabled={reloadingPuzzle} type="button">
                 {reloadingPuzzle ? "Restarting..." : "Restart and reset timer"}
               </button>
-              <button className="btn" onClick={() => void restartPuzzleFromCache(false)} disabled={reloadingPuzzle} type="button">
+              <button className="btn restartPromptAction" onClick={() => void restartPuzzleFromCache(false)} disabled={reloadingPuzzle} type="button">
                 Restart and keep time
               </button>
-              <button className="btn" onClick={closeRestartPrompt} disabled={reloadingPuzzle} type="button">Cancel</button>
+              <button className="btn restartPromptAction" onClick={closeRestartPrompt} disabled={reloadingPuzzle} type="button">Cancel</button>
             </div>
           </div>
         </div>

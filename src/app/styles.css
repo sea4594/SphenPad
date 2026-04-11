@@ -1942,6 +1942,23 @@ input.url {
   align-content: start;
 }
 
+.restartPromptCard {
+  width: min(520px, 100%);
+  max-height: min(72dvh, calc(100vh - 24px));
+  overflow: auto;
+  display: grid;
+  gap: 12px;
+}
+
+.restartPromptBody {
+  align-content: start;
+}
+
+.restartPromptAction {
+  width: auto;
+  justify-self: start;
+}
+
 .pauseOverlayCard {
   width: min(700px, 100%);
   max-height: min(92dvh, calc(100vh - 24px));
