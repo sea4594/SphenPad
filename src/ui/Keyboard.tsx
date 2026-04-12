@@ -111,9 +111,18 @@ export function Keyboard(props: {
   const lineGrid = (
     <Grid3x4 compact={compact}>
       {linePalette.map((c) => (
-        <ColorKey key={c} color={c} onClick={() => props.onColor?.(c)} />
+        <ColorKey
+          key={c}
+          color={c}
+          selected={progress.linePaletteColor.toLowerCase() === c.toLowerCase()}
+          onClick={() => props.onColor?.(c)}
+        />
       ))}
-      <ColorKey color="#ffffff" onClick={() => props.onColor?.("#ffffff")} />
+      <ColorKey
+        color="#ffffff"
+        selected={progress.linePaletteColor.toLowerCase() === "#ffffff"}
+        onClick={() => props.onColor?.("#ffffff")}
+      />
       <Key active={progress.lineDoubleMode} className="keyButtonValue" onClick={() => props.onToggleDoubleLine?.()} title="Toggle double-line mode">
         2x
       </Key>
@@ -157,12 +166,13 @@ function Key(props: { children: React.ReactNode; onClick?: () => void; style?: R
   );
 }
 
-function ColorKey(props: { color: string; onClick?: () => void; label?: string }) {
+function ColorKey(props: { color: string; onClick?: () => void; label?: string; selected?: boolean }) {
   return (
     <button
-      className="btn keyButton"
+      className={"btn keyButton colorKey" + (props.selected ? " is-selected" : "")}
       onClick={props.onClick}
       title={props.label ?? props.color}
+      aria-pressed={props.selected}
       style={{
         height: "100%",
         background: props.color,
