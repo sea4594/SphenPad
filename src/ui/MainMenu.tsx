@@ -12,10 +12,11 @@ import {
 } from "../core/storage";
 import { setSyncedLocalStorageItem } from "../core/localDataState";
 import { onStorageRefreshNeeded } from "../core/syncSignal";
+import { useAccountSync } from "../app/accountSync";
 import { fillProgressWithSolutionDigits } from "../core/solutionFill";
 import { fmtHMS } from "../core/time";
 import { GridCanvas } from "./GridCanvas";
-import { AppBrand, scrollActiveMainPageToTop } from "./AppBrand";
+import { AppBrand } from "./AppBrand";
 import { IconFolder, IconHome, IconImport, IconSettings, IconSort, IconSortAsc, IconSortDesc } from "./icons";
 import { MobileMultiSelectFilter } from "./MobileMultiSelectFilter";
 import { PopupMenuButton } from "./PopupMenuButton";
@@ -57,6 +58,12 @@ type FolderMenuPrefs = {
 const MAIN_MENU_FILTER_PREFS_KEY = "sphenpad-main-menu-filters-v1";
 const FOLDER_MENU_PREFS_KEY = "sphenpad-folder-menu-filters-v1";
 const MOBILE_FILTER_MEDIA_QUERY = "(max-width: 760px)";
+const MAIN_ROWS_INITIAL_DESKTOP = 48;
+const MAIN_ROWS_INITIAL_MOBILE = 24;
+const MAIN_ROWS_STEP_DESKTOP = 48;
+const MAIN_ROWS_STEP_MOBILE = 24;
+const INACTIVE_PREVIEW_CAP_DESKTOP = 16;
+const INACTIVE_PREVIEW_CAP_MOBILE = 8;
 const MAIN_MENU_SEARCH_FIELDS = new Set<MainMenuSearchField>(["any", "title", "constraints", "author", "collection"]);
 const MAIN_MENU_SEARCH_FIELD_OPTIONS: SelectControlOption[] = [
   { value: "any", label: "Search: Any field" },
@@ -402,13 +409,13 @@ function extractConstraintBullets(def: StoredPuzzle["def"]): string[] {
 
 export function MainMenu(props: { active?: boolean }) {
   const active = props.active ?? true;
+  const { syncStatus } = useAccountSync();
   const nav = useNavigate();
   const location = useLocation();
   const initialFilterPrefs = useMemo(readInitialMainMenuFilterPrefs, []);
   const initialFolderPrefs = useMemo(readInitialFolderMenuPrefs, []);
   const appliedReturnStateRef = useRef(false);
   const pendingRefreshRef = useRef(false);
-  const wasActiveRef = useRef(active);
 
   const [rows, setRows] = useState<StoredPuzzle[]>([]);
   const [folders, setFolders] = useState<PuzzleFolder[]>([]);
@@ -448,6 +455,16 @@ export function MainMenu(props: { active?: boolean }) {
   const [addToFolderPuzzle, setAddToFolderPuzzle] = useState<StoredPuzzle | null>(null);
   const [addFolderNavId, setAddFolderNavId] = useState<string | null>(null);
   const [addToFolderBusy, setAddToFolderBusy] = useState("");
+  const [mainRowsVisibleCount, setMainRowsVisibleCount] = useState(() =>
+    (typeof window !== "undefined" && window.matchMedia(MOBILE_FILTER_MEDIA_QUERY).matches)
+      ? MAIN_ROWS_INITIAL_MOBILE
+      : MAIN_ROWS_INITIAL_DESKTOP,
+  );
+  const [folderRowsVisibleCount, setFolderRowsVisibleCount] = useState(() =>
+    (typeof window !== "undefined" && window.matchMedia(MOBILE_FILTER_MEDIA_QUERY).matches)
+      ? MAIN_ROWS_INITIAL_MOBILE
+      : MAIN_ROWS_INITIAL_DESKTOP,
+  );
 
   async function refreshPuzzles() {
     setRows(await listPuzzles());
@@ -459,20 +476,19 @@ export function MainMenu(props: { active?: boolean }) {
   }
 
   useEffect(() => {
-    // Keep this page warm even when hidden so switching tabs feels instant.
-    void refreshPuzzles();
-    void refreshFolders();
-  }, []);
-
-  useEffect(() => {
-    if (!active || wasActiveRef.current) {
-      wasActiveRef.current = active;
-      return;
-    }
-    wasActiveRef.current = active;
+    if (!active) return;
     void refreshPuzzles();
     void refreshFolders();
   }, [active]);
+
+  useEffect(() => {
+    if (active || syncStatus === "syncing") return;
+    const timer = window.setTimeout(() => {
+      void refreshPuzzles();
+      void refreshFolders();
+    }, 120);
+    return () => window.clearTimeout(timer);
+  }, [active, syncStatus]);
 
   useEffect(() => {
     if (!active || !pendingRefreshRef.current) return;
@@ -734,6 +750,31 @@ export function MainMenu(props: { active?: boolean }) {
     constraintFilters.length > 0 ||
     filterStatusList.length > 0;
 
+  const mainRowsInitial = mobileFilters ? MAIN_ROWS_INITIAL_MOBILE : MAIN_ROWS_INITIAL_DESKTOP;
+  const mainRowsStep = mobileFilters ? MAIN_ROWS_STEP_MOBILE : MAIN_ROWS_STEP_DESKTOP;
+  const inactivePreviewCap = mobileFilters ? INACTIVE_PREVIEW_CAP_MOBILE : INACTIVE_PREVIEW_CAP_DESKTOP;
+  const effectiveMainRowsVisibleCount = active ? mainRowsVisibleCount : Math.min(mainRowsVisibleCount, inactivePreviewCap);
+  const visibleDisplayRows = useMemo(
+    () => displayRows.slice(0, effectiveMainRowsVisibleCount),
+    [displayRows, effectiveMainRowsVisibleCount],
+  );
+  const hasMoreMainRows = mainRowsVisibleCount < displayRows.length;
+
+  useEffect(() => {
+    setMainRowsVisibleCount(mainRowsInitial);
+  }, [
+    mainRowsInitial,
+    rows.length,
+    deferredQuery,
+    searchField,
+    sortOrder,
+    sortDirection,
+    filterStatusList,
+    authorFilters,
+    collectionFilters,
+    constraintFilters,
+  ]);
+
   const statusCounts = useMemo(() => {
     const counts: Record<PuzzlePlayStatus, number> = {
       not_started: 0,
@@ -839,6 +880,17 @@ export function MainMenu(props: { active?: boolean }) {
     );
   }, [activeFolderResolvedPuzzles, folderFilterStatus, folderSortOrder, folderSortDirection]);
 
+  const effectiveFolderRowsVisibleCount = active ? folderRowsVisibleCount : Math.min(folderRowsVisibleCount, inactivePreviewCap);
+  const visibleFolderRows = useMemo(
+    () => visibleFolderPuzzles.slice(0, effectiveFolderRowsVisibleCount),
+    [visibleFolderPuzzles, effectiveFolderRowsVisibleCount],
+  );
+  const hasMoreFolderRows = folderRowsVisibleCount < visibleFolderPuzzles.length;
+
+  useEffect(() => {
+    setFolderRowsVisibleCount(mainRowsInitial);
+  }, [mainRowsInitial, activeFolderId, folderFilterStatus, folderSortOrder, folderSortDirection, visibleFolderPuzzles.length]);
+
   const addDialogChildFolders = useMemo(() => {
     return sortFolders(
       folders.filter((folder) => (folder.parentId ?? null) === addFolderNavId),
@@ -907,16 +959,6 @@ export function MainMenu(props: { active?: boolean }) {
 
   function navigateToArchive() {
     startTransition(() => nav("/archive"));
-  }
-
-  function scrollCurrentPageToTop() {
-    scrollActiveMainPageToTop("smooth");
-  }
-
-  function onTopbarTap(event: React.MouseEvent<HTMLDivElement>) {
-    const target = event.target as HTMLElement | null;
-    if (target?.closest("button, a, input, select, textarea, [role='button']")) return;
-    scrollActiveMainPageToTop("smooth");
   }
 
   function sudokuPadUrlFor(row: StoredPuzzle): string | null {
@@ -1157,10 +1199,10 @@ export function MainMenu(props: { active?: boolean }) {
 
   return (
     <div className="shell">
-      <div className="topbar" onClick={onTopbarTap}>
+      <div className="topbar">
         <AppBrand />
         <div className="topbarModeTabs" role="tablist" aria-label="Main navigation">
-          <button className="btn primary topbarModeTab" onClick={scrollCurrentPageToTop} type="button">
+          <button className="btn primary topbarModeTab" onClick={() => startTransition(() => nav("/"))} type="button">
             <IconHome />
             <span>Puzzles</span>
           </button>
@@ -1335,10 +1377,10 @@ export function MainMenu(props: { active?: boolean }) {
                 <div className="menuSectionTitle">Your puzzles</div>
                 <div className="muted" style={{ fontSize: 13, marginTop: 2 }}>
                   {filterStatusList.length > 0
-                    ? `${displayRows.length} of ${rowsMatchingSearchFilters.length}`
+                    ? `${visibleDisplayRows.length} shown (${displayRows.length} matching / ${rowsMatchingSearchFilters.length} filtered)`
                     : hasMainMenuSearchFilters
-                      ? `${displayRows.length} of ${rows.length}`
-                      : `${rows.length} total`}
+                      ? `${visibleDisplayRows.length} shown (${displayRows.length} matching / ${rows.length} total)`
+                      : `${visibleDisplayRows.length} shown (${rows.length} total)`}
                 </div>
               </div>
               <div className="sortControlGroup">
@@ -1382,7 +1424,7 @@ export function MainMenu(props: { active?: boolean }) {
             </div>
 
             <div className="menuPuzzleList">
-              {displayRows.map((row) => {
+              {visibleDisplayRows.map((row) => {
                 const previewProgress = {
                   ...row.progress,
                   selection: [],
@@ -1457,11 +1499,22 @@ export function MainMenu(props: { active?: boolean }) {
                   </div>
                 );
               })}
-              {!displayRows.length ? (
+              {!visibleDisplayRows.length ? (
                 <div className="muted">
                   {rows.length && (filterStatusList.length > 0 || hasMainMenuSearchFilters)
                     ? "No puzzles match the current search/filter."
                     : "No puzzles loaded yet."}
+                </div>
+              ) : null}
+              {active && hasMoreMainRows ? (
+                <div className="row" style={{ justifyContent: "center", marginTop: 8 }}>
+                  <button
+                    className="btn"
+                    onClick={() => setMainRowsVisibleCount((count) => count + mainRowsStep)}
+                    type="button"
+                  >
+                    Load {Math.min(mainRowsStep, displayRows.length - mainRowsVisibleCount)} more
+                  </button>
                 </div>
               ) : null}
             </div>
@@ -1591,7 +1644,7 @@ export function MainMenu(props: { active?: boolean }) {
                 {activeFolder ? (
                   <>
                     <div className="muted" style={{ fontSize: 13, marginTop: 4 }}>Puzzles in this folder</div>
-                    {visibleFolderPuzzles.map((row) => {
+                    {visibleFolderRows.map((row) => {
                       const previewProgress = {
                         ...row.progress,
                         selection: [],
@@ -1672,6 +1725,17 @@ export function MainMenu(props: { active?: boolean }) {
                     {!visibleFolderPuzzles.length ? (
                       <div className="muted" style={{ marginTop: 2 }}>
                         No puzzles in this folder match the current filter.
+                      </div>
+                    ) : null}
+                    {active && hasMoreFolderRows ? (
+                      <div className="row" style={{ justifyContent: "center", marginTop: 6 }}>
+                        <button
+                          className="btn"
+                          onClick={() => setFolderRowsVisibleCount((count) => count + mainRowsStep)}
+                          type="button"
+                        >
+                          Load {Math.min(mainRowsStep, visibleFolderPuzzles.length - folderRowsVisibleCount)} more
+                        </button>
                       </div>
                     ) : null}
                   </>
