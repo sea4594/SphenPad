@@ -253,20 +253,20 @@ export async function pushCloudState(userId: string, snapshot: CloudAppSnapshot,
   if (!firebaseEnabled || !db) return;
 
   const stateRef = doc(db, "users", userId, "app", "state");
-  let effectivePreviousPuzzleKeys = previousPuzzleKeys;
-  if (!effectivePreviousPuzzleKeys.length) {
-    const existingState = await getDoc(stateRef);
-    if (existingState.exists()) {
-      const existingStateData = existingState.data() as { puzzleKeys?: unknown };
-      if (Array.isArray(existingStateData.puzzleKeys)) {
-        effectivePreviousPuzzleKeys = existingStateData.puzzleKeys.filter((entry): entry is string => typeof entry === "string");
-      } else {
-        // Legacy cloud state may not include puzzleKeys; derive from current puzzle docs.
-        const existingPuzzleDocs = await getDocs(collection(db, "users", userId, "puzzles"));
-        effectivePreviousPuzzleKeys = existingPuzzleDocs.docs.map((entry) => puzzleDocIdToKey(entry.id));
-      }
+  const existingState = await getDoc(stateRef);
+  let cloudStatePuzzleKeys: string[] = [];
+  if (existingState.exists()) {
+    const existingStateData = existingState.data() as { puzzleKeys?: unknown };
+    if (Array.isArray(existingStateData.puzzleKeys)) {
+      cloudStatePuzzleKeys = existingStateData.puzzleKeys.filter((entry): entry is string => typeof entry === "string");
+    } else {
+      // Legacy cloud state may not include puzzleKeys; derive from current puzzle docs.
+      const existingPuzzleDocs = await getDocs(collection(db, "users", userId, "puzzles"));
+      cloudStatePuzzleKeys = existingPuzzleDocs.docs.map((entry) => puzzleDocIdToKey(entry.id));
     }
   }
+
+  const effectivePreviousPuzzleKeys = Array.from(new Set([...previousPuzzleKeys, ...cloudStatePuzzleKeys]));
 
   const nextPuzzleKeys = snapshot.puzzles.map((row) => row.key);
   const nextPuzzleDocIds = new Set(nextPuzzleKeys.map(puzzleKeyToDocId));
