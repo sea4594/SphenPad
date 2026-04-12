@@ -1878,22 +1878,9 @@ input.url {
 
 .colorKey.is-selected {
   box-shadow:
-    inset 0 0 0 2px #ffffff,
-    inset 0 0 0 4px #101010,
-    0 0 0 2px #ffffff;
-}
-
-.colorKey.is-selected::after {
-  content: "";
-  position: absolute;
-  top: 4px;
-  right: 4px;
-  width: 10px;
-  height: 10px;
-  border: 2px solid #101010;
-  background: #ffffff;
-  box-shadow: 0 0 0 1px #ffffff;
-  pointer-events: none;
+    inset 0 0 0 2.5px #ffffff,
+    inset 0 0 0 5px #101010,
+    0 0 0 2.5px #ffffff;
 }
 
 .keyButtonValue {
