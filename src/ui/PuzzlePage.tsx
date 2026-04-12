@@ -705,13 +705,9 @@ export function PuzzlePage() {
 
     setReloadingPuzzle(true);
     try {
-      const source = (data.def.sourceId ?? key ?? "").trim();
-      if (!source) throw new Error("This puzzle has no import source to reimport from.");
-
-      // Reimport from source first so restart uses the latest canonical definition.
-      const loaded = await loadFromSudokuPad(source);
-      const importedDef = loaded.def;
-      const fresh = normalizeProgress(makeInitialProgress(importedDef));
+      const cached = await getPuzzle(key);
+      const cachedData = cached ?? data;
+      const fresh = normalizeProgress(makeInitialProgress(cachedData.def));
       const keptMillis = resetTimer ? 0 : data.progress.totalMillis;
       const nextProgress: PuzzleProgress = {
         ...fresh,
@@ -719,11 +715,19 @@ export function PuzzlePage() {
         startedAt: Date.now(),
         status: "not_started",
         paused: false,
+        multiSelect: data.progress.multiSelect,
+        alphabetMode: data.progress.alphabetMode,
+        alphabetPage: data.progress.alphabetPage,
+        activeTool: data.progress.activeTool,
+        entryMode: data.progress.entryMode,
+        highlightPalettePage: data.progress.highlightPalettePage,
+        linePaletteColor: data.progress.linePaletteColor,
+        linePaletteKind: "both",
+        lineDoubleMode: data.progress.lineDoubleMode,
       };
       const normalizedProgress = maybePromoteToInProgress(nextProgress);
       const nextData: PersistedPuzzle = {
-        ...data,
-        def: importedDef,
+        ...cachedData,
         progress: normalizedProgress,
         undo: [],
         redo: [],
@@ -1607,7 +1611,6 @@ export function PuzzlePage() {
               <button className="btn restartPromptAction" onClick={() => void restartPuzzleFromCache(false)} disabled={reloadingPuzzle} type="button">
                 Restart and keep time
               </button>
-              <button className="btn restartPromptAction" onClick={closeRestartPrompt} disabled={reloadingPuzzle} type="button">Cancel</button>
             </div>
           </div>
         </div>
