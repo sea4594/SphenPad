@@ -8,7 +8,13 @@ import {
   type ReactNode,
 } from "react";
 import type { User } from "firebase/auth";
-import { exportLocalAppSnapshot, exportLocalAppSnapshotMetadata, hasLocalAppSnapshotData, importLocalAppSnapshot, mergeSnapshots } from "../core/appState";
+import {
+  exportLocalAppSnapshot,
+  exportLocalAppSnapshotMetadata,
+  hasLocalAppSnapshotData,
+  importLocalAppSnapshot,
+  mergeSnapshots,
+} from "../core/appState";
 import { getLocalDataOwnerId, readLocalDataUpdatedAt, setLocalDataOwnerId } from "../core/localDataState";
 import { onCloudSyncNeeded } from "../core/syncSignal";
 import { notifyStorageRefreshNeeded } from "../core/syncSignal";
@@ -122,11 +128,9 @@ export function AccountSyncProvider(props: { children: ReactNode }) {
         localUpdatedAt === cloudMetadata.updatedAt
       ) {
         // Fast path: local and cloud snapshots already match for this account.
-        // Skip full cloud document pull and avoid expensive merge/rewrite/push work.
         cloudPuzzleKeysRef.current = metadataPuzzleKeys(cloudMetadata);
         lastSuccessfulSyncAtRef.current = cloudMetadata.updatedAt;
       } else if (localBelongsToOtherAccount) {
-        // Local belongs to another account; restore current account cloud data.
         if (!cloudLikelyHasData) {
           const empty = makeEmptySnapshot();
           await importLocalAppSnapshot(empty, false);
@@ -141,27 +145,14 @@ export function AccountSyncProvider(props: { children: ReactNode }) {
         }
         notifyStorageRefreshNeeded();
         setAppStateNonce((n) => n + 1);
-      } else if (!cloudMetadata) {
-        // No cloud doc exists for this account yet.
+      } else if (!cloudMetadata || !cloudLikelyHasData) {
         if (localLikelyHasData) {
           await uploadLocalSnapshot(activeUser);
         } else {
-          cloudPuzzleKeysRef.current = [];
-          lastSuccessfulSyncAtRef.current = 0;
+          cloudPuzzleKeysRef.current = cloudMetadata ? metadataPuzzleKeys(cloudMetadata) : [];
+          lastSuccessfulSyncAtRef.current = cloudMetadata?.updatedAt ?? 0;
         }
-      } else if (!cloudLikelyHasData) {
-        // Cloud doc exists but has no meaningful data.
-        if (localLikelyHasData) {
-          await uploadLocalSnapshot(activeUser);
-        } else {
-          cloudPuzzleKeysRef.current = metadataPuzzleKeys(cloudMetadata);
-          lastSuccessfulSyncAtRef.current = cloudMetadata.updatedAt;
-        }
-      } else if (localOwnerId === activeUser.uid && localLikelyHasData && localUpdatedAt > cloudMetadata.updatedAt) {
-        // Local is newer for this account; upload without first hydrating the full cloud snapshot.
-        await uploadLocalSnapshot(activeUser);
       } else if (!localLikelyHasData || (localOwnerId === activeUser.uid && localUpdatedAt < cloudMetadata.updatedAt)) {
-        // Cloud is newer (or local appears empty); restore cloud without loading full local snapshot first.
         const cloudSnapshot = await pullCloudState(activeUser.uid);
         const safeCloud = cloudSnapshot ?? makeEmptySnapshot();
         await importLocalAppSnapshot(safeCloud, false);
@@ -169,14 +160,16 @@ export function AccountSyncProvider(props: { children: ReactNode }) {
         lastSuccessfulSyncAtRef.current = safeCloud.updatedAt;
         notifyStorageRefreshNeeded();
         setAppStateNonce((n) => n + 1);
+      } else if (localOwnerId === activeUser.uid && localUpdatedAt > cloudMetadata.updatedAt) {
+        await uploadLocalSnapshot(activeUser);
       } else {
-        // Ambiguous diverged state (commonly first login with local anonymous progress):
-        // pay full cost once and merge both sides safely.
+        // Ambiguous diverged state: hydrate both sides once, merge safely, and reconcile cloud.
         const [cloudSnapshot, localSnapshot] = await Promise.all([
           pullCloudState(activeUser.uid),
           exportLocalAppSnapshot(),
         ]);
         cloudPuzzleKeysRef.current = snapshotPuzzleKeys(cloudSnapshot);
+
         if (!cloudSnapshot && hasLocalAppSnapshotData(localSnapshot)) {
           await uploadLocalSnapshot(activeUser);
         } else if (cloudSnapshot && !hasLocalAppSnapshotData(localSnapshot)) {

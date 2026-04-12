@@ -200,7 +200,9 @@ export async function pullCloudStateMetadata(userId: string): Promise<CloudState
     : [];
   const folderCount = Array.isArray(stateData.folders) ? stateData.folders.length : 0;
   const localStorageCount =
-    stateData.localStorage && typeof stateData.localStorage === "object" ? Object.keys(stateData.localStorage as object).length : 0;
+    stateData.localStorage && typeof stateData.localStorage === "object"
+      ? Object.keys(stateData.localStorage as object).length
+      : 0;
   const updatedAt = typeof stateData.updatedAt === "number" ? stateData.updatedAt : 0;
 
   return {
@@ -227,11 +229,16 @@ export async function pullCloudState(userId: string): Promise<CloudAppSnapshot |
     folders?: unknown;
   };
 
-  const puzzles = puzzleDocs.docs.flatMap((entry) => {
+  const puzzles: CloudAppSnapshot["puzzles"] = [];
+  for (const entry of puzzleDocs.docs) {
     const payload = entry.data().payload;
-    if (typeof payload !== "string" || !payload.length) return [];
-    return [{ key: puzzleDocIdToKey(entry.id), data: deserializePuzzle(payload) }];
-  });
+    if (typeof payload !== "string" || !payload.length) continue;
+    try {
+      puzzles.push({ key: puzzleDocIdToKey(entry.id), data: deserializePuzzle(payload) });
+    } catch {
+      // Skip malformed payloads so one bad cloud row does not abort the entire restore.
+    }
+  }
 
   return {
     version: 1,
@@ -254,7 +261,7 @@ export async function pushCloudState(userId: string, snapshot: CloudAppSnapshot,
       if (Array.isArray(existingStateData.puzzleKeys)) {
         effectivePreviousPuzzleKeys = existingStateData.puzzleKeys.filter((entry): entry is string => typeof entry === "string");
       } else {
-        // Legacy cloud state may not have puzzleKeys; fall back to listing current cloud puzzle docs.
+        // Legacy cloud state may not include puzzleKeys; derive from current puzzle docs.
         const existingPuzzleDocs = await getDocs(collection(db, "users", userId, "puzzles"));
         effectivePreviousPuzzleKeys = existingPuzzleDocs.docs.map((entry) => puzzleDocIdToKey(entry.id));
       }
@@ -272,26 +279,22 @@ export async function pushCloudState(userId: string, snapshot: CloudAppSnapshot,
     puzzleKeys: nextPuzzleKeys,
   });
 
-  const operations = [
-    ...snapshot.puzzles.map((row) => ({
-      type: "set" as const,
-      docId: puzzleKeyToDocId(row.key),
-      payload: serializePuzzle(row.data),
-    })),
-    ...Array.from(previousPuzzleDocIds)
-      .filter((docId) => !nextPuzzleDocIds.has(docId))
-      .map((docId) => ({ type: "delete" as const, docId })),
-  ];
-
-  for (const batchItems of chunk(operations, MAX_BATCH_SIZE)) {
+  for (const batchRows of chunk(snapshot.puzzles, MAX_BATCH_SIZE)) {
     const batch = writeBatch(db);
-    for (const item of batchItems) {
-      const puzzleRef = doc(db, "users", userId, "puzzles", item.docId);
-      if (item.type === "set") {
-        batch.set(puzzleRef, { updatedAt: snapshot.updatedAt, payload: item.payload });
-      } else {
-        batch.delete(puzzleRef);
-      }
+    for (const row of batchRows) {
+      const docId = puzzleKeyToDocId(row.key);
+      const puzzleRef = doc(db, "users", userId, "puzzles", docId);
+      batch.set(puzzleRef, { updatedAt: snapshot.updatedAt, payload: serializePuzzle(row.data) });
+    }
+    await batch.commit();
+  }
+
+  const deleteDocIds = Array.from(previousPuzzleDocIds).filter((docId) => !nextPuzzleDocIds.has(docId));
+  for (const batchDeleteDocIds of chunk(deleteDocIds, MAX_BATCH_SIZE)) {
+    const batch = writeBatch(db);
+    for (const docId of batchDeleteDocIds) {
+      const puzzleRef = doc(db, "users", userId, "puzzles", docId);
+      batch.delete(puzzleRef);
     }
     await batch.commit();
   }
