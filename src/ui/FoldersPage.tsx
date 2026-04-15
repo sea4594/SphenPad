@@ -16,7 +16,7 @@ import { onStorageRefreshNeeded } from "../core/syncSignal";
 import { useAccountSync } from "../app/accountSync";
 import { fillProgressWithSolutionDigits } from "../core/solutionFill";
 import { fmtHMS } from "../core/time";
-import { AppBrand } from "./AppBrand";
+import { AppBrand, scrollActiveMainPageToTop } from "./AppBrand";
 import { GridCanvas } from "./GridCanvas";
 import { IconFolder, IconHome, IconImport, IconSettings, IconSort, IconSortAsc, IconSortDesc } from "./icons";
 import { PopupMenuButton } from "./PopupMenuButton";
@@ -45,10 +45,10 @@ const FOLDER_MENU_FILTER_PREFS_KEY = "sphenpad-folder-menu-filters-v1";
 const FOLDERS_PAGE_MENU_FILTER_PREFS_KEY = "sphenpad-folders-page-menu-filters-v1";
 const FOLDER_ACTIVE_ID_KEY = "sphenpad-folders-active-id-v1";
 const MOBILE_LIST_MEDIA_QUERY = "(max-width: 760px)";
-const FOLDER_ROWS_INITIAL_DESKTOP = 48;
-const FOLDER_ROWS_INITIAL_MOBILE = 24;
-const FOLDER_ROWS_STEP_DESKTOP = 48;
-const FOLDER_ROWS_STEP_MOBILE = 24;
+const FOLDER_ROWS_INITIAL_DESKTOP = 50;
+const FOLDER_ROWS_INITIAL_MOBILE = 50;
+const FOLDER_ROWS_STEP_DESKTOP = 50;
+const FOLDER_ROWS_STEP_MOBILE = 50;
 const FOLDER_ROWS_INACTIVE_CAP_DESKTOP = 16;
 const FOLDER_ROWS_INACTIVE_CAP_MOBILE = 8;
 const NOOP = () => {};
@@ -772,6 +772,14 @@ export function FoldersPage(props: { active?: boolean }) {
     startTransition(() => nav("/"));
   }
 
+  function navigateToFolders() {
+    if (location.pathname === "/folders") {
+      scrollActiveMainPageToTop("smooth");
+      return;
+    }
+    startTransition(() => nav("/folders"));
+  }
+
   function navigateToArchive() {
     startTransition(() => nav("/archive"));
   }
@@ -785,7 +793,7 @@ export function FoldersPage(props: { active?: boolean }) {
             <IconHome />
             <span>Puzzles</span>
           </button>
-          <button className="btn primary topbarModeTab" onClick={() => startTransition(() => nav("/folders"))} type="button">
+          <button className="btn primary topbarModeTab" onClick={navigateToFolders} type="button">
             <IconFolder />
             <span>Folders</span>
           </button>
@@ -995,7 +1003,7 @@ export function FoldersPage(props: { active?: boolean }) {
                         onClick={() => setFolderRowsVisibleCount((count) => count + rowsStep)}
                         type="button"
                       >
-                        Load {Math.min(rowsStep, visibleFolderPuzzles.length - folderRowsVisibleCount)} more
+                        Load 50 more
                       </button>
                     </div>
                   ) : null}

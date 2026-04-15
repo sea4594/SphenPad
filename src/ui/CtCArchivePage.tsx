@@ -7,7 +7,7 @@ import { type PuzzleDefinition } from "../core/model";
 import { makeInitialProgress } from "../core/scl";
 import { addPuzzleToFolder, createFolder, getPuzzle, listCompletedPuzzleKeys, listFolders, type PuzzleFolder, upsertPuzzle } from "../core/storage";
 import { loadFromSudokuPad } from "../core/sudokupad";
-import { AppBrand, scrollActiveMainPageToTop } from "./AppBrand";
+import { AppBrand } from "./AppBrand";
 import { GridCanvas } from "./GridCanvas";
 import { IconFolder, IconHome, IconImport, IconPlay, IconSettings, IconSort, IconSortAsc, IconSortDesc } from "./icons";
 import { MobileMultiSelectFilter } from "./MobileMultiSelectFilter";
@@ -381,7 +381,6 @@ export function CtCArchivePage(props: { active?: boolean }) {
   const [renderConfig] = useState(getRenderConfig);
   const initialFilterPrefs = useMemo(readInitialArchiveFilterPrefs, []);
   const appliedReturnStateRef = useRef(false);
-  const wasActiveRef = useRef(active);
 
   const [rows, setRows] = useState<PreparedArchiveEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -515,7 +514,10 @@ export function CtCArchivePage(props: { active?: boolean }) {
     }
   }
 
-  function scheduleBackgroundRefreshes() {
+  useEffect(() => {
+    if (!active) return;
+    void refreshRows();
+
     const run = () => {
       void refreshCompleted();
       void refreshFolders();
@@ -523,7 +525,7 @@ export function CtCArchivePage(props: { active?: boolean }) {
 
     if (typeof window === "undefined") {
       run();
-      return () => {};
+      return;
     }
 
     if (typeof window.requestIdleCallback === "function") {
@@ -533,27 +535,7 @@ export function CtCArchivePage(props: { active?: boolean }) {
 
     const timer = window.setTimeout(run, 150);
     return () => window.clearTimeout(timer);
-  }
-
-  useEffect(() => {
-    // Keep this page warm even when hidden so switching tabs feels instant.
-    void refreshRows();
-    return scheduleBackgroundRefreshes();
-  }, []);
-
-  useEffect(() => {
-    if (!active || wasActiveRef.current) {
-      wasActiveRef.current = active;
-      return;
-    }
-    wasActiveRef.current = active;
-
-    if (!rows.length && !loading) {
-      void refreshRows();
-    }
-
-    return scheduleBackgroundRefreshes();
-  }, [active, rows.length, loading]);
+  }, [active]);
 
   useEffect(() => {
     if (!active || !pendingRefreshRef.current) return;
@@ -1257,16 +1239,6 @@ export function CtCArchivePage(props: { active?: boolean }) {
     startTransition(() => nav("/folders"));
   }
 
-  function scrollCurrentPageToTop() {
-    scrollActiveMainPageToTop("smooth");
-  }
-
-  function onTopbarTap(event: React.MouseEvent<HTMLDivElement>) {
-    const target = event.target as HTMLElement | null;
-    if (target?.closest("button, a, input, select, textarea, [role='button']")) return;
-    scrollActiveMainPageToTop("smooth");
-  }
-
   const attachCardObserver = useCallback(
     (element: HTMLDivElement | null, entryId: string) => {
       if (!element || !observerRef.current) return;
@@ -1278,7 +1250,7 @@ export function CtCArchivePage(props: { active?: boolean }) {
 
   return (
     <div className="shell">
-      <div className="topbar" onClick={onTopbarTap}>
+      <div className="topbar">
         <AppBrand />
         <div className="topbarModeTabs" role="tablist" aria-label="Main navigation">
           <button className="btn topbarModeTab" onClick={navigateToMainMenu} type="button">
@@ -1289,7 +1261,7 @@ export function CtCArchivePage(props: { active?: boolean }) {
             <IconFolder />
             <span>Folders</span>
           </button>
-          <button className="btn primary topbarModeTab" onClick={scrollCurrentPageToTop} type="button">
+          <button className="btn primary topbarModeTab" onClick={() => startTransition(() => nav("/archive"))} type="button">
             <IconImport />
             <span>Import</span>
           </button>

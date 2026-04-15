@@ -16,7 +16,7 @@ import { useAccountSync } from "../app/accountSync";
 import { fillProgressWithSolutionDigits } from "../core/solutionFill";
 import { fmtHMS } from "../core/time";
 import { GridCanvas } from "./GridCanvas";
-import { AppBrand } from "./AppBrand";
+import { AppBrand, scrollActiveMainPageToTop } from "./AppBrand";
 import { IconFolder, IconHome, IconImport, IconSettings, IconSort, IconSortAsc, IconSortDesc } from "./icons";
 import { MobileMultiSelectFilter } from "./MobileMultiSelectFilter";
 import { PopupMenuButton } from "./PopupMenuButton";
@@ -58,10 +58,10 @@ type FolderMenuPrefs = {
 const MAIN_MENU_FILTER_PREFS_KEY = "sphenpad-main-menu-filters-v1";
 const FOLDER_MENU_PREFS_KEY = "sphenpad-folder-menu-filters-v1";
 const MOBILE_FILTER_MEDIA_QUERY = "(max-width: 760px)";
-const MAIN_ROWS_INITIAL_DESKTOP = 48;
-const MAIN_ROWS_INITIAL_MOBILE = 24;
-const MAIN_ROWS_STEP_DESKTOP = 48;
-const MAIN_ROWS_STEP_MOBILE = 24;
+const MAIN_ROWS_INITIAL_DESKTOP = 50;
+const MAIN_ROWS_INITIAL_MOBILE = 50;
+const MAIN_ROWS_STEP_DESKTOP = 50;
+const MAIN_ROWS_STEP_MOBILE = 50;
 const INACTIVE_PREVIEW_CAP_DESKTOP = 16;
 const INACTIVE_PREVIEW_CAP_MOBILE = 8;
 const MAIN_MENU_SEARCH_FIELDS = new Set<MainMenuSearchField>(["any", "title", "constraints", "author", "collection"]);
@@ -957,6 +957,14 @@ export function MainMenu(props: { active?: boolean }) {
     startTransition(() => nav("/folders"));
   }
 
+  function navigateToMainMenu() {
+    if (location.pathname === "/") {
+      scrollActiveMainPageToTop("smooth");
+      return;
+    }
+    startTransition(() => nav("/"));
+  }
+
   function navigateToArchive() {
     startTransition(() => nav("/archive"));
   }
@@ -1202,7 +1210,7 @@ export function MainMenu(props: { active?: boolean }) {
       <div className="topbar">
         <AppBrand />
         <div className="topbarModeTabs" role="tablist" aria-label="Main navigation">
-          <button className="btn primary topbarModeTab" onClick={() => startTransition(() => nav("/"))} type="button">
+          <button className="btn primary topbarModeTab" onClick={navigateToMainMenu} type="button">
             <IconHome />
             <span>Puzzles</span>
           </button>
@@ -1513,7 +1521,7 @@ export function MainMenu(props: { active?: boolean }) {
                     onClick={() => setMainRowsVisibleCount((count) => count + mainRowsStep)}
                     type="button"
                   >
-                    Load {Math.min(mainRowsStep, displayRows.length - mainRowsVisibleCount)} more
+                    Load 50 more
                   </button>
                 </div>
               ) : null}
@@ -1734,7 +1742,7 @@ export function MainMenu(props: { active?: boolean }) {
                           onClick={() => setFolderRowsVisibleCount((count) => count + mainRowsStep)}
                           type="button"
                         >
-                          Load {Math.min(mainRowsStep, visibleFolderPuzzles.length - folderRowsVisibleCount)} more
+                          Load 50 more
                         </button>
                       </div>
                     ) : null}
