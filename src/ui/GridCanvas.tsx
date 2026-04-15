@@ -1140,7 +1140,8 @@ export function GridCanvas(props: {
 
       const drawSoftEdgeBackdrop = (x: number, y: number, w: number, h: number, alpha: number) => {
         if (w <= 0 || h <= 0) return;
-        const feather = Math.max(0.8, Math.min(2.6, Math.min(w, h) / 2));
+        // Keep only a thin feather border around the rectangle.
+        const feather = Math.max(0.45, Math.min(0.95, Math.min(w, h) * 0.1));
         const innerW = Math.max(0, w - feather * 2);
         const innerH = Math.max(0, h - feather * 2);
 
@@ -1196,25 +1197,31 @@ export function GridCanvas(props: {
       ctx.font = `${clueFontPx}px ${gridTextFont}, ${emojiTextFont}`;
       const metrics = ctx.measureText(clueText);
       ctx.textAlign = "left";
-      ctx.textBaseline = "top";
+      ctx.textBaseline = "alphabetic";
       const cluePaddingPx = 2;
-      const clueX = clueCellX + cluePaddingPx;
-      const clueY = clueCellY + cluePaddingPx;
+      const textLeft = clueCellX + cluePaddingPx;
+      const textTop = clueCellY + cluePaddingPx;
+      const textAscent = Number.isFinite(metrics.actualBoundingBoxAscent)
+        ? Math.max(0.1, metrics.actualBoundingBoxAscent)
+        : clueFontPx * 0.78;
+      const textDescent = Number.isFinite(metrics.actualBoundingBoxDescent)
+        ? Math.max(0.1, metrics.actualBoundingBoxDescent)
+        : clueFontPx * 0.18;
+      const baselineY = textTop + textAscent;
       const textWidth = Math.max(metrics.width, clueFontPx * 0.6);
-      const measuredHeight = metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent;
-      const textHeight = Math.max(clueFontPx * 0.86, Number.isFinite(measuredHeight) ? measuredHeight : 0);
-      const padX = Math.max(0.9, clueFontPx * 0.14);
-      const padY = Math.max(0.7, clueFontPx * 0.12);
-      const bgX = clueX;
-      const bgY = clueY;
-      const bgW = textWidth + padX;
-      const bgH = textHeight + padY;
+      const textHeight = textAscent + textDescent;
+      const padX = Math.max(0.6, clueFontPx * 0.08);
+      const padY = Math.max(0.6, clueFontPx * 0.08);
+      const bgX = textLeft - padX;
+      const bgY = textTop - padY;
+      const bgW = textWidth + padX * 2;
+      const bgH = textHeight + padY * 2;
       ctx.beginPath();
       ctx.rect(clueCellX, clueCellY, cellPx, cellPx);
       ctx.clip();
       drawSoftEdgeBackdrop(bgX, bgY, bgW, bgH, 0.75);
       ctx.fillStyle = cage.textColor ?? cage.color ?? "#111111";
-      ctx.fillText(clueText, clueX, clueY);
+      ctx.fillText(clueText, textLeft, baselineY);
       ctx.restore();
     };
 

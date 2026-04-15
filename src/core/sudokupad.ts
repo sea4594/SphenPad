@@ -16,7 +16,7 @@ const COUNTER_API_BASE = "https://api.sudokupad.com/counter";
 const COUNTER_PROXY_A = "https://api.codetabs.com/v1/proxy/?quest=https://api.sudokupad.com/counter";
 const COUNTER_PROXY_B = "https://api.allorigins.win/raw?url=https://api.sudokupad.com/counter";
 
-export const SUDOKUPAD_IMPORT_REVISION = 7;
+export const SUDOKUPAD_IMPORT_REVISION = 8;
 
 function timeout(ms: number) {
   return new Promise<never>((_, rej) => setTimeout(() => rej(new Error("Timeout")), ms));
@@ -270,7 +270,10 @@ function normalizeCompactScl(input: any): any {
     scl.overlays = scl.o;
     scl.__overlaysFromCompactAlias = true;
   }
-  if (!scl.underlays && Array.isArray(scl.u)) scl.underlays = scl.u;
+  if (!scl.underlays && Array.isArray(scl.u)) {
+    scl.underlays = scl.u;
+    scl.__underlaysFromCompactAlias = true;
+  }
   if (!scl.arrow && Array.isArray(scl.a)) scl.arrow = scl.a;
   if (!scl.dots && Array.isArray(scl.d)) scl.dots = scl.d;
   if (!scl.cages && Array.isArray(scl.ca)) scl.cages = scl.ca;
@@ -1622,14 +1625,14 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
     if (thermoBulbs.length) cosmetics.underlays = [...(cosmetics.underlays ?? []), ...thermoBulbs];
   }
 
-  const parseLayerItem = (item: any) => {
+  const parseLayerItem = (item: any, options?: { defaultFillOpacity?: number }) => {
     const ct = asPoint(item?.center ?? item?.ct);
     if (!ct) return null;
     const rawWidth = item?.width ?? item?.w;
     const rawHeight = item?.height ?? item?.h;
     const width = parseFiniteNumberToken(rawWidth);
     const height = parseFiniteNumberToken(rawHeight);
-    const rounded = Boolean(item?.rounded ?? item?.r);
+    const rounded = parseOptionalBoolish(item?.rounded ?? item?.r) ?? false;
     const text = item?.text ?? item?.te;
     const explicitTextSize = parseFiniteNumberToken(item?.textSize ?? item?.fontSize ?? item?.fs);
     const rawExplicitBorder = item?.borderColor ?? item?.outlineC ?? item?.c1;
@@ -1642,6 +1645,8 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
     const isTextOnlyItem = width === 0;
     const borderColor = explicitBorderToken ?? (isNoStrokeToken(rawStroke) || isTextOnlyItem ? undefined : strokeToken);
     const fillColor = normalizeColorToken(item?.backgroundColor ?? item?.c2 ?? item?.fill);
+    const parsedOpacity = parseOpacityToken(item?.opacity ?? item?.alpha ?? item?.a);
+    const defaultFillOpacity = options?.defaultFillOpacity;
     const dashArray = parseDashArrayToken(item?.["stroke-dasharray"], item?.strokeDasharray, item?.dashArray, item?.dash);
     const lineCap = parseLineCapToken(item?.["stroke-linecap"], item?.strokeLinecap, item?.lineCap);
     const lineJoin = parseLineJoinToken(item?.["stroke-linejoin"], item?.strokeLinejoin, item?.lineJoin);
@@ -1671,14 +1676,16 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
       role: typeof item?.role === "string" ? item.role : undefined,
       angle: parseFiniteNumberToken(item?.angle),
       target: typeof item?.target === "string" ? item.target : undefined,
-      opacity: parseOpacityToken(item?.opacity ?? item?.alpha ?? item?.a),
+      opacity: parsedOpacity ?? (fillColor && defaultFillOpacity != null ? defaultFillOpacity : undefined),
       renderOrder: nextRenderOrder(),
     };
   };
 
   const overlaysSrc = mergeArrayAliases(scl?.overlays, scl?.overlay, scl?.o);
   if (overlaysSrc.length) {
-    const parsed = overlaysSrc.map(parseLayerItem).filter(Boolean) as Array<Record<string, unknown>>;
+    const parsed = overlaysSrc
+      .map((item: any) => parseLayerItem(item))
+      .filter(Boolean) as Array<Record<string, unknown>>;
     const under = parsed.filter((item) => {
       const target = categorizeTarget(item.target);
       if (target === "under") return true;
@@ -1691,7 +1698,10 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
 
   const underlaysSrc = mergeArrayAliases(scl?.underlays, Array.isArray(scl?.underlay) ? scl.underlay : []);
   if (underlaysSrc.length) {
-    const parsed = underlaysSrc.map(parseLayerItem).filter(Boolean) as Array<Record<string, unknown>>;
+    const compactUnderlayDefaultOpacity = scl?.__underlaysFromCompactAlias ? 0.5 : undefined;
+    const parsed = underlaysSrc
+      .map((item: any) => parseLayerItem(item, { defaultFillOpacity: compactUnderlayDefaultOpacity }))
+      .filter(Boolean) as Array<Record<string, unknown>>;
     const over = parsed.filter((item) => categorizeTarget(item.target) === "over");
     const under = parsed.filter((item) => !over.includes(item));
     if (under.length) cosmetics.underlays = [...(cosmetics.underlays ?? []), ...(under as any)];
@@ -1714,7 +1724,7 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
         center,
         width: typeof item?.width === "number" ? item.width : span?.width,
         height: typeof item?.height === "number" ? item.height : span?.height,
-        rounded: item?.rounded ?? item?.r ?? circleSrc.includes(item),
+        rounded: parseOptionalBoolish(item?.rounded ?? item?.r) ?? circleSrc.includes(item),
         color: normalizeColorToken(item?.backgroundColor ?? item?.baseC ?? item?.c2),
         borderColor: isNoStrokeToken(rawLegacyStroke) ? undefined : normalizeColorToken(rawLegacyStroke),
         borderThickness: typeof item?.thickness === "number" ? item.thickness : undefined,
