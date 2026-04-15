@@ -919,8 +919,9 @@ export function GridCanvas(props: {
         const explicitBorderThickness = Number.isFinite(borderThickness)
           ? Number(borderThickness)
           : undefined;
-        if (explicitBorderThickness == null || explicitBorderThickness > 0) {
-          const borderWidth = (explicitBorderThickness ?? 1.4) * (cellPx / cosmeticUnit);
+        // Match SudokuPad behavior: only draw borders when thickness is explicitly provided.
+        if (explicitBorderThickness != null && explicitBorderThickness > 0) {
+          const borderWidth = scaledCosmeticPx(explicitBorderThickness, { previewMin: 0, normalMin: 0 });
           if (borderWidth > 0) {
             ctx.strokeStyle = borderColor;
             ctx.lineWidth = borderWidth;
@@ -1133,32 +1134,85 @@ export function GridCanvas(props: {
       if (hasMatchingCornerLabel(cage.cells, cage.sum)) return;
       const clueCellX = cellX(first.c);
       const clueCellY = cellY(first.r);
-      const clueInset = scaledCellPx(0.012, { previewMin: 0.35, normalMin: 0.8, max: 1.2 });
-      const clueFontPx = scaledCosmeticPx(12, { previewMin: 4.5, normalMin: 8, max: 14 });
+      const sourceClueTextSize = Number.isFinite(cage.clueTextSize) ? Number(cage.clueTextSize) : 9;
+      const clueFontPx = scaledCosmeticPx(sourceClueTextSize, { previewMin: 4.5, normalMin: 6.5, max: 14 });
       const clueText = String(cage.sum);
+
+      const drawSoftEdgeBackdrop = (x: number, y: number, w: number, h: number, alpha: number) => {
+        if (w <= 0 || h <= 0) return;
+        const feather = Math.max(0.8, Math.min(2.6, Math.min(w, h) / 2));
+        const innerW = Math.max(0, w - feather * 2);
+        const innerH = Math.max(0, h - feather * 2);
+
+        if (innerW > 0 && innerH > 0) {
+          ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+          ctx.fillRect(x + feather, y + feather, innerW, innerH);
+        }
+
+        if (innerW > 0) {
+          const topGrad = ctx.createLinearGradient(0, y, 0, y + feather);
+          topGrad.addColorStop(0, "rgba(255, 255, 255, 0)");
+          topGrad.addColorStop(1, `rgba(255, 255, 255, ${alpha})`);
+          ctx.fillStyle = topGrad;
+          ctx.fillRect(x + feather, y, innerW, feather);
+
+          const bottomGrad = ctx.createLinearGradient(0, y + h - feather, 0, y + h);
+          bottomGrad.addColorStop(0, `rgba(255, 255, 255, ${alpha})`);
+          bottomGrad.addColorStop(1, "rgba(255, 255, 255, 0)");
+          ctx.fillStyle = bottomGrad;
+          ctx.fillRect(x + feather, y + h - feather, innerW, feather);
+        }
+
+        if (innerH > 0) {
+          const leftGrad = ctx.createLinearGradient(x, 0, x + feather, 0);
+          leftGrad.addColorStop(0, "rgba(255, 255, 255, 0)");
+          leftGrad.addColorStop(1, `rgba(255, 255, 255, ${alpha})`);
+          ctx.fillStyle = leftGrad;
+          ctx.fillRect(x, y + feather, feather, innerH);
+
+          const rightGrad = ctx.createLinearGradient(x + w - feather, 0, x + w, 0);
+          rightGrad.addColorStop(0, `rgba(255, 255, 255, ${alpha})`);
+          rightGrad.addColorStop(1, "rgba(255, 255, 255, 0)");
+          ctx.fillStyle = rightGrad;
+          ctx.fillRect(x + w - feather, y + feather, feather, innerH);
+        }
+
+        const corners = [
+          { cx: x + feather, cy: y + feather, px: x, py: y },
+          { cx: x + w - feather, cy: y + feather, px: x + w - feather, py: y },
+          { cx: x + feather, cy: y + h - feather, px: x, py: y + h - feather },
+          { cx: x + w - feather, cy: y + h - feather, px: x + w - feather, py: y + h - feather },
+        ];
+        for (const corner of corners) {
+          const cornerGrad = ctx.createRadialGradient(corner.cx, corner.cy, 0, corner.cx, corner.cy, feather);
+          cornerGrad.addColorStop(0, `rgba(255, 255, 255, ${alpha})`);
+          cornerGrad.addColorStop(1, "rgba(255, 255, 255, 0)");
+          ctx.fillStyle = cornerGrad;
+          ctx.fillRect(corner.px, corner.py, feather, feather);
+        }
+      };
+
       ctx.save();
       ctx.font = `${clueFontPx}px ${gridTextFont}, ${emojiTextFont}`;
       const metrics = ctx.measureText(clueText);
       ctx.textAlign = "left";
       ctx.textBaseline = "top";
-      // Move cage digit up closer to the cell edge
-      const clueX = clueCellX + clueInset;
-      const clueY = clueCellY + clueInset * 0.2;
+      const cluePaddingPx = 2;
+      const clueX = clueCellX + cluePaddingPx;
+      const clueY = clueCellY + cluePaddingPx;
       const textWidth = Math.max(metrics.width, clueFontPx * 0.6);
       const measuredHeight = metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent;
       const textHeight = Math.max(clueFontPx * 0.86, Number.isFinite(measuredHeight) ? measuredHeight : 0);
-      const padX = Math.max(0.5, clueFontPx * 0.06);
-      const padY = Math.max(0.4, clueFontPx * 0.05);
+      const padX = Math.max(0.9, clueFontPx * 0.14);
+      const padY = Math.max(0.7, clueFontPx * 0.12);
+      const bgX = clueX;
+      const bgY = clueY;
+      const bgW = textWidth + padX;
+      const bgH = textHeight + padY;
       ctx.beginPath();
       ctx.rect(clueCellX, clueCellY, cellPx, cellPx);
       ctx.clip();
-      ctx.fillStyle = "rgba(255, 255, 255, 0.75)";
-      ctx.fillRect(
-        clueX,
-        clueY,
-        textWidth + padX,
-        textHeight + padY,
-      );
+      drawSoftEdgeBackdrop(bgX, bgY, bgW, bgH, 0.75);
       ctx.fillStyle = cage.textColor ?? cage.color ?? "#111111";
       ctx.fillText(clueText, clueX, clueY);
       ctx.restore();
@@ -1380,10 +1434,6 @@ export function GridCanvas(props: {
     // Draw all arrows/lines/cages/dots by their target/layer
     drawVisualLayer("arrows");
     drawVisualLayer("cages");
-    drawVisualLayer("grid");
-
-    // Overlays (including circles, rectangles, text) always on top unless specifically targeted as underlay
-    drawVisualLayer("over");
 
     const drawGridPuzzleFeatures = () => {
       // For compatibility, keep this for any grid-targeted overlays

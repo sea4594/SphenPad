@@ -58,6 +58,7 @@ export type PuzzleCosmetics = {
     sum?: string;
     color?: string;
     textColor?: string;
+    clueTextSize?: number;
     fillColor?: string;
     thickness?: number;
     dashArray?: number[];

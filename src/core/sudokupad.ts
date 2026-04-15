@@ -1329,10 +1329,11 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
           sum: asValue(cg?.value ?? cg?.sum ?? cg?.v),
           color: normalizeColorToken(cg?.outlineC ?? cg?.borderColor ?? cg?.stroke ?? cg?.color),
           textColor: normalizeColorToken(cg?.fontC ?? cg?.fontColor ?? cg?.textColor ?? cg?.labelColor ?? cg?.color),
+          clueTextSize: parseFiniteNumberToken(cg?.textSize ?? cg?.fontSize ?? cg?.labelSize ?? cg?.fs),
           fillColor: normalizeColorToken(cg?.backgroundColor ?? cg?.fill ?? cg?.c2),
           thickness: parseFiniteNumberToken(cg?.thickness ?? cg?.borderThickness ?? cg?.th),
           dashArray,
-          opacity: parseOpacityToken(cg?.opacity ?? cg?.alpha),
+          opacity: parseOpacityToken(cg?.opacity ?? cg?.alpha ?? cg?.a),
           target: typeof cg?.target === "string" ? cg.target : undefined,
           renderOrder: nextRenderOrder(),
         };
@@ -1670,7 +1671,7 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
       role: typeof item?.role === "string" ? item.role : undefined,
       angle: parseFiniteNumberToken(item?.angle),
       target: typeof item?.target === "string" ? item.target : undefined,
-      opacity: parseOpacityToken(item?.opacity ?? item?.alpha),
+      opacity: parseOpacityToken(item?.opacity ?? item?.alpha ?? item?.a),
       renderOrder: nextRenderOrder(),
     };
   };
