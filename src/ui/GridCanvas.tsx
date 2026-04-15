@@ -1198,7 +1198,7 @@ export function GridCanvas(props: {
       const metrics = ctx.measureText(clueText);
       ctx.textAlign = "left";
       ctx.textBaseline = "alphabetic";
-      const cluePaddingPx = 2;
+      const cluePaddingPx = 1;
       const textLeft = clueCellX + cluePaddingPx;
       const textTop = clueCellY + cluePaddingPx;
       const textAscent = Number.isFinite(metrics.actualBoundingBoxAscent)
@@ -1788,9 +1788,9 @@ export function GridCanvas(props: {
           const corner = [...cell.notes.corner].sort(compareSymbols);
           if (corner.length) {
             // Always use the same vertical position for the top row, just beneath the cage digit (which is now higher)
-            const topRowY = y0 + cellPx * 0.22;
+            const topRowY = y0 + cellPx * 0.24;
             const bottomRowY = y0 + cellPx * 0.82;
-            const middleRowY = y0 + cellPx * 0.52;
+            const middleRowY = (topRowY + bottomRowY) / 2;
             const positions = [
               // 1st: top left
               { x: x0 + cellPx * 0.22, y: topRowY },
@@ -2005,9 +2005,9 @@ export function GridCanvas(props: {
         if (corner.length) {
           const x0 = cellX(c);
           const y0 = cellY(r);
-          const topRowY = y0 + cellPx * 0.22;
+          const topRowY = y0 + cellPx * 0.24;
           const bottomRowY = y0 + cellPx * 0.82;
-          const middleRowY = y0 + cellPx * 0.52;
+          const middleRowY = (topRowY + bottomRowY) / 2;
           const positions = [
             // 1st: top left
             { x: x0 + cellPx * 0.22, y: topRowY },
