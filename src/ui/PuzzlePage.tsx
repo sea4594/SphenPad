@@ -36,6 +36,7 @@ import { readPuzzleOriginState, withPuzzleReturnState } from "./puzzleNavState";
 import { highlightPalettePages, linePalette } from "./toolPalettes";
 
 const AUTO_IN_PROGRESS_MILLIS = 30_000;
+const TRANSPARENT_HIGHLIGHT_COLOR = "rgba(0,0,0,0)";
 
 function rcKey(rc: CellRC) {
   return `${rc.r},${rc.c}`;
@@ -162,13 +163,18 @@ function compareSymbols(a: string, b: string): number {
   return a.localeCompare(b, undefined, { sensitivity: "base" });
 }
 
-function isClearHighlightColor(color: string): boolean {
+function normalizeHighlightColor(color: string): string {
   const normalized = color.trim().toLowerCase();
-  return normalized === "#fff"
+  if (
+    normalized === "#fff"
     || normalized === "#ffffff"
     || normalized === "white"
     || normalized === "clear"
-    || normalized === "transparent";
+    || normalized === "transparent"
+  ) {
+    return TRANSPARENT_HIGHLIGHT_COLOR;
+  }
+  return color;
 }
 
 function isSolved(progress: PuzzleProgress, solution?: string): boolean {
@@ -391,7 +397,7 @@ export function PuzzlePage() {
           ? (cell as { highlights?: string[] }).highlights ?? []
           : [];
         const legacy = typeof cell.color === "string" && cell.color ? [cell.color] : [];
-        const merged = Array.from(new Set([...existing, ...legacy].filter((color) => !isClearHighlightColor(color)))).slice(0, 18);
+        const merged = Array.from(new Set([...existing, ...legacy].map((color) => normalizeHighlightColor(color)))).slice(0, 18);
         return {
           ...cell,
           highlights: merged,
@@ -943,25 +949,14 @@ export function PuzzlePage() {
     if (!data) return;
     const selected = data.progress.selection;
     if (!selected.length) return;
-    if (isClearHighlightColor(color)) {
-      const clearPatches = selected
-        .map((rc) => {
-          const cur = data.progress.cells[rc.r][rc.c].highlights ?? [];
-          if (!cur.length) return null;
-          return patchAt(data.progress, ["cells", rc.r, rc.c, "highlights"], []);
-        })
-        .filter(Boolean) as Patch[];
-      applyPatches(clearPatches);
-      return;
-    }
-
-    const allHave = selected.every((rc) => (data.progress.cells[rc.r][rc.c].highlights ?? []).includes(color));
+    const nextColor = normalizeHighlightColor(color);
+    const allHave = selected.every((rc) => (data.progress.cells[rc.r][rc.c].highlights ?? []).includes(nextColor));
     const patches = selected
       .map((rc) => {
         const cur = data.progress.cells[rc.r][rc.c].highlights ?? [];
         const nextSet = new Set(cur);
-        if (allHave) nextSet.delete(color);
-        else if (nextSet.size < 18 || nextSet.has(color)) nextSet.add(color);
+        if (allHave) nextSet.delete(nextColor);
+        else if (nextSet.size < 18 || nextSet.has(nextColor)) nextSet.add(nextColor);
         const next = Array.from(nextSet).slice(0, 18);
         const unchanged = next.length === cur.length && next.every((v, i) => v === cur[i]);
         if (unchanged) return null;
@@ -1336,7 +1331,7 @@ export function PuzzlePage() {
         const paletteIndex = digit === "0" ? -1 : Number(digit) - 1;
         if (!e.ctrlKey && !e.shiftKey && data.progress.activeTool === "highlight") {
           if (digit === "0") {
-            applyHighlight("#ffffff");
+            applyHighlight(TRANSPARENT_HIGHLIGHT_COLOR);
             return;
           }
           const palette = highlightPalettePages[data.progress.highlightPalettePage] ?? highlightPalettePages[0];
@@ -1567,7 +1562,7 @@ export function PuzzlePage() {
                     kind="highlight"
                     progress={data.progress}
                     onColor={applyHighlight}
-                    onWhite={() => applyHighlight("#ffffff")}
+                    onWhite={() => applyHighlight(TRANSPARENT_HIGHLIGHT_COLOR)}
                     onBackspace={handleBackspace}
                     onFlipPalette={() => {
                       const next = (data.progress.highlightPalettePage === 0 ? 1 : 0) as 0 | 1;
