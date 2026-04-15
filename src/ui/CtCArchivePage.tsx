@@ -7,7 +7,7 @@ import { type PuzzleDefinition } from "../core/model";
 import { makeInitialProgress } from "../core/scl";
 import { addPuzzleToFolder, createFolder, getPuzzle, listCompletedPuzzleKeys, listFolders, type PuzzleFolder, upsertPuzzle } from "../core/storage";
 import { loadFromSudokuPad } from "../core/sudokupad";
-import { AppBrand } from "./AppBrand";
+import { AppBrand, scrollActiveMainPageToTop } from "./AppBrand";
 import { GridCanvas } from "./GridCanvas";
 import { IconFolder, IconHome, IconImport, IconPlay, IconSettings, IconSort, IconSortAsc, IconSortDesc } from "./icons";
 import { MobileMultiSelectFilter } from "./MobileMultiSelectFilter";
@@ -112,10 +112,10 @@ const YOUTUBE_ICON_DATA_URL =
 
 const COLLECTION_NONE_VALUE = "none";
 const MOBILE_MEDIA_QUERY = "(max-width: 760px)";
-const MOBILE_VISIBLE_ROWS_INITIAL = 100;
-const MOBILE_VISIBLE_ROWS_STEP = 100;
-const DESKTOP_VISIBLE_ROWS_INITIAL = 80;
-const DESKTOP_VISIBLE_ROWS_STEP = 80;
+const MOBILE_VISIBLE_ROWS_INITIAL = 50;
+const MOBILE_VISIBLE_ROWS_STEP = 50;
+const DESKTOP_VISIBLE_ROWS_INITIAL = 50;
+const DESKTOP_VISIBLE_ROWS_STEP = 50;
 const ARCHIVE_FILTER_PREFS_KEY = "sphenpad-archive-filters-v1";
 
 const DEFAULT_ARCHIVE_FILTER_PREFS: ArchiveFilterPrefs = {
@@ -1239,6 +1239,14 @@ export function CtCArchivePage(props: { active?: boolean }) {
     startTransition(() => nav("/folders"));
   }
 
+  function navigateToArchive() {
+    if (location.pathname === "/archive") {
+      scrollActiveMainPageToTop("smooth");
+      return;
+    }
+    startTransition(() => nav("/archive"));
+  }
+
   const attachCardObserver = useCallback(
     (element: HTMLDivElement | null, entryId: string) => {
       if (!element || !observerRef.current) return;
@@ -1261,7 +1269,7 @@ export function CtCArchivePage(props: { active?: boolean }) {
             <IconFolder />
             <span>Folders</span>
           </button>
-          <button className="btn primary topbarModeTab" onClick={() => startTransition(() => nav("/archive"))} type="button">
+          <button className="btn primary topbarModeTab" onClick={navigateToArchive} type="button">
             <IconImport />
             <span>Import</span>
           </button>
@@ -1705,7 +1713,7 @@ export function CtCArchivePage(props: { active?: boolean }) {
               {!loading && hasMoreRows && (
                 <div className="row" style={{ marginTop: 10, justifyContent: "center" }}>
                   <button type="button" className="btn" onClick={onLoadMoreRows}>
-                    Load {renderConfig.visibleRowsStep} more
+                    Load 50 more
                   </button>
                 </div>
               )}
