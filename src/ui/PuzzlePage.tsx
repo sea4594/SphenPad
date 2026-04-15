@@ -162,6 +162,15 @@ function compareSymbols(a: string, b: string): number {
   return a.localeCompare(b, undefined, { sensitivity: "base" });
 }
 
+function isClearHighlightColor(color: string): boolean {
+  const normalized = color.trim().toLowerCase();
+  return normalized === "#fff"
+    || normalized === "#ffffff"
+    || normalized === "white"
+    || normalized === "clear"
+    || normalized === "transparent";
+}
+
 function isSolved(progress: PuzzleProgress, solution?: string): boolean {
   const rows = progress.cells.length;
   const cols = progress.cells[0]?.length ?? 0;
@@ -382,7 +391,7 @@ export function PuzzlePage() {
           ? (cell as { highlights?: string[] }).highlights ?? []
           : [];
         const legacy = typeof cell.color === "string" && cell.color ? [cell.color] : [];
-        const merged = Array.from(new Set([...existing, ...legacy])).slice(0, 18);
+        const merged = Array.from(new Set([...existing, ...legacy].filter((color) => !isClearHighlightColor(color)))).slice(0, 18);
         return {
           ...cell,
           highlights: merged,
@@ -934,6 +943,18 @@ export function PuzzlePage() {
     if (!data) return;
     const selected = data.progress.selection;
     if (!selected.length) return;
+    if (isClearHighlightColor(color)) {
+      const clearPatches = selected
+        .map((rc) => {
+          const cur = data.progress.cells[rc.r][rc.c].highlights ?? [];
+          if (!cur.length) return null;
+          return patchAt(data.progress, ["cells", rc.r, rc.c, "highlights"], []);
+        })
+        .filter(Boolean) as Patch[];
+      applyPatches(clearPatches);
+      return;
+    }
+
     const allHave = selected.every((rc) => (data.progress.cells[rc.r][rc.c].highlights ?? []).includes(color));
     const patches = selected
       .map((rc) => {
