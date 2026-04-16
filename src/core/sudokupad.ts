@@ -1651,12 +1651,20 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
     const shapeRows = inferredShapeForCompactUnderlayOpacity.rows;
     const shapeCols = inferredShapeForCompactUnderlayOpacity.cols;
     const hasShapeBounds = Number.isFinite(shapeRows) && shapeRows > 0 && Number.isFinite(shapeCols) && shapeCols > 0;
-    const hasCellLikeSize = Number.isFinite(width) && width > 0 && width <= 1.05 && Number.isFinite(height) && height > 0 && height <= 1.05;
+    const widthValue = Number.isFinite(width) ? Number(width) : undefined;
+    const heightValue = Number.isFinite(height) ? Number(height) : undefined;
+    const hasCellLikeSize =
+      widthValue != null &&
+      widthValue > 0 &&
+      widthValue <= 1.05 &&
+      heightValue != null &&
+      heightValue > 0 &&
+      heightValue <= 1.05;
     const inGridBounds = hasShapeBounds && hasCellLikeSize
-      ? ct.x - (width as number) / 2 >= 0 &&
-        ct.y - (height as number) / 2 >= 0 &&
-        ct.x + (width as number) / 2 <= shapeCols &&
-        ct.y + (height as number) / 2 <= shapeRows
+      ? ct.x - (widthValue as number) / 2 >= 0 &&
+        ct.y - (heightValue as number) / 2 >= 0 &&
+        ct.x + (widthValue as number) / 2 <= shapeCols &&
+        ct.y + (heightValue as number) / 2 <= shapeRows
       : false;
     const hasText = text != null && String(text).trim().length > 0;
     const useCompactDefaultFillOpacity =
