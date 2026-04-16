@@ -801,9 +801,15 @@ export function GridCanvas(props: {
     };
 
     const drawGridLines = () => {
-      if (def.cosmetics.gridVisible === false) return;
       const thinGridLine = scaledCosmeticPx(1.0, { previewMin: 0.45, normalMin: 0.9 });
       const thickGridLine = scaledCosmeticPx(2.2, { previewMin: 0.9, normalMin: 1.8 });
+      if (def.cosmetics.gridVisible === false) {
+        if (hasImportedRegionBoundaries) {
+          ctx.strokeStyle = "#000000";
+          drawRegionBoundaries(thickGridLine);
+        }
+        return;
+      }
       ctx.strokeStyle = "#000000";
       for (let i = 0; i <= rows; i++) {
         ctx.lineWidth = thinGridLine;
