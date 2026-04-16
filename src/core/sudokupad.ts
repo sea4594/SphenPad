@@ -548,6 +548,20 @@ function cubicAt(p0: number, p1: number, p2: number, p3: number, t: number) {
   return mt * mt * mt * p0 + 3 * mt * mt * t * p1 + 3 * mt * t * t * p2 + t * t * t * p3;
 }
 
+function quadraticAt(p0: number, p1: number, p2: number, t: number) {
+  const mt = 1 - t;
+  return mt * mt * p0 + 2 * mt * t * p1 + t * t * p2;
+}
+
+function normalizeSvgPathData(pathData: string): string {
+  const normalized = pathData
+    .replace(/,/g, " ")
+    .replace(/([AaCcHhLlMmQqSsTtVvZz])/g, " $1 ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return normalized.length ? normalized : pathData;
+}
+
 function parseSvgPathToWayPoints(pathData: string, pxPerCell = 64): Array<{ x: number; y: number }> {
   const tokens = pathData.match(/[a-zA-Z]|-?\d*\.?\d+(?:e[-+]?\d+)?/g);
   if (!tokens?.length) return [];
@@ -636,6 +650,34 @@ function parseSvgPathToWayPoints(pathData: string, pxPerCell = 64): Array<{ x: n
         }
         cx = p3x;
         cy = p3y;
+      }
+      continue;
+    }
+
+    if (cmd === "Q" || cmd === "q") {
+      while (i + 3 < tokens.length && isNum(tokens[i]) && isNum(tokens[i + 1]) && isNum(tokens[i + 2]) && isNum(tokens[i + 3])) {
+        const x1 = readNum(i);
+        const y1 = readNum(i + 1);
+        const x2 = readNum(i + 2);
+        const y2 = readNum(i + 3);
+        i += 4;
+        if (![x1, y1, x2, y2].every(Number.isFinite)) break;
+        const p0x = cx;
+        const p0y = cy;
+        const p1x = cmd === "q" ? cx + x1 : x1;
+        const p1y = cmd === "q" ? cy + y1 : y1;
+        const p2x = cmd === "q" ? cx + x2 : x2;
+        const p2y = cmd === "q" ? cy + y2 : y2;
+        const steps = 10;
+        for (let step = 1; step <= steps; step++) {
+          const t = step / steps;
+          out.push({
+            x: toGrid(quadraticAt(p0x, p1x, p2x, t)),
+            y: toGrid(quadraticAt(p0y, p1y, p2y, t)),
+          });
+        }
+        cx = p2x;
+        cy = p2y;
       }
       continue;
     }
@@ -1420,7 +1462,8 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
           ? parseCellRefs(Array.isArray(ln.lines[0]) ? ln.lines[0] : ln.lines)
           : parseCellRefs(ln?.cells ?? ln?.ce);
         const lineRefPoints = lineCellRefs.map((rc) => ({ x: rc.c + 0.5, y: rc.r + 0.5 }));
-        const svgPathData = typeof ln?.d2 === "string" ? ln.d2 : typeof ln?.d === "string" ? ln.d : undefined;
+        const svgPathDataRaw = typeof ln?.d2 === "string" ? ln.d2 : typeof ln?.d === "string" ? ln.d : undefined;
+        const svgPathData = typeof svgPathDataRaw === "string" ? normalizeSvgPathData(svgPathDataRaw) : undefined;
         const svgPathPoints = typeof svgPathData === "string"
           ? parseSvgPathToWayPoints(svgPathData, Number(scl?.cellSize) || 64)
           : [];
