@@ -1017,10 +1017,10 @@ export function GridCanvas(props: {
     };
 
     const drawConstraintLine = (ln: NonNullable<PuzzleDefinition["cosmetics"]["lines"]>[number]) => {
-      if (ln.wayPoints.length < 2) return;
+      const hasSvgPath = typeof ln.svgPathData === "string" && ln.svgPathData.length > 0;
+      if (!hasSvgPath && ln.wayPoints.length < 2) return;
       const lineOpacity = Number.isFinite(ln.opacity) ? Math.max(0, Math.min(1, Number(ln.opacity))) : 1;
 
-      const hasSvgPath = typeof ln.svgPathData === "string" && ln.svgPathData.length > 0;
       if (hasSvgPath) {
         const units = Number(ln.svgUnitsPerCell) || cosmeticUnit;
         const path = new Path2D(ln.svgPathData as string);

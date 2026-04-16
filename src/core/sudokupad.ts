@@ -1429,7 +1429,7 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
           : lineRefPoints.length >= 2
             ? lineRefPoints
             : svgPathPoints;
-        if (wayPoints.length < 2) return null;
+        if (wayPoints.length < 2 && !svgPathData) return null;
         const strokeToken = normalizeColorToken(ln?.color ?? ln?.lineColor ?? ln?.stroke ?? ln?.outlineC ?? ln?.c);
         const fillToken = normalizeColorToken(ln?.fill ?? ln?.backgroundColor ?? ln?.c2);
         const closedByShape = wayPoints.length > 2 && pointsAlmostEqual(wayPoints[0] as { x: number; y: number }, wayPoints[wayPoints.length - 1] as { x: number; y: number });
