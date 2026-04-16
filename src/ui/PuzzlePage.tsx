@@ -509,7 +509,24 @@ export function PuzzlePage() {
     (async () => {
       try {
         const loaded = await loadFromSudokuPad(source);
-        const nextDef = loaded.def;
+        // Preserve archive-specific meta that loadFromSudokuPad does not populate.
+        const oldMeta = data.def.meta ?? {};
+        const preservedArchiveMeta: Record<string, unknown> = {};
+        for (const field of [
+          "archiveConstraints",
+          "archiveVideoTitle",
+          "archiveVideoDate",
+          "archiveVideoLengthSeconds",
+          "archiveVideoHost",
+          "archiveYouTubeUrl",
+          "archiveSudokuPadUrl",
+        ] as const) {
+          if (oldMeta[field] !== undefined) preservedArchiveMeta[field] = oldMeta[field];
+        }
+        const nextDef = {
+          ...loaded.def,
+          meta: { ...loaded.def.meta, ...preservedArchiveMeta },
+        };
         const migratedProgress = migrateProgressToDefinition(data, nextDef);
         const next: PersistedPuzzle = {
           ...data,
@@ -526,6 +543,60 @@ export function PuzzlePage() {
         // Keep existing cached definition if refresh fails.
       } finally {
         definitionRefreshInFlightRef.current.delete(refreshKey);
+      }
+    })();
+  }, [data, key]);
+
+  // Recovery: if a puzzle is missing archive meta (e.g. wiped by a prior definition refresh),
+  // look it up in the archive manifest and silently restore the fields.
+  const archiveMetaRecoveryInFlightRef = useRef(new Set<string>());
+  useEffect(() => {
+    if (!data) return;
+    const meta = data.def.meta ?? {};
+    // Skip if archive meta already present.
+    if (meta.archiveConstraints !== undefined || meta.archiveYouTubeUrl !== undefined) return;
+
+    const puzzleKey = key;
+    if (archiveMetaRecoveryInFlightRef.current.has(puzzleKey)) return;
+    archiveMetaRecoveryInFlightRef.current.add(puzzleKey);
+
+    (async () => {
+      try {
+        const res = await fetch(`${import.meta.env.BASE_URL}archive/archive-manifest.json`);
+        if (!res.ok) return;
+        const manifest = await res.json() as { entries: Array<Record<string, unknown>> };
+        const entry = manifest.entries.find((e) => {
+          const stableKey = typeof e.stableKey === "string" ? e.stableKey : "";
+          const sourceId = typeof e.sourceId === "string" ? e.sourceId.trim() : "";
+          return stableKey === puzzleKey || sourceId === puzzleKey;
+        });
+        if (!entry) return;
+
+        const rawConstraints = typeof entry.subTypeConstraints === "string" ? entry.subTypeConstraints : "";
+        const constraints = rawConstraints.split(";").map((s) => s.trim()).filter(Boolean);
+        const clean = (v: unknown) => (typeof v === "string" ? v.trim() : "");
+        const nextMeta = {
+          ...meta,
+          ...(clean(entry.collection) ? { collection: clean(entry.collection) } : {}),
+          archiveConstraints: constraints,
+          archiveVideoTitle: clean(entry.videoTitle),
+          archiveVideoDate: clean(entry.videoDate),
+          archiveVideoLengthSeconds: typeof entry.videoLengthSeconds === "number" ? entry.videoLengthSeconds : null,
+          archiveVideoHost: clean(entry.videoHost),
+          archiveYouTubeUrl: clean(entry.youtubeUrl),
+          archiveSudokuPadUrl: clean(entry.sudokuPadUrl),
+        };
+        const next: PersistedPuzzle = {
+          ...data,
+          def: { ...data.def, meta: nextMeta },
+          updatedAt: Date.now(),
+        };
+        setData(next);
+        await upsertPuzzle(key, next);
+      } catch {
+        // Ignore; archive manifest may not exist in non-archive builds.
+      } finally {
+        archiveMetaRecoveryInFlightRef.current.delete(puzzleKey);
       }
     })();
   }, [data, key]);

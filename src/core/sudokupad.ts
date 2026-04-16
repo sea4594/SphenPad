@@ -1212,6 +1212,7 @@ function extractGivens(scl: any): Array<{ rc: CellRC; v: string }> {
 
 function extractCosmetics(scl: any): PuzzleCosmetics {
   const cosmetics: PuzzleCosmetics = {};
+  const inferredShapeForCompactUnderlayOpacity = inferPuzzleShape(scl, extractGivens(scl));
   let renderOrder = 0;
   const nextRenderOrder = () => {
     const order = renderOrder;
@@ -1647,6 +1648,21 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
     const fillColor = normalizeColorToken(item?.backgroundColor ?? item?.c2 ?? item?.fill);
     const parsedOpacity = parseOpacityToken(item?.opacity ?? item?.alpha ?? item?.a);
     const defaultFillOpacity = options?.defaultFillOpacity;
+    const shapeRows = inferredShapeForCompactUnderlayOpacity.rows;
+    const shapeCols = inferredShapeForCompactUnderlayOpacity.cols;
+    const hasShapeBounds = Number.isFinite(shapeRows) && shapeRows > 0 && Number.isFinite(shapeCols) && shapeCols > 0;
+    const hasCellLikeSize = Number.isFinite(width) && width > 0 && width <= 1.05 && Number.isFinite(height) && height > 0 && height <= 1.05;
+    const inGridBounds = hasShapeBounds && hasCellLikeSize
+      ? ct.x - (width as number) / 2 >= 0 &&
+        ct.y - (height as number) / 2 >= 0 &&
+        ct.x + (width as number) / 2 <= shapeCols &&
+        ct.y + (height as number) / 2 <= shapeRows
+      : false;
+    const hasText = text != null && String(text).trim().length > 0;
+    const useCompactDefaultFillOpacity =
+      fillColor != null &&
+      defaultFillOpacity != null &&
+      (hasShapeBounds ? inGridBounds && !hasText : true);
     const dashArray = parseDashArrayToken(item?.["stroke-dasharray"], item?.strokeDasharray, item?.dashArray, item?.dash);
     const lineCap = parseLineCapToken(item?.["stroke-linecap"], item?.strokeLinecap, item?.lineCap);
     const lineJoin = parseLineJoinToken(item?.["stroke-linejoin"], item?.strokeLinejoin, item?.lineJoin);
@@ -1676,7 +1692,7 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
       role: typeof item?.role === "string" ? item.role : undefined,
       angle: parseFiniteNumberToken(item?.angle),
       target: typeof item?.target === "string" ? item.target : undefined,
-      opacity: parsedOpacity ?? (fillColor && defaultFillOpacity != null ? defaultFillOpacity : undefined),
+      opacity: parsedOpacity ?? (useCompactDefaultFillOpacity ? defaultFillOpacity : undefined),
       renderOrder: nextRenderOrder(),
     };
   };
