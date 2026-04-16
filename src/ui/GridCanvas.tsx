@@ -784,13 +784,13 @@ export function GridCanvas(props: {
             ctx.lineTo(cellX(c), cellY(r + 1));
             ctx.stroke();
           }
-          if (r === rows - 1) {
+          if (regionByCell.get(`${r + 1},${c}`) !== id) {
             ctx.beginPath();
             ctx.moveTo(cellX(c), cellY(r + 1));
             ctx.lineTo(cellX(c + 1), cellY(r + 1));
             ctx.stroke();
           }
-          if (c === cols - 1) {
+          if (regionByCell.get(`${r},${c + 1}`) !== id) {
             ctx.beginPath();
             ctx.moveTo(cellX(c + 1), cellY(r));
             ctx.lineTo(cellX(c + 1), cellY(r + 1));
