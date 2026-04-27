@@ -110,28 +110,42 @@ function hasTransparency(color: string): boolean {
   return Number.isFinite(alpha) && alpha < 1;
 }
 
-function pickFogColorFromOverlays(def: PuzzleDefinition): string {
-  const counts = new Map<string, number>();
-  const add = (color: string | undefined, target: string | undefined) => {
-    const c = color?.trim();
-    if (!c || !hasTransparency(c)) return;
-    const t = (target ?? "").toLowerCase();
-    if (!/(^|[^a-z])(over|overlay|front|foreground|above|top)([^a-z]|$)/.test(t)) return;
-    counts.set(c, (counts.get(c) ?? 0) + 1);
-  };
-
-  for (const ln of def.cosmetics.lines ?? []) add(ln.color, ln.target);
-  for (const arrow of def.cosmetics.arrows ?? []) add(arrow.color, arrow.target);
-
-  let bestColor = "";
-  let bestCount = 0;
-  for (const [color, count] of counts.entries()) {
-    if (count > bestCount) {
-      bestCount = count;
-      bestColor = color;
-    }
+function parseColorToRgba(color: string): { r: number; g: number; b: number; a: number } | null {
+  const s = color.trim();
+  const hex = s.startsWith("#") ? s.slice(1) : s;
+  if (/^[0-9a-f]{8}$/i.test(hex)) {
+    const r = Number.parseInt(hex.slice(0, 2), 16);
+    const g = Number.parseInt(hex.slice(2, 4), 16);
+    const b = Number.parseInt(hex.slice(4, 6), 16);
+    const a = Number.parseInt(hex.slice(6, 8), 16) / 255;
+    return { r, g, b, a };
   }
-  return bestColor || DEFAULT_FOG_FILL_COLOR;
+  if (/^[0-9a-f]{6}$/i.test(hex)) {
+    const r = Number.parseInt(hex.slice(0, 2), 16);
+    const g = Number.parseInt(hex.slice(2, 4), 16);
+    const b = Number.parseInt(hex.slice(4, 6), 16);
+    return { r, g, b, a: 1 };
+  }
+  const rgba = s.match(/^rgba\(\s*([0-9]+)\s*,\s*([0-9]+)\s*,\s*([0-9]+)\s*,\s*([0-9]*\.?[0-9]+)\s*\)$/i);
+  if (!rgba) return null;
+  const r = Number(rgba[1]);
+  const g = Number(rgba[2]);
+  const b = Number(rgba[3]);
+  const a = Number(rgba[4]);
+  if (![r, g, b, a].every(Number.isFinite)) return null;
+  return { r, g, b, a };
+}
+
+function isFogLikeOverlayColor(color: string | undefined): boolean {
+  const c = color?.trim();
+  if (!c || !hasTransparency(c)) return false;
+  const rgba = parseColorToRgba(c);
+  if (!rgba) return false;
+  const maxChannel = Math.max(rgba.r, rgba.g, rgba.b);
+  const minChannel = Math.min(rgba.r, rgba.g, rgba.b);
+  const neutral = maxChannel - minChannel <= 18;
+  const bright = (rgba.r + rgba.g + rgba.b) / 3 >= 220;
+  return neutral && bright;
 }
 
 export function GridCanvas(props: {
@@ -1484,14 +1498,14 @@ export function GridCanvas(props: {
     const drawExplicitTopLineFeatures = () => {
       const maxOrder = Number.MAX_SAFE_INTEGER;
       const topLines = (def.cosmetics.lines ?? [])
-        .filter((ln) => (ln.wayPoints.length >= 2 || Boolean(ln.svgPathData)) && hasExplicitOverTarget(ln.target))
+        .filter((ln) => (ln.wayPoints.length >= 2 || Boolean(ln.svgPathData)) && hasExplicitOverTarget(ln.target) && isFogLikeOverlayColor(ln.color))
         .map((ln) => ({ order: ln.renderOrder ?? maxOrder, ln }))
         .sort((a, b) => a.order - b.order)
         .map((entry) => entry.ln);
       for (const ln of topLines) drawConstraintLine(ln);
 
       const topArrows = (def.cosmetics.arrows ?? [])
-        .filter((arrow) => hasExplicitOverTarget(arrow.target))
+        .filter((arrow) => hasExplicitOverTarget(arrow.target) && isFogLikeOverlayColor(arrow.color))
         .map((arrow) => ({ order: arrow.renderOrder ?? maxOrder, arrow }))
         .sort((a, b) => a.order - b.order)
         .map((entry) => entry.arrow);
@@ -1970,7 +1984,7 @@ export function GridCanvas(props: {
     }
 
     if (fogDefined) {
-      ctx.fillStyle = pickFogColorFromOverlays(def);
+      ctx.fillStyle = DEFAULT_FOG_FILL_COLOR;
       for (let r = 0; r < rows; r++) {
         for (let c = 0; c < cols; c++) {
           if (lit[r][c]) continue;
