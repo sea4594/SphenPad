@@ -1,8 +1,8 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 
-import { startTransition, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, startTransition, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
-import { getPuzzle, upsertPuzzle } from "../core/storage";
+import { addPuzzleToFolder, createFolder, getPuzzle, listFolders, type PuzzleFolder, upsertPuzzle } from "../core/storage";
 import type { CellRC, PersistedPuzzle, PuzzleProgress, LineStroke, PuzzleDefinition } from "../core/model";
 import { fmtHMS } from "../core/time";
 import { makeInitialProgress } from "../core/scl";
@@ -16,6 +16,7 @@ import { Keyboard } from "./Keyboard";
 import { GridCanvas } from "./GridCanvas";
 import {
   IconCheck,
+  IconFolder,
   IconPause,
   IconPlay,
   IconCopyLink,
@@ -351,6 +352,20 @@ function normalizePersistedDefinition(p: PersistedPuzzle): PersistedPuzzle {
   };
 }
 
+function buildFolderPath(folder: PuzzleFolder, folderById: Map<string, PuzzleFolder>): string {
+  const names: string[] = [folder.name];
+  const seen = new Set<string>([folder.id]);
+  let cursor = folder.parentId ? folderById.get(folder.parentId) ?? null : null;
+
+  while (cursor && !seen.has(cursor.id)) {
+    names.unshift(cursor.name);
+    seen.add(cursor.id);
+    cursor = cursor.parentId ? folderById.get(cursor.parentId) ?? null : null;
+  }
+
+  return names.join(" / ");
+}
+
 export function PuzzlePage() {
   const { puzzleId } = useParams();
   const key = decodeURIComponent(puzzleId ?? "");
@@ -372,6 +387,11 @@ export function PuzzlePage() {
   const [checkResult, setCheckResult] = useState<boolean | null>(null);
   const [restartPromptOpen, setRestartPromptOpen] = useState(false);
   const [reloadingPuzzle, setReloadingPuzzle] = useState(false);
+  const [folders, setFolders] = useState<PuzzleFolder[]>([]);
+  const [addToFolderOpen, setAddToFolderOpen] = useState(false);
+  const [addFolderNavId, setAddFolderNavId] = useState<string | null>(null);
+  const [addToFolderBusy, setAddToFolderBusy] = useState("");
+  const [folderCreateBusy, setFolderCreateBusy] = useState("");
   const [boardReloadNonce, setBoardReloadNonce] = useState(0);
   const tickRef = useRef<number | null>(null);
   const holdDelayRef = useRef<number | null>(null);
@@ -547,6 +567,15 @@ export function PuzzlePage() {
     })();
   }, [data, key]);
 
+  async function refreshFolders() {
+    const nextFolders = await listFolders();
+    setFolders(nextFolders);
+  }
+
+  useEffect(() => {
+    void refreshFolders();
+  }, []);
+
   // Recovery: if a puzzle is missing archive meta (e.g. wiped by a prior definition refresh),
   // look it up in the archive manifest and silently restore the fields.
   const archiveMetaRecoveryInFlightRef = useRef(new Set<string>());
@@ -634,6 +663,35 @@ export function PuzzlePage() {
 
   const meta = data?.def.meta;
   const timeStr = useMemo(() => fmtHMS(data?.progress.totalMillis ?? 0), [data?.progress.totalMillis]);
+  const folderById = useMemo(() => new Map(folders.map((folder) => [folder.id, folder])), [folders]);
+  const addFolderNav = addFolderNavId ? folderById.get(addFolderNavId) ?? null : null;
+  const addFolderTrail = useMemo(() => {
+    const out: PuzzleFolder[] = [];
+    if (!addFolderNavId) return out;
+
+    const seen = new Set<string>();
+    let cursor: PuzzleFolder | null = folderById.get(addFolderNavId) ?? null;
+    while (cursor && !seen.has(cursor.id)) {
+      out.unshift(cursor);
+      seen.add(cursor.id);
+      cursor = cursor.parentId ? folderById.get(cursor.parentId) ?? null : null;
+    }
+    return out;
+  }, [addFolderNavId, folderById]);
+  const addDialogChildFolders = useMemo(() => {
+    return [...folders]
+      .filter((folder) => (folder.parentId ?? null) === addFolderNavId)
+      .sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
+  }, [folders, addFolderNavId]);
+  const selectedPuzzleFolderIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const folder of folders) {
+      if (folder.puzzleKeys.includes(key)) ids.add(folder.id);
+    }
+    return ids;
+  }, [folders, key]);
+  const canAddToCurrentFolder = Boolean(addFolderNav);
+  const isCurrentFolderAlreadyAdded = addFolderNav ? selectedPuzzleFolderIds.has(addFolderNav.id) : false;
 
   function applyPatches(patches: Patch[], opts?: { recordHistory?: boolean }) {
     if (!data || !patches.length) return;
@@ -906,6 +964,57 @@ export function PuzzlePage() {
     patches.push(patchAt(data.progress, ["paused"], false));
     applyPatches(patches, { recordHistory: false });
     setPauseMenuOpen(false);
+  }
+
+  function onOpenAddToFolderDialog() {
+    setAddToFolderOpen(true);
+    setAddFolderNavId(null);
+    setAddToFolderBusy("");
+    setPauseMenuOpen(false);
+    void refreshFolders();
+  }
+
+  async function onAddPuzzleToExistingFolder(folderId: string) {
+    setAddToFolderBusy("Adding puzzle to folder...");
+    try {
+      await addPuzzleToFolder(folderId, key);
+      await refreshFolders();
+      setAddToFolderOpen(false);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      alert(msg);
+    } finally {
+      setAddToFolderBusy("");
+    }
+  }
+
+  function onCreateFolderInAddDialog() {
+    if (folderCreateBusy) return;
+    const parentLabel = addFolderNav
+      ? buildFolderPath(addFolderNav, folderById)
+      : "Top-level folders";
+    const input = window.prompt(`Create folder\nParent: ${parentLabel}\n\nFolder name:`);
+    if (input == null) return;
+
+    const folderName = input.trim();
+    if (!folderName) {
+      alert("Folder name cannot be empty.");
+      return;
+    }
+
+    setFolderCreateBusy("Creating folder...");
+    void (async () => {
+      try {
+        const created = await createFolder(folderName, addFolderNavId ?? null);
+        await refreshFolders();
+        setAddFolderNavId(created.id);
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : String(e);
+        alert(msg);
+      } finally {
+        setFolderCreateBusy("");
+      }
+    })();
   }
 
   function onPausePlayClick() {
@@ -1666,8 +1775,100 @@ export function PuzzlePage() {
           started={Boolean(data.progress.startedAt)}
           onStart={startOrResume}
           onResume={startOrResume}
+          onAddToFolder={onOpenAddToFolderDialog}
         />
       )}
+
+      {addToFolderOpen ? (
+        <div className="overlayBackdrop" onClick={() => setAddToFolderOpen(false)}>
+          <div
+            className="card folderPickerCard"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Add puzzle to folder"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
+              <div className="menuSectionTitle">Add to folder</div>
+              <button className="btn" onClick={() => setAddToFolderOpen(false)} type="button">Close</button>
+            </div>
+            <div className="muted" style={{ marginTop: 4, overflowWrap: "anywhere" }}>
+              {data.def?.meta?.title || "(untitled)"}
+            </div>
+
+            <div className="row folderBreadcrumbRow folderBreadcrumbTrail" style={{ marginTop: 10 }}>
+              {[{ id: null, name: "Top Level" }, ...addFolderTrail].map((folder, index) => (
+                <Fragment key={`pause-add-trail-${folder.id ?? "top-level"}`}>
+                  {index > 0 ? <span className="folderBreadcrumbSeparator" aria-hidden="true">-&gt;</span> : null}
+                  <button
+                    className={`folderBreadcrumbLink ${addFolderNavId === folder.id ? "is-active" : ""}`}
+                    onClick={() => setAddFolderNavId(folder.id)}
+                    type="button"
+                  >
+                    {folder.name}
+                  </button>
+                </Fragment>
+              ))}
+            </div>
+
+            <div className="addFolderDialogBody">
+              <div className="row" style={{ justifyContent: "flex-end", alignItems: "center" }}>
+                <div className="row" style={{ justifyContent: "flex-end" }}>
+                  <button
+                    className="btn"
+                    onClick={onCreateFolderInAddDialog}
+                    disabled={!!folderCreateBusy}
+                    type="button"
+                  >
+                    New Folder
+                  </button>
+                </div>
+              </div>
+
+              <div className="menuPuzzleList addFolderNavigatorList" style={{ marginTop: 10 }}>
+                {addDialogChildFolders.map((folder) => {
+                  return (
+                    <button
+                      key={`pause-add-folder-nav-${folder.id}`}
+                      className="card folderBrowserItem"
+                      onClick={() => setAddFolderNavId(folder.id)}
+                      type="button"
+                    >
+                      <div className="row" style={{ gap: 6, alignItems: "flex-start" }}>
+                        <IconFolder />
+                        <div style={{ fontWeight: 700, overflowWrap: "anywhere" }}>{folder.name}</div>
+                      </div>
+                    </button>
+                  );
+                })}
+                {!addDialogChildFolders.length ? (
+                  <div className="muted">No folders in this location.</div>
+                ) : null}
+              </div>
+
+              <div className="muted addFolderBusyLine">{addToFolderBusy || "\u00A0"}</div>
+
+              <div className="row addFolderDialogFooter">
+                <button
+                  className={`btn ${canAddToCurrentFolder && !isCurrentFolderAlreadyAdded ? "primary" : ""}`}
+                  onClick={() => {
+                    if (!addFolderNav) return;
+                    void onAddPuzzleToExistingFolder(addFolderNav.id);
+                  }}
+                  disabled={!canAddToCurrentFolder || isCurrentFolderAlreadyAdded || !!addToFolderBusy}
+                  type="button"
+                >
+                  {isCurrentFolderAlreadyAdded
+                    ? "Already Added"
+                    : addToFolderBusy
+                      ? "Adding..."
+                      : "Add Here"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {completionOpen && (
         <CompletionOverlay

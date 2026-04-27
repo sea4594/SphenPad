@@ -2,6 +2,7 @@ import { useCallback, useEffect } from "react";
 import type { PuzzleDefinition, PuzzleMeta } from "../core/model";
 import { makeInitialProgress } from "../core/scl";
 import { GridCanvas } from "./GridCanvas";
+import { LinkifiedText } from "./LinkifiedText";
 
 export function PauseOverlay(props: {
   def: PuzzleDefinition;
@@ -10,8 +11,9 @@ export function PauseOverlay(props: {
   started: boolean;
   onStart: () => void;
   onResume: () => void;
+  onAddToFolder: () => void;
 }) {
-  const { def, meta, started, onResume, onStart } = props;
+  const { def, meta, started, onResume, onStart, onAddToFolder } = props;
   const clean = (value: string | null | undefined) => (value ?? "").trim();
   const formatDurationHm = (seconds: number | null | undefined): string => {
     if (seconds == null || seconds < 0) return "~";
@@ -73,8 +75,17 @@ export function PauseOverlay(props: {
             className="btn primary"
             style={{ width: "100%", marginBottom: 12, flexShrink: 0, height: 44, display: started ? "none" : undefined }}
             onClick={props.onStart}
+            type="button"
           >
             Start
+          </button>
+          <button
+            className="btn"
+            style={{ width: "100%", marginBottom: 12, flexShrink: 0, height: 44 }}
+            onClick={onAddToFolder}
+            type="button"
+          >
+            Add to Folder
           </button>
           <div className="archiveRulesPreview" aria-label="Puzzle preview">
             <GridCanvas
@@ -92,9 +103,10 @@ export function PauseOverlay(props: {
 
           <div style={{ marginTop: 12 }}>
             <div style={{ fontWeight: 700, marginBottom: 6 }}>Instructions</div>
-            <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.45 }}>
-              {meta?.rules || "No instructions found in metadata."}
-            </div>
+            <LinkifiedText
+              className="linkifiedText"
+              text={meta?.rules || "No instructions found in metadata."}
+            />
             {typeof meta?.solveCount === "number" ? (
               <div className="muted" style={{ marginTop: 10 }}>SudokuPad solves: {meta.solveCount.toLocaleString()}</div>
             ) : null}

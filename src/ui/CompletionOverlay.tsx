@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import type { PuzzleMeta } from "../core/model";
+import { LinkifiedText } from "./LinkifiedText";
 
 type CompletionOverlayProps = {
   meta?: PuzzleMeta;
@@ -34,7 +35,7 @@ export function CompletionOverlay(props: CompletionOverlayProps) {
         ) : null}
 
         <div className="card" style={{ marginTop: 14 }}>
-          <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.45 }}>{message}</div>
+          <LinkifiedText className="linkifiedText" text={message} />
         </div>
 
         <button className="btn primary" style={{ width: "100%", marginTop: 14 }} onClick={onClose}>

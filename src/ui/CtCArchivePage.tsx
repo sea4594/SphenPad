@@ -1729,49 +1729,157 @@ export function CtCArchivePage(props: { active?: boolean }) {
       {rulesDialogEntry ? (
         <div className="overlayBackdrop" onClick={() => (!rulesDialogBusy ? setRulesDialogEntry(null) : null)}>
           <div
-            className="card archiveRulesDialog"
+            className="card archiveRulesDialog pauseOverlayCard"
             role="dialog"
             aria-modal="true"
             aria-label="Puzzle rules"
             onClick={(event) => event.stopPropagation()}
           >
-            <button
-              className="btn archiveRulesClose"
-              onClick={() => setRulesDialogEntry(null)}
-              type="button"
-              aria-label="Close rules"
-            >
-              x
-            </button>
-            <div className="menuSectionTitle" style={{ marginRight: 28 }}>
-              {clean(rulesDialogEntry.title) || "(untitled)"}
-            </div>
-            <div className="muted" style={{ marginTop: 6, overflowWrap: "anywhere" }}>
-              {clean(rulesDialogEntry.puzzleAuthor) || "Unknown author"}
-            </div>
-            <div className="archiveRulesPreview" aria-label="Puzzle preview">
-              {previewedPuzzles.get(rulesDialogEntry.id) ? (
-                <GridCanvas
-                  def={previewedPuzzles.get(rulesDialogEntry.id)!}
-                  progress={makeInitialProgress(previewedPuzzles.get(rulesDialogEntry.id)!)}
-                  onSelection={() => {}}
-                  onLineStroke={() => {}}
-                  onLineTapCell={() => {}}
-                  onLineTapEdge={() => {}}
-                  onDoubleCell={() => {}}
-                  interactive={false}
-                  previewMode
-                />
-              ) : (
-                <div className="archiveRulesPreviewFallback muted">
-                  {rulesDialogBusy ? "Loading puzzle..." : "Puzzle preview unavailable."}
+            <div className="pauseOverlayHeader">
+              <div className="row" style={{ justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "nowrap" }}>
+                <div style={{ fontWeight: 800, fontSize: 22, minWidth: 0, overflowWrap: "anywhere" }}>
+                  {clean(rulesDialogEntry.title) || "(untitled)"}
                 </div>
-              )}
+                <button
+                  className="btn archiveRulesClose"
+                  onClick={() => setRulesDialogEntry(null)}
+                  type="button"
+                  aria-label="Close rules"
+                  style={{ width: 32, height: 32, minHeight: 32, padding: 0, lineHeight: 1, fontSize: 16, flexShrink: 0 }}
+                >
+                  x
+                </button>
+              </div>
+              <div className="muted" style={{ marginTop: 6, overflowWrap: "anywhere" }}>
+                {clean(rulesDialogEntry.puzzleAuthor) || "Unknown author"}
+              </div>
             </div>
-            <div className="archiveRulesBody">
-              {rulesDialogBusy
-                ? "Loading rules..."
-                : (previewRulesByEntryId.get(rulesDialogEntry.id) || "No rules available.")}
+
+            <div className="pauseOverlayBody">
+              <button
+                className="btn primary"
+                style={{ width: "100%", marginBottom: 12, flexShrink: 0, height: 44 }}
+                disabled={rulesDialogBusy || importingId === rulesDialogEntry.id || importingId === `${rulesDialogEntry.id}:play` || !!importAllBusy}
+                onClick={() => {
+                  void onImportAndPlay(rulesDialogEntry);
+                }}
+                type="button"
+              >
+                Import and Play
+              </button>
+
+              <div className="archiveRulesPreview" aria-label="Puzzle preview">
+                {previewedPuzzles.get(rulesDialogEntry.id) ? (
+                  <GridCanvas
+                    def={previewedPuzzles.get(rulesDialogEntry.id)!}
+                    progress={makeInitialProgress(previewedPuzzles.get(rulesDialogEntry.id)!)}
+                    onSelection={() => {}}
+                    onLineStroke={() => {}}
+                    onLineTapCell={() => {}}
+                    onLineTapEdge={() => {}}
+                    onDoubleCell={() => {}}
+                    interactive={false}
+                    previewMode
+                  />
+                ) : (
+                  <div className="archiveRulesPreviewFallback muted">
+                    {rulesDialogBusy ? "Loading puzzle..." : "Puzzle preview unavailable."}
+                  </div>
+                )}
+              </div>
+
+              <div style={{ marginTop: 12 }}>
+                <div style={{ fontWeight: 700, marginBottom: 6 }}>Instructions</div>
+                <div className="archiveRulesBody">
+                  {rulesDialogBusy
+                    ? "Loading rules..."
+                    : (previewRulesByEntryId.get(rulesDialogEntry.id) || "No rules available.")}
+                </div>
+              </div>
+
+              <div className="card archiveEntryCard" style={{ marginTop: 12 }}>
+                <div className="archiveEntryHead">
+                  <div className="archiveEntryMain archiveDetailsGrid">
+                    {rulesDialogEntry.sudokuPadUrl ? (
+                      <a
+                        className="btn archiveOpenIcon archiveSudokuPadIcon"
+                        href={rulesDialogEntry.sudokuPadUrl}
+                        target="_blank"
+                        rel="noreferrer noopener"
+                        title="Open SudokuPad"
+                        aria-label="Open SudokuPad"
+                      >
+                        <img src={SUDOKUPAD_ICON_URL} alt="" className="archiveIconImage" />
+                      </a>
+                    ) : (
+                      <button
+                        type="button"
+                        className="btn archiveOpenIcon archiveSudokuPadIcon"
+                        disabled
+                        title="Open SudokuPad"
+                        aria-label="Open SudokuPad"
+                      >
+                        <img src={SUDOKUPAD_ICON_URL} alt="" className="archiveIconImage" />
+                      </button>
+                    )}
+
+                    <div className="archiveInfoText archivePuzzleInfo">
+                      <div className="archiveEntryTitle">
+                        {clean(rulesDialogEntry.title) || "~"}
+                        {displayCollection(rulesDialogEntry.collection) ? (
+                          <span className="archiveEntryCollection">
+                            {" "}
+                            (Collection: {displayCollection(rulesDialogEntry.collection)})
+                          </span>
+                        ) : null}
+                      </div>
+
+                      <div className="archiveMetaSmall">{clean(rulesDialogEntry.puzzleAuthor) || "~"}</div>
+
+                      {rulesDialogEntry.constraintTypes.length ? (
+                        <ul className="archiveConstraintList">
+                          {rulesDialogEntry.constraintTypes.map((constraint) => (
+                            <li key={`rules-dialog-${rulesDialogEntry.id}-${constraint}`}>{constraint}</li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <div className="archiveMetaMedium">~</div>
+                      )}
+                    </div>
+
+                    {rulesDialogEntry.youtubeUrl ? (
+                      <a
+                        className="btn archiveOpenIcon archiveYoutubeIcon"
+                        href={rulesDialogEntry.youtubeUrl}
+                        target="_blank"
+                        rel="noreferrer noopener"
+                        title="Open YouTube"
+                        aria-label="Open YouTube"
+                      >
+                        <img src={YOUTUBE_ICON_DATA_URL} alt="" className="archiveIconImage" />
+                      </a>
+                    ) : (
+                      <button
+                        type="button"
+                        className="btn archiveOpenIcon archiveYoutubeIcon"
+                        disabled
+                        title="Open YouTube"
+                        aria-label="Open YouTube"
+                      >
+                        <img src={YOUTUBE_ICON_DATA_URL} alt="" className="archiveIconImage" />
+                      </button>
+                    )}
+
+                    <div className="archiveInfoText archiveVideoInfo">
+                      <div className="archiveVideoTitle">{clean(rulesDialogEntry.videoTitle) || "~"}</div>
+                      <div className="archiveMetaSmall">{clean(rulesDialogEntry.videoDate) || "~"}</div>
+                      <div className="archiveMetaMedium">
+                        {formatDurationHm(rulesDialogEntry.videoLengthSeconds)} - {clean(rulesDialogEntry.videoHost) || "~"}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
