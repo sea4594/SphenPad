@@ -1806,8 +1806,9 @@ export function GridCanvas(props: {
           for (let c = 0; c < cols; c++) {
             const rc = { r, c };
             if (!isCorrect(rc)) continue;
-            if (progress.cells[r][c].given) addLight(rc);
-            else revealNeighborhood(rc);
+            // Match SudokuPad fog behavior: givens do not automatically reveal
+            // cells unless they are explicitly included as fog lights/triggers.
+            if (!progress.cells[r][c].given) revealNeighborhood(rc);
           }
         }
       }
