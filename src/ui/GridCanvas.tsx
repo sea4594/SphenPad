@@ -1435,52 +1435,6 @@ export function GridCanvas(props: {
       }
     };
 
-    const hasExplicitOverTarget = (target: string | undefined) => {
-      if (typeof target !== "string" || !target.trim()) return false;
-      return classifyRenderTarget(target) === "over";
-    };
-
-    const drawExplicitTopPuzzleFeatures = () => {
-      const entries: VisualLayerEntry[] = [];
-      let serial = 0;
-      const maxOrder = Number.MAX_SAFE_INTEGER;
-
-      for (const ln of def.cosmetics.lines ?? []) {
-        if (ln.wayPoints.length < 2) continue;
-        if (!hasExplicitOverTarget(ln.target)) continue;
-        entries.push({ kind: "line", item: ln, order: ln.renderOrder ?? maxOrder, serial: serial++ });
-      }
-      for (const cage of def.cosmetics.cages ?? []) {
-        if (!hasExplicitOverTarget(cage.target)) continue;
-        entries.push({ kind: "cage", item: cage, order: cage.renderOrder ?? maxOrder, serial: serial++ });
-      }
-      for (const arrow of def.cosmetics.arrows ?? []) {
-        if (!hasExplicitOverTarget(arrow.target)) continue;
-        entries.push({ kind: "arrow", item: arrow, order: arrow.renderOrder ?? maxOrder, serial: serial++ });
-      }
-      for (const dot of def.cosmetics.dots ?? []) {
-        if (!hasExplicitOverTarget(dot.target)) continue;
-        entries.push({ kind: "dot", item: dot, order: dot.renderOrder ?? maxOrder, serial: serial++ });
-      }
-      for (const layerItem of def.cosmetics.underlays ?? []) {
-        if (!hasExplicitOverTarget(layerItem.target)) continue;
-        entries.push({ kind: "layer", item: layerItem, order: layerItem.renderOrder ?? maxOrder, serial: serial++ });
-      }
-      for (const layerItem of def.cosmetics.overlays ?? []) {
-        if (!hasExplicitOverTarget(layerItem.target)) continue;
-        entries.push({ kind: "layer", item: layerItem, order: layerItem.renderOrder ?? maxOrder, serial: serial++ });
-      }
-
-      entries.sort((a, b) => a.order - b.order || a.serial - b.serial);
-      for (const entry of entries) {
-        if (entry.kind === "line") drawConstraintLine(entry.item);
-        else if (entry.kind === "cage") drawCage(entry.item);
-        else if (entry.kind === "arrow") drawArrow(entry.item);
-        else if (entry.kind === "dot") drawDot(entry.item);
-        else drawLayerItem(entry.item);
-      }
-    };
-
     // Canonical SudokuPad rendering order:
     // underlays -> highlights -> arrows/lines (arrows, lines, cages, dots by target) -> grid -> overlays
     drawVisualLayer("under");
@@ -1777,10 +1731,12 @@ export function GridCanvas(props: {
       for (const rc of def.cosmetics.fogLights ?? []) addLight(rc);
 
       const solution = def.cosmetics.solution;
-      const isCorrect = (rc: CellRC) => {
+      const isCorrect = (rc: CellRC, opts?: { includeGivens?: boolean }) => {
         if (!inBounds(rc.r, rc.c)) return false;
+        const includeGivens = opts?.includeGivens ?? true;
         const value = normalizeComparisonSymbol(progress.cells[rc.r][rc.c].value);
         if (!value) return false;
+        if (!includeGivens && Boolean(progress.cells[rc.r][rc.c].given)) return false;
         if (solution && solution.length >= rows * cols) {
           const idx = rc.r * cols + rc.c;
           const expected = normalizeComparisonSymbol(solution[idx]);
@@ -1796,8 +1752,8 @@ export function GridCanvas(props: {
         for (const effect of def.cosmetics.fogTriggerEffects ?? []) {
           const mode = effect.triggerMode;
           const satisfied = mode === "or"
-            ? effect.triggerCells.some(isCorrect)
-            : effect.triggerCells.every(isCorrect);
+            ? effect.triggerCells.some((rc) => isCorrect(rc, { includeGivens: false }))
+            : effect.triggerCells.every((rc) => isCorrect(rc, { includeGivens: false }));
           if (!satisfied) continue;
           for (const rc of effect.revealCells) addLight(rc);
         }
@@ -1994,9 +1950,6 @@ export function GridCanvas(props: {
       clipToFogVisibleAreas(lit);
       drawTopPuzzleFeatures();
       ctx.restore();
-
-      // Explicit overlay targets are intended to stay above fog.
-      drawExplicitTopPuzzleFeatures();
 
       // Keep lines/marks above highlights under fog, but behind values/letters.
       drawUserLines();
