@@ -1136,7 +1136,10 @@ export function GridCanvas(props: {
       }
       // Only render background and digit if sum is a non-empty string or a valid number (not 0 or empty)
       if (cage.sum === undefined || cage.sum === null || String(cage.sum).trim() === "") return;
-      const first = cage.cells[0];
+      const first = cage.cells
+        .slice()
+        .sort((a, b) => (a.r - b.r) || (a.c - b.c))[0];
+      if (!first) return;
       if (hasMatchingCornerLabel(cage.cells, cage.sum)) return;
       const clueCellX = cellX(first.c);
       const clueCellY = cellY(first.r);

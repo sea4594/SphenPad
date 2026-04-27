@@ -1232,6 +1232,14 @@ function extractGivens(scl: any): Array<{ rc: CellRC; v: string }> {
       if (!Array.isArray(row)) continue;
       for (let c = 0; c < row.length; c++) {
         const cell = row[c];
+        if (typeof cell === "string" && /^[1-9A-Za-z]$/.test(cell.trim())) {
+          out.push({ rc: { r, c }, v: cell.trim() });
+          continue;
+        }
+        if (typeof cell === "number" && Number.isFinite(cell) && cell > 0) {
+          out.push({ rc: { r, c }, v: String(cell) });
+          continue;
+        }
         // Only treat as a given if explicitly marked as such
         const isGiven = cell && (cell.given !== undefined || cell.g === true || cell.isGiven === true || cell.type === "given");
         if (!isGiven) continue;
@@ -1367,6 +1375,10 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
     cosmetics.cages = cagesSrc
       .map((cg: any) => {
         if (cg?.hidden === true) return null;
+        const rawValue = asValue(cg?.value ?? cg?.sum ?? cg?.v)?.trim() ?? "";
+        // Legacy fog markers can be encoded as cage values (e.g. "FOGLIGHT").
+        // They should define fog behavior, not render as visual killer clues.
+        if (/^foglight(?::|$)/i.test(rawValue)) return null;
         const cells = parseCellRefs(cg?.cells ?? cg?.ce);
         if (!cells.length) return null;
         const dashArray = parseDashArrayToken(cg?.["stroke-dasharray"], cg?.strokeDasharray, cg?.dashArray, cg?.dash);
