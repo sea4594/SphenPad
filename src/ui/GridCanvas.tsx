@@ -991,6 +991,7 @@ export function GridCanvas(props: {
     const classifyRenderTarget = (target?: string): VisualTargetLayer => {
       const t = (target ?? "").toLowerCase();
       if (/(^|[^a-z])(cell-?grids?|gridlayer)([^a-z]|$)/.test(t)) return "grid";
+      if (isCellHighlightsTarget(t)) return "arrows";
       if (/(^|[^a-z])(arrows?|line)([^a-z]|$)/.test(t)) return "arrows";
       if (/(^|[^a-z])(cages?)([^a-z]|$)/.test(t)) return "cages";
       if (/(^|[^a-z])(under|underlay|back|background|behind|below|bottom)([^a-z]|$)/.test(t)) return "under";
