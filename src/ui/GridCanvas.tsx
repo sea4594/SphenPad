@@ -1443,13 +1443,21 @@ export function GridCanvas(props: {
     };
 
     // Some puzzles intentionally place specific clue linework above fog.
-    // Restrict this pass to explicit cell-highlights target lines/arrows only.
+    // Do not promote plain `cell-highlights` by default: SudokuPad uses this
+    // target for helper linework that should still obey fog masking.
+    const hasExplicitAboveFogTarget = (target?: string) => {
+      if (typeof target !== "string" || !target.trim()) return false;
+      return /(^|[^a-z])(above-?fog|over-?fog|top-?layer|foreground)([^a-z]|$)/i.test(target);
+    };
+
+    // Restrict this pass to explicit cell-highlights target lines/arrows only
+    // when the target also requests above-fog rendering.
     const isPromotedAboveFogLine = (ln: NonNullable<PuzzleDefinition["cosmetics"]["lines"]>[number]) => {
-      return isCellHighlightsTarget(ln.target);
+      return isCellHighlightsTarget(ln.target) && hasExplicitAboveFogTarget(ln.target);
     };
 
     const isPromotedAboveFogArrow = (arrow: NonNullable<PuzzleDefinition["cosmetics"]["arrows"]>[number]) => {
-      return isCellHighlightsTarget(arrow.target);
+      return isCellHighlightsTarget(arrow.target) && hasExplicitAboveFogTarget(arrow.target);
     };
 
     const drawExplicitTopLineFeatures = () => {
