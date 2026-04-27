@@ -12,7 +12,7 @@ type LinePreviewState = { segments: LineSegmentDraft[]; kind: LineKindResolved; 
 type LayerItem = NonNullable<PuzzleDefinition["cosmetics"]["underlays"]>[number];
 const LINE_NODE_DIAMETER = 1;
 const LINE_NODE_RADIUS = LINE_NODE_DIAMETER / 2;
-const DEFAULT_FOG_FILL_COLOR = "#FFFFFF44";
+const DEFAULT_FOG_FILL_COLOR = "#afafaf";
 const TWEMOJI_OPTIONS = {
   base: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/",
   folder: "svg",
