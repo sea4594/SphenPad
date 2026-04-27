@@ -1942,12 +1942,9 @@ export function GridCanvas(props: {
         drawGridLines();
       }
 
-      // Keep top puzzle feature layers above the grid under fog.
-      // Within the board, show them only in lit cells; outside the board, keep them visible.
-      ctx.save();
-      clipToFogVisibleAreas(lit);
+      // Keep top puzzle feature layers above the grid and fog.
+      // These are explicit overlay targets and should remain visible.
       drawTopPuzzleFeatures();
-      ctx.restore();
 
       // Keep lines/marks above highlights under fog, but behind values/letters.
       drawUserLines();
@@ -1961,7 +1958,6 @@ export function GridCanvas(props: {
 
           const valueSymbol = normalizeSymbol(cell.value);
           if (valueSymbol) {
-            if (cell.given && !lit[r][c]) continue;
             ctx.fillStyle = hasBigValuePeer(r, c, valueSymbol)
               ? conflictColor
               : cell.given

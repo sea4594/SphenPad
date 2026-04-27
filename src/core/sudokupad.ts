@@ -1240,14 +1240,21 @@ function extractGivens(scl: any): Array<{ rc: CellRC; v: string }> {
           out.push({ rc: { r, c }, v: String(cell) });
           continue;
         }
+        const value = asValue(cell?.value ?? cell?.v ?? cell?.given ?? cell?.g ?? cell?.digit ?? cell?.d);
+        if (value != null && value !== "") {
+          // Some SudokuPad payloads encode fixed clues as object cell values
+          // without explicit given flags.
+          out.push({ rc: { r, c }, v: value });
+          continue;
+        }
         // Only treat as a given if explicitly marked as such
         const isGiven = cell && (cell.given !== undefined || cell.g === true || cell.isGiven === true || cell.type === "given");
         if (!isGiven) continue;
-        const value =
+        const flaggedValue =
           asValue(cell?.value ?? cell?.v ?? cell?.given ?? cell?.g ?? cell?.digit ?? cell?.d) ??
           (typeof cell === "string" && /^[1-9A-Za-z]$/.test(cell) ? cell : undefined) ??
           (typeof cell === "number" && Number.isFinite(cell) && cell > 0 ? String(cell) : undefined);
-        if (value != null) out.push({ rc: { r, c }, v: value });
+        if (flaggedValue != null) out.push({ rc: { r, c }, v: flaggedValue });
       }
     }
   }
