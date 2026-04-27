@@ -446,6 +446,10 @@ export function PuzzlePage() {
   }
 
   useEffect(() => {
+    setCompletionOpen(false);
+    setCheckResult(null);
+    setPauseMenuOpen(false);
+
     (async () => {
       const local = await getPuzzle(key);
       if (!local) {
