@@ -1435,6 +1435,52 @@ export function GridCanvas(props: {
       }
     };
 
+    const hasExplicitOverTarget = (target: string | undefined) => {
+      if (typeof target !== "string" || !target.trim()) return false;
+      return classifyRenderTarget(target) === "over";
+    };
+
+    const drawExplicitTopPuzzleFeatures = () => {
+      const entries: VisualLayerEntry[] = [];
+      let serial = 0;
+      const maxOrder = Number.MAX_SAFE_INTEGER;
+
+      for (const ln of def.cosmetics.lines ?? []) {
+        if (ln.wayPoints.length < 2) continue;
+        if (!hasExplicitOverTarget(ln.target)) continue;
+        entries.push({ kind: "line", item: ln, order: ln.renderOrder ?? maxOrder, serial: serial++ });
+      }
+      for (const cage of def.cosmetics.cages ?? []) {
+        if (!hasExplicitOverTarget(cage.target)) continue;
+        entries.push({ kind: "cage", item: cage, order: cage.renderOrder ?? maxOrder, serial: serial++ });
+      }
+      for (const arrow of def.cosmetics.arrows ?? []) {
+        if (!hasExplicitOverTarget(arrow.target)) continue;
+        entries.push({ kind: "arrow", item: arrow, order: arrow.renderOrder ?? maxOrder, serial: serial++ });
+      }
+      for (const dot of def.cosmetics.dots ?? []) {
+        if (!hasExplicitOverTarget(dot.target)) continue;
+        entries.push({ kind: "dot", item: dot, order: dot.renderOrder ?? maxOrder, serial: serial++ });
+      }
+      for (const layerItem of def.cosmetics.underlays ?? []) {
+        if (!hasExplicitOverTarget(layerItem.target)) continue;
+        entries.push({ kind: "layer", item: layerItem, order: layerItem.renderOrder ?? maxOrder, serial: serial++ });
+      }
+      for (const layerItem of def.cosmetics.overlays ?? []) {
+        if (!hasExplicitOverTarget(layerItem.target)) continue;
+        entries.push({ kind: "layer", item: layerItem, order: layerItem.renderOrder ?? maxOrder, serial: serial++ });
+      }
+
+      entries.sort((a, b) => a.order - b.order || a.serial - b.serial);
+      for (const entry of entries) {
+        if (entry.kind === "line") drawConstraintLine(entry.item);
+        else if (entry.kind === "cage") drawCage(entry.item);
+        else if (entry.kind === "arrow") drawArrow(entry.item);
+        else if (entry.kind === "dot") drawDot(entry.item);
+        else drawLayerItem(entry.item);
+      }
+    };
+
     // Canonical SudokuPad rendering order:
     // underlays -> highlights -> arrows/lines (arrows, lines, cages, dots by target) -> grid -> overlays
     drawVisualLayer("under");
@@ -1942,9 +1988,14 @@ export function GridCanvas(props: {
         drawGridLines();
       }
 
-      // Keep top puzzle feature layers above the grid and fog.
-      // These are explicit overlay targets and should remain visible.
+      // Most top features should still obey fog clipping.
+      ctx.save();
+      clipToFogVisibleAreas(lit);
       drawTopPuzzleFeatures();
+      ctx.restore();
+
+      // Explicit overlay targets are intended to stay above fog.
+      drawExplicitTopPuzzleFeatures();
 
       // Keep lines/marks above highlights under fog, but behind values/letters.
       drawUserLines();
@@ -1958,6 +2009,7 @@ export function GridCanvas(props: {
 
           const valueSymbol = normalizeSymbol(cell.value);
           if (valueSymbol) {
+            if (cell.given && !lit[r][c]) continue;
             ctx.fillStyle = hasBigValuePeer(r, c, valueSymbol)
               ? conflictColor
               : cell.given
