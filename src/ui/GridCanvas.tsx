@@ -1435,6 +1435,30 @@ export function GridCanvas(props: {
       }
     };
 
+    const hasExplicitOverTarget = (target: string | undefined) => {
+      if (typeof target !== "string" || !target.trim()) return false;
+      return classifyRenderTarget(target) === "over";
+    };
+
+    // Some puzzles intentionally place line clues above fog (e.g. phantom arrows).
+    // Restrict this pass to explicit overlay-target linework only.
+    const drawExplicitTopLineFeatures = () => {
+      const maxOrder = Number.MAX_SAFE_INTEGER;
+      const topLines = (def.cosmetics.lines ?? [])
+        .filter((ln) => (ln.wayPoints.length >= 2 || Boolean(ln.svgPathData)) && hasExplicitOverTarget(ln.target))
+        .map((ln) => ({ order: ln.renderOrder ?? maxOrder, ln }))
+        .sort((a, b) => a.order - b.order)
+        .map((entry) => entry.ln);
+      for (const ln of topLines) drawConstraintLine(ln);
+
+      const topArrows = (def.cosmetics.arrows ?? [])
+        .filter((arrow) => hasExplicitOverTarget(arrow.target))
+        .map((arrow) => ({ order: arrow.renderOrder ?? maxOrder, arrow }))
+        .sort((a, b) => a.order - b.order)
+        .map((entry) => entry.arrow);
+      for (const arrow of topArrows) drawArrow(arrow);
+    };
+
     // Canonical SudokuPad rendering order:
     // underlays -> highlights -> arrows/lines (arrows, lines, cages, dots by target) -> grid -> overlays
     drawVisualLayer("under");
@@ -1950,6 +1974,9 @@ export function GridCanvas(props: {
       clipToFogVisibleAreas(lit);
       drawTopPuzzleFeatures();
       ctx.restore();
+
+      // Explicit overlay-target linework is intentionally above fog.
+      drawExplicitTopLineFeatures();
 
       // Keep lines/marks above highlights under fog, but behind values/letters.
       drawUserLines();
