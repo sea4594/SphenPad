@@ -1664,7 +1664,7 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
   const thermometerLines = [
     ...(Array.isArray(scl?.thermos) ? scl.thermos : []),
     ...(Array.isArray(scl?.thermometer)
-      ? scl.thermometer.flatMap((t: any) => (Array.isArray(t?.lines) ? t.lines.map((line: any) => ({ ...t, cells: line })) : [t]))
+      ? scl.thermometer.flatMap((t: any) => (Array.isArray(t?.lines) ? t.lines.map((line: any) => ({ cells: line })) : [t]))
       : []),
   ];
   if (thermometerLines.length) {
@@ -1673,7 +1673,7 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
       .map((item: any) => {
         const path = parseCellRefs(item?.cells ?? item?.ce ?? item?.line ?? item);
         if (path.length < 2) return null;
-        const lineColor = normalizeColorToken(item?.color ?? item?.lineColor ?? item?.stroke ?? item?.outlineC ?? item?.c ?? item?.c1) ?? defaultThermoColor;
+        const lineColor = normalizeColorToken(item?.color ?? item?.lineColor ?? item?.c ?? item?.c1) ?? defaultThermoColor;
         const dashArray = parseDashArrayToken(item?.["stroke-dasharray"], item?.strokeDasharray, item?.dashArray, item?.dash);
         const lineCap = parseLineCapToken(item?.["stroke-linecap"], item?.strokeLinecap, item?.lineCap);
         const lineJoin = parseLineJoinToken(item?.["stroke-linejoin"], item?.strokeLinejoin, item?.lineJoin);
@@ -1697,7 +1697,7 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
         const path = parseCellRefs(item?.cells ?? item?.ce ?? item?.line ?? item);
         if (!path.length) return null;
         const first = path[0] as CellRC;
-        const lineColor = normalizeColorToken(item?.color ?? item?.lineColor ?? item?.stroke ?? item?.outlineC ?? item?.c ?? item?.c1) ?? defaultThermoColor;
+        const lineColor = normalizeColorToken(item?.color ?? item?.lineColor ?? item?.c ?? item?.c1) ?? defaultThermoColor;
         return {
           center: { x: first.c + 0.5, y: first.r + 0.5 },
           width: 0.72,
@@ -2073,18 +2073,6 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
   if (scl?.antiRook || scl?.antirook) cosmetics.antiRook = true;
 
   // Fog of war: common SCL keys include foglight/fogLight/fogLights.
-  const rawFogColor =
-    scl?.fogColor ??
-    scl?.fogcolor ??
-    scl?.fog?.color ??
-    scl?.fog?.fill ??
-    scl?.settings?.fogColor ??
-    scl?.settings?.fogcolor ??
-    scl?.metadata?.fogColor ??
-    scl?.metadata?.fogcolor;
-  const parsedFogColor = normalizeColorToken(rawFogColor);
-  if (parsedFogColor) cosmetics.fogColor = parsedFogColor;
-
   const rawFogLights = scl?.foglight ?? scl?.fogLight ?? scl?.fogLights ?? scl?.fog?.lights ?? scl?.fog?.light;
   if (Array.isArray(rawFogLights)) cosmetics.fogEnabled = true;
   if (Array.isArray(rawFogLights)) {
@@ -2126,16 +2114,6 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
         return { triggerCells, revealCells, triggerMode };
       })
       .filter(Boolean) as any;
-  }
-
-  // Many SudokuPad exports encode fog-tinted helper lines in `target: cell-highlights`.
-  // When fog color is not explicitly provided, use that color as the fog cover color.
-  if (!cosmetics.fogColor && Array.isArray(cosmetics.lines)) {
-    const fogLineColor = cosmetics.lines.find((ln) => {
-      const target = typeof ln?.target === "string" ? ln.target.toLowerCase() : "";
-      return /(^|[^a-z])cell-?highlights?([^a-z]|$)/.test(target) && typeof ln?.color === "string";
-    })?.color;
-    if (typeof fogLineColor === "string" && fogLineColor.trim()) cosmetics.fogColor = fogLineColor;
   }
 
   // Keep solution if present so fog can reveal based on correct entries.

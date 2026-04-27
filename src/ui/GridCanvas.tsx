@@ -1947,8 +1947,7 @@ export function GridCanvas(props: {
     }
 
     if (fogDefined) {
-      const fogFillColor = def.cosmetics.fogColor ?? DEFAULT_FOG_FILL_COLOR;
-      ctx.fillStyle = fogFillColor;
+      ctx.fillStyle = DEFAULT_FOG_FILL_COLOR;
       for (let r = 0; r < rows; r++) {
         for (let c = 0; c < cols; c++) {
           if (lit[r][c]) continue;
