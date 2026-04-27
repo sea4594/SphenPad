@@ -16,7 +16,7 @@ const COUNTER_API_BASE = "https://api.sudokupad.com/counter";
 const COUNTER_PROXY_A = "https://api.codetabs.com/v1/proxy/?quest=https://api.sudokupad.com/counter";
 const COUNTER_PROXY_B = "https://api.allorigins.win/raw?url=https://api.sudokupad.com/counter";
 
-export const SUDOKUPAD_IMPORT_REVISION = 8;
+export const SUDOKUPAD_IMPORT_REVISION = 9;
 
 function timeout(ms: number) {
   return new Promise<never>((_, rej) => setTimeout(() => rej(new Error("Timeout")), ms));
@@ -382,6 +382,13 @@ function normalizeColorToken(v: any): string | undefined {
   if (s.startsWith("\\\"") && s.endsWith("\\\"")) s = s.slice(2, -2);
   s = s.replace(/^"+|"+$/g, "");
   if (!s) return undefined;
+
+  // Some payloads include malformed prefixes like "Q#999999ff".
+  // Recover the first inline hex token so canvas receives a valid color.
+  if (!s.startsWith("#") && s.includes("#")) {
+    const embeddedHex = s.match(/#([0-9a-f]{1,8})/i)?.[0];
+    if (embeddedHex) s = embeddedHex;
+  }
 
   const raw = s.startsWith("#") ? s.slice(1) : s;
   if (/^[0-9a-f]+$/i.test(raw)) {

@@ -12,6 +12,7 @@ type LinePreviewState = { segments: LineSegmentDraft[]; kind: LineKindResolved; 
 type LayerItem = NonNullable<PuzzleDefinition["cosmetics"]["underlays"]>[number];
 const LINE_NODE_DIAMETER = 1;
 const LINE_NODE_RADIUS = LINE_NODE_DIAMETER / 2;
+const DEFAULT_FOG_FILL_COLOR = "#FFFFFF44";
 const TWEMOJI_OPTIONS = {
   base: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/",
   folder: "svg",
@@ -1931,7 +1932,7 @@ export function GridCanvas(props: {
     }
 
     if (fogDefined) {
-      ctx.fillStyle = "#afafaf";
+      ctx.fillStyle = DEFAULT_FOG_FILL_COLOR;
       for (let r = 0; r < rows; r++) {
         for (let c = 0; c < cols; c++) {
           if (lit[r][c]) continue;
