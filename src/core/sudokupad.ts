@@ -16,7 +16,7 @@ const COUNTER_API_BASE = "https://api.sudokupad.com/counter";
 const COUNTER_PROXY_A = "https://api.codetabs.com/v1/proxy/?quest=https://api.sudokupad.com/counter";
 const COUNTER_PROXY_B = "https://api.allorigins.win/raw?url=https://api.sudokupad.com/counter";
 
-export const SUDOKUPAD_IMPORT_REVISION = 9;
+export const SUDOKUPAD_IMPORT_REVISION = 10;
 
 function timeout(ms: number) {
   return new Promise<never>((_, rej) => setTimeout(() => rej(new Error("Timeout")), ms));
@@ -397,7 +397,25 @@ function normalizeColorToken(v: any): string | undefined {
       const ch = raw.toLowerCase();
       return `#${ch}${ch}${ch}${ch}${ch}${ch}`;
     }
-    if (raw.length === 3 || raw.length === 4 || raw.length === 6 || raw.length === 8) return `#${raw}`;
+    if (raw.length === 3 || raw.length === 6) return `#${raw}`;
+    if (raw.length === 4) {
+      // Normalize #RGBA into rgba(...) so alpha colors are consistently accepted by canvas.
+      const r = parseInt(raw[0] + raw[0], 16);
+      const g = parseInt(raw[1] + raw[1], 16);
+      const b = parseInt(raw[2] + raw[2], 16);
+      const a = parseInt(raw[3] + raw[3], 16) / 255;
+      const alpha = Number(a.toFixed(3));
+      return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    }
+    if (raw.length === 8) {
+      // Normalize #RRGGBBAA into rgba(...) so alpha colors are consistently accepted by canvas.
+      const r = parseInt(raw.slice(0, 2), 16);
+      const g = parseInt(raw.slice(2, 4), 16);
+      const b = parseInt(raw.slice(4, 6), 16);
+      const a = parseInt(raw.slice(6, 8), 16) / 255;
+      const alpha = Number(a.toFixed(3));
+      return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    }
   }
 
   return s;
