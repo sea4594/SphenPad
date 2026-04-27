@@ -1664,7 +1664,7 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
   const thermometerLines = [
     ...(Array.isArray(scl?.thermos) ? scl.thermos : []),
     ...(Array.isArray(scl?.thermometer)
-      ? scl.thermometer.flatMap((t: any) => (Array.isArray(t?.lines) ? t.lines.map((line: any) => ({ cells: line })) : [t]))
+      ? scl.thermometer.flatMap((t: any) => (Array.isArray(t?.lines) ? t.lines.map((line: any) => ({ ...t, cells: line })) : [t]))
       : []),
   ];
   if (thermometerLines.length) {
@@ -1673,7 +1673,7 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
       .map((item: any) => {
         const path = parseCellRefs(item?.cells ?? item?.ce ?? item?.line ?? item);
         if (path.length < 2) return null;
-        const lineColor = normalizeColorToken(item?.color ?? item?.lineColor ?? item?.c ?? item?.c1) ?? defaultThermoColor;
+        const lineColor = normalizeColorToken(item?.color ?? item?.lineColor ?? item?.stroke ?? item?.outlineC ?? item?.c ?? item?.c1) ?? defaultThermoColor;
         const dashArray = parseDashArrayToken(item?.["stroke-dasharray"], item?.strokeDasharray, item?.dashArray, item?.dash);
         const lineCap = parseLineCapToken(item?.["stroke-linecap"], item?.strokeLinecap, item?.lineCap);
         const lineJoin = parseLineJoinToken(item?.["stroke-linejoin"], item?.strokeLinejoin, item?.lineJoin);
@@ -1697,7 +1697,7 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
         const path = parseCellRefs(item?.cells ?? item?.ce ?? item?.line ?? item);
         if (!path.length) return null;
         const first = path[0] as CellRC;
-        const lineColor = normalizeColorToken(item?.color ?? item?.lineColor ?? item?.c ?? item?.c1) ?? defaultThermoColor;
+        const lineColor = normalizeColorToken(item?.color ?? item?.lineColor ?? item?.stroke ?? item?.outlineC ?? item?.c ?? item?.c1) ?? defaultThermoColor;
         return {
           center: { x: first.c + 0.5, y: first.r + 0.5 },
           width: 0.72,
