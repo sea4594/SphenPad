@@ -1398,7 +1398,8 @@ export function GridCanvas(props: {
       const maxOrder = Number.MAX_SAFE_INTEGER;
 
       for (const ln of def.cosmetics.lines ?? []) {
-        if (ln.wayPoints.length < 2) continue;
+        const hasSvgPath = typeof ln.svgPathData === "string" && ln.svgPathData.length > 0;
+        if (!hasSvgPath && ln.wayPoints.length < 2) continue;
         if (classifyRenderTargetWithDefault(ln.target, "arrows") !== layer) continue;
         entries.push({ kind: "line", item: ln, order: ln.renderOrder ?? maxOrder, serial: serial++ });
       }
