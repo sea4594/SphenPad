@@ -1443,17 +1443,25 @@ export function GridCanvas(props: {
 
     // Some puzzles intentionally place specific clue linework above fog.
     // Restrict this pass to explicit cell-highlights target lines/arrows only.
+    const isPromotedAboveFogLine = (ln: NonNullable<PuzzleDefinition["cosmetics"]["lines"]>[number]) => {
+      return isCellHighlightsTarget(ln.target);
+    };
+
+    const isPromotedAboveFogArrow = (arrow: NonNullable<PuzzleDefinition["cosmetics"]["arrows"]>[number]) => {
+      return isCellHighlightsTarget(arrow.target);
+    };
+
     const drawExplicitTopLineFeatures = () => {
       const maxOrder = Number.MAX_SAFE_INTEGER;
       const topLines = (def.cosmetics.lines ?? [])
-        .filter((ln) => (ln.wayPoints.length >= 2 || Boolean(ln.svgPathData)) && isCellHighlightsTarget(ln.target))
+        .filter((ln) => (ln.wayPoints.length >= 2 || Boolean(ln.svgPathData)) && isPromotedAboveFogLine(ln))
         .map((ln) => ({ order: ln.renderOrder ?? maxOrder, ln }))
         .sort((a, b) => a.order - b.order)
         .map((entry) => entry.ln);
       for (const ln of topLines) drawConstraintLine(ln);
 
       const topArrows = (def.cosmetics.arrows ?? [])
-        .filter((arrow) => isCellHighlightsTarget(arrow.target))
+        .filter((arrow) => isPromotedAboveFogArrow(arrow))
         .map((arrow) => ({ order: arrow.renderOrder ?? maxOrder, arrow }))
         .sort((a, b) => a.order - b.order)
         .map((entry) => entry.arrow);
@@ -1955,9 +1963,11 @@ export function GridCanvas(props: {
       ctx.save();
       clipToFogVisibleAreas(lit);
       for (const ln of def.cosmetics.lines ?? []) {
+        if (isPromotedAboveFogLine(ln)) continue;
         drawConstraintLine(ln);
       }
       for (const arrow of def.cosmetics.arrows ?? []) {
+        if (isPromotedAboveFogArrow(arrow)) continue;
         drawArrow(arrow);
       }
       drawVisualLayer("cages");
