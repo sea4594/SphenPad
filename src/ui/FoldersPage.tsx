@@ -1,6 +1,7 @@
 import { Fragment, startTransition, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
+  addPuzzleToFolder,
   createFolder,
   deleteFolder as deleteFolderById,
   deletePuzzle,
@@ -282,6 +283,9 @@ export function FoldersPage(props: { active?: boolean }) {
   const [folderCreateDialogOpen, setFolderCreateDialogOpen] = useState(false);
   const [folderCreateName, setFolderCreateName] = useState("");
   const [folderCreateBusy, setFolderCreateBusy] = useState("");
+  const [movePuzzleTarget, setMovePuzzleTarget] = useState<StoredPuzzle | null>(null);
+  const [moveFolderNavId, setMoveFolderNavId] = useState<string | null>(null);
+  const [movePuzzleBusy, setMovePuzzleBusy] = useState("");
 
   const [, setFolderPuzzleMenu] = useState<{ folderId: string; puzzleKey: string } | null>(null);
   const [, setFolderPuzzleStatusMenuKey] = useState<string | null>(null);
@@ -397,6 +401,32 @@ export function FoldersPage(props: { active?: boolean }) {
   }, [rows]);
 
   const activeFolder = activeFolderId ? folderById.get(activeFolderId) ?? null : null;
+
+  const moveFolderTrail = useMemo(() => {
+    const out: PuzzleFolder[] = [];
+    if (!moveFolderNavId) return out;
+
+    const seen = new Set<string>();
+    let cursor: PuzzleFolder | null = folderById.get(moveFolderNavId) ?? null;
+    while (cursor && !seen.has(cursor.id)) {
+      out.unshift(cursor);
+      seen.add(cursor.id);
+      cursor = cursor.parentId ? folderById.get(cursor.parentId) ?? null : null;
+    }
+
+    return out;
+  }, [moveFolderNavId, folderById]);
+
+  const moveFolderChildren = useMemo(() => {
+    return sortFolders(
+      folders.filter((folder) => (folder.parentId ?? null) === moveFolderNavId),
+      "az",
+      "asc",
+    );
+  }, [folders, moveFolderNavId]);
+
+  const moveFolderTarget = moveFolderNavId ? folderById.get(moveFolderNavId) ?? null : null;
+  const canMoveToCurrentFolder = Boolean(moveFolderTarget && activeFolder && moveFolderTarget.id !== activeFolder.id);
 
   const activeFolderTrail = useMemo(() => {
     const out: PuzzleFolder[] = [];
@@ -542,6 +572,62 @@ export function FoldersPage(props: { active?: boolean }) {
     }
   }
 
+  function onOpenMovePuzzleDialog(row: StoredPuzzle) {
+    setMovePuzzleTarget(row);
+    setMoveFolderNavId(null);
+    setMovePuzzleBusy("");
+    setFolderPuzzleMenu(null);
+    setFolderPuzzleStatusMenuKey(null);
+  }
+
+  function onCreateFolderForMoveWithPrompt() {
+    if (folderCreateBusy) return;
+    const parentLabel = moveFolderTarget
+      ? buildFolderPath(moveFolderTarget, folderById)
+      : "Top-level folders";
+    const input = window.prompt(`Create folder\nParent: ${parentLabel}\n\nFolder name:`);
+    if (input == null) return;
+
+    const folderName = input.trim();
+    if (!folderName) {
+      alert("Folder name cannot be empty.");
+      return;
+    }
+
+    setFolderCreateBusy("Creating folder...");
+    void (async () => {
+      try {
+        const created = await createFolder(folderName, moveFolderNavId ?? null);
+        await refresh();
+        setMoveFolderNavId(created.id);
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : String(e);
+        alert(msg);
+      } finally {
+        setFolderCreateBusy("");
+      }
+    })();
+  }
+
+  async function onMovePuzzleToFolder(targetFolderId: string) {
+    if (!movePuzzleTarget || !activeFolder) return;
+    if (targetFolderId === activeFolder.id) return;
+
+    setMovePuzzleBusy("Moving puzzle...");
+    try {
+      await addPuzzleToFolder(targetFolderId, movePuzzleTarget.key);
+      await removePuzzleFromFolder(activeFolder.id, movePuzzleTarget.key);
+      await refresh();
+      setMovePuzzleTarget(null);
+      setMoveFolderNavId(null);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      alert(msg);
+    } finally {
+      setMovePuzzleBusy("");
+    }
+  }
+
   async function onConfirmDeletePuzzle() {
     if (!deleteCandidate || deleteBusy) return;
     setDeleteBusy(true);
@@ -617,8 +703,12 @@ export function FoldersPage(props: { active?: boolean }) {
   async function onPuzzleRowAction(
     folderId: string,
     row: StoredPuzzle,
-    action: "remove_from_folder" | "open_in_sudokupad" | "status_not_started" | "status_in_progress" | "status_complete" | "delete",
+    action: "move" | "remove_from_folder" | "open_in_sudokupad" | "status_not_started" | "status_in_progress" | "status_complete" | "delete",
   ) {
+    if (action === "move") {
+      onOpenMovePuzzleDialog(row);
+      return;
+    }
     if (action === "remove_from_folder") {
       await onRemovePuzzle(folderId, row.key);
       return;
@@ -971,6 +1061,7 @@ export function FoldersPage(props: { active?: boolean }) {
                               className="btn menuPuzzleIconButton menuPuzzleMoreButton"
                               disabled={menuBusy}
                               items={[
+                                { label: "Move", onSelect: () => void onPuzzleRowAction(activeFolder.id, row, "move"), disabled: menuBusy },
                                 { label: "Remove from folder", onSelect: () => void onPuzzleRowAction(activeFolder.id, row, "remove_from_folder"), disabled: menuBusy },
                                 { label: "Open in SudokuPad", onSelect: () => void onPuzzleRowAction(activeFolder.id, row, "open_in_sudokupad") },
                                 {
@@ -1061,6 +1152,97 @@ export function FoldersPage(props: { active?: boolean }) {
               >
                 {folderCreateBusy ? "Creating..." : "New Folder"}
               </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {movePuzzleTarget ? (
+        <div className="overlayBackdrop" onClick={() => setMovePuzzleTarget(null)}>
+          <div
+            className="card folderPickerCard"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Move puzzle to folder"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
+              <div className="menuSectionTitle">Move puzzle</div>
+              <button className="btn" onClick={() => setMovePuzzleTarget(null)} type="button">Close</button>
+            </div>
+            <div className="muted" style={{ marginTop: 4, overflowWrap: "anywhere" }}>
+              {movePuzzleTarget.def?.meta?.title || "(untitled)"}
+            </div>
+
+            <div className="row folderBreadcrumbRow folderBreadcrumbTrail" style={{ marginTop: 10 }}>
+              {[{ id: null, name: "Top Level" }, ...moveFolderTrail].map((folder, index) => (
+                <Fragment key={`move-trail-${folder.id ?? "top-level"}`}>
+                  {index > 0 ? <span className="folderBreadcrumbSeparator" aria-hidden="true">-&gt;</span> : null}
+                  <button
+                    className={`folderBreadcrumbLink ${moveFolderNavId === folder.id ? "is-active" : ""}`}
+                    onClick={() => setMoveFolderNavId(folder.id)}
+                    type="button"
+                  >
+                    {folder.name}
+                  </button>
+                </Fragment>
+              ))}
+            </div>
+
+            <div className="addFolderDialogBody">
+              <div className="row" style={{ justifyContent: "flex-end", alignItems: "center" }}>
+                <div className="row" style={{ justifyContent: "flex-end" }}>
+                  <button
+                    className="btn"
+                    onClick={onCreateFolderForMoveWithPrompt}
+                    disabled={!!folderCreateBusy}
+                    type="button"
+                  >
+                    New Folder
+                  </button>
+                </div>
+              </div>
+
+              <div className="menuPuzzleList addFolderNavigatorList" style={{ marginTop: 10 }}>
+                {moveFolderChildren.map((folder) => (
+                  <button
+                    key={`move-folder-nav-${folder.id}`}
+                    className="card folderBrowserItem"
+                    onClick={() => setMoveFolderNavId(folder.id)}
+                    type="button"
+                  >
+                    <div className="row" style={{ gap: 6, alignItems: "flex-start" }}>
+                      <IconFolder />
+                      <div style={{ fontWeight: 700, overflowWrap: "anywhere" }}>{folder.name}</div>
+                    </div>
+                  </button>
+                ))}
+                {!moveFolderChildren.length ? (
+                  <div className="muted">No folders in this location.</div>
+                ) : null}
+              </div>
+
+              <div className="muted addFolderBusyLine">{movePuzzleBusy || "\u00A0"}</div>
+
+              <div className="row addFolderDialogFooter">
+                <button
+                  className={`btn ${canMoveToCurrentFolder && !movePuzzleBusy ? "primary" : ""}`}
+                  onClick={() => {
+                    if (!moveFolderTarget) return;
+                    void onMovePuzzleToFolder(moveFolderTarget.id);
+                  }}
+                  disabled={!canMoveToCurrentFolder || !!movePuzzleBusy}
+                  type="button"
+                >
+                  {movePuzzleBusy
+                    ? "Moving..."
+                    : !moveFolderTarget
+                      ? "Select Destination"
+                      : activeFolder && moveFolderTarget.id === activeFolder.id
+                        ? "Already Here"
+                        : "Move Here"}
+                </button>
+              </div>
             </div>
           </div>
         </div>

@@ -415,6 +415,7 @@ export function CtCArchivePage(props: { active?: boolean }) {
   const [importAllMenuOpen, setImportAllMenuOpen] = useState(false);
   const [importAllBusy, setImportAllBusy] = useState("");
   const [importToFolderDialogOpen, setImportToFolderDialogOpen] = useState(false);
+  const [importToFolderEntries, setImportToFolderEntries] = useState<PreparedArchiveEntry[]>([]);
   const [importFolderNavId, setImportFolderNavId] = useState<string | null>(null);
   const [importToFolderBusy, setImportToFolderBusy] = useState("");
   const [folderCreateDialogOpen, setFolderCreateDialogOpen] = useState(false);
@@ -1148,6 +1149,7 @@ export function CtCArchivePage(props: { active?: boolean }) {
 
       setUiMessage(`Imported ${importedCount} puzzle${importedCount === 1 ? "" : "s"} to folder.`);
       setImportToFolderDialogOpen(false);
+      setImportToFolderEntries([]);
       setImportFolderNavId(null);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
@@ -1163,10 +1165,12 @@ export function CtCArchivePage(props: { active?: boolean }) {
     setImportAllMenuOpen(true);
   }
 
-  function onOpenImportToFolderDialog() {
+  function onOpenImportToFolderDialog(entries: PreparedArchiveEntry[]) {
+    if (!entries.length) return;
     setImportAllMenuOpen(false);
     setImportFolderNavId(null);
     setImportToFolderBusy("");
+    setImportToFolderEntries(entries);
     setImportToFolderDialogOpen(true);
     void refreshFolders();
   }
@@ -1767,6 +1771,17 @@ export function CtCArchivePage(props: { active?: boolean }) {
               >
                 Import and Play
               </button>
+              <button
+                className="btn"
+                style={{ width: "100%", marginBottom: 12, flexShrink: 0, height: 44 }}
+                disabled={rulesDialogBusy || importingId === rulesDialogEntry.id || importingId === `${rulesDialogEntry.id}:play` || !!importAllBusy}
+                onClick={() => {
+                  onOpenImportToFolderDialog([rulesDialogEntry]);
+                }}
+                type="button"
+              >
+                Add to Folder
+              </button>
 
               <div className="archiveRulesPreview" aria-label="Puzzle preview">
                 {previewedPuzzles.get(rulesDialogEntry.id) ? (
@@ -1910,7 +1925,7 @@ export function CtCArchivePage(props: { active?: boolean }) {
               </button>
               <button
                 className="btn primary"
-                onClick={onOpenImportToFolderDialog}
+                onClick={() => onOpenImportToFolderDialog(filteredRows)}
                 type="button"
               >
                 Import to Folder
@@ -1921,7 +1936,10 @@ export function CtCArchivePage(props: { active?: boolean }) {
       ) : null}
 
       {importToFolderDialogOpen ? (
-        <div className="overlayBackdrop" onClick={() => setImportToFolderDialogOpen(false)}>
+        <div className="overlayBackdrop" onClick={() => {
+          setImportToFolderDialogOpen(false);
+          setImportToFolderEntries([]);
+        }}>
           <div
             className="card folderPickerCard"
             role="dialog"
@@ -1931,10 +1949,19 @@ export function CtCArchivePage(props: { active?: boolean }) {
           >
             <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
               <div className="menuSectionTitle">Import to Folder</div>
-              <button className="btn" onClick={() => setImportToFolderDialogOpen(false)} type="button">Close</button>
+              <button className="btn" onClick={() => {
+                setImportToFolderDialogOpen(false);
+                setImportToFolderEntries([]);
+              }} type="button">Close</button>
             </div>
             <div className="muted" style={{ marginTop: 4 }}>
-              {filteredRows.length} puzzle{filteredRows.length === 1 ? "" : "s"} will be imported.
+              {importToFolderEntries.length} puzzle{importToFolderEntries.length === 1 ? "" : "s"} will be imported.
+              {importToFolderEntries.length === 1 ? (
+                <>
+                  {" "}
+                  ({clean(importToFolderEntries[0]?.title) || "(untitled)"})
+                </>
+              ) : null}
             </div>
 
             <div className="row folderBreadcrumbRow folderBreadcrumbTrail" style={{ marginTop: 10 }}>
@@ -1993,7 +2020,7 @@ export function CtCArchivePage(props: { active?: boolean }) {
                   className="btn primary"
                   onClick={() => {
                     if (!importFolderTarget) return;
-                    void onImportAllToFolder(filteredRows, importFolderTarget.id);
+                    void onImportAllToFolder(importToFolderEntries, importFolderTarget.id);
                   }}
                   disabled={!importFolderTarget || !!importToFolderBusy}
                   type="button"
