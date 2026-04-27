@@ -96,6 +96,44 @@ function compareSymbols(a: string, b: string): number {
   return a.localeCompare(b, undefined, { sensitivity: "base" });
 }
 
+function hasTransparency(color: string): boolean {
+  const s = color.trim();
+  if (!s) return false;
+  const hex = s.startsWith("#") ? s.slice(1) : s;
+  if (/^[0-9a-f]{8}$/i.test(hex)) {
+    const alpha = Number.parseInt(hex.slice(6), 16);
+    return Number.isFinite(alpha) && alpha < 255;
+  }
+  const rgba = s.match(/^rgba\([^,]+,[^,]+,[^,]+,\s*([0-9]*\.?[0-9]+)\s*\)$/i);
+  if (!rgba) return false;
+  const alpha = Number(rgba[1]);
+  return Number.isFinite(alpha) && alpha < 1;
+}
+
+function pickFogColorFromOverlays(def: PuzzleDefinition): string {
+  const counts = new Map<string, number>();
+  const add = (color: string | undefined, target: string | undefined) => {
+    const c = color?.trim();
+    if (!c || !hasTransparency(c)) return;
+    const t = (target ?? "").toLowerCase();
+    if (!/(^|[^a-z])(over|overlay|front|foreground|above|top)([^a-z]|$)/.test(t)) return;
+    counts.set(c, (counts.get(c) ?? 0) + 1);
+  };
+
+  for (const ln of def.cosmetics.lines ?? []) add(ln.color, ln.target);
+  for (const arrow of def.cosmetics.arrows ?? []) add(arrow.color, arrow.target);
+
+  let bestColor = "";
+  let bestCount = 0;
+  for (const [color, count] of counts.entries()) {
+    if (count > bestCount) {
+      bestCount = count;
+      bestColor = color;
+    }
+  }
+  return bestColor || DEFAULT_FOG_FILL_COLOR;
+}
+
 export function GridCanvas(props: {
   def: PuzzleDefinition;
   progress: PuzzleProgress;
@@ -1932,7 +1970,7 @@ export function GridCanvas(props: {
     }
 
     if (fogDefined) {
-      ctx.fillStyle = DEFAULT_FOG_FILL_COLOR;
+      ctx.fillStyle = pickFogColorFromOverlays(def);
       for (let r = 0; r < rows; r++) {
         for (let c = 0; c < cols; c++) {
           if (lit[r][c]) continue;
