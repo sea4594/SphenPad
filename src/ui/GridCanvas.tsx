@@ -1987,6 +1987,10 @@ export function GridCanvas(props: {
         }
       }
 
+      // Keep cell-colors decorative fills visible in fog without forcing them
+      // to the very top of the stack, which shifts their apparent color.
+      for (const ln of deferredCellColorLines) drawConstraintLine(ln);
+
 
       // Keep all lines/arrows readable above highlights under fog.
       ctx.save();
@@ -2022,9 +2026,6 @@ export function GridCanvas(props: {
       clipToFogVisibleAreas(lit);
       drawTopPuzzleFeatures();
       ctx.restore();
-
-      // SudokuPad keeps cell-colors decorative fills visible regardless of fog-lit cells.
-      for (const ln of deferredCellColorLines) drawConstraintLine(ln);
 
       // Keep lines/marks above highlights under fog, but behind values/letters.
       drawUserLines();

@@ -1740,12 +1740,15 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
     const hasShapeBounds = Number.isFinite(shapeRows) && shapeRows > 0 && Number.isFinite(shapeCols) && shapeCols > 0;
     const widthValue = Number.isFinite(width) ? Number(width) : undefined;
     const heightValue = Number.isFinite(height) ? Number(height) : undefined;
+    // Compact underlay default opacity is only intended for true cell-fills.
+    // Keep it restricted to approximately 1x1 items so tiny decorative shapes
+    // and other art elements remain fully opaque unless payload opacity says otherwise.
     const hasCellLikeSize =
       widthValue != null &&
-      widthValue > 0 &&
+      widthValue >= 0.95 &&
       widthValue <= 1.05 &&
       heightValue != null &&
-      heightValue > 0 &&
+      heightValue >= 0.95 &&
       heightValue <= 1.05;
     const inGridBounds = hasShapeBounds && hasCellLikeSize
       ? ct.x - (widthValue as number) / 2 >= 0 &&
