@@ -1039,9 +1039,32 @@ export function GridCanvas(props: {
     };
 
     const drawConstraintLine = (ln: NonNullable<PuzzleDefinition["cosmetics"]["lines"]>[number]) => {
+      const isFogNeutralLineColor = (value: string | undefined) => {
+        if (typeof value !== "string") return false;
+        const color = value.trim().toLowerCase();
+        if (!color) return false;
+        if (color === "#afafaf" || color === "#afafafff") return true;
+        return /^rgba\(\s*175\s*,\s*175\s*,\s*175\s*,\s*1(?:\.0+)?\s*\)$/.test(color);
+      };
+
+      const resolveCellHighlightsTint = (line: NonNullable<PuzzleDefinition["cosmetics"]["lines"]>[number]) => {
+        if (!isCellHighlightsTarget(line.target)) return undefined;
+        if (!isFogNeutralLineColor(line.color)) return undefined;
+        for (const point of line.wayPoints) {
+          const r = Math.floor(point.y);
+          const c = Math.floor(point.x);
+          if (!inBounds(r, c)) continue;
+          const highlights = progress.cells[r][c].highlights ?? [];
+          const tint = highlights[highlights.length - 1];
+          if (typeof tint === "string" && tint.trim()) return tint;
+        }
+        return undefined;
+      };
+
       const hasSvgPath = typeof ln.svgPathData === "string" && ln.svgPathData.length > 0;
       if (!hasSvgPath && ln.wayPoints.length < 2) return;
       const lineOpacity = Number.isFinite(ln.opacity) ? Math.max(0, Math.min(1, Number(ln.opacity))) : 1;
+      const strokeColor = resolveCellHighlightsTint(ln) ?? ln.color;
 
       if (hasSvgPath) {
         const units = Number(ln.svgUnitsPerCell) || cosmeticUnit;
@@ -1056,9 +1079,9 @@ export function GridCanvas(props: {
           ctx.fillStyle = ln.fillColor;
           ctx.fill(path);
         }
-        const hasStroke = Boolean(ln.color) && (ln.thickness ?? 6) > 0;
+        const hasStroke = Boolean(strokeColor) && (ln.thickness ?? 6) > 0;
         if (hasStroke) {
-          ctx.strokeStyle = ln.color as string;
+          ctx.strokeStyle = strokeColor as string;
           ctx.lineWidth = ln.thickness ?? 6;
           ctx.lineCap = ln.lineCap ?? "round";
           ctx.lineJoin = ln.lineJoin ?? "round";
@@ -1090,9 +1113,9 @@ export function GridCanvas(props: {
         ctx.fill();
       }
 
-      const hasStroke = Boolean(ln.color) && (ln.thickness ?? 6) > 0;
+      const hasStroke = Boolean(strokeColor) && (ln.thickness ?? 6) > 0;
       if (hasStroke) {
-        ctx.strokeStyle = ln.color as string;
+        ctx.strokeStyle = strokeColor as string;
         ctx.lineWidth = (ln.thickness ?? 6) * (cellPx / cosmeticUnit);
         ctx.lineCap = ln.lineCap ?? "round";
         ctx.lineJoin = ln.lineJoin ?? "round";
