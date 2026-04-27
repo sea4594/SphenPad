@@ -1071,6 +1071,29 @@ export function PuzzlePage() {
     }
   }
 
+  async function onImportSudokuPadLinkInApp(href: string) {
+    try {
+      const { key: importedKey, def } = await loadFromSudokuPad(href);
+      const existing = await getPuzzle(importedKey);
+      const now = Date.now();
+      const nextProgress = existing?.progress ?? makeInitialProgress(def);
+
+      await upsertPuzzle(importedKey, {
+        def,
+        progress: nextProgress,
+        undo: existing?.undo ?? [],
+        redo: existing?.redo ?? [],
+        updatedAt: now,
+        createdAt: existing?.createdAt ?? now,
+      });
+
+      nav(`/p/${encodeURIComponent(importedKey)}`);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      alert(`Failed to import linked SudokuPad puzzle: ${msg}`);
+    }
+  }
+
   function setActiveTool(tool: PuzzleProgress["activeTool"]) {
     if (!data || data.progress.activeTool === tool) return;
     const patches: Patch[] = [patchAt(data.progress, ["activeTool"], tool)];
@@ -1776,6 +1799,7 @@ export function PuzzlePage() {
           onStart={startOrResume}
           onResume={startOrResume}
           onAddToFolder={onOpenAddToFolderDialog}
+          onSudokuPadLink={onImportSudokuPadLinkInApp}
         />
       )}
 
@@ -1875,6 +1899,7 @@ export function PuzzlePage() {
           meta={meta}
           elapsed={timeStr}
           onClose={() => setCompletionOpen(false)}
+          onSudokuPadLink={onImportSudokuPadLinkInApp}
         />
       )}
 

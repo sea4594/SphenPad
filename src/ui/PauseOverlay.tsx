@@ -12,8 +12,9 @@ export function PauseOverlay(props: {
   onStart: () => void;
   onResume: () => void;
   onAddToFolder: () => void;
+  onSudokuPadLink?: (href: string) => void | Promise<void>;
 }) {
-  const { def, meta, started, onResume, onStart, onAddToFolder } = props;
+  const { def, meta, started, onResume, onStart, onAddToFolder, onSudokuPadLink } = props;
   const clean = (value: string | null | undefined) => (value ?? "").trim();
   const formatDurationHm = (seconds: number | null | undefined): string => {
     if (seconds == null || seconds < 0) return "~";
@@ -106,6 +107,7 @@ export function PauseOverlay(props: {
             <LinkifiedText
               className="linkifiedText"
               text={meta?.rules || "No instructions found in metadata."}
+              onSudokuPadLink={onSudokuPadLink}
             />
             {typeof meta?.solveCount === "number" ? (
               <div className="muted" style={{ marginTop: 10 }}>SudokuPad solves: {meta.solveCount.toLocaleString()}</div>

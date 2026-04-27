@@ -6,10 +6,11 @@ type CompletionOverlayProps = {
   meta?: PuzzleMeta;
   elapsed?: string;
   onClose: () => void;
+  onSudokuPadLink?: (href: string) => void | Promise<void>;
 };
 
 export function CompletionOverlay(props: CompletionOverlayProps) {
-  const { meta, elapsed, onClose } = props;
+  const { meta, elapsed, onClose, onSudokuPadLink } = props;
   const message = meta?.postSolveMessage?.trim() || "Great solve.";
   const showElapsed = Boolean(elapsed?.trim());
   useEffect(() => {
@@ -35,7 +36,7 @@ export function CompletionOverlay(props: CompletionOverlayProps) {
         ) : null}
 
         <div className="card" style={{ marginTop: 14 }}>
-          <LinkifiedText className="linkifiedText" text={message} />
+          <LinkifiedText className="linkifiedText" text={message} onSudokuPadLink={onSudokuPadLink} />
         </div>
 
         <button className="btn primary" style={{ width: "100%", marginTop: 14 }} onClick={onClose}>

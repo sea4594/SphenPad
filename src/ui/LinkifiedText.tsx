@@ -1,8 +1,10 @@
 import { Fragment } from "react";
+import type { MouseEvent } from "react";
 
 type LinkifiedTextProps = {
   text: string;
   className?: string;
+  onSudokuPadLink?: (href: string) => void | Promise<void>;
 };
 
 const MARKDOWN_LINK_PATTERN = /\[([^\]]+)\]\((https?:\/\/[^\s)]+|www\.[^\s)]+)\)/gi;
@@ -55,6 +57,15 @@ function splitTrailingPunctuation(value: string): { core: string; suffix: string
 function normalizeHref(urlText: string): string {
   if (/^https?:\/\//i.test(urlText)) return urlText;
   return `https://${urlText}`;
+}
+
+function isSudokuPadHref(href: string): boolean {
+  try {
+    const parsed = new URL(href);
+    return parsed.hostname === "sudokupad.app" || parsed.hostname.endsWith(".sudokupad.app");
+  } catch {
+    return false;
+  }
 }
 
 export function LinkifiedText(props: LinkifiedTextProps) {
@@ -122,6 +133,13 @@ export function LinkifiedText(props: LinkifiedTextProps) {
     parts.push({ type: "text", value: text.slice(cursor) });
   }
 
+  function onLinkClick(event: MouseEvent<HTMLAnchorElement>, href: string) {
+    if (!props.onSudokuPadLink) return;
+    if (!isSudokuPadHref(href)) return;
+    event.preventDefault();
+    void props.onSudokuPadLink(href);
+  }
+
   return (
     <span className={props.className}>
       {parts.map((part, index) => {
@@ -135,6 +153,7 @@ export function LinkifiedText(props: LinkifiedTextProps) {
               target="_blank"
               rel="noreferrer noopener"
               className="linkifiedTextLink"
+              onClick={(event) => onLinkClick(event, part.href)}
             >
               {part.value}
             </a>
