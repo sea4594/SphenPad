@@ -1023,6 +1023,16 @@ export function GridCanvas(props: {
       });
     };
 
+    const isFullyTransparentColor = (value: string | undefined) => {
+      if (typeof value !== "string") return false;
+      const s = value.trim().toLowerCase();
+      if (!s) return false;
+      if (s === "transparent") return true;
+      // rgba(...) emitted by normalizeColorToken for #RGBA / #RRGGBBAA with alpha=0.
+      if (/^rgba\([^)]*,\s*0(?:\.0+)?\s*\)$/.test(s)) return true;
+      return false;
+    };
+
     const drawConstraintLine = (ln: NonNullable<PuzzleDefinition["cosmetics"]["lines"]>[number]) => {
       const hasSvgPath = typeof ln.svgPathData === "string" && ln.svgPathData.length > 0;
       if (!hasSvgPath && ln.wayPoints.length < 2) return;
@@ -1236,7 +1246,12 @@ export function GridCanvas(props: {
       ctx.rect(clueCellX, clueCellY, cellPx, cellPx);
       ctx.clip();
       drawSoftEdgeBackdrop(bgX, bgY, bgW, bgH, 0.75);
-      ctx.fillStyle = cage.textColor ?? cage.color ?? "#111111";
+      const clueTextColor = !isFullyTransparentColor(cage.textColor)
+        ? cage.textColor
+        : !isFullyTransparentColor(cage.color)
+          ? cage.color
+          : undefined;
+      ctx.fillStyle = clueTextColor ?? "#111111";
       ctx.fillText(clueText, textLeft, baselineY);
       ctx.restore();
     };
