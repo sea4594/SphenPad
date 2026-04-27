@@ -1444,34 +1444,20 @@ export function GridCanvas(props: {
     // Some puzzles intentionally place line clues above fog (e.g. phantom arrows).
     // Restrict this pass to explicit overlay-target linework only.
     const drawExplicitTopLineFeatures = () => {
-      const fogColor = DEFAULT_FOG_FILL_COLOR;
       const maxOrder = Number.MAX_SAFE_INTEGER;
       const topLines = (def.cosmetics.lines ?? [])
         .filter((ln) => (ln.wayPoints.length >= 2 || Boolean(ln.svgPathData)) && hasExplicitOverTarget(ln.target))
         .map((ln) => ({ order: ln.renderOrder ?? maxOrder, ln }))
         .sort((a, b) => a.order - b.order)
         .map((entry) => entry.ln);
-      for (const ln of topLines) {
-        drawConstraintLine({
-          ...ln,
-          color: fogColor,
-          fillColor: ln.fillColor ? fogColor : ln.fillColor,
-        });
-      }
+      for (const ln of topLines) drawConstraintLine(ln);
 
       const topArrows = (def.cosmetics.arrows ?? [])
         .filter((arrow) => hasExplicitOverTarget(arrow.target))
         .map((arrow) => ({ order: arrow.renderOrder ?? maxOrder, arrow }))
         .sort((a, b) => a.order - b.order)
         .map((entry) => entry.arrow);
-      for (const arrow of topArrows) {
-        drawArrow({
-          ...arrow,
-          color: fogColor,
-          bulbFill: arrow.bulb ? fogColor : arrow.bulbFill,
-          bulbStroke: arrow.bulb ? fogColor : arrow.bulbStroke,
-        });
-      }
+      for (const arrow of topArrows) drawArrow(arrow);
     };
 
     // Canonical SudokuPad rendering order:
