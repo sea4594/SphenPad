@@ -96,56 +96,9 @@ function compareSymbols(a: string, b: string): number {
   return a.localeCompare(b, undefined, { sensitivity: "base" });
 }
 
-function hasTransparency(color: string): boolean {
-  const s = color.trim();
-  if (!s) return false;
-  const hex = s.startsWith("#") ? s.slice(1) : s;
-  if (/^[0-9a-f]{8}$/i.test(hex)) {
-    const alpha = Number.parseInt(hex.slice(6), 16);
-    return Number.isFinite(alpha) && alpha < 255;
-  }
-  const rgba = s.match(/^rgba\([^,]+,[^,]+,[^,]+,\s*([0-9]*\.?[0-9]+)\s*\)$/i);
-  if (!rgba) return false;
-  const alpha = Number(rgba[1]);
-  return Number.isFinite(alpha) && alpha < 1;
-}
-
-function parseColorToRgba(color: string): { r: number; g: number; b: number; a: number } | null {
-  const s = color.trim();
-  const hex = s.startsWith("#") ? s.slice(1) : s;
-  if (/^[0-9a-f]{8}$/i.test(hex)) {
-    const r = Number.parseInt(hex.slice(0, 2), 16);
-    const g = Number.parseInt(hex.slice(2, 4), 16);
-    const b = Number.parseInt(hex.slice(4, 6), 16);
-    const a = Number.parseInt(hex.slice(6, 8), 16) / 255;
-    return { r, g, b, a };
-  }
-  if (/^[0-9a-f]{6}$/i.test(hex)) {
-    const r = Number.parseInt(hex.slice(0, 2), 16);
-    const g = Number.parseInt(hex.slice(2, 4), 16);
-    const b = Number.parseInt(hex.slice(4, 6), 16);
-    return { r, g, b, a: 1 };
-  }
-  const rgba = s.match(/^rgba\(\s*([0-9]+)\s*,\s*([0-9]+)\s*,\s*([0-9]+)\s*,\s*([0-9]*\.?[0-9]+)\s*\)$/i);
-  if (!rgba) return null;
-  const r = Number(rgba[1]);
-  const g = Number(rgba[2]);
-  const b = Number(rgba[3]);
-  const a = Number(rgba[4]);
-  if (![r, g, b, a].every(Number.isFinite)) return null;
-  return { r, g, b, a };
-}
-
-function isFogLikeOverlayColor(color: string | undefined): boolean {
-  const c = color?.trim();
-  if (!c || !hasTransparency(c)) return false;
-  const rgba = parseColorToRgba(c);
-  if (!rgba) return false;
-  const maxChannel = Math.max(rgba.r, rgba.g, rgba.b);
-  const minChannel = Math.min(rgba.r, rgba.g, rgba.b);
-  const neutral = maxChannel - minChannel <= 18;
-  const bright = (rgba.r + rgba.g + rgba.b) / 3 >= 220;
-  return neutral && bright;
+function isCellHighlightsTarget(target: string | undefined): boolean {
+  if (typeof target !== "string" || !target.trim()) return false;
+  return /(^|[^a-z])cell-?highlights?([^a-z]|$)/i.test(target);
 }
 
 export function GridCanvas(props: {
@@ -1488,24 +1441,19 @@ export function GridCanvas(props: {
       }
     };
 
-    const hasNoExplicitTarget = (target: string | undefined) => {
-      return typeof target !== "string" || !target.trim();
-    };
-
-    // Some puzzles intentionally place line clues above fog (e.g. phantom arrows).
-    // Restrict this pass to fog-like translucent linework with no explicit target.
-    // Explicitly-targeted overlays should still obey normal fog clipping.
+    // Some puzzles intentionally place specific clue linework above fog.
+    // Restrict this pass to explicit cell-highlights target lines/arrows only.
     const drawExplicitTopLineFeatures = () => {
       const maxOrder = Number.MAX_SAFE_INTEGER;
       const topLines = (def.cosmetics.lines ?? [])
-        .filter((ln) => (ln.wayPoints.length >= 2 || Boolean(ln.svgPathData)) && hasNoExplicitTarget(ln.target) && isFogLikeOverlayColor(ln.color))
+        .filter((ln) => (ln.wayPoints.length >= 2 || Boolean(ln.svgPathData)) && isCellHighlightsTarget(ln.target))
         .map((ln) => ({ order: ln.renderOrder ?? maxOrder, ln }))
         .sort((a, b) => a.order - b.order)
         .map((entry) => entry.ln);
       for (const ln of topLines) drawConstraintLine(ln);
 
       const topArrows = (def.cosmetics.arrows ?? [])
-        .filter((arrow) => hasNoExplicitTarget(arrow.target) && isFogLikeOverlayColor(arrow.color))
+        .filter((arrow) => isCellHighlightsTarget(arrow.target))
         .map((arrow) => ({ order: arrow.renderOrder ?? maxOrder, arrow }))
         .sort((a, b) => a.order - b.order)
         .map((entry) => entry.arrow);
