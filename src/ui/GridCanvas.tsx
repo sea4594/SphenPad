@@ -1488,24 +1488,24 @@ export function GridCanvas(props: {
       }
     };
 
-    const hasExplicitOverTarget = (target: string | undefined) => {
-      if (typeof target !== "string" || !target.trim()) return false;
-      return classifyRenderTarget(target) === "over";
+    const hasNoExplicitTarget = (target: string | undefined) => {
+      return typeof target !== "string" || !target.trim();
     };
 
     // Some puzzles intentionally place line clues above fog (e.g. phantom arrows).
-    // Restrict this pass to explicit overlay-target linework only.
+    // Restrict this pass to fog-like translucent linework with no explicit target.
+    // Explicitly-targeted overlays should still obey normal fog clipping.
     const drawExplicitTopLineFeatures = () => {
       const maxOrder = Number.MAX_SAFE_INTEGER;
       const topLines = (def.cosmetics.lines ?? [])
-        .filter((ln) => (ln.wayPoints.length >= 2 || Boolean(ln.svgPathData)) && hasExplicitOverTarget(ln.target) && isFogLikeOverlayColor(ln.color))
+        .filter((ln) => (ln.wayPoints.length >= 2 || Boolean(ln.svgPathData)) && hasNoExplicitTarget(ln.target) && isFogLikeOverlayColor(ln.color))
         .map((ln) => ({ order: ln.renderOrder ?? maxOrder, ln }))
         .sort((a, b) => a.order - b.order)
         .map((entry) => entry.ln);
       for (const ln of topLines) drawConstraintLine(ln);
 
       const topArrows = (def.cosmetics.arrows ?? [])
-        .filter((arrow) => hasExplicitOverTarget(arrow.target) && isFogLikeOverlayColor(arrow.color))
+        .filter((arrow) => hasNoExplicitTarget(arrow.target) && isFogLikeOverlayColor(arrow.color))
         .map((arrow) => ({ order: arrow.renderOrder ?? maxOrder, arrow }))
         .sort((a, b) => a.order - b.order)
         .map((entry) => entry.arrow);
