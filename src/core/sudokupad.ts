@@ -1662,7 +1662,7 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
 
   // Thermometer variants: modern `thermos` and legacy `thermometer` with nested `lines`.
   const thermometerLines = [
-    ...(Array.isArray(scl?.thermos) ? scl.thermos : []),
+    ...mergeArrayAliases(scl?.thermos, scl?.thermo, scl?.thermolines, scl?.thermoLines),
     ...(Array.isArray(scl?.thermometer)
       ? scl.thermometer.flatMap((t: any) => (Array.isArray(t?.lines) ? t.lines.map((line: any) => ({ cells: line })) : [t]))
       : []),
@@ -1923,8 +1923,9 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
       .filter((x): x is NonNullable<typeof x> => x !== null) ?? [];
 
   // Between lines are represented like thermos but with line-only semantics.
-  if (Array.isArray(scl?.betweenline)) {
-    const betweenEntries = scl.betweenline
+  const betweenLineSrc = mergeArrayAliases(scl?.betweenline, scl?.betweenLine, scl?.betweenlines, scl?.betweenLines);
+  if (betweenLineSrc.length) {
+    const betweenEntries = betweenLineSrc
       .flatMap((item: any) => (Array.isArray(item?.lines) ? item.lines.map((line: any) => ({ ...item, cells: line })) : [item]));
 
     const defaultBetweenLineColor = "#cfcfcf";
@@ -1973,14 +1974,33 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
     if (betweenEndpointCircles.length) cosmetics.underlays = [...(cosmetics.underlays ?? []), ...betweenEndpointCircles];
   }
 
-  if (Array.isArray(scl?.thermos)) cosmetics.thermolines = extractPathConstraint(scl.thermos, "#ff6b6b") as any;
-  if (Array.isArray(scl?.whispers)) cosmetics.whispers = extractPathConstraint(scl.whispers, "#00c2a8") as any;
-  if (Array.isArray(scl?.palindromes)) cosmetics.palindromes = extractPathConstraint(scl.palindromes, "#ffa500") as any;
-  if (!cosmetics.palindromes && Array.isArray(scl?.palindrome)) cosmetics.palindromes = extractPathConstraint(scl.palindrome, "#ffa500") as any;
-  if (Array.isArray(scl?.renban)) cosmetics.renbanlines = extractPathConstraint(scl.renban, "#7c3aed") as any;
-  if (Array.isArray(scl?.entropic)) cosmetics.entropics = extractPathConstraint(scl.entropic, "#f72585") as any;
-  if (Array.isArray(scl?.germanwhispers)) cosmetics.germanwhispers = extractPathConstraint(scl.germanwhispers, "#00d4ff") as any;
-  if (Array.isArray(scl?.modular)) cosmetics.modularlines = extractPathConstraint(scl.modular, "#ffb703") as any;
+  const thermoSrc = mergeArrayAliases(scl?.thermos, scl?.thermo, scl?.thermolines, scl?.thermoLines);
+  if (thermoSrc.length) cosmetics.thermolines = extractPathConstraint(thermoSrc, "#ff6b6b") as any;
+
+  const whisperSrc = mergeArrayAliases(scl?.whispers, scl?.whisper, scl?.whisperline, scl?.whisperLine, scl?.whisperlines, scl?.whisperLines);
+  if (whisperSrc.length) cosmetics.whispers = extractPathConstraint(whisperSrc, "#00c2a8") as any;
+
+  const palindromeSrc = mergeArrayAliases(scl?.palindromes, scl?.palindrome, scl?.palindromeLines, scl?.palindromelines);
+  if (palindromeSrc.length) cosmetics.palindromes = extractPathConstraint(palindromeSrc, "#ffa500") as any;
+
+  const renbanSrc = mergeArrayAliases(scl?.renban, scl?.renbanline, scl?.renbanLine, scl?.renbanlines, scl?.renbanLines);
+  if (renbanSrc.length) cosmetics.renbanlines = extractPathConstraint(renbanSrc, "#7c3aed") as any;
+
+  const entropicSrc = mergeArrayAliases(scl?.entropic, scl?.entropics, scl?.entropicline, scl?.entropicLine, scl?.entropiclines, scl?.entropicLines);
+  if (entropicSrc.length) cosmetics.entropics = extractPathConstraint(entropicSrc, "#f72585") as any;
+
+  const germanWhisperSrc = mergeArrayAliases(
+    scl?.germanwhispers,
+    scl?.germanWhispers,
+    scl?.germanwhisper,
+    scl?.germanWhisper,
+    scl?.germanwhisperline,
+    scl?.germanWhisperLine,
+  );
+  if (germanWhisperSrc.length) cosmetics.germanwhispers = extractPathConstraint(germanWhisperSrc, "#00d4ff") as any;
+
+  const modularSrc = mergeArrayAliases(scl?.modular, scl?.modularline, scl?.modularLine, scl?.modularlines, scl?.modularLines);
+  if (modularSrc.length) cosmetics.modularlines = extractPathConstraint(modularSrc, "#ffb703") as any;
 
   // Odd/even markers (legacy fpuz fields).
   const oddSrc = Array.isArray(scl?.odd) ? scl.odd : [];
@@ -2010,16 +2030,17 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
   if (parityOverlays.length) cosmetics.underlays = [...(cosmetics.underlays ?? []), ...parityOverlays];
 
   // Clues around grid
-  if (scl?.clues) {
-    const clues = scl.clues;
-    if (clues.skyscraper) cosmetics.skyscraper = clues.skyscraper;
-    if (clues.sandwich) cosmetics.sandwich = clues.sandwich;
-    if (clues.xsum) cosmetics.xsum = clues.xsum;
+  if (scl?.clues || scl?.skyscraper || scl?.sandwich || scl?.xsum) {
+    const clues = scl.clues ?? {};
+    if (clues.skyscraper ?? scl?.skyscraper) cosmetics.skyscraper = (clues.skyscraper ?? scl?.skyscraper) as any;
+    if (clues.sandwich ?? scl?.sandwich) cosmetics.sandwich = (clues.sandwich ?? scl?.sandwich) as any;
+    if (clues.xsum ?? scl?.xsum) cosmetics.xsum = (clues.xsum ?? scl?.xsum) as any;
   }
 
   // Little killer clues
-  if (Array.isArray(scl?.littlekillers)) {
-    cosmetics.littlekillers = scl.littlekillers
+  const littleKillerSrc = mergeArrayAliases(scl?.littlekillers, scl?.littlekiller, scl?.littleKiller, scl?.littleKillers);
+  if (littleKillerSrc.length) {
+    cosmetics.littlekillers = littleKillerSrc
       .map((lk: any) => {
         const rc = asRC(lk?.cell ?? lk?.rc ?? lk?.ce);
         if (!rc) return null;
@@ -2034,8 +2055,8 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
   }
 
   // Irregular regions (jigsaw)
-  if (Array.isArray(scl?.irregularRegions) || Array.isArray(scl?.jigsaw)) {
-    const regions = scl?.irregularRegions ?? scl?.jigsaw;
+  if (Array.isArray(scl?.irregularRegions) || Array.isArray(scl?.jigsaw) || Array.isArray(scl?.irregularregions)) {
+    const regions = scl?.irregularRegions ?? scl?.irregularregions ?? scl?.jigsaw;
     cosmetics.irregularRegions = regions
       .map((region: any) => {
         const cells = parseCellRefs(region?.cells ?? region?.ce);
@@ -2057,8 +2078,9 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
   }
 
   // Disjoint groups
-  if (Array.isArray(scl?.disjointGroups)) {
-    cosmetics.disjointGroups = scl.disjointGroups
+  const disjointSrc = mergeArrayAliases(scl?.disjointGroups, scl?.disjointgroups, scl?.disjointGroup, scl?.disjointgroup);
+  if (disjointSrc.length) {
+    cosmetics.disjointGroups = disjointSrc
       .map((group: any) => {
         const cells = parseCellRefs(group?.cells ?? group?.ce);
         if (!cells.length) return null;
