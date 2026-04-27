@@ -1995,8 +1995,8 @@ export function GridCanvas(props: {
         drawGridLines();
       }
 
-      // Explicit cell-highlights clue linework is intentionally above fog.
-      // Draw this before top features so decorative overlays can remain above clues.
+      // Explicitly promoted above-fog clue linework is drawn before top features
+      // so decorative overlays can remain above clues.
       drawExplicitTopLineFeatures();
 
       // Most top features should still obey fog clipping and can layer above clue lines.
