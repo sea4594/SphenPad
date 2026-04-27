@@ -2073,6 +2073,18 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
   if (scl?.antiRook || scl?.antirook) cosmetics.antiRook = true;
 
   // Fog of war: common SCL keys include foglight/fogLight/fogLights.
+  const rawFogColor =
+    scl?.fogColor ??
+    scl?.fogcolor ??
+    scl?.fog?.color ??
+    scl?.fog?.fill ??
+    scl?.settings?.fogColor ??
+    scl?.settings?.fogcolor ??
+    scl?.metadata?.fogColor ??
+    scl?.metadata?.fogcolor;
+  const parsedFogColor = normalizeColorToken(rawFogColor);
+  if (parsedFogColor) cosmetics.fogColor = parsedFogColor;
+
   const rawFogLights = scl?.foglight ?? scl?.fogLight ?? scl?.fogLights ?? scl?.fog?.lights ?? scl?.fog?.light;
   if (Array.isArray(rawFogLights)) cosmetics.fogEnabled = true;
   if (Array.isArray(rawFogLights)) {
@@ -2114,6 +2126,16 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
         return { triggerCells, revealCells, triggerMode };
       })
       .filter(Boolean) as any;
+  }
+
+  // Many SudokuPad exports encode fog-tinted helper lines in `target: cell-highlights`.
+  // When fog color is not explicitly provided, use that color as the fog cover color.
+  if (!cosmetics.fogColor && Array.isArray(cosmetics.lines)) {
+    const fogLineColor = cosmetics.lines.find((ln) => {
+      const target = typeof ln?.target === "string" ? ln.target.toLowerCase() : "";
+      return /(^|[^a-z])cell-?highlights?([^a-z]|$)/.test(target) && typeof ln?.color === "string";
+    })?.color;
+    if (typeof fogLineColor === "string" && fogLineColor.trim()) cosmetics.fogColor = fogLineColor;
   }
 
   // Keep solution if present so fog can reveal based on correct entries.

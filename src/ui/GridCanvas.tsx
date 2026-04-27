@@ -1443,21 +1443,13 @@ export function GridCanvas(props: {
     };
 
     // Some puzzles intentionally place specific clue linework above fog.
-    // Do not promote plain `cell-highlights` by default: SudokuPad uses this
-    // target for helper linework that should still obey fog masking.
-    const hasExplicitAboveFogTarget = (target?: string) => {
-      if (typeof target !== "string" || !target.trim()) return false;
-      return /(^|[^a-z])(above-?fog|over-?fog|top-?layer|foreground)([^a-z]|$)/i.test(target);
-    };
-
-    // Restrict this pass to explicit cell-highlights target lines/arrows only
-    // when the target also requests above-fog rendering.
+    // Restrict this pass to explicit cell-highlights target lines/arrows only.
     const isPromotedAboveFogLine = (ln: NonNullable<PuzzleDefinition["cosmetics"]["lines"]>[number]) => {
-      return isCellHighlightsTarget(ln.target) && hasExplicitAboveFogTarget(ln.target);
+      return isCellHighlightsTarget(ln.target);
     };
 
     const isPromotedAboveFogArrow = (arrow: NonNullable<PuzzleDefinition["cosmetics"]["arrows"]>[number]) => {
-      return isCellHighlightsTarget(arrow.target) && hasExplicitAboveFogTarget(arrow.target);
+      return isCellHighlightsTarget(arrow.target);
     };
 
     const drawExplicitTopLineFeatures = () => {
@@ -1955,7 +1947,8 @@ export function GridCanvas(props: {
     }
 
     if (fogDefined) {
-      ctx.fillStyle = DEFAULT_FOG_FILL_COLOR;
+      const fogFillColor = def.cosmetics.fogColor ?? DEFAULT_FOG_FILL_COLOR;
+      ctx.fillStyle = fogFillColor;
       for (let r = 0; r < rows; r++) {
         for (let c = 0; c < cols; c++) {
           if (lit[r][c]) continue;
@@ -1995,8 +1988,8 @@ export function GridCanvas(props: {
         drawGridLines();
       }
 
-      // Explicitly promoted above-fog clue linework is drawn before top features
-      // so decorative overlays can remain above clues.
+      // Explicit cell-highlights clue linework is intentionally above fog.
+      // Draw this before top features so decorative overlays can remain above clues.
       drawExplicitTopLineFeatures();
 
       // Most top features should still obey fog clipping and can layer above clue lines.
