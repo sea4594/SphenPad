@@ -101,6 +101,11 @@ function isCellHighlightsTarget(target: string | undefined): boolean {
   return /(^|[^a-z])cell-?highlights?([^a-z]|$)/i.test(target);
 }
 
+function isCellColorsTarget(target: string | undefined): boolean {
+  if (typeof target !== "string" || !target.trim()) return false;
+  return /(^|[^a-z])cell-?colors?([^a-z]|$)/i.test(target);
+}
+
 export function GridCanvas(props: {
   def: PuzzleDefinition;
   progress: PuzzleProgress;
@@ -1963,6 +1968,7 @@ export function GridCanvas(props: {
     }
 
     if (fogDefined) {
+      const deferredCellColorLines: Array<NonNullable<PuzzleDefinition["cosmetics"]["lines"]>[number]> = [];
       ctx.fillStyle = DEFAULT_FOG_FILL_COLOR;
       for (let r = 0; r < rows; r++) {
         for (let c = 0; c < cols; c++) {
@@ -1986,6 +1992,10 @@ export function GridCanvas(props: {
       ctx.save();
       clipToFogVisibleAreas(lit);
       for (const ln of def.cosmetics.lines ?? []) {
+        if (isCellColorsTarget(ln.target)) {
+          deferredCellColorLines.push(ln);
+          continue;
+        }
         if (isPromotedAboveFogLine(ln)) continue;
         drawConstraintLine(ln);
       }
@@ -2012,6 +2022,9 @@ export function GridCanvas(props: {
       clipToFogVisibleAreas(lit);
       drawTopPuzzleFeatures();
       ctx.restore();
+
+      // SudokuPad keeps cell-colors decorative fills visible regardless of fog-lit cells.
+      for (const ln of deferredCellColorLines) drawConstraintLine(ln);
 
       // Keep lines/marks above highlights under fog, but behind values/letters.
       drawUserLines();
