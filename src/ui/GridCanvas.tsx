@@ -1468,6 +1468,11 @@ export function GridCanvas(props: {
       for (const arrow of topArrows) drawArrow(arrow);
     };
 
+    const fogDefined =
+      def.cosmetics.fogEnabled === true ||
+      (def.cosmetics.fogLights?.length ?? 0) > 0 ||
+      (def.cosmetics.fogTriggerEffects?.length ?? 0) > 0;
+
     // Canonical SudokuPad rendering order:
     // underlays -> highlights -> arrows/lines (arrows, lines, cages, dots by target) -> grid -> overlays
     drawVisualLayer("under");
@@ -1480,9 +1485,12 @@ export function GridCanvas(props: {
       }
     }
 
-    // Draw all arrows/lines/cages/dots by their target/layer
-    drawVisualLayer("arrows");
-    drawVisualLayer("cages");
+    // Draw all arrows/lines/cages/dots by their target/layer.
+    // In fog mode these are rendered in the fog-aware section to avoid double compositing.
+    if (!fogDefined) {
+      drawVisualLayer("arrows");
+      drawVisualLayer("cages");
+    }
 
     const drawGridPuzzleFeatures = () => {
       // For compatibility, keep this for any grid-targeted overlays
@@ -1522,17 +1530,15 @@ export function GridCanvas(props: {
       ctx.clip();
     };
 
-    const fogDefined =
-      def.cosmetics.fogEnabled === true ||
-      (def.cosmetics.fogLights?.length ?? 0) > 0 ||
-      (def.cosmetics.fogTriggerEffects?.length ?? 0) > 0;
-
     // Keep a dedicated grid-target pass between highlights and the built-in grid.
-    drawGridPuzzleFeatures();
+    // In fog mode these are rendered after fog compositing to avoid darkening from double draws.
+    if (!fogDefined) {
+      drawGridPuzzleFeatures();
 
-    // Grid below top puzzle artwork so features are not bisected by grid lines.
-    drawGridLines();
-    if (!fogDefined) drawTopPuzzleFeatures();
+      // Grid below top puzzle artwork so features are not bisected by grid lines.
+      drawGridLines();
+      drawTopPuzzleFeatures();
+    }
 
     const drawSegmentLine = (
       start: { x: number; y: number },
