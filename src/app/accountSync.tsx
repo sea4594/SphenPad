@@ -112,6 +112,10 @@ function makeEmptySnapshot(): CloudAppSnapshot {
   };
 }
 
+function isCloudRevisionConflict(error: unknown): boolean {
+  return error instanceof Error && error.message === "cloud-state-revision-conflict";
+}
+
 export function AccountSyncProvider(props: { children: ReactNode }) {
   const { children } = props;
   const [ready, setReady] = useState(!firebaseEnabled);
@@ -133,6 +137,7 @@ export function AccountSyncProvider(props: { children: ReactNode }) {
   const cloudPuzzleKeysRef = useRef<string[]>([]);
   const lastSuccessfulSyncAtRef = useRef(0);
   const cloudMetadataUpdatedAtRef = useRef(0);
+  const cloudRevisionRef = useRef(0);
 
   function clearScheduledSync() {
     if (syncTimeoutRef.current != null) {
@@ -141,58 +146,86 @@ export function AccountSyncProvider(props: { children: ReactNode }) {
     }
   }
 
-  function updateCloudSyncPointers(updatedAt: number, puzzleKeys: string[]) {
+  function updateCloudSyncPointers(updatedAt: number, puzzleKeys: string[], revision = cloudRevisionRef.current) {
     cloudPuzzleKeysRef.current = puzzleKeys;
     lastSuccessfulSyncAtRef.current = updatedAt;
     cloudMetadataUpdatedAtRef.current = updatedAt;
+    cloudRevisionRef.current = revision;
   }
 
   async function uploadLocalSnapshot(activeUser: User) {
     const localSnapshot = await exportLocalAppSnapshot();
-    await pushCloudState(activeUser.uid, localSnapshot, cloudPuzzleKeysRef.current);
+    const result = await pushCloudState(
+      activeUser.uid,
+      localSnapshot,
+      cloudPuzzleKeysRef.current,
+      cloudRevisionRef.current,
+    );
     updateCloudSyncPointers(
       localSnapshot.updatedAt,
       localSnapshot.puzzles.map((row) => row.key),
+      result.revision,
     );
   }
 
   async function reconcileLocalAndCloud(activeUser: User) {
-    const [cloudSnapshot, localSnapshot] = await Promise.all([
-      pullCloudState(activeUser.uid),
-      exportLocalAppSnapshot(),
-    ]);
-    const cloudPuzzleKeys = snapshotPuzzleKeys(cloudSnapshot);
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const [cloudMetadata, cloudSnapshot, localSnapshot] = await Promise.all([
+          pullCloudStateMetadata(activeUser.uid),
+          pullCloudState(activeUser.uid),
+          exportLocalAppSnapshot(),
+        ]);
+        const cloudPuzzleKeys = snapshotPuzzleKeys(cloudSnapshot);
+        const expectedRevision = cloudMetadata?.revision ?? 0;
 
-    if (!cloudSnapshot && hasLocalAppSnapshotData(localSnapshot)) {
-      await uploadLocalSnapshot(activeUser);
-      return;
+        if (!cloudSnapshot && hasLocalAppSnapshotData(localSnapshot)) {
+          const result = await pushCloudState(
+            activeUser.uid,
+            localSnapshot,
+            cloudPuzzleKeysRef.current,
+            expectedRevision,
+          );
+          updateCloudSyncPointers(
+            localSnapshot.updatedAt,
+            localSnapshot.puzzles.map((row) => row.key),
+            result.revision,
+          );
+          return;
+        }
+
+        if (cloudSnapshot && !hasLocalAppSnapshotData(localSnapshot)) {
+          await importLocalAppSnapshot(cloudSnapshot, false);
+          updateCloudSyncPointers(cloudSnapshot.updatedAt, cloudPuzzleKeys, expectedRevision);
+          notifyStorageRefreshNeeded();
+          setAppStateNonce((n) => n + 1);
+          return;
+        }
+
+        if (!cloudSnapshot) {
+          updateCloudSyncPointers(0, [], expectedRevision);
+          return;
+        }
+
+        const merged = mergeSnapshots(localSnapshot, cloudSnapshot);
+        if (snapshotNeedsLocalApply(localSnapshot, merged)) {
+          await importLocalAppSnapshot(merged, false);
+          notifyStorageRefreshNeeded();
+          setAppStateNonce((n) => n + 1);
+        }
+
+        const result = await pushCloudState(activeUser.uid, merged, cloudPuzzleKeys, expectedRevision);
+        updateCloudSyncPointers(
+          merged.updatedAt,
+          merged.puzzles.map((row) => row.key),
+          result.revision,
+        );
+        return;
+      } catch (error) {
+        if (isCloudRevisionConflict(error) && attempt < 2) continue;
+        throw error;
+      }
     }
-
-    if (cloudSnapshot && !hasLocalAppSnapshotData(localSnapshot)) {
-      await importLocalAppSnapshot(cloudSnapshot, false);
-      updateCloudSyncPointers(cloudSnapshot.updatedAt, cloudPuzzleKeys);
-      notifyStorageRefreshNeeded();
-      setAppStateNonce((n) => n + 1);
-      return;
-    }
-
-    if (!cloudSnapshot) {
-      updateCloudSyncPointers(0, []);
-      return;
-    }
-
-    const merged = mergeSnapshots(localSnapshot, cloudSnapshot);
-    if (snapshotNeedsLocalApply(localSnapshot, merged)) {
-      await importLocalAppSnapshot(merged, false);
-      notifyStorageRefreshNeeded();
-      setAppStateNonce((n) => n + 1);
-    }
-
-    await pushCloudState(activeUser.uid, merged, cloudPuzzleKeys);
-    updateCloudSyncPointers(
-      merged.updatedAt,
-      merged.puzzles.map((row) => row.key),
-    );
   }
 
   async function reconcileCloudUpdates(activeUser: User, force = false) {
@@ -216,23 +249,26 @@ export function AccountSyncProvider(props: { children: ReactNode }) {
           await uploadLocalSnapshot(activeUser);
           setSyncStatus("idle");
         } else {
-          updateCloudSyncPointers(0, []);
+          updateCloudSyncPointers(0, [], 0);
         }
         return;
       }
 
       const nextPuzzleKeys = metadataPuzzleKeys(cloudMetadata);
       const remoteChanged =
+        cloudMetadata.revision > cloudRevisionRef.current ||
         cloudMetadata.updatedAt > cloudMetadataUpdatedAtRef.current ||
         havePuzzleKeysChanged(cloudPuzzleKeysRef.current, nextPuzzleKeys);
 
       if (!force && !remoteChanged) {
         cloudPuzzleKeysRef.current = nextPuzzleKeys;
         cloudMetadataUpdatedAtRef.current = cloudMetadata.updatedAt;
+        cloudRevisionRef.current = cloudMetadata.revision;
         return;
       }
 
       cloudMetadataUpdatedAtRef.current = cloudMetadata.updatedAt;
+      cloudRevisionRef.current = cloudMetadata.revision;
       setSyncStatus("syncing");
       setSyncError("");
       await reconcileLocalAndCloud(activeUser);
@@ -268,29 +304,23 @@ export function AccountSyncProvider(props: { children: ReactNode }) {
 
       const localOwnerId = getLocalDataOwnerId();
       const localBelongsToOtherAccount = localOwnerId !== null && localOwnerId !== activeUser.uid;
-      const localUpdatedAt = localMetadata.updatedAt;
       const localLikelyHasData = localMetadata.hasData;
       const cloudLikelyHasData = Boolean(cloudMetadata?.hasData);
 
-      if (
-        cloudMetadata &&
-        !localBelongsToOtherAccount &&
-        localOwnerId === activeUser.uid &&
-        localLikelyHasData &&
-        localUpdatedAt === cloudMetadata.updatedAt
-      ) {
-        // Fast path: local and cloud snapshots already match for this account.
-        updateCloudSyncPointers(cloudMetadata.updatedAt, metadataPuzzleKeys(cloudMetadata));
-      } else if (localBelongsToOtherAccount) {
+      if (localBelongsToOtherAccount) {
         if (!cloudLikelyHasData) {
           const empty = makeEmptySnapshot();
           await importLocalAppSnapshot(empty, false);
-          updateCloudSyncPointers(0, []);
+          updateCloudSyncPointers(0, [], 0);
         } else {
           const cloudSnapshot = await pullCloudState(activeUser.uid);
           const safeCloud = cloudSnapshot ?? makeEmptySnapshot();
           await importLocalAppSnapshot(safeCloud, false);
-          updateCloudSyncPointers(safeCloud.updatedAt, snapshotPuzzleKeys(cloudSnapshot));
+          updateCloudSyncPointers(
+            safeCloud.updatedAt,
+            snapshotPuzzleKeys(cloudSnapshot),
+            cloudMetadata?.revision ?? 0,
+          );
         }
         notifyStorageRefreshNeeded();
         setAppStateNonce((n) => n + 1);
@@ -301,17 +331,22 @@ export function AccountSyncProvider(props: { children: ReactNode }) {
           updateCloudSyncPointers(
             cloudMetadata?.updatedAt ?? 0,
             cloudMetadata ? metadataPuzzleKeys(cloudMetadata) : [],
+            cloudMetadata?.revision ?? 0,
           );
         }
       } else if (!localLikelyHasData) {
         const cloudSnapshot = await pullCloudState(activeUser.uid);
         const safeCloud = cloudSnapshot ?? makeEmptySnapshot();
         await importLocalAppSnapshot(safeCloud, false);
-        updateCloudSyncPointers(safeCloud.updatedAt, snapshotPuzzleKeys(cloudSnapshot));
+        updateCloudSyncPointers(
+          safeCloud.updatedAt,
+          snapshotPuzzleKeys(cloudSnapshot),
+          cloudMetadata.revision,
+        );
         notifyStorageRefreshNeeded();
         setAppStateNonce((n) => n + 1);
       } else {
-        // Any mismatch with data on both sides gets merged to avoid clock-skew local-wins overwrites.
+        // Always reconcile same-account startup to avoid stale-tab overwrites.
         await reconcileLocalAndCloud(activeUser);
       }
 
@@ -346,7 +381,7 @@ export function AccountSyncProvider(props: { children: ReactNode }) {
     setSyncError("");
 
     try {
-      await uploadLocalSnapshot(user);
+      await reconcileLocalAndCloud(user);
       setSyncStatus("idle");
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -389,7 +424,7 @@ export function AccountSyncProvider(props: { children: ReactNode }) {
 
       if (!nextUser) {
         initializedUserIdRef.current = null;
-        updateCloudSyncPointers(0, []);
+        updateCloudSyncPointers(0, [], 0);
         setSyncStatus("idle");
         setSyncError("");
         setReady(true);

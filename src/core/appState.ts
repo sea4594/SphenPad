@@ -85,7 +85,7 @@ export function hasLocalAppSnapshotData(snapshot: LocalAppSnapshot): boolean {
 /**
  * Merges two snapshots without discarding data from either side.
  * - Puzzles: union; when both sides have the same key the one with the newer updatedAt wins.
- * - Folders: union; when both sides have the same id the one with the newer updatedAt wins.
+ * - Folders: union; same-id folders merge puzzle membership and keep newer metadata fields.
  * - Settings (localStorage): taken from whichever snapshot has the more recent overall updatedAt.
  */
 export function mergeSnapshots(local: LocalAppSnapshot, cloud: LocalAppSnapshot): LocalAppSnapshot {
@@ -102,7 +102,28 @@ export function mergeSnapshots(local: LocalAppSnapshot, cloud: LocalAppSnapshot)
   for (const folder of cloud.folders) folderMap.set(folder.id, folder);
   for (const folder of local.folders) {
     const existing = folderMap.get(folder.id);
-    if (!existing || folder.updatedAt >= existing.updatedAt) folderMap.set(folder.id, folder);
+    if (!existing) {
+      folderMap.set(folder.id, folder);
+      continue;
+    }
+
+    const localIsNewer = folder.updatedAt >= existing.updatedAt;
+    const newer = localIsNewer ? folder : existing;
+    const older = localIsNewer ? existing : folder;
+    const mergedPuzzleKeys = [...newer.puzzleKeys];
+    const mergedPuzzleKeySet = new Set(mergedPuzzleKeys);
+    for (const key of older.puzzleKeys) {
+      if (mergedPuzzleKeySet.has(key)) continue;
+      mergedPuzzleKeySet.add(key);
+      mergedPuzzleKeys.push(key);
+    }
+
+    folderMap.set(folder.id, {
+      ...newer,
+      createdAt: Math.min(folder.createdAt ?? newer.createdAt, existing.createdAt ?? newer.createdAt),
+      updatedAt: Math.max(folder.updatedAt ?? 0, existing.updatedAt ?? 0),
+      puzzleKeys: mergedPuzzleKeys,
+    });
   }
 
   const useLocalSettings = local.updatedAt >= cloud.updatedAt;

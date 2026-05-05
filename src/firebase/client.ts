@@ -16,7 +16,7 @@ import {
   getDoc,
   getDocs,
   getFirestore,
-  setDoc,
+  runTransaction,
   writeBatch,
 } from "firebase/firestore";
 import type { FirebaseApp } from "firebase/app";
@@ -40,6 +40,7 @@ export type CloudStateMetadata = {
   updatedAt: number;
   puzzleKeys: string[];
   hasData: boolean;
+  revision: number;
 };
 
 export const firebaseEnabled = Boolean(firebaseConfig.apiKey && firebaseConfig.authDomain && firebaseConfig.projectId);
@@ -204,11 +205,15 @@ export async function pullCloudStateMetadata(userId: string): Promise<CloudState
       ? Object.keys(stateData.localStorage as object).length
       : 0;
   const updatedAt = typeof stateData.updatedAt === "number" ? stateData.updatedAt : 0;
+  const revision = typeof (stateData as { revision?: unknown }).revision === "number"
+    ? (stateData as { revision: number }).revision
+    : 0;
 
   return {
     updatedAt,
     puzzleKeys,
     hasData: updatedAt > 0 || puzzleKeys.length > 0 || folderCount > 0 || localStorageCount > 0,
+    revision,
   };
 }
 
@@ -249,21 +254,50 @@ export async function pullCloudState(userId: string): Promise<CloudAppSnapshot |
   };
 }
 
-export async function pushCloudState(userId: string, snapshot: CloudAppSnapshot, previousPuzzleKeys: string[] = []) {
-  if (!firebaseEnabled || !db) return;
+export async function pushCloudState(
+  userId: string,
+  snapshot: CloudAppSnapshot,
+  previousPuzzleKeys: string[] = [],
+  expectedRevision?: number,
+): Promise<{ revision: number }> {
+  if (!firebaseEnabled || !db) return { revision: expectedRevision ?? 0 };
 
   const stateRef = doc(db, "users", userId, "app", "state");
-  const existingState = await getDoc(stateRef);
   let cloudStatePuzzleKeys: string[] = [];
-  if (existingState.exists()) {
-    const existingStateData = existingState.data() as { puzzleKeys?: unknown };
-    if (Array.isArray(existingStateData.puzzleKeys)) {
-      cloudStatePuzzleKeys = existingStateData.puzzleKeys.filter((entry): entry is string => typeof entry === "string");
-    } else {
-      // Legacy cloud state may not include puzzleKeys; derive from current puzzle docs.
-      const existingPuzzleDocs = await getDocs(collection(db, "users", userId, "puzzles"));
-      cloudStatePuzzleKeys = existingPuzzleDocs.docs.map((entry) => puzzleDocIdToKey(entry.id));
+  let shouldDerivePuzzleKeysFromDocs = false;
+  let nextRevision = 1;
+
+  await runTransaction(db, async (transaction) => {
+    const existingState = await transaction.get(stateRef);
+    const existingStateData = existingState.exists()
+      ? (existingState.data() as { puzzleKeys?: unknown; revision?: unknown })
+      : null;
+    const currentRevision = typeof existingStateData?.revision === "number" ? existingStateData.revision : 0;
+
+    if (typeof expectedRevision === "number" && currentRevision !== expectedRevision) {
+      throw new Error("cloud-state-revision-conflict");
     }
+
+    if (Array.isArray(existingStateData?.puzzleKeys)) {
+      cloudStatePuzzleKeys = existingStateData.puzzleKeys.filter((entry): entry is string => typeof entry === "string");
+    } else if (existingState.exists()) {
+      shouldDerivePuzzleKeysFromDocs = true;
+    }
+
+    nextRevision = currentRevision + 1;
+    transaction.set(stateRef, {
+      version: snapshot.version,
+      updatedAt: snapshot.updatedAt,
+      revision: nextRevision,
+      localStorage: snapshot.localStorage,
+      folders: snapshot.folders,
+      puzzleKeys: snapshot.puzzles.map((row) => row.key),
+    });
+  });
+
+  if (shouldDerivePuzzleKeysFromDocs) {
+    const existingPuzzleDocs = await getDocs(collection(db, "users", userId, "puzzles"));
+    cloudStatePuzzleKeys = existingPuzzleDocs.docs.map((entry) => puzzleDocIdToKey(entry.id));
   }
 
   const effectivePreviousPuzzleKeys = Array.from(new Set([...previousPuzzleKeys, ...cloudStatePuzzleKeys]));
@@ -271,13 +305,6 @@ export async function pushCloudState(userId: string, snapshot: CloudAppSnapshot,
   const nextPuzzleKeys = snapshot.puzzles.map((row) => row.key);
   const nextPuzzleDocIds = new Set(nextPuzzleKeys.map(puzzleKeyToDocId));
   const previousPuzzleDocIds = new Set(effectivePreviousPuzzleKeys.map(puzzleKeyToDocId));
-  await setDoc(stateRef, {
-    version: snapshot.version,
-    updatedAt: snapshot.updatedAt,
-    localStorage: snapshot.localStorage,
-    folders: snapshot.folders,
-    puzzleKeys: nextPuzzleKeys,
-  });
 
   for (const batchRows of chunk(snapshot.puzzles, MAX_BATCH_SIZE)) {
     const batch = writeBatch(db);
@@ -298,4 +325,6 @@ export async function pushCloudState(userId: string, snapshot: CloudAppSnapshot,
     }
     await batch.commit();
   }
+
+  return { revision: nextRevision };
 }
