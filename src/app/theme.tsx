@@ -10,14 +10,12 @@ type ThemeContextValue = {
   hideTimer: boolean;
   outlineDigits: boolean;
   conflictChecker: boolean;
-  experimentalVideoPlayer: boolean;
   setTheme: (mode: ThemeMode, color: ThemeColor) => void;
   setMode: (mode: ThemeMode) => void;
   setColor: (color: ThemeColor) => void;
   setHideTimer: (hideTimer: boolean) => void;
   setOutlineDigits: (outlineDigits: boolean) => void;
   setConflictChecker: (conflictChecker: boolean) => void;
-  setExperimentalVideoPlayer: (experimentalVideoPlayer: boolean) => void;
 };
 
 const STORAGE_KEY = "sphenpad-theme-v1";
@@ -35,7 +33,6 @@ function readInitialTheme(): {
   hideTimer: boolean;
   outlineDigits: boolean;
   conflictChecker: boolean;
-  experimentalVideoPlayer: boolean;
 } {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -46,7 +43,6 @@ function readInitialTheme(): {
         hideTimer: false,
         outlineDigits: true,
         conflictChecker: true,
-        experimentalVideoPlayer: false,
       };
     }
     const parsed = JSON.parse(raw) as {
@@ -55,7 +51,6 @@ function readInitialTheme(): {
       hideTimer?: boolean;
       outlineDigits?: boolean;
       conflictChecker?: boolean;
-      experimentalVideoPlayer?: boolean;
     };
     const mode: ThemeMode = parsed.mode === "light" || parsed.mode === "dark" ? parsed.mode : "light";
     const mappedColor = parsed.color === "sunset" || parsed.color === "sepia" ? "clay" : parsed.color;
@@ -66,8 +61,7 @@ function readInitialTheme(): {
     const hideTimer = typeof parsed.hideTimer === "boolean" ? parsed.hideTimer : false;
     const outlineDigits = typeof parsed.outlineDigits === "boolean" ? parsed.outlineDigits : true;
     const conflictChecker = typeof parsed.conflictChecker === "boolean" ? parsed.conflictChecker : true;
-    const experimentalVideoPlayer = typeof parsed.experimentalVideoPlayer === "boolean" ? parsed.experimentalVideoPlayer : false;
-    return { mode: normalizedTheme.mode, color: normalizedTheme.color, hideTimer, outlineDigits, conflictChecker, experimentalVideoPlayer };
+    return { mode: normalizedTheme.mode, color: normalizedTheme.color, hideTimer, outlineDigits, conflictChecker };
   } catch {
     return {
       mode: "light",
@@ -75,7 +69,6 @@ function readInitialTheme(): {
       hideTimer: false,
       outlineDigits: true,
       conflictChecker: true,
-      experimentalVideoPlayer: false,
     };
   }
 }
@@ -87,7 +80,6 @@ export function ThemeProvider(props: { children: ReactNode }) {
   const [hideTimer, setHideTimer] = useState<boolean>(initialTheme.hideTimer);
   const [outlineDigits, setOutlineDigits] = useState<boolean>(initialTheme.outlineDigits);
   const [conflictChecker, setConflictChecker] = useState<boolean>(initialTheme.conflictChecker);
-  const [experimentalVideoPlayer, setExperimentalVideoPlayer] = useState<boolean>(initialTheme.experimentalVideoPlayer);
 
   const setTheme = (nextMode: ThemeMode, nextColor: ThemeColor) => {
     const normalized = normalizeThemeSelection(nextMode, nextColor);
@@ -111,7 +103,6 @@ export function ThemeProvider(props: { children: ReactNode }) {
       setHideTimer(next.hideTimer);
       setOutlineDigits(next.outlineDigits);
       setConflictChecker(next.conflictChecker);
-      setExperimentalVideoPlayer(next.experimentalVideoPlayer);
     };
     return onSyncedLocalDataApplied(applyThemeFromStorage);
   }, []);
@@ -133,8 +124,8 @@ export function ThemeProvider(props: { children: ReactNode }) {
     document.documentElement.style.backgroundColor = bg;
     document.body.style.backgroundColor = bg;
 
-    setSyncedLocalStorageItem(STORAGE_KEY, JSON.stringify({ mode, color, hideTimer, outlineDigits, conflictChecker, experimentalVideoPlayer }));
-  }, [mode, color, hideTimer, outlineDigits, conflictChecker, experimentalVideoPlayer]);
+    setSyncedLocalStorageItem(STORAGE_KEY, JSON.stringify({ mode, color, hideTimer, outlineDigits, conflictChecker }));
+  }, [mode, color, hideTimer, outlineDigits, conflictChecker]);
 
   const value = useMemo(
     () => ({
@@ -143,16 +134,14 @@ export function ThemeProvider(props: { children: ReactNode }) {
       hideTimer,
       outlineDigits,
       conflictChecker,
-      experimentalVideoPlayer,
       setTheme,
       setMode,
       setColor,
       setHideTimer,
       setOutlineDigits,
       setConflictChecker,
-      setExperimentalVideoPlayer,
     }),
-    [mode, color, hideTimer, outlineDigits, conflictChecker, experimentalVideoPlayer, setMode, setColor],
+    [mode, color, hideTimer, outlineDigits, conflictChecker, setMode, setColor],
   );
   return <ThemeContext.Provider value={value}>{props.children}</ThemeContext.Provider>;
 }

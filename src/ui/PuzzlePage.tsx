@@ -412,7 +412,7 @@ export function PuzzlePage() {
   const key = decodeURIComponent(puzzleId ?? "");
   const nav = useNavigate();
   const location = useLocation();
-  const { hideTimer, experimentalVideoPlayer } = useTheme();
+  const { hideTimer } = useTheme();
   const puzzleOriginState = readPuzzleOriginState(location.state);
   
   if (!puzzleOriginState) {
@@ -572,11 +572,6 @@ export function PuzzlePage() {
   }, []);
 
   useEffect(() => {
-    if (experimentalVideoPlayer) return;
-    setVideoPlayerOpen(false);
-  }, [experimentalVideoPlayer]);
-
-  useEffect(() => {
     // Ensure the board recomputes dimensions immediately after layout mode changes.
     const fireResize = () => window.dispatchEvent(new Event("resize"));
     fireResize();
@@ -586,7 +581,7 @@ export function PuzzlePage() {
       window.cancelAnimationFrame(rafA);
       window.cancelAnimationFrame(rafB);
     };
-  }, [videoPlayerOpen, videoViewportMode, experimentalVideoPlayer]);
+  }, [videoPlayerOpen, videoViewportMode]);
 
   useEffect(() => {
     if (!data) return;
@@ -747,7 +742,7 @@ export function PuzzlePage() {
     if (!hasLinkedVideo) setVideoPlayerOpen(false);
   }, [hasLinkedVideo]);
 
-  const videoLayoutOn = experimentalVideoPlayer && videoPlayerOpen;
+  const videoLayoutOn = videoPlayerOpen;
   const showGridVideoPlayer = videoLayoutOn;
   const videoModeClass = videoViewportMode === "mobile-portrait"
     ? "videoModeMobilePortrait"
@@ -1826,7 +1821,7 @@ export function PuzzlePage() {
             <button className="btn" onClick={onCopySudokuPadLinkClick} title="Copy SudokuPad link">
               <IconCopyLink />
             </button>
-            {experimentalVideoPlayer && hasLinkedVideo ? (
+            {hasLinkedVideo ? (
               <button
                 className={"btn" + (videoPlayerOpen ? " primary" : "")}
                 onClick={() => setVideoPlayerOpen((open) => !open)}
