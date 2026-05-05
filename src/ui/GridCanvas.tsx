@@ -1581,11 +1581,11 @@ export function GridCanvas(props: {
     // Keep a dedicated grid-target pass between highlights and the built-in grid.
     // In fog mode these are rendered after fog compositing to avoid darkening from double draws.
     if (!fogDefined) {
+      drawGridPuzzleFeatures();
+
       drawSelectionOutlines();
       // Grid below top puzzle artwork so features are not bisected by grid lines.
       drawGridLines();
-      // Grid-target features (for example custom cell-grids) sit above built-in grid lines.
-      drawGridPuzzleFeatures();
       drawTopPuzzleFeatures();
     }
 
@@ -2037,12 +2037,13 @@ export function GridCanvas(props: {
       drawVisualLayer("cages");
       ctx.restore();
 
+      // Grid-target features (for example cell-grids) stay visible above fog.
+      drawGridPuzzleFeatures();
+
       drawSelectionOutlines();
       if (def.cosmetics.gridVisible !== false) {
         drawGridLines();
       }
-      // Grid-target features (for example cell-grids) stay visible above built-in grid under fog.
-      drawGridPuzzleFeatures();
 
       // Explicit cell-highlights clue linework is intentionally above fog.
       // Draw this before top features so decorative overlays can remain above clues.
