@@ -741,6 +741,12 @@ export function PuzzlePage() {
     () => (youtubeVideoId ? `https://www.youtube.com/embed/${youtubeVideoId}?autoplay=1&rel=0&modestbranding=1` : null),
     [youtubeVideoId]
   );
+  const hasLinkedVideo = Boolean(youtubeEmbedUrl);
+
+  useEffect(() => {
+    if (!hasLinkedVideo) setVideoPlayerOpen(false);
+  }, [hasLinkedVideo]);
+
   const videoLayoutOn = experimentalVideoPlayer && videoPlayerOpen;
   const showTopbarVideoPlayer = videoLayoutOn && videoViewportMode === "mobile-portrait";
   const showGridVideoPlayer = videoLayoutOn && videoViewportMode !== "mobile-portrait";
@@ -1763,22 +1769,15 @@ export function PuzzlePage() {
 
   const renderVideoPlayer = (locationClassName: string) => (
     <div className={`card puzzleVideoCard ${locationClassName}`}>
-      {youtubeEmbedUrl ? (
-        <div className="puzzleVideoFrame">
-          <iframe
-            src={youtubeEmbedUrl}
-            title={meta?.archiveVideoTitle || meta?.title || "Puzzle video"}
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-            referrerPolicy="strict-origin-when-cross-origin"
-            allowFullScreen
-          />
-        </div>
-      ) : (
-        <div className="puzzleVideoEmpty">
-          <div className="puzzleVideoEmptyTitle">No linked YouTube video</div>
-          <div className="muted">This puzzle does not currently include an archive YouTube link.</div>
-        </div>
-      )}
+      <div className="puzzleVideoFrame">
+        <iframe
+          src={youtubeEmbedUrl ?? "about:blank"}
+          title={meta?.archiveVideoTitle || meta?.title || "Puzzle video"}
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+          referrerPolicy="strict-origin-when-cross-origin"
+          allowFullScreen
+        />
+      </div>
     </div>
   );
 
@@ -1828,7 +1827,7 @@ export function PuzzlePage() {
             <button className="btn" onClick={onCopySudokuPadLinkClick} title="Copy SudokuPad link">
               <IconCopyLink />
             </button>
-            {experimentalVideoPlayer ? (
+            {experimentalVideoPlayer && hasLinkedVideo ? (
               <button
                 className={"btn" + (videoPlayerOpen ? " primary" : "")}
                 onClick={() => setVideoPlayerOpen((open) => !open)}
