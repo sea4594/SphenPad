@@ -116,6 +116,37 @@ function isCloudRevisionConflict(error: unknown): boolean {
   return error instanceof Error && error.message === "cloud-state-revision-conflict";
 }
 
+function errorCodeOf(error: unknown): string {
+  if (!error || typeof error !== "object") return "";
+  const code = (error as { code?: unknown }).code;
+  return typeof code === "string" ? code : "";
+}
+
+function isLikelyOfflineError(error: unknown): boolean {
+  if (typeof navigator !== "undefined" && navigator.onLine === false) return true;
+  const code = errorCodeOf(error).toLowerCase();
+  if (code.includes("network") || code.includes("unavailable") || code.includes("timeout")) return true;
+  const message = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+  return (
+    message.includes("network") ||
+    message.includes("offline") ||
+    message.includes("failed to fetch") ||
+    message.includes("timeout") ||
+    message.includes("unavailable")
+  );
+}
+
+function describeSyncError(error: unknown): string {
+  if (isLikelyOfflineError(error)) {
+    return "Cloud sync is temporarily unavailable (offline/network issue). Local puzzles remain available on this device and will sync when connection is restored.";
+  }
+  const message = error instanceof Error ? error.message : String(error);
+  if (!message.trim()) {
+    return "Cloud sync failed. Local puzzles remain available on this device.";
+  }
+  return `Cloud sync failed: ${message}. Local puzzles remain available on this device.`;
+}
+
 export function AccountSyncProvider(props: { children: ReactNode }) {
   const { children } = props;
   const [ready, setReady] = useState(!firebaseEnabled);
@@ -274,9 +305,8 @@ export function AccountSyncProvider(props: { children: ReactNode }) {
       await reconcileLocalAndCloud(activeUser);
       setSyncStatus("idle");
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
       setSyncStatus("error");
-      setSyncError(message);
+      setSyncError(describeSyncError(error));
     } finally {
       reconcileInFlightRef.current = false;
       if (reconcileRequestedRef.current) {
@@ -357,9 +387,8 @@ export function AccountSyncProvider(props: { children: ReactNode }) {
       setSyncStatus("idle");
       setReady(true);
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
       setSyncStatus("error");
-      setSyncError(message);
+      setSyncError(describeSyncError(error));
       setReady(true);
     } finally {
       initializingForUidRef.current = null;
@@ -384,9 +413,8 @@ export function AccountSyncProvider(props: { children: ReactNode }) {
       await reconcileLocalAndCloud(user);
       setSyncStatus("idle");
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
       setSyncStatus("error");
-      setSyncError(message);
+      setSyncError(describeSyncError(error));
     } finally {
       syncInFlightRef.current = false;
       if (syncRequestedRef.current) {
@@ -444,9 +472,8 @@ export function AccountSyncProvider(props: { children: ReactNode }) {
         await initializeUserState(redirectUser);
       } catch (error) {
         if (cancelled) return;
-        const message = error instanceof Error ? error.message : String(error);
         setSyncStatus("error");
-        setSyncError(`Google login redirect failed: ${message}`);
+        setSyncError(`Google login redirect failed: ${describeSyncError(error)}`);
         setReady(true);
       }
     })();
