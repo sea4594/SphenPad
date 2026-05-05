@@ -376,7 +376,9 @@ export function GridCanvas(props: {
         gridLayout?.clientHeight ?? 0,
         pane.clientHeight || 0
       );
-      const controlsTop = kbdPanel?.getBoundingClientRect().top ?? Number.POSITIVE_INFINITY;
+      const kbdRect = kbdPanel?.getBoundingClientRect();
+      const controlsOverlapBoardHorizontally = !!kbdRect && kbdRect.left < wrapRect.right && kbdRect.right > wrapRect.left;
+      const controlsTop = controlsOverlapBoardHorizontally ? (kbdRect?.top ?? Number.POSITIVE_INFINITY) : Number.POSITIVE_INFINITY;
       const frameBottom = Math.min(controlsTop, visualViewportHeight);
       const spaceAboveControls = Math.max(0, Math.floor(frameBottom - wrapRect.top));
 

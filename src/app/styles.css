@@ -2328,11 +2328,25 @@ input.url {
   }
 
   .videoLayoutOn.videoModeMobilePortrait .gridLayout {
+    grid-template-rows: minmax(120px, 32vh) minmax(0, 1fr) var(--mobile-controls-h);
     --mobile-controls-h: clamp(180px, calc(var(--mobile-controls-h-raw) * 0.84), 41vmax);
   }
 
+  .videoLayoutOn.videoModeMobilePortrait .puzzleGridVideoPlayer {
+    display: block;
+    grid-column: 1;
+    grid-row: 1;
+  }
+
   .videoLayoutOn.videoModeMobilePortrait .boardColumn {
+    grid-column: 1;
+    grid-row: 2;
     align-content: end;
+  }
+
+  .videoLayoutOn.videoModeMobilePortrait .kbdPanel {
+    grid-column: 1;
+    grid-row: 3;
   }
 
   .boardColumn {

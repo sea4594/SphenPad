@@ -748,8 +748,7 @@ export function PuzzlePage() {
   }, [hasLinkedVideo]);
 
   const videoLayoutOn = experimentalVideoPlayer && videoPlayerOpen;
-  const showTopbarVideoPlayer = videoLayoutOn && videoViewportMode === "mobile-portrait";
-  const showGridVideoPlayer = videoLayoutOn && videoViewportMode !== "mobile-portrait";
+  const showGridVideoPlayer = videoLayoutOn;
   const videoModeClass = videoViewportMode === "mobile-portrait"
     ? "videoModeMobilePortrait"
     : videoViewportMode === "mobile-landscape"
@@ -1843,7 +1842,6 @@ export function PuzzlePage() {
             </button>
           </div>
         </div>
-        {showTopbarVideoPlayer ? renderVideoPlayer("puzzleTopbarVideoPlayer") : null}
       </div>
 
       <div className="page puzzlePage">
