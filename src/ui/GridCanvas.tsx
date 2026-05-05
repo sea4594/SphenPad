@@ -939,9 +939,9 @@ export function GridCanvas(props: {
         const explicitBorderThickness = Number.isFinite(borderThickness)
           ? Number(borderThickness)
           : undefined;
-        // Match SudokuPad behavior: only draw borders when thickness is explicitly provided.
-        if (explicitBorderThickness != null && explicitBorderThickness > 0) {
-          const borderWidth = scaledCosmeticPx(explicitBorderThickness, { previewMin: 0, normalMin: 0 });
+        const sourceBorderThickness = explicitBorderThickness ?? 1;
+        if (sourceBorderThickness > 0) {
+          const borderWidth = scaledCosmeticPx(sourceBorderThickness, { previewMin: 0, normalMin: 0 });
           if (borderWidth > 0) {
             ctx.strokeStyle = borderColor;
             ctx.lineWidth = borderWidth;
