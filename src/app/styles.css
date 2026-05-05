@@ -2321,40 +2321,6 @@ input.url {
     align-content: stretch;
   }
 
-  .videoLayoutOn.videoModeMobilePortrait .puzzleTopbar {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
-    align-items: stretch;
-    gap: 8px;
-    min-height: clamp(132px, 28vh, 210px);
-  }
-
-  .videoLayoutOn.videoModeMobilePortrait .puzzleTopbarButtons {
-    flex-direction: column;
-    align-items: stretch;
-    justify-content: flex-start;
-    width: min-content;
-    min-width: 120px;
-  }
-
-  .videoLayoutOn.videoModeMobilePortrait .puzzleTopbar > .puzzleTopbarButtons > .btn,
-  .videoLayoutOn.videoModeMobilePortrait .puzzleTopbarRight > .btn {
-    width: 100%;
-    justify-content: center;
-  }
-
-  .videoLayoutOn.videoModeMobilePortrait .puzzleTopbarRight {
-    margin-left: 0;
-    width: 100%;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 4px;
-  }
-
-  .videoLayoutOn.videoModeMobilePortrait .puzzleTopbar .puzzleTimer {
-    text-align: center;
-  }
-
   .videoLayoutOn.videoModeMobilePortrait .puzzleTopbarVideoPlayer {
     display: block;
     width: 100%;
@@ -2536,6 +2502,13 @@ input.url {
     padding: max(6px, var(--safe-top)) 6px max(6px, var(--safe-bottom)) calc(6px + var(--safe-left));
     border-bottom: 0;
     border-right: 1px solid rgba(255, 255, 255, 0.08);
+    gap: 6px;
+  }
+
+  .puzzleShell .puzzleTopbarButtons {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
     gap: 6px;
   }
 
