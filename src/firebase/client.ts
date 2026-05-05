@@ -126,10 +126,43 @@ function puzzleDocIdToKey(docId: string) {
 
 function parseFolders(value: unknown): PuzzleFolder[] {
   if (!Array.isArray(value)) return [];
-  return value.filter((entry): entry is PuzzleFolder => {
-    if (!entry || typeof entry !== "object") return false;
-    return typeof (entry as PuzzleFolder).id === "string" && typeof (entry as PuzzleFolder).name === "string";
-  });
+  const parsed: PuzzleFolder[] = [];
+  for (const entry of value) {
+    if (!entry || typeof entry !== "object") continue;
+    const folder = entry as Partial<PuzzleFolder>;
+    if (typeof folder.id !== "string" || typeof folder.name !== "string") continue;
+
+    parsed.push({
+      id: folder.id,
+      parentId: folder.parentId ?? null,
+      name: folder.name,
+      puzzleKeys: Array.isArray(folder.puzzleKeys)
+        ? folder.puzzleKeys.filter((key): key is string => typeof key === "string")
+        : [],
+      createdAt: typeof folder.createdAt === "number" ? folder.createdAt : 0,
+      updatedAt: typeof folder.updatedAt === "number" ? folder.updatedAt : 0,
+      ...(typeof folder.nameUpdatedAt === "number" ? { nameUpdatedAt: folder.nameUpdatedAt } : {}),
+      ...(typeof folder.parentUpdatedAt === "number" ? { parentUpdatedAt: folder.parentUpdatedAt } : {}),
+      ...(typeof folder.membershipUpdatedAt === "number" ? { membershipUpdatedAt: folder.membershipUpdatedAt } : {}),
+      ...(typeof folder.deletedAt === "number" && folder.deletedAt > 0 ? { deletedAt: folder.deletedAt } : {}),
+    });
+  }
+  return parsed;
+}
+
+function sanitizeFolderForCloud(folder: PuzzleFolder): PuzzleFolder {
+  return {
+    id: folder.id,
+    parentId: folder.parentId ?? null,
+    name: folder.name,
+    puzzleKeys: folder.puzzleKeys.filter((key): key is string => typeof key === "string"),
+    createdAt: folder.createdAt,
+    updatedAt: folder.updatedAt,
+    ...(typeof folder.nameUpdatedAt === "number" ? { nameUpdatedAt: folder.nameUpdatedAt } : {}),
+    ...(typeof folder.parentUpdatedAt === "number" ? { parentUpdatedAt: folder.parentUpdatedAt } : {}),
+    ...(typeof folder.membershipUpdatedAt === "number" ? { membershipUpdatedAt: folder.membershipUpdatedAt } : {}),
+    ...(typeof folder.deletedAt === "number" ? { deletedAt: folder.deletedAt } : {}),
+  };
 }
 
 function parseLocalStorageRecord(value: unknown): CloudAppSnapshot["localStorage"] {
@@ -263,6 +296,7 @@ export async function pushCloudState(
   if (!firebaseEnabled || !db) return { revision: expectedRevision ?? 0 };
 
   const stateRef = doc(db, "users", userId, "app", "state");
+  const sanitizedFolders = snapshot.folders.map(sanitizeFolderForCloud);
   let cloudStatePuzzleKeys: string[] = [];
   let shouldDerivePuzzleKeysFromDocs = false;
   let nextRevision = 1;
@@ -290,7 +324,7 @@ export async function pushCloudState(
       updatedAt: snapshot.updatedAt,
       revision: nextRevision,
       localStorage: snapshot.localStorage,
-      folders: snapshot.folders,
+      folders: sanitizedFolders,
       puzzleKeys: snapshot.puzzles.map((row) => row.key),
     });
   });

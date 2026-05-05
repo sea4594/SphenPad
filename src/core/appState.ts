@@ -166,7 +166,7 @@ export function mergeSnapshots(local: LocalAppSnapshot, cloud: LocalAppSnapshot)
       nameUpdatedAt: Math.max(localNameAt, cloudNameAt),
       parentUpdatedAt: Math.max(localParentAt, cloudParentAt),
       membershipUpdatedAt: Math.max(localMembershipAt, cloudMembershipAt),
-      deletedAt,
+      ...(typeof deletedAt === "number" ? { deletedAt } : {}),
       createdAt: Math.min(folder.createdAt ?? existing.createdAt, existing.createdAt ?? folder.createdAt),
       updatedAt: Math.max(folder.updatedAt ?? 0, existing.updatedAt ?? 0),
     });

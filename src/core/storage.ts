@@ -146,7 +146,6 @@ export async function createFolder(name: string, parentId: string | null = null)
     nameUpdatedAt: now,
     parentUpdatedAt: now,
     membershipUpdatedAt: now,
-    deletedAt: undefined,
   };
   await db.folders.add(folder);
   signalStorageMutation(true, folder.updatedAt);
