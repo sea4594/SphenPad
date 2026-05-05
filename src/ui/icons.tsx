@@ -11,6 +11,13 @@ export const IconPlay = () => (
 		<path d="M6.2 4.8a1 1 0 0 1 1.53-.84l7.15 5a1 1 0 0 1 0 1.64l-7.15 5a1 1 0 0 1-1.53-.82V4.8Z" fill="currentColor" />
 	</svg>
 );
+export const IconVideoPlay = () => (
+	<svg width="18" height="18" viewBox="0 0 20 20" aria-hidden>
+		<rect x="2.2" y="4.2" width="10.6" height="11.6" rx="1.6" fill="none" stroke="currentColor" strokeWidth="1.6" />
+		<path d="M8 8.4a.9.9 0 0 1 1.38-.75l3.2 2.23a.9.9 0 0 1 0 1.48l-3.2 2.23A.9.9 0 0 1 8 12.88V8.4Z" fill="currentColor" />
+		<path d="m12.8 8.5 4.3-2v7l-4.3-2" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+	</svg>
+);
 export const IconReload = () => (
 	<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden>
 		<path d="M21 2v6h-6" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />

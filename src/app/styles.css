@@ -421,6 +421,14 @@ button,
   gap: 8px;
 }
 
+.puzzleTopbarButtons {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+}
+
 .puzzleTopbarRight {
   margin-left: auto;
   display: flex;
@@ -432,6 +440,43 @@ button,
 .puzzleTimer {
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+}
+
+.puzzleVideoCard {
+  display: grid;
+  place-items: stretch;
+  padding: 6px;
+  overflow: hidden;
+  min-width: 0;
+  min-height: 0;
+}
+
+.puzzleVideoCard iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  border-radius: 0;
+  background: #000;
+}
+
+.puzzleVideoEmpty {
+  height: 100%;
+  min-height: 90px;
+  display: grid;
+  align-content: center;
+  justify-items: start;
+  gap: 6px;
+  padding: 10px;
+}
+
+.puzzleVideoEmptyTitle {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.puzzleTopbarVideoPlayer,
+.puzzleGridVideoPlayer {
+  display: none;
 }
 
 .brand {
@@ -1700,6 +1745,37 @@ input.url {
   overflow: hidden;
 }
 
+.videoLayoutOn.videoModeDesktop .puzzlePage {
+  max-width: none;
+}
+
+.videoLayoutOn.videoModeDesktop .gridLayout {
+  grid-template-columns: minmax(360px, 1fr) minmax(420px, min(58vw, 76vh)) minmax(280px, 360px);
+  grid-template-rows: 1fr;
+  gap: 12px;
+}
+
+.videoLayoutOn.videoModeDesktop .puzzleGridVideoPlayer {
+  display: block;
+  grid-column: 1;
+  grid-row: 1;
+  align-self: stretch;
+}
+
+.videoLayoutOn.videoModeDesktop .boardColumn {
+  grid-column: 2;
+  grid-row: 1;
+  justify-self: end;
+  width: 100%;
+}
+
+.videoLayoutOn.videoModeDesktop .kbdPanel {
+  grid-column: 3;
+  grid-row: 1;
+  justify-self: end;
+  width: 100%;
+}
+
 .gridLayout > * {
   min-width: 0;
 }
@@ -2179,6 +2255,10 @@ input.url {
     gap: 4px;
   }
 
+  .puzzleTopbarButtons {
+    gap: 4px;
+  }
+
   .puzzleTopbar .btn {
     min-height: 34px;
     padding: 5px 8px;
@@ -2230,6 +2310,54 @@ input.url {
     gap: 0;
     overflow: hidden;
     align-content: stretch;
+  }
+
+  .videoLayoutOn.videoModeMobilePortrait .puzzleTopbar {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: stretch;
+    gap: 8px;
+    min-height: clamp(132px, 28vh, 210px);
+  }
+
+  .videoLayoutOn.videoModeMobilePortrait .puzzleTopbarButtons {
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    width: min-content;
+    min-width: 120px;
+  }
+
+  .videoLayoutOn.videoModeMobilePortrait .puzzleTopbar > .puzzleTopbarButtons > .btn,
+  .videoLayoutOn.videoModeMobilePortrait .puzzleTopbarRight > .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .videoLayoutOn.videoModeMobilePortrait .puzzleTopbarRight {
+    margin-left: 0;
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+  }
+
+  .videoLayoutOn.videoModeMobilePortrait .puzzleTopbar .puzzleTimer {
+    text-align: center;
+  }
+
+  .videoLayoutOn.videoModeMobilePortrait .puzzleTopbarVideoPlayer {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  .videoLayoutOn.videoModeMobilePortrait .gridLayout {
+    --mobile-controls-h: clamp(180px, calc(var(--mobile-controls-h-raw) * 0.84), 41vmax);
+  }
+
+  .videoLayoutOn.videoModeMobilePortrait .boardColumn {
+    align-content: end;
   }
 
   .boardColumn {
@@ -2403,6 +2531,7 @@ input.url {
   }
 
   .puzzleShell .puzzleTopbar > .btn,
+  .puzzleShell .puzzleTopbarButtons > .btn,
   .puzzleShell .puzzleTopbarRight > .btn {
     width: 100%;
     min-width: 0;
@@ -2453,6 +2582,32 @@ input.url {
   .puzzleShell .kbdPanel {
     width: min(34vw, 320px);
     justify-self: end;
+  }
+
+  .videoLayoutOn.videoModeMobileLandscape .gridLayout {
+    grid-template-columns: minmax(0, 1fr) minmax(220px, 34vw);
+    grid-template-rows: minmax(0, 1fr) minmax(0, 60%);
+    gap: 8px;
+  }
+
+  .videoLayoutOn.videoModeMobileLandscape .boardColumn {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+  }
+
+  .videoLayoutOn.videoModeMobileLandscape .puzzleGridVideoPlayer {
+    display: block;
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .videoLayoutOn.videoModeMobileLandscape .kbdPanel {
+    grid-column: 2;
+    grid-row: 2;
+    width: min(34vw, 320px);
+    height: 100%;
+    max-height: none;
+    align-self: end;
   }
 }
 

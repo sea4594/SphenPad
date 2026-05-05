@@ -38,10 +38,12 @@ export function SettingsOverlay(props: { onClose: () => void }) {
     hideTimer,
     outlineDigits,
     conflictChecker,
+    experimentalVideoPlayer,
     setTheme,
     setHideTimer,
     setOutlineDigits,
     setConflictChecker,
+    setExperimentalVideoPlayer,
   } = useTheme();
   const activePreset = themePresets.find((preset) => preset.mode === mode && preset.color === color) ?? themePresets[0];
 
@@ -149,6 +151,17 @@ export function SettingsOverlay(props: { onClose: () => void }) {
                 className={"switch" + (conflictChecker ? " is-on" : "")}
                 onClick={() => setConflictChecker(!conflictChecker)}
                 aria-label="Toggle conflict checker"
+              >
+                <span className="switchThumb" />
+              </button>
+            </div>
+
+            <div className="settingsRow" style={{ marginTop: 4 }}>
+              <div className="muted">Experimental YouTube player</div>
+              <button
+                className={"switch" + (experimentalVideoPlayer ? " is-on" : "")}
+                onClick={() => setExperimentalVideoPlayer(!experimentalVideoPlayer)}
+                aria-label="Toggle experimental YouTube player layout"
               >
                 <span className="switchThumb" />
               </button>

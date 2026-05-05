@@ -19,6 +19,7 @@ import {
   IconFolder,
   IconPause,
   IconPlay,
+  IconVideoPlay,
   IconCopyLink,
   IconReload,
   IconRedo,
@@ -366,12 +367,52 @@ function buildFolderPath(folder: PuzzleFolder, folderById: Map<string, PuzzleFol
   return names.join(" / ");
 }
 
+type VideoViewportMode = "mobile-portrait" | "mobile-landscape" | "desktop";
+
+function parseYouTubeVideoId(url: string | undefined): string | null {
+  if (!url) return null;
+  const raw = url.trim();
+  if (!raw) return null;
+
+  try {
+    const parsed = new URL(raw);
+    const host = parsed.hostname.toLowerCase();
+    if (host === "youtu.be") {
+      const id = parsed.pathname.replace(/^\/+/, "").split("/")[0] ?? "";
+      return id || null;
+    }
+    if (host.includes("youtube.com")) {
+      if (parsed.pathname.startsWith("/shorts/")) {
+        const id = parsed.pathname.split("/")[2] ?? "";
+        return id || null;
+      }
+      if (parsed.pathname.startsWith("/embed/")) {
+        const id = parsed.pathname.split("/")[2] ?? "";
+        return id || null;
+      }
+      const id = parsed.searchParams.get("v") ?? "";
+      return id || null;
+    }
+  } catch {
+    // Continue to a compact regex fallback.
+  }
+
+  const fallback = raw.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|shorts\/|embed\/))([A-Za-z0-9_-]{6,})/i);
+  return fallback?.[1] ?? null;
+}
+
+function getVideoViewportMode(): VideoViewportMode {
+  const isLikelyMobile = window.matchMedia("(max-width: 760px), ((hover: none) and (pointer: coarse))").matches;
+  if (!isLikelyMobile) return "desktop";
+  return window.matchMedia("(orientation: landscape)").matches ? "mobile-landscape" : "mobile-portrait";
+}
+
 export function PuzzlePage() {
   const { puzzleId } = useParams();
   const key = decodeURIComponent(puzzleId ?? "");
   const nav = useNavigate();
   const location = useLocation();
-  const { hideTimer } = useTheme();
+  const { hideTimer, experimentalVideoPlayer } = useTheme();
   const puzzleOriginState = readPuzzleOriginState(location.state);
   
   if (!puzzleOriginState) {
@@ -393,6 +434,8 @@ export function PuzzlePage() {
   const [addToFolderBusy, setAddToFolderBusy] = useState("");
   const [folderCreateBusy, setFolderCreateBusy] = useState("");
   const [boardReloadNonce, setBoardReloadNonce] = useState(0);
+  const [videoPlayerOpen, setVideoPlayerOpen] = useState(false);
+  const [videoViewportMode, setVideoViewportMode] = useState<VideoViewportMode>(() => getVideoViewportMode());
   const tickRef = useRef<number | null>(null);
   const holdDelayRef = useRef<number | null>(null);
   const holdIntervalRef = useRef<number | null>(null);
@@ -517,6 +560,21 @@ export function PuzzlePage() {
       }
     })();
   }, [data, key, pauseMenuOpen]);
+
+  useEffect(() => {
+    const refreshViewportMode = () => setVideoViewportMode(getVideoViewportMode());
+    window.addEventListener("resize", refreshViewportMode);
+    window.addEventListener("orientationchange", refreshViewportMode);
+    return () => {
+      window.removeEventListener("resize", refreshViewportMode);
+      window.removeEventListener("orientationchange", refreshViewportMode);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (experimentalVideoPlayer) return;
+    setVideoPlayerOpen(false);
+  }, [experimentalVideoPlayer]);
 
   useEffect(() => {
     if (!data) return;
@@ -666,6 +724,19 @@ export function PuzzlePage() {
   }, [data]);
 
   const meta = data?.def.meta;
+  const youtubeVideoId = useMemo(() => parseYouTubeVideoId(meta?.archiveYouTubeUrl), [meta?.archiveYouTubeUrl]);
+  const youtubeEmbedUrl = useMemo(
+    () => (youtubeVideoId ? `https://www.youtube.com/embed/${youtubeVideoId}?autoplay=1&rel=0&modestbranding=1` : null),
+    [youtubeVideoId]
+  );
+  const videoLayoutOn = experimentalVideoPlayer && videoPlayerOpen;
+  const showTopbarVideoPlayer = videoLayoutOn && videoViewportMode === "mobile-portrait";
+  const showGridVideoPlayer = videoLayoutOn && videoViewportMode !== "mobile-portrait";
+  const videoModeClass = videoViewportMode === "mobile-portrait"
+    ? "videoModeMobilePortrait"
+    : videoViewportMode === "mobile-landscape"
+      ? "videoModeMobileLandscape"
+      : "videoModeDesktop";
   const timeStr = useMemo(() => fmtHMS(data?.progress.totalMillis ?? 0), [data?.progress.totalMillis]);
   const folderById = useMemo(() => new Map(folders.map((folder) => [folder.id, folder])), [folders]);
   const addFolderNav = addFolderNavId ? folderById.get(addFolderNavId) ?? null : null;
@@ -1678,55 +1749,93 @@ export function PuzzlePage() {
 
   if (!data) return null;
 
-  return (
-    <div className="shell puzzleShell" onPointerUpCapture={blurButtonAfterPointerUp} onContextMenu={(e) => e.preventDefault()}>
-      <div className="topbar puzzleTopbar">
-        <button
-          className="btn"
-          onClick={() => {
-            console.log(`[PuzzlePage] User exiting puzzle, key=${key}`);
-            if (!puzzleOriginState) {
-              console.log(`[PuzzlePage] No origin state available - returning to main menu`);
-              startTransition(() => nav("/"));
-              return;
-            }
-            console.log(
-              "[PuzzlePage] Returning to origin:",
-              `page=${puzzleOriginState.page}`,
-              `path=${puzzleOriginState.path}`,
-              `scrollY=${puzzleOriginState.scrollY}`,
-              puzzleOriginState.context ? `context=${JSON.stringify(puzzleOriginState.context)}` : ""
-            );
-            nav(puzzleOriginState.path, {
-              replace: true,
-              state: withPuzzleReturnState(undefined, puzzleOriginState),
-            });
-          }}
-        >
-          ← Menu
-        </button>
-        <div className="puzzleTopbarRight">
-          {!hideTimer ? <div className="puzzleTimer">{timeStr}</div> : null}
-          <button className="btn" onClick={onCheckAnswers} title="Check answers" disabled={data.progress.status === "complete" || data.progress.paused}>
-            <IconCheck />
-          </button>
-          <button className="btn" onClick={onPausePlayClick} title="Pause or resume" disabled={data.progress.status === "complete"}>
-            {data.progress.status === "complete" ? <IconPause /> : data.progress.paused ? <IconPlay /> : <IconPause />}
-          </button>
-          <button className="btn" onClick={onReloadPuzzleClick} title="Restart puzzle" disabled={reloadingPuzzle}>
-            <IconReload />
-          </button>
-          <button className="btn" onClick={onCopySudokuPadLinkClick} title="Copy SudokuPad link">
-            <IconCopyLink />
-          </button>
-          <button className="btn" onClick={() => setSettingsOpen(true)} title="Settings">
-            <IconSettings />
-          </button>
+  const renderVideoPlayer = (locationClassName: string) => (
+    <div className={`card puzzleVideoCard ${locationClassName}`}>
+      {youtubeEmbedUrl ? (
+        <iframe
+          src={youtubeEmbedUrl}
+          title={meta?.archiveVideoTitle || meta?.title || "Puzzle video"}
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+          referrerPolicy="strict-origin-when-cross-origin"
+          allowFullScreen
+        />
+      ) : (
+        <div className="puzzleVideoEmpty">
+          <div className="puzzleVideoEmptyTitle">No linked YouTube video</div>
+          <div className="muted">This puzzle does not currently include an archive YouTube link.</div>
         </div>
+      )}
+    </div>
+  );
+
+  return (
+    <div
+      className={`shell puzzleShell ${videoLayoutOn ? "videoLayoutOn" : ""} ${videoModeClass}`}
+      onPointerUpCapture={blurButtonAfterPointerUp}
+      onContextMenu={(e) => e.preventDefault()}
+    >
+      <div className="topbar puzzleTopbar">
+        <div className="puzzleTopbarButtons">
+          <button
+            className="btn"
+            onClick={() => {
+              console.log(`[PuzzlePage] User exiting puzzle, key=${key}`);
+              if (!puzzleOriginState) {
+                console.log(`[PuzzlePage] No origin state available - returning to main menu`);
+                startTransition(() => nav("/"));
+                return;
+              }
+              console.log(
+                "[PuzzlePage] Returning to origin:",
+                `page=${puzzleOriginState.page}`,
+                `path=${puzzleOriginState.path}`,
+                `scrollY=${puzzleOriginState.scrollY}`,
+                puzzleOriginState.context ? `context=${JSON.stringify(puzzleOriginState.context)}` : ""
+              );
+              nav(puzzleOriginState.path, {
+                replace: true,
+                state: withPuzzleReturnState(undefined, puzzleOriginState),
+              });
+            }}
+          >
+            ← Menu
+          </button>
+          <div className="puzzleTopbarRight">
+            {!hideTimer ? <div className="puzzleTimer">{timeStr}</div> : null}
+            <button className="btn" onClick={onCheckAnswers} title="Check answers" disabled={data.progress.status === "complete" || data.progress.paused}>
+              <IconCheck />
+            </button>
+            <button className="btn" onClick={onPausePlayClick} title="Pause or resume" disabled={data.progress.status === "complete"}>
+              {data.progress.status === "complete" ? <IconPause /> : data.progress.paused ? <IconPlay /> : <IconPause />}
+            </button>
+            <button className="btn" onClick={onReloadPuzzleClick} title="Restart puzzle" disabled={reloadingPuzzle}>
+              <IconReload />
+            </button>
+            <button className="btn" onClick={onCopySudokuPadLinkClick} title="Copy SudokuPad link">
+              <IconCopyLink />
+            </button>
+            {experimentalVideoPlayer ? (
+              <button
+                className={"btn" + (videoPlayerOpen ? " primary" : "")}
+                onClick={() => setVideoPlayerOpen((open) => !open)}
+                title={videoPlayerOpen ? "Close puzzle video player" : "Open puzzle video player"}
+                aria-label={videoPlayerOpen ? "Close puzzle video player" : "Open puzzle video player"}
+                type="button"
+              >
+                <IconVideoPlay />
+              </button>
+            ) : null}
+            <button className="btn" onClick={() => setSettingsOpen(true)} title="Settings">
+              <IconSettings />
+            </button>
+          </div>
+        </div>
+        {showTopbarVideoPlayer ? renderVideoPlayer("puzzleTopbarVideoPlayer") : null}
       </div>
 
       <div className="page puzzlePage">
         <div className="gridLayout">
+          {showGridVideoPlayer ? renderVideoPlayer("puzzleGridVideoPlayer") : null}
           <div className="boardColumn">
             <div className="card boardCard">
               <GridCanvas
