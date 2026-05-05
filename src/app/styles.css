@@ -2341,7 +2341,7 @@ input.url {
   .videoLayoutOn.videoModeMobilePortrait .boardColumn {
     grid-column: 1;
     grid-row: 2;
-    align-content: end;
+    align-content: start;
   }
 
   .videoLayoutOn.videoModeMobilePortrait .kbdPanel {
