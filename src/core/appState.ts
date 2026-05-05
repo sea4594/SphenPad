@@ -31,6 +31,22 @@ export type LocalAppSnapshotMetadata = {
   hasData: boolean;
 };
 
+function folderNameTimestamp(folder: PuzzleFolder): number {
+  return folder.nameUpdatedAt ?? folder.updatedAt ?? 0;
+}
+
+function folderParentTimestamp(folder: PuzzleFolder): number {
+  return folder.parentUpdatedAt ?? folder.updatedAt ?? 0;
+}
+
+function folderMembershipTimestamp(folder: PuzzleFolder): number {
+  return folder.membershipUpdatedAt ?? folder.updatedAt ?? 0;
+}
+
+function folderDeletedTimestamp(folder: PuzzleFolder): number {
+  return folder.deletedAt ?? 0;
+}
+
 export async function exportLocalAppSnapshotMetadata(): Promise<LocalAppSnapshotMetadata> {
   const [counts, localStorage] = await Promise.all([readStorageCounts(), Promise.resolve(readSyncedLocalStorage())]);
   const localStorageCount = Object.keys(localStorage).length;
@@ -85,7 +101,7 @@ export function hasLocalAppSnapshotData(snapshot: LocalAppSnapshot): boolean {
 /**
  * Merges two snapshots without discarding data from either side.
  * - Puzzles: union; when both sides have the same key the one with the newer updatedAt wins.
- * - Folders: union; same-id folders merge puzzle membership and keep newer metadata fields.
+ * - Folders: per-field merge with tombstones; deletes dominate older edits.
  * - Settings (localStorage): taken from whichever snapshot has the more recent overall updatedAt.
  */
 export function mergeSnapshots(local: LocalAppSnapshot, cloud: LocalAppSnapshot): LocalAppSnapshot {
@@ -107,22 +123,52 @@ export function mergeSnapshots(local: LocalAppSnapshot, cloud: LocalAppSnapshot)
       continue;
     }
 
-    const localIsNewer = folder.updatedAt >= existing.updatedAt;
-    const newer = localIsNewer ? folder : existing;
-    const older = localIsNewer ? existing : folder;
-    const mergedPuzzleKeys = [...newer.puzzleKeys];
-    const mergedPuzzleKeySet = new Set(mergedPuzzleKeys);
-    for (const key of older.puzzleKeys) {
-      if (mergedPuzzleKeySet.has(key)) continue;
-      mergedPuzzleKeySet.add(key);
-      mergedPuzzleKeys.push(key);
+    const localDeleteAt = folderDeletedTimestamp(folder);
+    const cloudDeleteAt = folderDeletedTimestamp(existing);
+    const deletedAt = Math.max(localDeleteAt, cloudDeleteAt) || undefined;
+
+    const localNameAt = folderNameTimestamp(folder);
+    const cloudNameAt = folderNameTimestamp(existing);
+    const localParentAt = folderParentTimestamp(folder);
+    const cloudParentAt = folderParentTimestamp(existing);
+    const localMembershipAt = folderMembershipTimestamp(folder);
+    const cloudMembershipAt = folderMembershipTimestamp(existing);
+
+    const name = localNameAt >= cloudNameAt ? folder.name : existing.name;
+    const parentId = localParentAt >= cloudParentAt ? folder.parentId : existing.parentId;
+
+    let puzzleKeys: string[];
+    if (localMembershipAt > cloudMembershipAt) puzzleKeys = [...folder.puzzleKeys];
+    else if (cloudMembershipAt > localMembershipAt) puzzleKeys = [...existing.puzzleKeys];
+    else {
+      const mergedPuzzleKeys = [...existing.puzzleKeys];
+      const mergedPuzzleKeySet = new Set(mergedPuzzleKeys);
+      for (const key of folder.puzzleKeys) {
+        if (mergedPuzzleKeySet.has(key)) continue;
+        mergedPuzzleKeySet.add(key);
+        mergedPuzzleKeys.push(key);
+      }
+      puzzleKeys = mergedPuzzleKeys;
+    }
+
+    if (deletedAt) {
+      const newestMutation = Math.max(localNameAt, cloudNameAt, localParentAt, cloudParentAt, localMembershipAt, cloudMembershipAt);
+      if (deletedAt >= newestMutation) {
+        puzzleKeys = [];
+      }
     }
 
     folderMap.set(folder.id, {
-      ...newer,
-      createdAt: Math.min(folder.createdAt ?? newer.createdAt, existing.createdAt ?? newer.createdAt),
+      ...(folder.updatedAt >= existing.updatedAt ? folder : existing),
+      name,
+      parentId,
+      puzzleKeys,
+      nameUpdatedAt: Math.max(localNameAt, cloudNameAt),
+      parentUpdatedAt: Math.max(localParentAt, cloudParentAt),
+      membershipUpdatedAt: Math.max(localMembershipAt, cloudMembershipAt),
+      deletedAt,
+      createdAt: Math.min(folder.createdAt ?? existing.createdAt, existing.createdAt ?? folder.createdAt),
       updatedAt: Math.max(folder.updatedAt ?? 0, existing.updatedAt ?? 0),
-      puzzleKeys: mergedPuzzleKeys,
     });
   }
 

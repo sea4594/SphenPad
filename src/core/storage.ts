@@ -10,6 +10,10 @@ export type PuzzleFolder = {
   puzzleKeys: string[];
   createdAt: number;
   updatedAt: number;
+  nameUpdatedAt?: number;
+  parentUpdatedAt?: number;
+  membershipUpdatedAt?: number;
+  deletedAt?: number;
 };
 
 export type PuzzleSnapshotRow = { key: string; data: PersistedPuzzle };
@@ -53,7 +57,8 @@ export async function exportStorageSnapshot() {
 }
 
 export async function readStorageCounts() {
-  const [puzzleCount, folderCount] = await Promise.all([db.puzzles.count(), db.folders.count()]);
+  const [puzzleCount, folders] = await Promise.all([db.puzzles.count(), db.folders.toArray()]);
+  const folderCount = folders.filter((folder) => !folder.deletedAt).length;
   return { puzzleCount, folderCount };
 }
 
@@ -84,7 +89,7 @@ export async function importStorageSnapshot(
   puzzlesListCache = snapshot.puzzles
     .map((r) => ({ key: r.key, ...r.data }))
     .sort((a, b) => b.updatedAt - a.updatedAt);
-  foldersListCache = [...snapshot.folders];
+  foldersListCache = snapshot.folders.filter((folder) => !folder.deletedAt);
 }
 
 export async function upsertPuzzle(key: string, data: PersistedPuzzle) {
@@ -116,7 +121,7 @@ export async function listCompletedPuzzleKeys() {
 
 export async function listFolders() {
   if (foldersListCache) return foldersListCache;
-  const list = await db.folders.toArray();
+  const list = (await db.folders.toArray()).filter((folder) => !folder.deletedAt);
   foldersListCache = list;
   return list;
 }
@@ -127,7 +132,7 @@ export async function createFolder(name: string, parentId: string | null = null)
 
   if (parentId) {
     const parent = await db.folders.get(parentId);
-    if (!parent) throw new Error("Parent folder not found.");
+    if (!parent || parent.deletedAt) throw new Error("Parent folder not found.");
   }
 
   const now = Date.now();
@@ -138,6 +143,10 @@ export async function createFolder(name: string, parentId: string | null = null)
     puzzleKeys: [],
     createdAt: now,
     updatedAt: now,
+    nameUpdatedAt: now,
+    parentUpdatedAt: now,
+    membershipUpdatedAt: now,
+    deletedAt: undefined,
   };
   await db.folders.add(folder);
   signalStorageMutation(true, folder.updatedAt);
@@ -148,13 +157,14 @@ export async function addPuzzleToFolder(folderId: string, puzzleKey: string) {
   let updatedAt = Date.now();
   await db.transaction("rw", db.folders, async () => {
     const folder = await db.folders.get(folderId);
-    if (!folder) throw new Error("Folder not found.");
+    if (!folder || folder.deletedAt) throw new Error("Folder not found.");
     if (folder.puzzleKeys.includes(puzzleKey)) return;
     updatedAt = Date.now();
     await db.folders.put({
       ...folder,
       puzzleKeys: [...folder.puzzleKeys, puzzleKey],
       updatedAt,
+      membershipUpdatedAt: updatedAt,
     });
   });
   signalStorageMutation(true, updatedAt);
@@ -164,13 +174,14 @@ export async function removePuzzleFromFolder(folderId: string, puzzleKey: string
   let updatedAt = Date.now();
   await db.transaction("rw", db.folders, async () => {
     const folder = await db.folders.get(folderId);
-    if (!folder) throw new Error("Folder not found.");
+    if (!folder || folder.deletedAt) throw new Error("Folder not found.");
     if (!folder.puzzleKeys.includes(puzzleKey)) return;
     updatedAt = Date.now();
     await db.folders.put({
       ...folder,
       puzzleKeys: folder.puzzleKeys.filter((entry) => entry !== puzzleKey),
       updatedAt,
+      membershipUpdatedAt: updatedAt,
     });
   });
   signalStorageMutation(true, updatedAt);
@@ -183,12 +194,13 @@ export async function renameFolder(folderId: string, name: string) {
   let updatedAt = Date.now();
   await db.transaction("rw", db.folders, async () => {
     const folder = await db.folders.get(folderId);
-    if (!folder) throw new Error("Folder not found.");
+    if (!folder || folder.deletedAt) throw new Error("Folder not found.");
     updatedAt = Date.now();
     await db.folders.put({
       ...folder,
       name: trimmed,
       updatedAt,
+      nameUpdatedAt: updatedAt,
     });
   });
   signalStorageMutation(true, updatedAt);
@@ -198,7 +210,7 @@ export async function deleteFolder(folderId: string) {
   const updatedAt = Date.now();
   await db.transaction("rw", db.folders, async () => {
     const folders = await db.folders.toArray();
-    if (!folders.some((folder) => folder.id === folderId)) {
+    if (!folders.some((folder) => folder.id === folderId && !folder.deletedAt)) {
       throw new Error("Folder not found.");
     }
 
@@ -220,7 +232,15 @@ export async function deleteFolder(folderId: string) {
       for (const child of children) stack.push(child.id);
     }
 
-    await db.folders.bulkDelete(Array.from(toDelete));
+    for (const id of toDelete) {
+      const folder = folders.find((entry) => entry.id === id);
+      if (!folder) continue;
+      await db.folders.put({
+        ...folder,
+        updatedAt,
+        deletedAt: Math.max(folder.deletedAt ?? 0, updatedAt),
+      });
+    }
   });
   signalStorageMutation(true, updatedAt);
 }
@@ -232,11 +252,13 @@ export async function deletePuzzle(key: string) {
 
     const folders = await db.folders.toArray();
     for (const folder of folders) {
+      if (folder.deletedAt) continue;
       if (!folder.puzzleKeys.includes(key)) continue;
       await db.folders.put({
         ...folder,
         puzzleKeys: folder.puzzleKeys.filter((entry) => entry !== key),
         updatedAt,
+        membershipUpdatedAt: updatedAt,
       });
     }
   });
