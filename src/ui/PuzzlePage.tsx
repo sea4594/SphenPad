@@ -1762,7 +1762,7 @@ export function PuzzlePage() {
   if (!data) return null;
 
   const renderVideoPlayer = (locationClassName: string) => (
-    <div className={`card puzzleVideoCard ${locationClassName}`}>
+    <div className={`puzzleVideoCard ${locationClassName}`}>
       <div className="puzzleVideoFrame">
         <iframe
           src={youtubeEmbedUrl ?? "about:blank"}
