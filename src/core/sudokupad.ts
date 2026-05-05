@@ -916,6 +916,39 @@ function detectStandardSubgrid(sclObj: any, n: number): { r: number; c: number }
   return candidate;
 }
 
+function inferRuleBasedStandardSubgrid(sclObj: any, n: number): { r: number; c: number } | undefined {
+  const candidate = standardSubgridForSize(n);
+  if (!candidate) return undefined;
+
+  const hasExplicitRegions =
+    Array.isArray(sclObj?.regions) ||
+    Array.isArray(sclObj?.re) ||
+    Array.isArray(sclObj?.irregularRegions) ||
+    Array.isArray(sclObj?.irregularregions) ||
+    Array.isArray(sclObj?.jigsaw);
+  if (hasExplicitRegions) return undefined;
+
+  const rules = extractRulesText(
+    sclObj?.metadata?.rules ??
+    sclObj?.metadata?.rule ??
+    sclObj?.metadata?.description ??
+    sclObj?.metadata?.ruleset ??
+    sclObj?.rules ??
+    sclObj?.rule ??
+    sclObj?.description ??
+    sclObj?.ruleset
+  );
+  if (!rules) return undefined;
+
+  const normalizedRules = rules.toLowerCase();
+  if (!/normal\s+sudoku\s+rules\s+apply/.test(normalizedRules)) return undefined;
+  if (/(no\s+boxes?|without\s+boxes?|without\s+regions?|jigsaw|irregular\s+regions?)/.test(normalizedRules)) {
+    return undefined;
+  }
+
+  return candidate;
+}
+
 function parseSolveCount(...values: unknown[]): number | undefined {
   for (const v of values) {
     if (typeof v === "number" && Number.isFinite(v) && v >= 0) return Math.floor(v);
@@ -1182,7 +1215,13 @@ export async function loadFromSudokuPad(
   const givens = extractGivens(sclObj);
   const shape = inferPuzzleShape(sclObj, givens);
   const size = Math.max(shape.rows, shape.cols, inferPuzzleSize(sclObj, givens));
-  const subgrid = shape.rows === shape.cols ? detectStandardSubgrid(sclObj, size) : undefined;
+  const subgrid = shape.rows === shape.cols
+    ? detectStandardSubgrid(sclObj, size) ?? inferRuleBasedStandardSubgrid(sclObj, size)
+    : undefined;
+  if (!cosmetics.solution) {
+    const extractedSolution = extractGridSolution(sclObj);
+    if (extractedSolution) cosmetics.solution = extractedSolution;
+  }
 
   const key = normalizePuzzleKey(sourceId);
   const def: PuzzleDefinition = {
@@ -1250,11 +1289,16 @@ function decompressedFromMaybeZipped(s: string): string {
 
 function extractGivens(scl: any): Array<{ rc: CellRC; v: string }> {
   const out: Array<{ rc: CellRC; v: string }> = [];
+  const objectCellValues: Array<{ rc: CellRC; v: string }> = [];
   const grids = [scl?.cells, scl?.grid].filter(Array.isArray);
+  let maxRows = 0;
+  let maxCols = 0;
   for (const cells of grids) {
+    maxRows = Math.max(maxRows, Array.isArray(cells) ? cells.length : 0);
     for (let r = 0; r < cells.length; r++) {
       const row = cells[r];
       if (!Array.isArray(row)) continue;
+      maxCols = Math.max(maxCols, row.length);
       for (let c = 0; c < row.length; c++) {
         const cell = row[c];
         if (typeof cell === "string" && /^[1-9A-Za-z]$/.test(cell.trim())) {
@@ -1265,15 +1309,14 @@ function extractGivens(scl: any): Array<{ rc: CellRC; v: string }> {
           out.push({ rc: { r, c }, v: String(cell) });
           continue;
         }
+        // Only treat as a given if explicitly marked as such.
+        const isGiven = cell && (cell.given !== undefined || cell.g === true || cell.isGiven === true || cell.type === "given");
         const value = asValue(cell?.value ?? cell?.v ?? cell?.given ?? cell?.g ?? cell?.digit ?? cell?.d);
         if (value != null && value !== "") {
-          // Some SudokuPad payloads encode fixed clues as object cell values
-          // without explicit given flags.
-          out.push({ rc: { r, c }, v: value });
+          if (isGiven) out.push({ rc: { r, c }, v: value });
+          else objectCellValues.push({ rc: { r, c }, v: value });
           continue;
         }
-        // Only treat as a given if explicitly marked as such
-        const isGiven = cell && (cell.given !== undefined || cell.g === true || cell.isGiven === true || cell.type === "given");
         if (!isGiven) continue;
         const flaggedValue =
           asValue(cell?.value ?? cell?.v ?? cell?.given ?? cell?.g ?? cell?.digit ?? cell?.d) ??
@@ -1283,6 +1326,14 @@ function extractGivens(scl: any): Array<{ rc: CellRC; v: string }> {
       }
     }
   }
+
+  if (!out.length && objectCellValues.length > 0) {
+    const totalCells = Math.max(1, maxRows * maxCols);
+    if (objectCellValues.length < totalCells) {
+      out.push(...objectCellValues);
+    }
+  }
+
   const seen = new Set<string>();
   return out.filter((entry) => {
     const key = `${entry.rc.r},${entry.rc.c}`;
@@ -1290,6 +1341,40 @@ function extractGivens(scl: any): Array<{ rc: CellRC; v: string }> {
     seen.add(key);
     return true;
   });
+}
+
+function extractGridSolution(scl: any): string | undefined {
+  const grids = [scl?.cells, scl?.grid].filter(Array.isArray);
+  for (const cells of grids) {
+    if (!Array.isArray(cells) || !cells.length) continue;
+    const rows = cells.length;
+    const cols = Math.max(0, ...cells.map((row: unknown) => (Array.isArray(row) ? row.length : 0)));
+    if (rows <= 0 || cols <= 0) continue;
+
+    const symbols: string[] = [];
+    let complete = true;
+    for (let r = 0; r < rows && complete; r++) {
+      const row = cells[r];
+      if (!Array.isArray(row) || row.length < cols) {
+        complete = false;
+        break;
+      }
+      for (let c = 0; c < cols; c++) {
+        const cell = row[c];
+        const value = asValue(cell?.value ?? cell?.v ?? cell?.digit ?? cell?.d ?? cell);
+        const normalized = typeof value === "string" ? value.trim() : "";
+        if (!normalized || normalized === ".") {
+          complete = false;
+          break;
+        }
+        symbols.push(normalized[0] as string);
+      }
+    }
+
+    if (complete && symbols.length === rows * cols) return symbols.join("");
+  }
+
+  return undefined;
 }
 
 function extractCosmetics(scl: any): PuzzleCosmetics {
@@ -2099,9 +2184,10 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
 
   // Fog of war: common SCL keys include foglight/fogLight/fogLights.
   const rawFogLights = scl?.foglight ?? scl?.fogLight ?? scl?.fogLights ?? scl?.fog?.lights ?? scl?.fog?.light;
-  if (Array.isArray(rawFogLights)) cosmetics.fogEnabled = true;
-  if (Array.isArray(rawFogLights)) {
-    cosmetics.fogLights = rawFogLights.map(asRC).filter(Boolean) as CellRC[];
+  const parsedFogLights = parseCellRefs(rawFogLights ?? []);
+  if (parsedFogLights.length > 0) {
+    cosmetics.fogEnabled = true;
+    cosmetics.fogLights = parsedFogLights;
   } else if (Array.isArray(scl?.cells)) {
     const fromCells: CellRC[] = [];
     for (let r = 0; r < scl.cells.length; r++) {
