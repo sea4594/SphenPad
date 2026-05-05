@@ -733,7 +733,7 @@ export function PuzzlePage() {
   const meta = data?.def.meta;
   const youtubeVideoId = useMemo(() => parseYouTubeVideoId(meta?.archiveYouTubeUrl), [meta?.archiveYouTubeUrl]);
   const youtubeEmbedUrl = useMemo(
-    () => (youtubeVideoId ? `https://www.youtube.com/embed/${youtubeVideoId}?autoplay=1&rel=0&modestbranding=1` : null),
+    () => (youtubeVideoId ? `https://www.youtube.com/embed/${youtubeVideoId}?autoplay=0&playsinline=1&rel=0&modestbranding=1` : null),
     [youtubeVideoId]
   );
   const hasLinkedVideo = Boolean(youtubeEmbedUrl);
