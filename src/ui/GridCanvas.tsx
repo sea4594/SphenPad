@@ -13,6 +13,7 @@ type LayerItem = NonNullable<PuzzleDefinition["cosmetics"]["underlays"]>[number]
 const LINE_NODE_DIAMETER = 1;
 const LINE_NODE_RADIUS = LINE_NODE_DIAMETER / 2;
 const DEFAULT_FOG_FILL_COLOR = "#afafaf";
+const DOUBLE_TAP_WINDOW_MS = 320;
 const TWEMOJI_OPTIONS = {
   base: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/",
   folder: "svg",
@@ -123,6 +124,7 @@ export function GridCanvas(props: {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const dragRef = useRef<DragState | null>(null);
+  const lastTapRef = useRef<{ atMs: number; cellKey: string } | null>(null);
   const twemojiCacheRef = useRef<Map<string, HTMLImageElement | "loading" | "error">>(new Map());
 
   const rows = Math.max(1, Number(def.rows ?? progress.cells.length ?? def.size));
@@ -552,37 +554,38 @@ export function GridCanvas(props: {
     const drawSelectionOutlines = () => {
       if (!interactive || !progress.selection.length) return;
       const selected = new Set(progress.selection.map(rcKey));
-      const inset = 1;
+      const outlineWidth = 3.3;
+      const half = outlineWidth / 2;
       ctx.save();
       ctx.strokeStyle = "rgba(46,120,255,.95)";
-      ctx.lineWidth = 3.3;
-      ctx.lineCap = "round";
-      ctx.lineJoin = "round";
+      ctx.lineWidth = outlineWidth;
+      ctx.lineCap = "butt";
+      ctx.lineJoin = "miter";
       for (const rc of progress.selection) {
         const x = cellX(rc.c);
         const y = cellY(rc.r);
         if (!selected.has(`${rc.r - 1},${rc.c}`)) {
           ctx.beginPath();
-          ctx.moveTo(x + inset, y + inset);
-          ctx.lineTo(x + cellPx - inset, y + inset);
+          ctx.moveTo(x + half, y + half);
+          ctx.lineTo(x + cellPx - half, y + half);
           ctx.stroke();
         }
         if (!selected.has(`${rc.r},${rc.c + 1}`)) {
           ctx.beginPath();
-          ctx.moveTo(x + cellPx - inset, y + inset);
-          ctx.lineTo(x + cellPx - inset, y + cellPx - inset);
+          ctx.moveTo(x + cellPx - half, y + half);
+          ctx.lineTo(x + cellPx - half, y + cellPx - half);
           ctx.stroke();
         }
         if (!selected.has(`${rc.r + 1},${rc.c}`)) {
           ctx.beginPath();
-          ctx.moveTo(x + inset, y + cellPx - inset);
-          ctx.lineTo(x + cellPx - inset, y + cellPx - inset);
+          ctx.moveTo(x + half, y + cellPx - half);
+          ctx.lineTo(x + cellPx - half, y + cellPx - half);
           ctx.stroke();
         }
         if (!selected.has(`${rc.r},${rc.c - 1}`)) {
           ctx.beginPath();
-          ctx.moveTo(x + inset, y + inset);
-          ctx.lineTo(x + inset, y + cellPx - inset);
+          ctx.moveTo(x + half, y + half);
+          ctx.lineTo(x + half, y + cellPx - half);
           ctx.stroke();
         }
       }
@@ -1580,6 +1583,7 @@ export function GridCanvas(props: {
     if (!fogDefined) {
       drawGridPuzzleFeatures();
 
+      drawSelectionOutlines();
       // Grid below top puzzle artwork so features are not bisected by grid lines.
       drawGridLines();
       drawTopPuzzleFeatures();
@@ -2036,6 +2040,7 @@ export function GridCanvas(props: {
       // Grid-target features (for example cell-grids) stay visible above fog.
       drawGridPuzzleFeatures();
 
+      drawSelectionOutlines();
       if (def.cosmetics.gridVisible !== false) {
         drawGridLines();
       }
@@ -2154,7 +2159,6 @@ export function GridCanvas(props: {
       }
     }
 
-    drawSelectionOutlines();
   }, [
     bgImage,
     boardH,
@@ -2637,10 +2641,30 @@ export function GridCanvas(props: {
         props.onLineStroke(drag.segments, kind, drag.lineAction);
       }
       setLinePreview(null);
-    } else if (!progress.multiSelect && !drag.moved && drag.startedSelected && drag.startedSelectionSize === 1) {
+      lastTapRef.current = null;
+    } else {
       const pt = eventPoint(e.clientX, e.clientY);
-      if (pt && drag.startedCellKey === `${pt.r},${pt.c}`) {
-        props.onSelection([]);
+      if (pt && !drag.moved) {
+        const releasedKey = `${pt.r},${pt.c}`;
+        const startedKey = drag.startedCellKey ?? releasedKey;
+        if (startedKey === releasedKey) {
+          const now = performance.now();
+          const lastTap = lastTapRef.current;
+          const isSameCellDoubleTap = Boolean(lastTap && lastTap.cellKey === releasedKey && now - lastTap.atMs <= DOUBLE_TAP_WINDOW_MS);
+          if (isSameCellDoubleTap) {
+            lastTapRef.current = null;
+            props.onDoubleCell({ r: pt.r, c: pt.c });
+          } else {
+            lastTapRef.current = { atMs: now, cellKey: releasedKey };
+            if (!progress.multiSelect && drag.startedSelected && drag.startedSelectionSize === 1) {
+              props.onSelection([]);
+            }
+          }
+        } else {
+          lastTapRef.current = null;
+        }
+      } else {
+        lastTapRef.current = null;
       }
     }
 
@@ -2651,13 +2675,7 @@ export function GridCanvas(props: {
     if (!interactive) return;
     dragRef.current = null;
     setLinePreview(null);
-  }
-
-  function onDoubleClick(e: React.MouseEvent<HTMLCanvasElement>) {
-    if (!interactive) return;
-    const pt = eventPoint(e.clientX, e.clientY);
-    if (!pt) return;
-    props.onDoubleCell({ r: pt.r, c: pt.c });
+    lastTapRef.current = null;
   }
 
   return (
@@ -2678,7 +2696,6 @@ export function GridCanvas(props: {
         onPointerUp={interactive ? onUp : undefined}
         onPointerCancel={interactive ? onCancel : undefined}
         onPointerLeave={interactive ? onCancel : undefined}
-        onDoubleClick={interactive ? onDoubleClick : undefined}
       />
     </div>
   );

@@ -917,33 +917,65 @@ export function PuzzlePage() {
     const cell = data.progress.cells[rc.r][rc.c];
     if (!cell) return;
 
-    const matches: CellRC[] = [];
     const tool = data.progress.activeTool;
     const targetValue = cell.value ?? null;
     const targetCenter = new Set(cell.notes.center);
     const targetCorner = new Set(cell.notes.corner);
     const targetHighlights = new Set(cell.highlights ?? []);
+    const targetIsBlank =
+      !targetValue
+      && targetCenter.size === 0
+      && targetCorner.size === 0
+      && cell.notes.candidates.size === 0
+      && targetHighlights.size === 0;
 
-    const sameSet = (a: Set<string>, b: Set<string>) => {
-      if (a.size !== b.size) return false;
-      for (const v of a) if (!b.has(v)) return false;
+    type DoubleSelectKind = "value" | "highlight" | "center" | "corner" | "blank";
+    const priorityOrderByTool: Record<PuzzleProgress["activeTool"], DoubleSelectKind[]> = {
+      value: ["value", "highlight", "center", "corner", "blank"],
+      highlight: ["highlight", "value", "center", "corner", "blank"],
+      center: ["value", "center", "corner", "highlight", "blank"],
+      corner: ["value", "corner", "center", "highlight", "blank"],
+      line: [],
+    };
+
+    const hasAll = (superset: Iterable<string>, subset: Set<string>) => {
+      const source = superset instanceof Set ? superset : new Set(superset);
+      for (const v of subset) if (!source.has(v)) return false;
       return true;
     };
 
-    const hasAll = (superset: string[], subset: Set<string>) => {
-      for (const v of subset) if (!superset.includes(v)) return false;
-      return true;
+    const isBlankCell = (cellState: PuzzleProgress["cells"][number][number]) => {
+      return !cellState.value
+        && cellState.notes.center.size === 0
+        && cellState.notes.corner.size === 0
+        && cellState.notes.candidates.size === 0
+        && (cellState.highlights?.length ?? 0) === 0;
     };
 
-    for (let r = 0; r < data.progress.cells.length; r++) {
-      for (let c = 0; c < data.progress.cells.length; c++) {
-        const cur = data.progress.cells[r][c];
-        let match = false;
-        if (tool === "value") match = Boolean(targetValue) && cur.value === targetValue;
-        if (tool === "center") match = targetCenter.size > 0 && sameSet(new Set(cur.notes.center), targetCenter);
-        if (tool === "corner") match = targetCorner.size > 0 && sameSet(new Set(cur.notes.corner), targetCorner);
-        if (tool === "highlight") match = targetHighlights.size > 0 && hasAll(cur.highlights ?? [], targetHighlights);
-        if (match) matches.push({ r, c });
+    const matchesForKind = (kind: DoubleSelectKind): CellRC[] => {
+      const matches: CellRC[] = [];
+      for (let r = 0; r < data.progress.cells.length; r++) {
+        for (let c = 0; c < data.progress.cells.length; c++) {
+          const cur = data.progress.cells[r][c];
+          let match = false;
+          if (kind === "value") match = Boolean(targetValue) && cur.value === targetValue;
+          if (kind === "highlight") match = targetHighlights.size > 0 && hasAll(cur.highlights ?? [], targetHighlights);
+          if (kind === "center") match = targetCenter.size > 0 && hasAll(cur.notes.center, targetCenter);
+          if (kind === "corner") match = targetCorner.size > 0 && hasAll(cur.notes.corner, targetCorner);
+          if (kind === "blank") match = targetIsBlank && isBlankCell(cur);
+          if (match) matches.push({ r, c });
+        }
+      }
+      return matches;
+    };
+
+    let matches: CellRC[] = [];
+    const priority = priorityOrderByTool[tool] ?? [];
+    for (const kind of priority) {
+      const next = matchesForKind(kind);
+      if (next.length) {
+        matches = next;
+        break;
       }
     }
 
@@ -1124,7 +1156,12 @@ export function PuzzlePage() {
     const mode = forcedMode ?? data.progress.entryMode;
     const keyName = mode === "center" ? "center" : mode === "corner" ? "corner" : "candidates";
 
-    const editable = sel.filter((rc) => !data.progress.cells[rc.r][rc.c].given);
+    const editable = sel.filter((rc) => {
+      const cell = data.progress.cells[rc.r][rc.c];
+      if (cell.given) return false;
+      if ((mode === "center" || mode === "corner") && cell.value != null) return false;
+      return true;
+    });
     if (!editable.length) return;
 
     const patches: Patch[] = [];
