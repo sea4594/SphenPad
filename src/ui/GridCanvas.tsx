@@ -962,9 +962,11 @@ export function GridCanvas(props: {
         const px = (item.textSize ?? 16) * (cellPx / cosmeticUnit);
         const text = String(item.text);
         const hasEmoji = /\p{Extended_Pictographic}/u.test(text);
+        const hasLettersOrDigits = /[\p{Letter}\p{Number}]/u.test(text);
+        const emojiOnlyText = hasEmoji && !hasLettersOrDigits;
         const minTextPx = strictScale ? 0 : previewMode ? 4.5 : mobileFidelityMode ? 4.5 : 10;
         const textPx = Math.max(minTextPx, px);
-        ctx.font = hasEmoji
+        ctx.font = emojiOnlyText
           ? `${textPx}px ${emojiTextFont}`
           : `600 ${textPx}px ${gridTextFont}, ${emojiTextFont}`;
         ctx.textAlign = item.textAlign ?? "center";
@@ -982,7 +984,7 @@ export function GridCanvas(props: {
           ctx.strokeText(text, tx, ty);
         }
         ctx.fillStyle = item.textColor ?? "#111111";
-        const twemojiImage = hasEmoji ? getTwemojiImage(text) : null;
+        const twemojiImage = emojiOnlyText ? getTwemojiImage(text) : null;
         if (twemojiImage) {
           const sz = textPx;
           ctx.drawImage(twemojiImage, tx - sz / 2, ty - sz / 2, sz, sz);
