@@ -577,6 +577,18 @@ export function PuzzlePage() {
   }, [experimentalVideoPlayer]);
 
   useEffect(() => {
+    // Ensure the board recomputes dimensions immediately after layout mode changes.
+    const fireResize = () => window.dispatchEvent(new Event("resize"));
+    fireResize();
+    const rafA = window.requestAnimationFrame(fireResize);
+    const rafB = window.requestAnimationFrame(() => window.requestAnimationFrame(fireResize));
+    return () => {
+      window.cancelAnimationFrame(rafA);
+      window.cancelAnimationFrame(rafB);
+    };
+  }, [videoPlayerOpen, videoViewportMode, experimentalVideoPlayer]);
+
+  useEffect(() => {
     if (!data) return;
     const currentRevision = data.def.importRevision ?? 0;
     if (currentRevision >= SUDOKUPAD_IMPORT_REVISION) return;
@@ -1752,13 +1764,15 @@ export function PuzzlePage() {
   const renderVideoPlayer = (locationClassName: string) => (
     <div className={`card puzzleVideoCard ${locationClassName}`}>
       {youtubeEmbedUrl ? (
-        <iframe
-          src={youtubeEmbedUrl}
-          title={meta?.archiveVideoTitle || meta?.title || "Puzzle video"}
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-          referrerPolicy="strict-origin-when-cross-origin"
-          allowFullScreen
-        />
+        <div className="puzzleVideoFrame">
+          <iframe
+            src={youtubeEmbedUrl}
+            title={meta?.archiveVideoTitle || meta?.title || "Puzzle video"}
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            referrerPolicy="strict-origin-when-cross-origin"
+            allowFullScreen
+          />
+        </div>
       ) : (
         <div className="puzzleVideoEmpty">
           <div className="puzzleVideoEmptyTitle">No linked YouTube video</div>
@@ -1839,7 +1853,7 @@ export function PuzzlePage() {
           <div className="boardColumn">
             <div className="card boardCard">
               <GridCanvas
-                key={`puzzle-grid-${boardReloadNonce}`}
+                key={`puzzle-grid-${boardReloadNonce}-${videoLayoutOn ? 1 : 0}-${videoViewportMode}`}
                 def={data.def}
                 progress={data.progress}
                 onSelection={setSelection}
