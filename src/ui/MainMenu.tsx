@@ -1659,7 +1659,7 @@ export function MainMenu(props: { active?: boolean }) {
 
                 {activeFolder ? (
                   <>
-                    <div className="muted" style={{ fontSize: 13, marginTop: 4 }}>Puzzles in this folder</div>
+                    <div className="muted" style={{ fontSize: 13, marginTop: 4 }}>Folder contents</div>
                     {visibleFolderRows.map((row) => {
                       const previewProgress = {
                         ...row.progress,
@@ -1740,7 +1740,7 @@ export function MainMenu(props: { active?: boolean }) {
                     })}
                     {!visibleFolderPuzzles.length ? (
                       <div className="muted" style={{ marginTop: 2 }}>
-                        No puzzles in this folder match the current filter.
+                        No puzzles here match the current filter.
                       </div>
                     ) : null}
                     {active && hasMoreFolderRows ? (
@@ -1859,31 +1859,30 @@ export function MainMenu(props: { active?: boolean }) {
                 </div>
               </div>
 
-              <div className="menuPuzzleList addFolderNavigatorList" style={{ marginTop: 10 }}>
-                {addDialogChildFolders.map((folder) => {
-                  return (
-                    <button
-                      key={`add-folder-nav-${folder.id}`}
-                      className="card folderBrowserItem"
-                      onClick={() => setAddFolderNavId(folder.id)}
-                      type="button"
-                    >
-                      <div className="row" style={{ gap: 6, alignItems: "flex-start" }}>
-                        <IconFolder />
-                        <div style={{ fontWeight: 700, overflowWrap: "anywhere" }}>{folder.name}</div>
-                      </div>
-                    </button>
-                  );
-                })}
-                {!addDialogChildFolders.length ? (
-                  <div className="muted">No folders in this location.</div>
-                ) : null}
-              </div>
+              <div className="addFolderNavigatorList" style={{ marginTop: 10 }}>
+                <div className="menuPuzzleList">
+                  {addDialogChildFolders.map((folder) => {
+                    return (
+                      <button
+                        key={`add-folder-nav-${folder.id}`}
+                        className="card folderBrowserItem"
+                        onClick={() => setAddFolderNavId(folder.id)}
+                        type="button"
+                      >
+                        <div className="row" style={{ gap: 6, alignItems: "flex-start" }}>
+                          <IconFolder />
+                          <div style={{ fontWeight: 700, overflowWrap: "anywhere" }}>{folder.name}</div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                  {!addDialogChildFolders.length ? (
+                    <div className="muted">No folders in this location.</div>
+                  ) : null}
+                </div>
 
-              {addFolderNav ? (
-                <div style={{ marginTop: 10, display: "grid", gap: 6 }}>
-                  <div className="muted">Puzzles in this folder</div>
-                  <div className="menuPuzzleList addFolderNavigatorList">
+                {addFolderNav ? (
+                  <div className="menuPuzzleList" style={{ marginTop: 10 }}>
                     {addDialogFolderPuzzles.map((row) => {
                       const previewProgress = {
                         ...row.progress,
@@ -1941,15 +1940,15 @@ export function MainMenu(props: { active?: boolean }) {
                       );
                     })}
                     {!addDialogFolderPuzzles.length ? (
-                      <div className="muted">No puzzles in this folder.</div>
+                      <div className="muted">No puzzles here.</div>
                     ) : null}
                   </div>
-                </div>
-              ) : (
-                <div className="muted" style={{ marginTop: 10 }}>
-                  Select a folder to preview its puzzles.
-                </div>
-              )}
+                ) : (
+                  <div className="muted" style={{ marginTop: 10 }}>
+                    Select a folder to preview its puzzles.
+                  </div>
+                )}
+              </div>
 
               <div className="muted addFolderBusyLine">{addToFolderBusy || "\u00A0"}</div>
 

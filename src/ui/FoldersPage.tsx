@@ -1093,7 +1093,7 @@ export function FoldersPage(props: { active?: boolean }) {
                     <div className="muted" style={{ marginTop: 2 }}>
                       {filterStatusList.length === 0
                         ? "This folder has no puzzles yet."
-                        : "No puzzles in this folder match the current filter."}
+                        : "No puzzles here match the current filter."}
                     </div>
                   ) : null}
                   {active && hasMoreFolderRows ? (
@@ -1212,29 +1212,28 @@ export function FoldersPage(props: { active?: boolean }) {
                 </div>
               </div>
 
-              <div className="menuPuzzleList addFolderNavigatorList" style={{ marginTop: 10 }}>
-                {moveFolderChildren.map((folder) => (
-                  <button
-                    key={`move-folder-nav-${folder.id}`}
-                    className="card folderBrowserItem"
-                    onClick={() => setMoveFolderNavId(folder.id)}
-                    type="button"
-                  >
-                    <div className="row" style={{ gap: 6, alignItems: "flex-start" }}>
-                      <IconFolder />
-                      <div style={{ fontWeight: 700, overflowWrap: "anywhere" }}>{folder.name}</div>
-                    </div>
-                  </button>
-                ))}
-                {!moveFolderChildren.length ? (
-                  <div className="muted">No folders in this location.</div>
-                ) : null}
-              </div>
+              <div className="addFolderNavigatorList" style={{ marginTop: 10 }}>
+                <div className="menuPuzzleList">
+                  {moveFolderChildren.map((folder) => (
+                    <button
+                      key={`move-folder-nav-${folder.id}`}
+                      className="card folderBrowserItem"
+                      onClick={() => setMoveFolderNavId(folder.id)}
+                      type="button"
+                    >
+                      <div className="row" style={{ gap: 6, alignItems: "flex-start" }}>
+                        <IconFolder />
+                        <div style={{ fontWeight: 700, overflowWrap: "anywhere" }}>{folder.name}</div>
+                      </div>
+                    </button>
+                  ))}
+                  {!moveFolderChildren.length ? (
+                    <div className="muted">No folders in this location.</div>
+                  ) : null}
+                </div>
 
-              {moveFolderTarget ? (
-                <div style={{ marginTop: 10, display: "grid", gap: 6 }}>
-                  <div className="muted">Puzzles in this folder</div>
-                  <div className="menuPuzzleList addFolderNavigatorList">
+                {moveFolderTarget ? (
+                  <div className="menuPuzzleList" style={{ marginTop: 10 }}>
                     {moveDialogFolderPuzzles.map((row) => (
                       <div key={`move-existing-puzzle-${row.key}`} className="card folderBrowserItem">
                         <div style={{ fontWeight: 700, overflowWrap: "anywhere" }}>
@@ -1248,15 +1247,15 @@ export function FoldersPage(props: { active?: boolean }) {
                       </div>
                     ))}
                     {!moveDialogFolderPuzzles.length ? (
-                      <div className="muted">No puzzles in this folder.</div>
+                      <div className="muted">No puzzles here.</div>
                     ) : null}
                   </div>
-                </div>
-              ) : (
-                <div className="muted" style={{ marginTop: 10 }}>
-                  Select a folder to preview its puzzles.
-                </div>
-              )}
+                ) : (
+                  <div className="muted" style={{ marginTop: 10 }}>
+                    Select a folder to preview its puzzles.
+                  </div>
+                )}
+              </div>
 
               <div className="muted addFolderBusyLine">{movePuzzleBusy || "\u00A0"}</div>
 

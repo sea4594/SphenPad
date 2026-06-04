@@ -2159,31 +2159,30 @@ export function PuzzlePage() {
                 </div>
               </div>
 
-              <div className="menuPuzzleList addFolderNavigatorList" style={{ marginTop: 10 }}>
-                {addDialogChildFolders.map((folder) => {
-                  return (
-                    <button
-                      key={`pause-add-folder-nav-${folder.id}`}
-                      className="card folderBrowserItem"
-                      onClick={() => setAddFolderNavId(folder.id)}
-                      type="button"
-                    >
-                      <div className="row" style={{ gap: 6, alignItems: "flex-start" }}>
-                        <IconFolder />
-                        <div style={{ fontWeight: 700, overflowWrap: "anywhere" }}>{folder.name}</div>
-                      </div>
-                    </button>
-                  );
-                })}
-                {!addDialogChildFolders.length ? (
-                  <div className="muted">No folders in this location.</div>
-                ) : null}
-              </div>
+              <div className="addFolderNavigatorList" style={{ marginTop: 10 }}>
+                <div className="menuPuzzleList">
+                  {addDialogChildFolders.map((folder) => {
+                    return (
+                      <button
+                        key={`pause-add-folder-nav-${folder.id}`}
+                        className="card folderBrowserItem"
+                        onClick={() => setAddFolderNavId(folder.id)}
+                        type="button"
+                      >
+                        <div className="row" style={{ gap: 6, alignItems: "flex-start" }}>
+                          <IconFolder />
+                          <div style={{ fontWeight: 700, overflowWrap: "anywhere" }}>{folder.name}</div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                  {!addDialogChildFolders.length ? (
+                    <div className="muted">No folders in this location.</div>
+                  ) : null}
+                </div>
 
-              {addFolderNav ? (
-                <div style={{ marginTop: 10, display: "grid", gap: 6 }}>
-                  <div className="muted">Puzzles in this folder</div>
-                  <div className="menuPuzzleList addFolderNavigatorList">
+                {addFolderNav ? (
+                  <div className="menuPuzzleList" style={{ marginTop: 10 }}>
                     {addDialogFolderPuzzles.map((row) => {
                       const previewProgress = {
                         ...row.progress,
@@ -2241,15 +2240,15 @@ export function PuzzlePage() {
                       );
                     })}
                     {!addDialogFolderPuzzles.length ? (
-                      <div className="muted">No puzzles in this folder.</div>
+                      <div className="muted">No puzzles here.</div>
                     ) : null}
                   </div>
-                </div>
-              ) : (
-                <div className="muted" style={{ marginTop: 10 }}>
-                  Select a folder to preview its puzzles.
-                </div>
-              )}
+                ) : (
+                  <div className="muted" style={{ marginTop: 10 }}>
+                    Select a folder to preview its puzzles.
+                  </div>
+                )}
+              </div>
 
               <div className="muted addFolderBusyLine">{addToFolderBusy || "\u00A0"}</div>
 
