@@ -225,6 +225,9 @@ export type PuzzleProgress = {
   totalMillis: number;
   status: PlayStatus;
 
+  // Last known YouTube playback position for this puzzle's linked video.
+  videoResumeSeconds?: number;
+
   selection: CellRC[];
   multiSelect: boolean;
 

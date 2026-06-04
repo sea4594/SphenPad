@@ -14,6 +14,7 @@ import { CompletionOverlay } from "./CompletionOverlay";
 import { CheckAnswersOverlay } from "./CheckAnswersOverlay";
 import { Keyboard } from "./Keyboard";
 import { GridCanvas } from "./GridCanvas";
+import { YouTubePlayer } from "./YouTubePlayer";
 import {
   IconCheck,
   IconFolder,
@@ -472,6 +473,10 @@ export function PuzzlePage() {
     return {
       ...progress,
       cells,
+      videoResumeSeconds:
+        typeof progress.videoResumeSeconds === "number" && Number.isFinite(progress.videoResumeSeconds)
+          ? Math.max(0, Math.floor(progress.videoResumeSeconds))
+          : undefined,
       multiSelect: progress.multiSelect ?? false,
       alphabetPage:
         progress.alphabetPage === 1 || progress.alphabetPage === 2
@@ -732,11 +737,7 @@ export function PuzzlePage() {
 
   const meta = data?.def.meta;
   const youtubeVideoId = useMemo(() => parseYouTubeVideoId(meta?.archiveYouTubeUrl), [meta?.archiveYouTubeUrl]);
-  const youtubeEmbedUrl = useMemo(
-    () => (youtubeVideoId ? `https://www.youtube.com/embed/${youtubeVideoId}?autoplay=0&playsinline=1&rel=0&modestbranding=1` : null),
-    [youtubeVideoId]
-  );
-  const hasLinkedVideo = Boolean(youtubeEmbedUrl);
+  const hasLinkedVideo = Boolean(youtubeVideoId);
 
   useEffect(() => {
     if (!hasLinkedVideo) setVideoPlayerOpen(false);
@@ -1761,16 +1762,31 @@ export function PuzzlePage() {
 
   if (!data) return null;
 
+  const handleVideoProgress = (seconds: number) => {
+    const rounded = Math.max(0, Math.floor(seconds));
+    const current = Math.max(0, Math.floor(data.progress.videoResumeSeconds ?? 0));
+    if (Math.abs(rounded - current) < 1) return;
+    const next: PersistedPuzzle = {
+      ...data,
+      progress: {
+        ...data.progress,
+        videoResumeSeconds: rounded,
+      },
+      updatedAt: Date.now(),
+    };
+    void persist(next);
+  };
+
   const renderVideoPlayer = (locationClassName: string) => (
     <div className={`puzzleVideoCard ${locationClassName}`}>
       <div className="puzzleVideoFrame">
-        <iframe
-          src={youtubeEmbedUrl ?? "about:blank"}
-          title={meta?.archiveVideoTitle || meta?.title || "Puzzle video"}
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-          referrerPolicy="strict-origin-when-cross-origin"
-          allowFullScreen
-        />
+        {youtubeVideoId ? (
+          <YouTubePlayer
+            videoId={youtubeVideoId}
+            startSeconds={data.progress.videoResumeSeconds ?? 0}
+            onProgress={handleVideoProgress}
+          />
+        ) : null}
       </div>
     </div>
   );
