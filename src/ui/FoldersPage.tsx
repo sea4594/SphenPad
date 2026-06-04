@@ -425,6 +425,15 @@ export function FoldersPage(props: { active?: boolean }) {
     );
   }, [folders, moveFolderNavId]);
 
+  const moveDialogFolderPuzzles = useMemo(() => {
+    const targetFolder = moveFolderNavId ? folderById.get(moveFolderNavId) ?? null : null;
+    if (!targetFolder) return [];
+    const resolved = targetFolder.puzzleKeys
+      .map((puzzleKey) => puzzleByKey.get(puzzleKey))
+      .filter((row): row is StoredPuzzle => Boolean(row));
+    return sortPuzzles(resolved, "az", "asc");
+  }, [moveFolderNavId, folderById, puzzleByKey]);
+
   const moveFolderTarget = moveFolderNavId ? folderById.get(moveFolderNavId) ?? null : null;
   const canMoveToCurrentFolder = Boolean(moveFolderTarget && activeFolder && moveFolderTarget.id !== activeFolder.id);
 
@@ -1221,6 +1230,33 @@ export function FoldersPage(props: { active?: boolean }) {
                   <div className="muted">No folders in this location.</div>
                 ) : null}
               </div>
+
+              {moveFolderTarget ? (
+                <div style={{ marginTop: 10, display: "grid", gap: 6 }}>
+                  <div className="muted">Puzzles in this folder</div>
+                  <div className="menuPuzzleList addFolderNavigatorList">
+                    {moveDialogFolderPuzzles.map((row) => (
+                      <div key={`move-existing-puzzle-${row.key}`} className="card folderBrowserItem">
+                        <div style={{ fontWeight: 700, overflowWrap: "anywhere" }}>
+                          {row.def?.meta?.title || "(untitled)"}
+                        </div>
+                        {movePuzzleTarget && row.key === movePuzzleTarget.key ? (
+                          <div className="muted" style={{ marginTop: 4, fontSize: 12 }}>
+                            This puzzle
+                          </div>
+                        ) : null}
+                      </div>
+                    ))}
+                    {!moveDialogFolderPuzzles.length ? (
+                      <div className="muted">No puzzles in this folder.</div>
+                    ) : null}
+                  </div>
+                </div>
+              ) : (
+                <div className="muted" style={{ marginTop: 10 }}>
+                  Select a folder to preview its puzzles.
+                </div>
+              )}
 
               <div className="muted addFolderBusyLine">{movePuzzleBusy || "\u00A0"}</div>
 

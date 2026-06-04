@@ -2,7 +2,7 @@
 
 import { Fragment, startTransition, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
-import { addPuzzleToFolder, createFolder, getPuzzle, listFolders, type PuzzleFolder, upsertPuzzle } from "../core/storage";
+import { addPuzzleToFolder, createFolder, getPuzzle, listFolders, listPuzzles, type PuzzleFolder, upsertPuzzle } from "../core/storage";
 import type { CellRC, PersistedPuzzle, PuzzleProgress, LineStroke, PuzzleDefinition } from "../core/model";
 import { fmtHMS } from "../core/time";
 import { makeInitialProgress } from "../core/scl";
@@ -41,6 +41,7 @@ import { highlightPalettePages, linePalette } from "./toolPalettes";
 const AUTO_IN_PROGRESS_MILLIS = 30_000;
 const TRANSPARENT_HIGHLIGHT_COLOR = "rgba(0,0,0,0)";
 const VIEWPORT_REFRESH_DELAYS = [120, 320, 620] as const;
+type StoredPuzzle = Awaited<ReturnType<typeof listPuzzles>>[number];
 
 function rcKey(rc: CellRC) {
   return `${rc.r},${rc.c}`;
@@ -434,6 +435,7 @@ export function PuzzlePage() {
   const [restartPromptOpen, setRestartPromptOpen] = useState(false);
   const [reloadingPuzzle, setReloadingPuzzle] = useState(false);
   const [folders, setFolders] = useState<PuzzleFolder[]>([]);
+  const [folderPuzzleRows, setFolderPuzzleRows] = useState<StoredPuzzle[]>([]);
   const [addToFolderOpen, setAddToFolderOpen] = useState(false);
   const [addFolderNavId, setAddFolderNavId] = useState<string | null>(null);
   const [addToFolderBusy, setAddToFolderBusy] = useState("");
@@ -685,8 +687,9 @@ export function PuzzlePage() {
   }, [data, key]);
 
   async function refreshFolders() {
-    const nextFolders = await listFolders();
+    const [nextFolders, nextPuzzleRows] = await Promise.all([listFolders(), listPuzzles()]);
     setFolders(nextFolders);
+    setFolderPuzzleRows(nextPuzzleRows);
   }
 
   useEffect(() => {
@@ -795,6 +798,7 @@ export function PuzzlePage() {
       : "videoModeDesktop";
   const timeStr = useMemo(() => fmtHMS(data?.progress.totalMillis ?? 0), [data?.progress.totalMillis]);
   const folderById = useMemo(() => new Map(folders.map((folder) => [folder.id, folder])), [folders]);
+  const puzzleByKey = useMemo(() => new Map(folderPuzzleRows.map((row) => [row.key, row])), [folderPuzzleRows]);
   const addFolderNav = addFolderNavId ? folderById.get(addFolderNavId) ?? null : null;
   const addFolderTrail = useMemo(() => {
     const out: PuzzleFolder[] = [];
@@ -814,6 +818,13 @@ export function PuzzlePage() {
       .filter((folder) => (folder.parentId ?? null) === addFolderNavId)
       .sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
   }, [folders, addFolderNavId]);
+  const addDialogFolderPuzzles = useMemo(() => {
+    if (!addFolderNav) return [];
+    return addFolderNav.puzzleKeys
+      .map((puzzleKey) => puzzleByKey.get(puzzleKey))
+      .filter((row): row is StoredPuzzle => Boolean(row))
+      .sort((a, b) => (a.def?.meta?.title ?? "").localeCompare(b.def?.meta?.title ?? "", undefined, { sensitivity: "base" }));
+  }, [addFolderNav, puzzleByKey]);
   const selectedPuzzleFolderIds = useMemo(() => {
     const ids = new Set<string>();
     for (const folder of folders) {
@@ -2084,6 +2095,33 @@ export function PuzzlePage() {
                   <div className="muted">No folders in this location.</div>
                 ) : null}
               </div>
+
+              {addFolderNav ? (
+                <div style={{ marginTop: 10, display: "grid", gap: 6 }}>
+                  <div className="muted">Puzzles in this folder</div>
+                  <div className="menuPuzzleList addFolderNavigatorList">
+                    {addDialogFolderPuzzles.map((row) => (
+                      <div key={`pause-add-existing-puzzle-${row.key}`} className="card folderBrowserItem">
+                        <div style={{ fontWeight: 700, overflowWrap: "anywhere" }}>
+                          {row.def?.meta?.title || "(untitled)"}
+                        </div>
+                        {row.key === key ? (
+                          <div className="muted" style={{ marginTop: 4, fontSize: 12 }}>
+                            This puzzle
+                          </div>
+                        ) : null}
+                      </div>
+                    ))}
+                    {!addDialogFolderPuzzles.length ? (
+                      <div className="muted">No puzzles in this folder.</div>
+                    ) : null}
+                  </div>
+                </div>
+              ) : (
+                <div className="muted" style={{ marginTop: 10 }}>
+                  Select a folder to preview its puzzles.
+                </div>
+              )}
 
               <div className="muted addFolderBusyLine">{addToFolderBusy || "\u00A0"}</div>
 

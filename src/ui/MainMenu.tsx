@@ -899,6 +899,14 @@ export function MainMenu(props: { active?: boolean }) {
     );
   }, [folders, addFolderNavId]);
 
+  const addDialogFolderPuzzles = useMemo(() => {
+    if (!addFolderNav) return [];
+    const resolved = addFolderNav.puzzleKeys
+      .map((puzzleKey) => puzzleByKey.get(puzzleKey))
+      .filter((row): row is StoredPuzzle => Boolean(row));
+    return sortPuzzles(resolved, "az", "asc");
+  }, [addFolderNav, puzzleByKey]);
+
   const selectedPuzzleFolderIds = useMemo(() => {
     const ids = new Set<string>();
     if (!addToFolderPuzzle) return ids;
@@ -1871,6 +1879,33 @@ export function MainMenu(props: { active?: boolean }) {
                   <div className="muted">No folders in this location.</div>
                 ) : null}
               </div>
+
+              {addFolderNav ? (
+                <div style={{ marginTop: 10, display: "grid", gap: 6 }}>
+                  <div className="muted">Puzzles in this folder</div>
+                  <div className="menuPuzzleList addFolderNavigatorList">
+                    {addDialogFolderPuzzles.map((row) => (
+                      <div key={`add-folder-existing-puzzle-${row.key}`} className="card folderBrowserItem">
+                        <div style={{ fontWeight: 700, overflowWrap: "anywhere" }}>
+                          {row.def?.meta?.title || "(untitled)"}
+                        </div>
+                        {row.key === addToFolderPuzzle.key ? (
+                          <div className="muted" style={{ marginTop: 4, fontSize: 12 }}>
+                            This puzzle
+                          </div>
+                        ) : null}
+                      </div>
+                    ))}
+                    {!addDialogFolderPuzzles.length ? (
+                      <div className="muted">No puzzles in this folder.</div>
+                    ) : null}
+                  </div>
+                </div>
+              ) : (
+                <div className="muted" style={{ marginTop: 10 }}>
+                  Select a folder to preview its puzzles.
+                </div>
+              )}
 
               <div className="muted addFolderBusyLine">{addToFolderBusy || "\u00A0"}</div>
 
