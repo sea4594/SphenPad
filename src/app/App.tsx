@@ -9,6 +9,8 @@ import { clearForcedPortrait } from "./forcedPortrait";
 import { ThemeProvider } from "./theme";
 
 const LAST_ROUTE_KEY = "sphenpad-last-route-v1";
+const VIEWPORT_LOCKED_META = "width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content";
+const VIEWPORT_REFRESH_DELAYS = [120, 320, 620] as const;
 const MAIN_ROUTES = ["/", "/folders", "/archive"] as const;
 type MainRoute = (typeof MAIN_ROUTES)[number];
 
@@ -100,26 +102,86 @@ function MainPages() {
 export function App() {
   useEffect(() => {
     const root = document.documentElement;
+    const viewport = window.visualViewport;
+    const orientation = window.screen.orientation;
+    let rafId: number | null = null;
+    const timeoutIds: number[] = [];
 
-    const syncViewportHeight = () => {
-      const viewport = window.visualViewport;
-      const height = Math.max(window.innerHeight, viewport?.height ?? 0);
-      root.style.setProperty("--app-vh", `${Math.round(height)}px`);
+    const syncViewportSize = () => {
+      const width = Math.round(Math.max(1, viewport?.width ?? window.innerWidth));
+      const height = Math.round(Math.max(1, viewport?.height ?? window.innerHeight));
+      root.style.setProperty("--app-vw", `${width}px`);
+      root.style.setProperty("--app-vh", `${height}px`);
     };
 
-    syncViewportHeight();
+    const clearScheduledSync = () => {
+      if (rafId !== null) {
+        window.cancelAnimationFrame(rafId);
+        rafId = null;
+      }
+      for (const timeoutId of timeoutIds.splice(0)) {
+        window.clearTimeout(timeoutId);
+      }
+    };
 
-    const viewport = window.visualViewport;
-    window.addEventListener("resize", syncViewportHeight);
-    window.addEventListener("orientationchange", syncViewportHeight);
-    viewport?.addEventListener("resize", syncViewportHeight);
-    viewport?.addEventListener("scroll", syncViewportHeight);
+    const scheduleViewportSync = () => {
+      clearScheduledSync();
+      syncViewportSize();
+      rafId = window.requestAnimationFrame(syncViewportSize);
+      for (const delay of VIEWPORT_REFRESH_DELAYS) {
+        timeoutIds.push(window.setTimeout(syncViewportSize, delay));
+      }
+    };
+
+    scheduleViewportSync();
+
+    const viewportMeta = document.querySelector('meta[name="viewport"]');
+    if (viewportMeta?.getAttribute("content") !== VIEWPORT_LOCKED_META) {
+      viewportMeta?.setAttribute("content", VIEWPORT_LOCKED_META);
+    }
+
+    const preventGestureZoom: EventListener = (event) => {
+      event.preventDefault();
+    };
+
+    const preventTouchPinch = (event: TouchEvent) => {
+      if (event.touches.length > 1) {
+        event.preventDefault();
+      }
+    };
+
+    const preventWheelZoom = (event: WheelEvent) => {
+      if (event.ctrlKey) {
+        event.preventDefault();
+      }
+    };
+
+    window.addEventListener("resize", scheduleViewportSync);
+    window.addEventListener("orientationchange", scheduleViewportSync);
+    orientation?.addEventListener("change", scheduleViewportSync);
+    viewport?.addEventListener("resize", scheduleViewportSync);
+    viewport?.addEventListener("scroll", scheduleViewportSync);
+    document.addEventListener("gesturestart", preventGestureZoom, { passive: false });
+    document.addEventListener("gesturechange", preventGestureZoom, { passive: false });
+    document.addEventListener("gestureend", preventGestureZoom, { passive: false });
+    document.addEventListener("touchstart", preventTouchPinch, { passive: false });
+    document.addEventListener("touchmove", preventTouchPinch, { passive: false });
+    document.addEventListener("wheel", preventWheelZoom, { passive: false });
 
     return () => {
-      window.removeEventListener("resize", syncViewportHeight);
-      window.removeEventListener("orientationchange", syncViewportHeight);
-      viewport?.removeEventListener("resize", syncViewportHeight);
-      viewport?.removeEventListener("scroll", syncViewportHeight);
+      clearScheduledSync();
+      window.removeEventListener("resize", scheduleViewportSync);
+      window.removeEventListener("orientationchange", scheduleViewportSync);
+      orientation?.removeEventListener("change", scheduleViewportSync);
+      viewport?.removeEventListener("resize", scheduleViewportSync);
+      viewport?.removeEventListener("scroll", scheduleViewportSync);
+      document.removeEventListener("gesturestart", preventGestureZoom);
+      document.removeEventListener("gesturechange", preventGestureZoom);
+      document.removeEventListener("gestureend", preventGestureZoom);
+      document.removeEventListener("touchstart", preventTouchPinch);
+      document.removeEventListener("touchmove", preventTouchPinch);
+      document.removeEventListener("wheel", preventWheelZoom);
+      root.style.removeProperty("--app-vw");
       root.style.removeProperty("--app-vh");
     };
   }, []);

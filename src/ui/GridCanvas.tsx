@@ -13,12 +13,12 @@ type LayerItem = NonNullable<PuzzleDefinition["cosmetics"]["underlays"]>[number]
 const LINE_NODE_DIAMETER = 1;
 const LINE_NODE_RADIUS = LINE_NODE_DIAMETER / 2;
 const DEFAULT_FOG_FILL_COLOR = "#afafaf";
-const DOUBLE_TAP_WINDOW_MS = 320;
 const TWEMOJI_OPTIONS = {
   base: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/",
   folder: "svg",
   ext: ".svg",
 } as const;
+const VIEWPORT_REFRESH_DELAYS = [120, 320, 620] as const;
 
 function isLikelyMobileDevice(): boolean {
   if (typeof window === "undefined") return false;
@@ -102,11 +102,6 @@ function isCellHighlightsTarget(target: string | undefined): boolean {
   return /(^|[^a-z])cell-?highlights?([^a-z]|$)/i.test(target);
 }
 
-function isCellColorsTarget(target: string | undefined): boolean {
-  if (typeof target !== "string" || !target.trim()) return false;
-  return /(^|[^a-z])cell-?colors?([^a-z]|$)/i.test(target);
-}
-
 export function GridCanvas(props: {
   def: PuzzleDefinition;
   progress: PuzzleProgress;
@@ -124,7 +119,6 @@ export function GridCanvas(props: {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const dragRef = useRef<DragState | null>(null);
-  const lastTapRef = useRef<{ atMs: number; cellKey: string } | null>(null);
   const twemojiCacheRef = useRef<Map<string, HTMLImageElement | "loading" | "error">>(new Map());
 
   const rows = Math.max(1, Number(def.rows ?? progress.cells.length ?? def.size));
@@ -352,18 +346,24 @@ export function GridCanvas(props: {
   useLayoutEffect(() => {
     const el = wrapRef.current;
     if (!el) return;
+    const viewport = window.visualViewport;
+    const orientation = window.screen.orientation;
+    let rafId: number | null = null;
+    const timeoutIds: number[] = [];
+
     const update = () => {
       const boardCard = (el.closest(".boardCard") as HTMLElement | null) ?? (el.parentElement as HTMLElement | null) ?? null;
       const boardColumn = (el.closest(".boardColumn") as HTMLElement | null) ?? null;
       const gridLayout = (el.closest(".gridLayout") as HTMLElement | null) ?? null;
       const kbdPanel = (el.closest(".gridLayout")?.querySelector(".kbdPanel") as HTMLElement | null) ?? null;
       const pane = boardCard ?? boardColumn ?? el;
-      const longSide = Math.max(window.innerWidth, window.innerHeight);
+      const visualViewportWidth = viewport?.width ?? window.innerWidth;
+      const visualViewportHeight = viewport?.height ?? window.innerHeight;
+      const longSide = Math.max(visualViewportWidth, visualViewportHeight);
       const isMobile = isLikelyMobileDevice();
-      const visualViewportHeight = window.visualViewport?.height ?? window.innerHeight;
       const wrapRect = el.getBoundingClientRect();
 
-      const width = Math.max(1, Math.floor(wrapRect.width) || el.clientWidth || pane.clientWidth || window.innerWidth);
+      const width = Math.max(1, Math.floor(wrapRect.width) || el.clientWidth || pane.clientWidth || visualViewportWidth);
 
       const topbar = document.querySelector(".topbar") as HTMLElement | null;
       // Use the visible viewport height directly on mobile to avoid oversizing the board
@@ -376,9 +376,7 @@ export function GridCanvas(props: {
         gridLayout?.clientHeight ?? 0,
         pane.clientHeight || 0
       );
-      const kbdRect = kbdPanel?.getBoundingClientRect();
-      const controlsOverlapBoardHorizontally = !!kbdRect && kbdRect.left < wrapRect.right && kbdRect.right > wrapRect.left;
-      const controlsTop = controlsOverlapBoardHorizontally ? (kbdRect?.top ?? Number.POSITIVE_INFINITY) : Number.POSITIVE_INFINITY;
+      const controlsTop = kbdPanel?.getBoundingClientRect().top ?? Number.POSITIVE_INFINITY;
       const frameBottom = Math.min(controlsTop, visualViewportHeight);
       const spaceAboveControls = Math.max(0, Math.floor(frameBottom - wrapRect.top));
 
@@ -435,14 +433,44 @@ export function GridCanvas(props: {
       setCellPx(next);
       setMobileViewport(isMobile);
     };
-    update();
-    const ro = new ResizeObserver(update);
+
+    const clearScheduledUpdate = () => {
+      if (rafId !== null) {
+        window.cancelAnimationFrame(rafId);
+        rafId = null;
+      }
+      for (const timeoutId of timeoutIds.splice(0)) {
+        window.clearTimeout(timeoutId);
+      }
+    };
+
+    const scheduleUpdate = () => {
+      clearScheduledUpdate();
+      update();
+      rafId = window.requestAnimationFrame(update);
+      for (const delay of VIEWPORT_REFRESH_DELAYS) {
+        timeoutIds.push(window.setTimeout(update, delay));
+      }
+    };
+
+    scheduleUpdate();
+    const ro = new ResizeObserver(scheduleUpdate);
     ro.observe(el);
     if (el.parentElement) ro.observe(el.parentElement);
-    window.addEventListener("resize", update);
+    window.addEventListener("resize", scheduleUpdate);
+    window.addEventListener("orientationchange", scheduleUpdate);
+    orientation?.addEventListener("change", scheduleUpdate);
+    viewport?.addEventListener("resize", scheduleUpdate);
+    viewport?.addEventListener("scroll", scheduleUpdate);
+
     return () => {
+      clearScheduledUpdate();
       ro.disconnect();
-      window.removeEventListener("resize", update);
+      window.removeEventListener("resize", scheduleUpdate);
+      window.removeEventListener("orientationchange", scheduleUpdate);
+      orientation?.removeEventListener("change", scheduleUpdate);
+      viewport?.removeEventListener("resize", scheduleUpdate);
+      viewport?.removeEventListener("scroll", scheduleUpdate);
     };
   }, [cols, outsideBottom, outsideLeft, outsideRight, outsideTop, previewMode, rows]);
 
@@ -556,38 +584,37 @@ export function GridCanvas(props: {
     const drawSelectionOutlines = () => {
       if (!interactive || !progress.selection.length) return;
       const selected = new Set(progress.selection.map(rcKey));
-      const outlineWidth = 3.3;
-      const half = outlineWidth / 2;
+      const inset = 1;
       ctx.save();
       ctx.strokeStyle = "rgba(46,120,255,.95)";
-      ctx.lineWidth = outlineWidth;
-      ctx.lineCap = "butt";
-      ctx.lineJoin = "miter";
+      ctx.lineWidth = 3.3;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
       for (const rc of progress.selection) {
         const x = cellX(rc.c);
         const y = cellY(rc.r);
         if (!selected.has(`${rc.r - 1},${rc.c}`)) {
           ctx.beginPath();
-          ctx.moveTo(x + half, y + half);
-          ctx.lineTo(x + cellPx - half, y + half);
+          ctx.moveTo(x + inset, y + inset);
+          ctx.lineTo(x + cellPx - inset, y + inset);
           ctx.stroke();
         }
         if (!selected.has(`${rc.r},${rc.c + 1}`)) {
           ctx.beginPath();
-          ctx.moveTo(x + cellPx - half, y + half);
-          ctx.lineTo(x + cellPx - half, y + cellPx - half);
+          ctx.moveTo(x + cellPx - inset, y + inset);
+          ctx.lineTo(x + cellPx - inset, y + cellPx - inset);
           ctx.stroke();
         }
         if (!selected.has(`${rc.r + 1},${rc.c}`)) {
           ctx.beginPath();
-          ctx.moveTo(x + half, y + cellPx - half);
-          ctx.lineTo(x + cellPx - half, y + cellPx - half);
+          ctx.moveTo(x + inset, y + cellPx - inset);
+          ctx.lineTo(x + cellPx - inset, y + cellPx - inset);
           ctx.stroke();
         }
         if (!selected.has(`${rc.r},${rc.c - 1}`)) {
           ctx.beginPath();
-          ctx.moveTo(x + half, y + half);
-          ctx.lineTo(x + half, y + cellPx - half);
+          ctx.moveTo(x + inset, y + inset);
+          ctx.lineTo(x + inset, y + cellPx - inset);
           ctx.stroke();
         }
       }
@@ -941,9 +968,9 @@ export function GridCanvas(props: {
         const explicitBorderThickness = Number.isFinite(borderThickness)
           ? Number(borderThickness)
           : undefined;
-        const sourceBorderThickness = explicitBorderThickness ?? 1;
-        if (sourceBorderThickness > 0) {
-          const borderWidth = scaledCosmeticPx(sourceBorderThickness, { previewMin: 0, normalMin: 0 });
+        // Match SudokuPad behavior: only draw borders when thickness is explicitly provided.
+        if (explicitBorderThickness != null && explicitBorderThickness > 0) {
+          const borderWidth = scaledCosmeticPx(explicitBorderThickness, { previewMin: 0, normalMin: 0 });
           if (borderWidth > 0) {
             ctx.strokeStyle = borderColor;
             ctx.lineWidth = borderWidth;
@@ -964,11 +991,9 @@ export function GridCanvas(props: {
         const px = (item.textSize ?? 16) * (cellPx / cosmeticUnit);
         const text = String(item.text);
         const hasEmoji = /\p{Extended_Pictographic}/u.test(text);
-        const hasLettersOrDigits = /[\p{Letter}\p{Number}]/u.test(text);
-        const emojiOnlyText = hasEmoji && !hasLettersOrDigits;
         const minTextPx = strictScale ? 0 : previewMode ? 4.5 : mobileFidelityMode ? 4.5 : 10;
         const textPx = Math.max(minTextPx, px);
-        ctx.font = emojiOnlyText
+        ctx.font = hasEmoji
           ? `${textPx}px ${emojiTextFont}`
           : `600 ${textPx}px ${gridTextFont}, ${emojiTextFont}`;
         ctx.textAlign = item.textAlign ?? "center";
@@ -986,7 +1011,7 @@ export function GridCanvas(props: {
           ctx.strokeText(text, tx, ty);
         }
         ctx.fillStyle = item.textColor ?? "#111111";
-        const twemojiImage = emojiOnlyText ? getTwemojiImage(text) : null;
+        const twemojiImage = hasEmoji ? getTwemojiImage(text) : null;
         if (twemojiImage) {
           const sz = textPx;
           ctx.drawImage(twemojiImage, tx - sz / 2, ty - sz / 2, sz, sz);
@@ -1035,43 +1060,10 @@ export function GridCanvas(props: {
       });
     };
 
-    const isFullyTransparentColor = (value: string | undefined) => {
-      if (typeof value !== "string") return false;
-      const s = value.trim().toLowerCase();
-      if (!s) return false;
-      if (s === "transparent") return true;
-      // rgba(...) emitted by normalizeColorToken for #RGBA / #RRGGBBAA with alpha=0.
-      if (/^rgba\([^)]*,\s*0(?:\.0+)?\s*\)$/.test(s)) return true;
-      return false;
-    };
-
     const drawConstraintLine = (ln: NonNullable<PuzzleDefinition["cosmetics"]["lines"]>[number]) => {
-      const isFogNeutralLineColor = (value: string | undefined) => {
-        if (typeof value !== "string") return false;
-        const color = value.trim().toLowerCase();
-        if (!color) return false;
-        if (color === "#afafaf" || color === "#afafafff") return true;
-        return /^rgba\(\s*175\s*,\s*175\s*,\s*175\s*,\s*1(?:\.0+)?\s*\)$/.test(color);
-      };
-
-      const resolveCellHighlightsTint = (line: NonNullable<PuzzleDefinition["cosmetics"]["lines"]>[number]) => {
-        if (!isCellHighlightsTarget(line.target)) return undefined;
-        if (!isFogNeutralLineColor(line.color)) return undefined;
-        for (const point of line.wayPoints) {
-          const r = Math.floor(point.y);
-          const c = Math.floor(point.x);
-          if (!inBounds(r, c)) continue;
-          const highlights = progress.cells[r][c].highlights ?? [];
-          const tint = highlights[highlights.length - 1];
-          if (typeof tint === "string" && tint.trim()) return tint;
-        }
-        return undefined;
-      };
-
       const hasSvgPath = typeof ln.svgPathData === "string" && ln.svgPathData.length > 0;
       if (!hasSvgPath && ln.wayPoints.length < 2) return;
       const lineOpacity = Number.isFinite(ln.opacity) ? Math.max(0, Math.min(1, Number(ln.opacity))) : 1;
-      const strokeColor = resolveCellHighlightsTint(ln) ?? ln.color;
 
       if (hasSvgPath) {
         const units = Number(ln.svgUnitsPerCell) || cosmeticUnit;
@@ -1086,9 +1078,9 @@ export function GridCanvas(props: {
           ctx.fillStyle = ln.fillColor;
           ctx.fill(path);
         }
-        const hasStroke = Boolean(strokeColor) && (ln.thickness ?? 6) > 0;
+        const hasStroke = Boolean(ln.color) && (ln.thickness ?? 6) > 0;
         if (hasStroke) {
-          ctx.strokeStyle = strokeColor as string;
+          ctx.strokeStyle = ln.color as string;
           ctx.lineWidth = ln.thickness ?? 6;
           ctx.lineCap = ln.lineCap ?? "round";
           ctx.lineJoin = ln.lineJoin ?? "round";
@@ -1120,9 +1112,9 @@ export function GridCanvas(props: {
         ctx.fill();
       }
 
-      const hasStroke = Boolean(strokeColor) && (ln.thickness ?? 6) > 0;
+      const hasStroke = Boolean(ln.color) && (ln.thickness ?? 6) > 0;
       if (hasStroke) {
-        ctx.strokeStyle = strokeColor as string;
+        ctx.strokeStyle = ln.color as string;
         ctx.lineWidth = (ln.thickness ?? 6) * (cellPx / cosmeticUnit);
         ctx.lineCap = ln.lineCap ?? "round";
         ctx.lineJoin = ln.lineJoin ?? "round";
@@ -1281,12 +1273,7 @@ export function GridCanvas(props: {
       ctx.rect(clueCellX, clueCellY, cellPx, cellPx);
       ctx.clip();
       drawSoftEdgeBackdrop(bgX, bgY, bgW, bgH, 0.75);
-      const clueTextColor = !isFullyTransparentColor(cage.textColor)
-        ? cage.textColor
-        : !isFullyTransparentColor(cage.color)
-          ? cage.color
-          : undefined;
-      ctx.fillStyle = clueTextColor ?? "#111111";
+      ctx.fillStyle = cage.textColor ?? cage.color ?? "#111111";
       ctx.fillText(clueText, textLeft, baselineY);
       ctx.restore();
     };
@@ -1448,8 +1435,7 @@ export function GridCanvas(props: {
       const maxOrder = Number.MAX_SAFE_INTEGER;
 
       for (const ln of def.cosmetics.lines ?? []) {
-        const hasSvgPath = typeof ln.svgPathData === "string" && ln.svgPathData.length > 0;
-        if (!hasSvgPath && ln.wayPoints.length < 2) continue;
+        if (ln.wayPoints.length < 2) continue;
         if (classifyRenderTargetWithDefault(ln.target, "arrows") !== layer) continue;
         entries.push({ kind: "line", item: ln, order: ln.renderOrder ?? maxOrder, serial: serial++ });
       }
@@ -1587,7 +1573,6 @@ export function GridCanvas(props: {
     if (!fogDefined) {
       drawGridPuzzleFeatures();
 
-      drawSelectionOutlines();
       // Grid below top puzzle artwork so features are not bisected by grid lines.
       drawGridLines();
       drawTopPuzzleFeatures();
@@ -1999,7 +1984,6 @@ export function GridCanvas(props: {
     }
 
     if (fogDefined) {
-      const deferredCellColorLines: Array<NonNullable<PuzzleDefinition["cosmetics"]["lines"]>[number]> = [];
       ctx.fillStyle = DEFAULT_FOG_FILL_COLOR;
       for (let r = 0; r < rows; r++) {
         for (let c = 0; c < cols; c++) {
@@ -2018,19 +2002,11 @@ export function GridCanvas(props: {
         }
       }
 
-      // Keep cell-colors decorative fills visible in fog without forcing them
-      // to the very top of the stack, which shifts their apparent color.
-      for (const ln of deferredCellColorLines) drawConstraintLine(ln);
-
 
       // Keep all lines/arrows readable above highlights under fog.
       ctx.save();
       clipToFogVisibleAreas(lit);
       for (const ln of def.cosmetics.lines ?? []) {
-        if (isCellColorsTarget(ln.target)) {
-          deferredCellColorLines.push(ln);
-          continue;
-        }
         if (isPromotedAboveFogLine(ln)) continue;
         drawConstraintLine(ln);
       }
@@ -2044,7 +2020,6 @@ export function GridCanvas(props: {
       // Grid-target features (for example cell-grids) stay visible above fog.
       drawGridPuzzleFeatures();
 
-      drawSelectionOutlines();
       if (def.cosmetics.gridVisible !== false) {
         drawGridLines();
       }
@@ -2163,6 +2138,7 @@ export function GridCanvas(props: {
       }
     }
 
+    drawSelectionOutlines();
   }, [
     bgImage,
     boardH,
@@ -2645,30 +2621,10 @@ export function GridCanvas(props: {
         props.onLineStroke(drag.segments, kind, drag.lineAction);
       }
       setLinePreview(null);
-      lastTapRef.current = null;
-    } else {
+    } else if (!progress.multiSelect && !drag.moved && drag.startedSelected && drag.startedSelectionSize === 1) {
       const pt = eventPoint(e.clientX, e.clientY);
-      if (pt && !drag.moved) {
-        const releasedKey = `${pt.r},${pt.c}`;
-        const startedKey = drag.startedCellKey ?? releasedKey;
-        if (startedKey === releasedKey) {
-          const now = performance.now();
-          const lastTap = lastTapRef.current;
-          const isSameCellDoubleTap = Boolean(lastTap && lastTap.cellKey === releasedKey && now - lastTap.atMs <= DOUBLE_TAP_WINDOW_MS);
-          if (isSameCellDoubleTap) {
-            lastTapRef.current = null;
-            props.onDoubleCell({ r: pt.r, c: pt.c });
-          } else {
-            lastTapRef.current = { atMs: now, cellKey: releasedKey };
-            if (!progress.multiSelect && drag.startedSelected && drag.startedSelectionSize === 1) {
-              props.onSelection([]);
-            }
-          }
-        } else {
-          lastTapRef.current = null;
-        }
-      } else {
-        lastTapRef.current = null;
+      if (pt && drag.startedCellKey === `${pt.r},${pt.c}`) {
+        props.onSelection([]);
       }
     }
 
@@ -2679,7 +2635,13 @@ export function GridCanvas(props: {
     if (!interactive) return;
     dragRef.current = null;
     setLinePreview(null);
-    lastTapRef.current = null;
+  }
+
+  function onDoubleClick(e: React.MouseEvent<HTMLCanvasElement>) {
+    if (!interactive) return;
+    const pt = eventPoint(e.clientX, e.clientY);
+    if (!pt) return;
+    props.onDoubleCell({ r: pt.r, c: pt.c });
   }
 
   return (
@@ -2700,6 +2662,7 @@ export function GridCanvas(props: {
         onPointerUp={interactive ? onUp : undefined}
         onPointerCancel={interactive ? onCancel : undefined}
         onPointerLeave={interactive ? onCancel : undefined}
+        onDoubleClick={interactive ? onDoubleClick : undefined}
       />
     </div>
   );

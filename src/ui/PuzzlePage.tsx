@@ -40,6 +40,7 @@ import { highlightPalettePages, linePalette } from "./toolPalettes";
 
 const AUTO_IN_PROGRESS_MILLIS = 30_000;
 const TRANSPARENT_HIGHLIGHT_COLOR = "rgba(0,0,0,0)";
+const VIEWPORT_REFRESH_DELAYS = [120, 320, 620] as const;
 
 function rcKey(rc: CellRC) {
   return `${rc.r},${rc.c}`;
@@ -403,9 +404,12 @@ function parseYouTubeVideoId(url: string | undefined): string | null {
 }
 
 function getVideoViewportMode(): VideoViewportMode {
-  const isLikelyMobile = window.matchMedia("(max-width: 760px), ((hover: none) and (pointer: coarse))").matches;
+  const viewport = window.visualViewport;
+  const viewportWidth = viewport?.width ?? window.innerWidth;
+  const viewportHeight = viewport?.height ?? window.innerHeight;
+  const isLikelyMobile = viewportWidth <= 760 || window.matchMedia("(hover: none) and (pointer: coarse)").matches;
   if (!isLikelyMobile) return "desktop";
-  return window.matchMedia("(orientation: landscape)").matches ? "mobile-landscape" : "mobile-portrait";
+  return viewportWidth > viewportHeight ? "mobile-landscape" : "mobile-portrait";
 }
 
 export function PuzzlePage() {
@@ -567,12 +571,51 @@ export function PuzzlePage() {
   }, [data, key, pauseMenuOpen]);
 
   useEffect(() => {
-    const refreshViewportMode = () => setVideoViewportMode(getVideoViewportMode());
-    window.addEventListener("resize", refreshViewportMode);
-    window.addEventListener("orientationchange", refreshViewportMode);
+    const viewport = window.visualViewport;
+    const orientation = window.screen.orientation;
+    let rafId: number | null = null;
+    const timeoutIds: number[] = [];
+
+    const refreshViewportMode = () => {
+      setVideoViewportMode((current) => {
+        const next = getVideoViewportMode();
+        return current === next ? current : next;
+      });
+    };
+
+    const clearScheduledRefresh = () => {
+      if (rafId !== null) {
+        window.cancelAnimationFrame(rafId);
+        rafId = null;
+      }
+      for (const timeoutId of timeoutIds.splice(0)) {
+        window.clearTimeout(timeoutId);
+      }
+    };
+
+    const scheduleViewportModeRefresh = () => {
+      clearScheduledRefresh();
+      refreshViewportMode();
+      rafId = window.requestAnimationFrame(refreshViewportMode);
+      for (const delay of VIEWPORT_REFRESH_DELAYS) {
+        timeoutIds.push(window.setTimeout(refreshViewportMode, delay));
+      }
+    };
+
+    scheduleViewportModeRefresh();
+    window.addEventListener("resize", scheduleViewportModeRefresh);
+    window.addEventListener("orientationchange", scheduleViewportModeRefresh);
+    orientation?.addEventListener("change", scheduleViewportModeRefresh);
+    viewport?.addEventListener("resize", scheduleViewportModeRefresh);
+    viewport?.addEventListener("scroll", scheduleViewportModeRefresh);
+
     return () => {
-      window.removeEventListener("resize", refreshViewportMode);
-      window.removeEventListener("orientationchange", refreshViewportMode);
+      clearScheduledRefresh();
+      window.removeEventListener("resize", scheduleViewportModeRefresh);
+      window.removeEventListener("orientationchange", scheduleViewportModeRefresh);
+      orientation?.removeEventListener("change", scheduleViewportModeRefresh);
+      viewport?.removeEventListener("resize", scheduleViewportModeRefresh);
+      viewport?.removeEventListener("scroll", scheduleViewportModeRefresh);
     };
   }, []);
 

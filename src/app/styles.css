@@ -256,9 +256,11 @@ body,
   overscroll-behavior: none;
   background: var(--bg);
   color: var(--text);
+  touch-action: manipulation;
 }
 
 #root {
+  width: var(--app-vw, 100dvw);
   height: var(--app-vh, 100dvh);
   min-height: var(--app-vh, 100svh);
   overflow: hidden;
