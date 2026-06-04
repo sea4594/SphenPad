@@ -1523,11 +1523,10 @@ export function GridCanvas(props: {
       }
     }
 
-    // Draw all arrows/lines/cages/dots by their target/layer.
+    // Draw arrows/lines/dots by their target/layer.
     // In fog mode these are rendered in the fog-aware section to avoid double compositing.
     if (!fogDefined) {
       drawVisualLayer("arrows");
-      drawVisualLayer("cages");
     }
 
     const drawGridPuzzleFeatures = () => {
@@ -1573,8 +1572,9 @@ export function GridCanvas(props: {
     if (!fogDefined) {
       drawGridPuzzleFeatures();
 
-      // Grid below top puzzle artwork so features are not bisected by grid lines.
+      // Grid below cage/top artwork so features are not bisected by grid lines.
       drawGridLines();
+      drawVisualLayer("cages");
       drawTopPuzzleFeatures();
     }
 
@@ -2014,7 +2014,6 @@ export function GridCanvas(props: {
         if (isPromotedAboveFogArrow(arrow)) continue;
         drawArrow(arrow);
       }
-      drawVisualLayer("cages");
       ctx.restore();
 
       // Grid-target features (for example cell-grids) stay visible above fog.
@@ -2023,6 +2022,12 @@ export function GridCanvas(props: {
       if (def.cosmetics.gridVisible !== false) {
         drawGridLines();
       }
+
+      // Keep cage outlines continuous by rendering them above the grid.
+      ctx.save();
+      clipToFogVisibleAreas(lit);
+      drawVisualLayer("cages");
+      ctx.restore();
 
       // Explicit cell-highlights clue linework is intentionally above fog.
       // Draw this before top features so decorative overlays can remain above clues.
