@@ -1884,18 +1884,62 @@ export function MainMenu(props: { active?: boolean }) {
                 <div style={{ marginTop: 10, display: "grid", gap: 6 }}>
                   <div className="muted">Puzzles in this folder</div>
                   <div className="menuPuzzleList addFolderNavigatorList">
-                    {addDialogFolderPuzzles.map((row) => (
-                      <div key={`add-folder-existing-puzzle-${row.key}`} className="card folderBrowserItem">
-                        <div style={{ fontWeight: 700, overflowWrap: "anywhere" }}>
-                          {row.def?.meta?.title || "(untitled)"}
-                        </div>
-                        {row.key === addToFolderPuzzle.key ? (
-                          <div className="muted" style={{ marginTop: 4, fontSize: 12 }}>
-                            This puzzle
+                    {addDialogFolderPuzzles.map((row) => {
+                      const previewProgress = {
+                        ...row.progress,
+                        selection: [],
+                        multiSelect: false,
+                      };
+                      const constraintBullets = constraintBulletsByPuzzle.get(row.key) ?? ["Normal Sudoku rules only"];
+                      return (
+                        <div key={`add-folder-existing-puzzle-${row.key}`} className="card menuPuzzleRow">
+                          <div className="menuPuzzleSummary">
+                            <div className="menuPuzzleTitleWrap">
+                              <div className="menuPuzzleTitle">{row.def?.meta?.title || "(untitled)"}</div>
+                              {row.def?.meta?.author ? (
+                                <div className="muted menuPuzzleAuthor">
+                                  {row.def.meta.author}
+                                </div>
+                              ) : null}
+                              <ul className="menuPuzzleConstraintList">
+                                {constraintBullets.map((constraint) => (
+                                  <li key={`add-folder-${row.key}-${constraint}`}>{constraint}</li>
+                                ))}
+                              </ul>
+                            </div>
+
+                            <div className="row menuPuzzleMeta">
+                              <div>{fmtHMS(row.progress?.totalMillis ?? 0)}</div>
+                              <div className="muted" style={{ fontSize: 13 }}>
+                                {statusLabel(puzzleStatus(row))}
+                              </div>
+                            </div>
                           </div>
-                        ) : null}
-                      </div>
-                    ))}
+
+                          <div className="menuPuzzleDeleteStack">
+                            <div className="menuPuzzlePreview" aria-hidden="true">
+                              <GridCanvas
+                                def={row.def}
+                                progress={previewProgress}
+                                onSelection={NOOP}
+                                onLineStroke={NOOP}
+                                onLineTapCell={NOOP}
+                                onLineTapEdge={NOOP}
+                                onDoubleCell={NOOP}
+                                interactive={false}
+                                previewMode
+                                strictScale
+                              />
+                            </div>
+                            {row.key === addToFolderPuzzle.key ? (
+                              <div className="muted" style={{ marginTop: 2, fontSize: 12, textAlign: "right" }}>
+                                This puzzle
+                              </div>
+                            ) : null}
+                          </div>
+                        </div>
+                      );
+                    })}
                     {!addDialogFolderPuzzles.length ? (
                       <div className="muted">No puzzles in this folder.</div>
                     ) : null}

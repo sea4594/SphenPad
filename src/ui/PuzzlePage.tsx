@@ -42,6 +42,90 @@ const AUTO_IN_PROGRESS_MILLIS = 30_000;
 const TRANSPARENT_HIGHLIGHT_COLOR = "rgba(0,0,0,0)";
 const VIEWPORT_REFRESH_DELAYS = [120, 320, 620] as const;
 type StoredPuzzle = Awaited<ReturnType<typeof listPuzzles>>[number];
+type PuzzlePlayStatus = "not_started" | "in_progress" | "complete";
+const NOOP = () => {};
+
+function puzzleStatus(row: StoredPuzzle): PuzzlePlayStatus {
+  const status = row.progress?.status ?? "not_started";
+  if (status === "complete") return "complete";
+  if (status === "in_progress") return "in_progress";
+  return "not_started";
+}
+
+function statusLabel(status: PuzzlePlayStatus): string {
+  if (status === "not_started") return "Not Started";
+  if (status === "in_progress") return "In Progress";
+  return "Complete";
+}
+
+function hasBorderClues(clues: { top?: string[]; bottom?: string[]; left?: string[]; right?: string[] } | undefined): boolean {
+  if (!clues) return false;
+  const sides = [clues.top, clues.bottom, clues.left, clues.right];
+  return sides.some((side) => Array.isArray(side) && side.some((v) => String(v ?? "").trim().length > 0));
+}
+
+function extractConstraintBullets(def: StoredPuzzle["def"]): string[] {
+  const out = new Set<string>();
+  const cosmetics = def.cosmetics;
+
+  if (cosmetics.cages?.length) out.add("Killer cages");
+  if (cosmetics.arrows?.length) out.add("Arrow constraints");
+  if (cosmetics.dots?.length) {
+    const hasBlack = cosmetics.dots.some((d) => d.kind === "black");
+    const hasWhite = cosmetics.dots.some((d) => d.kind === "white");
+    if (hasBlack && hasWhite) out.add("Black and white dots");
+    else if (hasBlack) out.add("Black dots");
+    else if (hasWhite) out.add("White dots");
+  }
+
+  if (cosmetics.thermolines?.length) out.add("Thermo lines");
+  if (cosmetics.whispers?.length || cosmetics.germanwhispers?.length) out.add("Whisper lines");
+  if (cosmetics.palindromes?.length) out.add("Palindrome lines");
+  if (cosmetics.renbanlines?.length) out.add("Renban lines");
+  if (cosmetics.entropics?.length) out.add("Entropic lines");
+  if (cosmetics.modularlines?.length) out.add("Modular lines");
+
+  if (hasBorderClues(cosmetics.skyscraper)) out.add("Skyscraper clues");
+  if (hasBorderClues(cosmetics.sandwich)) out.add("Sandwich clues");
+  if (hasBorderClues(cosmetics.xsum)) out.add("X-sum clues");
+  if (cosmetics.littlekillers?.length) out.add("Little killer clues");
+
+  if (cosmetics.irregularRegions?.length) out.add("Irregular regions");
+  if (cosmetics.disjointGroups?.length) out.add("Disjoint groups");
+
+  if (cosmetics.antiKnight) out.add("Anti-knight");
+  if (cosmetics.antiKing) out.add("Anti-king");
+  if (cosmetics.antiRook) out.add("Anti-rook");
+
+  if ((cosmetics.fogLights?.length ?? 0) > 0 || (cosmetics.fogTriggerEffects?.length ?? 0) > 0) {
+    out.add("Fog of war");
+  }
+
+  const rules = (def.meta?.rules ?? "").toLowerCase();
+  const keywordMap: Array<[RegExp, string]> = [
+    [/\bthermo\b/, "Thermo lines"],
+    [/\bwhisper\b/, "Whisper lines"],
+    [/\brenban\b/, "Renban lines"],
+    [/\bpalindrome\b/, "Palindrome lines"],
+    [/\barrow\b/, "Arrow constraints"],
+    [/\bkiller\b/, "Killer cages"],
+    [/\bsandwich\b/, "Sandwich clues"],
+    [/\bx\s*-?\s*sum\b/, "X-sum clues"],
+    [/\bskyscraper\b/, "Skyscraper clues"],
+    [/\blittle\s*killer\b/, "Little killer clues"],
+    [/\banti\s*-?\s*knight\b/, "Anti-knight"],
+    [/\banti\s*-?\s*king\b/, "Anti-king"],
+    [/\banti\s*-?\s*rook\b/, "Anti-rook"],
+    [/\bfog\b/, "Fog of war"],
+    [/\bentropic\b|\bentropy\b/, "Entropic lines"],
+  ];
+  for (const [pattern, label] of keywordMap) {
+    if (pattern.test(rules)) out.add(label);
+  }
+
+  if (!out.size) return ["Normal Sudoku rules only"];
+  return Array.from(out);
+}
 
 function rcKey(rc: CellRC) {
   return `${rc.r},${rc.c}`;
@@ -2100,18 +2184,62 @@ export function PuzzlePage() {
                 <div style={{ marginTop: 10, display: "grid", gap: 6 }}>
                   <div className="muted">Puzzles in this folder</div>
                   <div className="menuPuzzleList addFolderNavigatorList">
-                    {addDialogFolderPuzzles.map((row) => (
-                      <div key={`pause-add-existing-puzzle-${row.key}`} className="card folderBrowserItem">
-                        <div style={{ fontWeight: 700, overflowWrap: "anywhere" }}>
-                          {row.def?.meta?.title || "(untitled)"}
-                        </div>
-                        {row.key === key ? (
-                          <div className="muted" style={{ marginTop: 4, fontSize: 12 }}>
-                            This puzzle
+                    {addDialogFolderPuzzles.map((row) => {
+                      const previewProgress = {
+                        ...row.progress,
+                        selection: [],
+                        multiSelect: false,
+                      };
+                      const constraintBullets = extractConstraintBullets(row.def);
+                      return (
+                        <div key={`pause-add-existing-puzzle-${row.key}`} className="card menuPuzzleRow">
+                          <div className="menuPuzzleSummary">
+                            <div className="menuPuzzleTitleWrap">
+                              <div className="menuPuzzleTitle">{row.def?.meta?.title || "(untitled)"}</div>
+                              {row.def?.meta?.author ? (
+                                <div className="muted menuPuzzleAuthor">
+                                  {row.def.meta.author}
+                                </div>
+                              ) : null}
+                              <ul className="menuPuzzleConstraintList">
+                                {constraintBullets.map((constraint) => (
+                                  <li key={`pause-add-${row.key}-${constraint}`}>{constraint}</li>
+                                ))}
+                              </ul>
+                            </div>
+
+                            <div className="row menuPuzzleMeta">
+                              <div>{fmtHMS(row.progress?.totalMillis ?? 0)}</div>
+                              <div className="muted" style={{ fontSize: 13 }}>
+                                {statusLabel(puzzleStatus(row))}
+                              </div>
+                            </div>
                           </div>
-                        ) : null}
-                      </div>
-                    ))}
+
+                          <div className="menuPuzzleDeleteStack">
+                            <div className="menuPuzzlePreview" aria-hidden="true">
+                              <GridCanvas
+                                def={row.def}
+                                progress={previewProgress}
+                                onSelection={NOOP}
+                                onLineStroke={NOOP}
+                                onLineTapCell={NOOP}
+                                onLineTapEdge={NOOP}
+                                onDoubleCell={NOOP}
+                                interactive={false}
+                                previewMode
+                                strictScale
+                              />
+                            </div>
+                            {row.key === key ? (
+                              <div className="muted" style={{ marginTop: 2, fontSize: 12, textAlign: "right" }}>
+                                This puzzle
+                              </div>
+                            ) : null}
+                          </div>
+                        </div>
+                      );
+                    })}
                     {!addDialogFolderPuzzles.length ? (
                       <div className="muted">No puzzles in this folder.</div>
                     ) : null}
