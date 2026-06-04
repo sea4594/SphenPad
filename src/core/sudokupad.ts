@@ -916,39 +916,6 @@ function detectStandardSubgrid(sclObj: any, n: number): { r: number; c: number }
   return candidate;
 }
 
-function inferRuleBasedStandardSubgrid(sclObj: any, n: number): { r: number; c: number } | undefined {
-  const candidate = standardSubgridForSize(n);
-  if (!candidate) return undefined;
-
-  const hasExplicitRegions =
-    Array.isArray(sclObj?.regions) ||
-    Array.isArray(sclObj?.re) ||
-    Array.isArray(sclObj?.irregularRegions) ||
-    Array.isArray(sclObj?.irregularregions) ||
-    Array.isArray(sclObj?.jigsaw);
-  if (hasExplicitRegions) return undefined;
-
-  const rules = extractRulesText(
-    sclObj?.metadata?.rules ??
-    sclObj?.metadata?.rule ??
-    sclObj?.metadata?.description ??
-    sclObj?.metadata?.ruleset ??
-    sclObj?.rules ??
-    sclObj?.rule ??
-    sclObj?.description ??
-    sclObj?.ruleset
-  );
-  if (!rules) return undefined;
-
-  const normalizedRules = rules.toLowerCase();
-  if (!/normal\s+sudoku\s+rules\s+apply/.test(normalizedRules)) return undefined;
-  if (/(no\s+boxes?|without\s+boxes?|without\s+regions?|jigsaw|irregular\s+regions?)/.test(normalizedRules)) {
-    return undefined;
-  }
-
-  return candidate;
-}
-
 function parseSolveCount(...values: unknown[]): number | undefined {
   for (const v of values) {
     if (typeof v === "number" && Number.isFinite(v) && v >= 0) return Math.floor(v);
@@ -1215,13 +1182,7 @@ export async function loadFromSudokuPad(
   const givens = extractGivens(sclObj);
   const shape = inferPuzzleShape(sclObj, givens);
   const size = Math.max(shape.rows, shape.cols, inferPuzzleSize(sclObj, givens));
-  const subgrid = shape.rows === shape.cols
-    ? detectStandardSubgrid(sclObj, size) ?? inferRuleBasedStandardSubgrid(sclObj, size)
-    : undefined;
-  if (!cosmetics.solution) {
-    const extractedSolution = extractGridSolution(sclObj);
-    if (extractedSolution) cosmetics.solution = extractedSolution;
-  }
+  const subgrid = shape.rows === shape.cols ? detectStandardSubgrid(sclObj, size) : undefined;
 
   const key = normalizePuzzleKey(sourceId);
   const def: PuzzleDefinition = {
@@ -1289,16 +1250,11 @@ function decompressedFromMaybeZipped(s: string): string {
 
 function extractGivens(scl: any): Array<{ rc: CellRC; v: string }> {
   const out: Array<{ rc: CellRC; v: string }> = [];
-  const objectCellValues: Array<{ rc: CellRC; v: string }> = [];
   const grids = [scl?.cells, scl?.grid].filter(Array.isArray);
-  let maxRows = 0;
-  let maxCols = 0;
   for (const cells of grids) {
-    maxRows = Math.max(maxRows, Array.isArray(cells) ? cells.length : 0);
     for (let r = 0; r < cells.length; r++) {
       const row = cells[r];
       if (!Array.isArray(row)) continue;
-      maxCols = Math.max(maxCols, row.length);
       for (let c = 0; c < row.length; c++) {
         const cell = row[c];
         if (typeof cell === "string" && /^[1-9A-Za-z]$/.test(cell.trim())) {
@@ -1309,14 +1265,15 @@ function extractGivens(scl: any): Array<{ rc: CellRC; v: string }> {
           out.push({ rc: { r, c }, v: String(cell) });
           continue;
         }
-        // Only treat as a given if explicitly marked as such.
-        const isGiven = cell && (cell.given !== undefined || cell.g === true || cell.isGiven === true || cell.type === "given");
         const value = asValue(cell?.value ?? cell?.v ?? cell?.given ?? cell?.g ?? cell?.digit ?? cell?.d);
         if (value != null && value !== "") {
-          if (isGiven) out.push({ rc: { r, c }, v: value });
-          else objectCellValues.push({ rc: { r, c }, v: value });
+          // Some SudokuPad payloads encode fixed clues as object cell values
+          // without explicit given flags.
+          out.push({ rc: { r, c }, v: value });
           continue;
         }
+        // Only treat as a given if explicitly marked as such
+        const isGiven = cell && (cell.given !== undefined || cell.g === true || cell.isGiven === true || cell.type === "given");
         if (!isGiven) continue;
         const flaggedValue =
           asValue(cell?.value ?? cell?.v ?? cell?.given ?? cell?.g ?? cell?.digit ?? cell?.d) ??
@@ -1326,14 +1283,6 @@ function extractGivens(scl: any): Array<{ rc: CellRC; v: string }> {
       }
     }
   }
-
-  if (!out.length && objectCellValues.length > 0) {
-    const totalCells = Math.max(1, maxRows * maxCols);
-    if (objectCellValues.length < totalCells) {
-      out.push(...objectCellValues);
-    }
-  }
-
   const seen = new Set<string>();
   return out.filter((entry) => {
     const key = `${entry.rc.r},${entry.rc.c}`;
@@ -1341,40 +1290,6 @@ function extractGivens(scl: any): Array<{ rc: CellRC; v: string }> {
     seen.add(key);
     return true;
   });
-}
-
-function extractGridSolution(scl: any): string | undefined {
-  const grids = [scl?.cells, scl?.grid].filter(Array.isArray);
-  for (const cells of grids) {
-    if (!Array.isArray(cells) || !cells.length) continue;
-    const rows = cells.length;
-    const cols = Math.max(0, ...cells.map((row: unknown) => (Array.isArray(row) ? row.length : 0)));
-    if (rows <= 0 || cols <= 0) continue;
-
-    const symbols: string[] = [];
-    let complete = true;
-    for (let r = 0; r < rows && complete; r++) {
-      const row = cells[r];
-      if (!Array.isArray(row) || row.length < cols) {
-        complete = false;
-        break;
-      }
-      for (let c = 0; c < cols; c++) {
-        const cell = row[c];
-        const value = asValue(cell?.value ?? cell?.v ?? cell?.digit ?? cell?.d ?? cell);
-        const normalized = typeof value === "string" ? value.trim() : "";
-        if (!normalized || normalized === ".") {
-          complete = false;
-          break;
-        }
-        symbols.push(normalized[0] as string);
-      }
-    }
-
-    if (complete && symbols.length === rows * cols) return symbols.join("");
-  }
-
-  return undefined;
 }
 
 function extractCosmetics(scl: any): PuzzleCosmetics {
@@ -1747,7 +1662,7 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
 
   // Thermometer variants: modern `thermos` and legacy `thermometer` with nested `lines`.
   const thermometerLines = [
-    ...mergeArrayAliases(scl?.thermos, scl?.thermo, scl?.thermolines, scl?.thermoLines),
+    ...(Array.isArray(scl?.thermos) ? scl.thermos : []),
     ...(Array.isArray(scl?.thermometer)
       ? scl.thermometer.flatMap((t: any) => (Array.isArray(t?.lines) ? t.lines.map((line: any) => ({ cells: line })) : [t]))
       : []),
@@ -1825,15 +1740,12 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
     const hasShapeBounds = Number.isFinite(shapeRows) && shapeRows > 0 && Number.isFinite(shapeCols) && shapeCols > 0;
     const widthValue = Number.isFinite(width) ? Number(width) : undefined;
     const heightValue = Number.isFinite(height) ? Number(height) : undefined;
-    // Compact underlay default opacity is only intended for true cell-fills.
-    // Keep it restricted to approximately 1x1 items so tiny decorative shapes
-    // and other art elements remain fully opaque unless payload opacity says otherwise.
     const hasCellLikeSize =
       widthValue != null &&
-      widthValue >= 0.95 &&
+      widthValue > 0 &&
       widthValue <= 1.05 &&
       heightValue != null &&
-      heightValue >= 0.95 &&
+      heightValue > 0 &&
       heightValue <= 1.05;
     const inGridBounds = hasShapeBounds && hasCellLikeSize
       ? ct.x - (widthValue as number) / 2 >= 0 &&
@@ -2011,9 +1923,8 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
       .filter((x): x is NonNullable<typeof x> => x !== null) ?? [];
 
   // Between lines are represented like thermos but with line-only semantics.
-  const betweenLineSrc = mergeArrayAliases(scl?.betweenline, scl?.betweenLine, scl?.betweenlines, scl?.betweenLines);
-  if (betweenLineSrc.length) {
-    const betweenEntries = betweenLineSrc
+  if (Array.isArray(scl?.betweenline)) {
+    const betweenEntries = scl.betweenline
       .flatMap((item: any) => (Array.isArray(item?.lines) ? item.lines.map((line: any) => ({ ...item, cells: line })) : [item]));
 
     const defaultBetweenLineColor = "#cfcfcf";
@@ -2062,33 +1973,14 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
     if (betweenEndpointCircles.length) cosmetics.underlays = [...(cosmetics.underlays ?? []), ...betweenEndpointCircles];
   }
 
-  const thermoSrc = mergeArrayAliases(scl?.thermos, scl?.thermo, scl?.thermolines, scl?.thermoLines);
-  if (thermoSrc.length) cosmetics.thermolines = extractPathConstraint(thermoSrc, "#ff6b6b") as any;
-
-  const whisperSrc = mergeArrayAliases(scl?.whispers, scl?.whisper, scl?.whisperline, scl?.whisperLine, scl?.whisperlines, scl?.whisperLines);
-  if (whisperSrc.length) cosmetics.whispers = extractPathConstraint(whisperSrc, "#00c2a8") as any;
-
-  const palindromeSrc = mergeArrayAliases(scl?.palindromes, scl?.palindrome, scl?.palindromeLines, scl?.palindromelines);
-  if (palindromeSrc.length) cosmetics.palindromes = extractPathConstraint(palindromeSrc, "#ffa500") as any;
-
-  const renbanSrc = mergeArrayAliases(scl?.renban, scl?.renbanline, scl?.renbanLine, scl?.renbanlines, scl?.renbanLines);
-  if (renbanSrc.length) cosmetics.renbanlines = extractPathConstraint(renbanSrc, "#7c3aed") as any;
-
-  const entropicSrc = mergeArrayAliases(scl?.entropic, scl?.entropics, scl?.entropicline, scl?.entropicLine, scl?.entropiclines, scl?.entropicLines);
-  if (entropicSrc.length) cosmetics.entropics = extractPathConstraint(entropicSrc, "#f72585") as any;
-
-  const germanWhisperSrc = mergeArrayAliases(
-    scl?.germanwhispers,
-    scl?.germanWhispers,
-    scl?.germanwhisper,
-    scl?.germanWhisper,
-    scl?.germanwhisperline,
-    scl?.germanWhisperLine,
-  );
-  if (germanWhisperSrc.length) cosmetics.germanwhispers = extractPathConstraint(germanWhisperSrc, "#00d4ff") as any;
-
-  const modularSrc = mergeArrayAliases(scl?.modular, scl?.modularline, scl?.modularLine, scl?.modularlines, scl?.modularLines);
-  if (modularSrc.length) cosmetics.modularlines = extractPathConstraint(modularSrc, "#ffb703") as any;
+  if (Array.isArray(scl?.thermos)) cosmetics.thermolines = extractPathConstraint(scl.thermos, "#ff6b6b") as any;
+  if (Array.isArray(scl?.whispers)) cosmetics.whispers = extractPathConstraint(scl.whispers, "#00c2a8") as any;
+  if (Array.isArray(scl?.palindromes)) cosmetics.palindromes = extractPathConstraint(scl.palindromes, "#ffa500") as any;
+  if (!cosmetics.palindromes && Array.isArray(scl?.palindrome)) cosmetics.palindromes = extractPathConstraint(scl.palindrome, "#ffa500") as any;
+  if (Array.isArray(scl?.renban)) cosmetics.renbanlines = extractPathConstraint(scl.renban, "#7c3aed") as any;
+  if (Array.isArray(scl?.entropic)) cosmetics.entropics = extractPathConstraint(scl.entropic, "#f72585") as any;
+  if (Array.isArray(scl?.germanwhispers)) cosmetics.germanwhispers = extractPathConstraint(scl.germanwhispers, "#00d4ff") as any;
+  if (Array.isArray(scl?.modular)) cosmetics.modularlines = extractPathConstraint(scl.modular, "#ffb703") as any;
 
   // Odd/even markers (legacy fpuz fields).
   const oddSrc = Array.isArray(scl?.odd) ? scl.odd : [];
@@ -2118,17 +2010,16 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
   if (parityOverlays.length) cosmetics.underlays = [...(cosmetics.underlays ?? []), ...parityOverlays];
 
   // Clues around grid
-  if (scl?.clues || scl?.skyscraper || scl?.sandwich || scl?.xsum) {
-    const clues = scl.clues ?? {};
-    if (clues.skyscraper ?? scl?.skyscraper) cosmetics.skyscraper = (clues.skyscraper ?? scl?.skyscraper) as any;
-    if (clues.sandwich ?? scl?.sandwich) cosmetics.sandwich = (clues.sandwich ?? scl?.sandwich) as any;
-    if (clues.xsum ?? scl?.xsum) cosmetics.xsum = (clues.xsum ?? scl?.xsum) as any;
+  if (scl?.clues) {
+    const clues = scl.clues;
+    if (clues.skyscraper) cosmetics.skyscraper = clues.skyscraper;
+    if (clues.sandwich) cosmetics.sandwich = clues.sandwich;
+    if (clues.xsum) cosmetics.xsum = clues.xsum;
   }
 
   // Little killer clues
-  const littleKillerSrc = mergeArrayAliases(scl?.littlekillers, scl?.littlekiller, scl?.littleKiller, scl?.littleKillers);
-  if (littleKillerSrc.length) {
-    cosmetics.littlekillers = littleKillerSrc
+  if (Array.isArray(scl?.littlekillers)) {
+    cosmetics.littlekillers = scl.littlekillers
       .map((lk: any) => {
         const rc = asRC(lk?.cell ?? lk?.rc ?? lk?.ce);
         if (!rc) return null;
@@ -2143,8 +2034,8 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
   }
 
   // Irregular regions (jigsaw)
-  if (Array.isArray(scl?.irregularRegions) || Array.isArray(scl?.jigsaw) || Array.isArray(scl?.irregularregions)) {
-    const regions = scl?.irregularRegions ?? scl?.irregularregions ?? scl?.jigsaw;
+  if (Array.isArray(scl?.irregularRegions) || Array.isArray(scl?.jigsaw)) {
+    const regions = scl?.irregularRegions ?? scl?.jigsaw;
     cosmetics.irregularRegions = regions
       .map((region: any) => {
         const cells = parseCellRefs(region?.cells ?? region?.ce);
@@ -2166,9 +2057,8 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
   }
 
   // Disjoint groups
-  const disjointSrc = mergeArrayAliases(scl?.disjointGroups, scl?.disjointgroups, scl?.disjointGroup, scl?.disjointgroup);
-  if (disjointSrc.length) {
-    cosmetics.disjointGroups = disjointSrc
+  if (Array.isArray(scl?.disjointGroups)) {
+    cosmetics.disjointGroups = scl.disjointGroups
       .map((group: any) => {
         const cells = parseCellRefs(group?.cells ?? group?.ce);
         if (!cells.length) return null;
@@ -2184,10 +2074,9 @@ function extractCosmetics(scl: any): PuzzleCosmetics {
 
   // Fog of war: common SCL keys include foglight/fogLight/fogLights.
   const rawFogLights = scl?.foglight ?? scl?.fogLight ?? scl?.fogLights ?? scl?.fog?.lights ?? scl?.fog?.light;
-  const parsedFogLights = parseCellRefs(rawFogLights ?? []);
-  if (parsedFogLights.length > 0) {
-    cosmetics.fogEnabled = true;
-    cosmetics.fogLights = parsedFogLights;
+  if (Array.isArray(rawFogLights)) cosmetics.fogEnabled = true;
+  if (Array.isArray(rawFogLights)) {
+    cosmetics.fogLights = rawFogLights.map(asRC).filter(Boolean) as CellRC[];
   } else if (Array.isArray(scl?.cells)) {
     const fromCells: CellRC[] = [];
     for (let r = 0; r < scl.cells.length; r++) {
