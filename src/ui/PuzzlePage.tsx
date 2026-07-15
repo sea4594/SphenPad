@@ -1182,8 +1182,8 @@ export function PuzzlePage() {
           let match = false;
           if (kind === "value") match = Boolean(targetValue) && cur.value === targetValue;
           if (kind === "highlight") match = targetHighlights.size > 0 && hasAll(cur.highlights ?? [], targetHighlights);
-          if (kind === "center") match = targetCenter.size > 0 && hasAll(cur.notes.center, targetCenter);
-          if (kind === "corner") match = targetCorner.size > 0 && hasAll(cur.notes.corner, targetCorner);
+          if (kind === "center") match = !cur.value && targetCenter.size > 0 && hasAll(cur.notes.center, targetCenter);
+          if (kind === "corner") match = !cur.value && targetCorner.size > 0 && hasAll(cur.notes.corner, targetCorner);
           if (kind === "blank") match = targetIsBlank && isBlankCell(cur);
           if (match) matches.push({ r, c });
         }
