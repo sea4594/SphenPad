@@ -48,6 +48,7 @@ type DragState = {
   startClientY?: number;
   selectionDragActive?: boolean;
   longPressTriggered?: boolean;
+  longPressCycleIndex?: number;
 };
 
 type TapState = {
@@ -57,7 +58,7 @@ type TapState = {
 };
 
 const DOUBLE_TAP_WINDOW_MS = 400;
-const LONG_PRESS_DELAY_MS = 1000;
+const LONG_PRESS_DELAY_MS = 750;
 
 function rcKey(rc: CellRC) {
   return `${rc.r},${rc.c}`;
@@ -119,7 +120,7 @@ export function GridCanvas(props: {
   onLineStroke: (segments: LineSegmentDraft[], kind: LineKindResolved, action: "draw" | "erase") => void;
   onLineTapCell: (rc: CellRC) => void;
   onLineTapEdge: (a: CellRC, b: CellRC) => void;
-  onDoubleCell: (rc: CellRC) => void;
+  onDoubleCell: (rc: CellRC, selectionCycleIndex?: number) => void;
   interactive?: boolean;
   previewMode?: boolean;
   strictScale?: boolean;
@@ -130,7 +131,7 @@ export function GridCanvas(props: {
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const dragRef = useRef<DragState | null>(null);
   const lastTapRef = useRef<TapState | null>(null);
-  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const twemojiCacheRef = useRef<Map<string, HTMLImageElement | "loading" | "error">>(new Map());
 
   const rows = Math.max(1, Number(def.rows ?? progress.cells.length ?? def.size));
@@ -333,24 +334,27 @@ export function GridCanvas(props: {
 
   function clearLongPressTimer() {
     if (longPressTimerRef.current === null) return;
-    clearTimeout(longPressTimerRef.current);
+    clearInterval(longPressTimerRef.current);
     longPressTimerRef.current = null;
   }
 
   function startLongPress(drag: DragState, rc: CellRC) {
     clearLongPressTimer();
-    longPressTimerRef.current = setTimeout(() => {
-      longPressTimerRef.current = null;
-      if (dragRef.current !== drag || drag.moved) return;
+    longPressTimerRef.current = setInterval(() => {
+      if (dragRef.current !== drag || drag.moved) {
+        clearLongPressTimer();
+        return;
+      }
       drag.longPressTriggered = true;
       lastTapRef.current = null;
-      props.onDoubleCell(rc);
+      props.onDoubleCell(rc, drag.longPressCycleIndex ?? 0);
+      drag.longPressCycleIndex = (drag.longPressCycleIndex ?? 0) + 1;
     }, LONG_PRESS_DELAY_MS);
   }
 
   useEffect(() => {
     return () => {
-      if (longPressTimerRef.current !== null) clearTimeout(longPressTimerRef.current);
+      if (longPressTimerRef.current !== null) clearInterval(longPressTimerRef.current);
     };
   }, []);
 

@@ -1134,7 +1134,7 @@ export function PuzzlePage() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [restartPromptOpen]);
 
-  function onDoubleSelectCell(rc: CellRC) {
+  function onDoubleSelectCell(rc: CellRC, selectionCycleIndex?: number) {
     if (!data || data.progress.activeTool === "line") return;
     const cell = data.progress.cells[rc.r][rc.c];
     if (!cell) return;
@@ -1182,8 +1182,8 @@ export function PuzzlePage() {
           let match = false;
           if (kind === "value") match = Boolean(targetValue) && cur.value === targetValue;
           if (kind === "highlight") match = targetHighlights.size > 0 && hasAll(cur.highlights ?? [], targetHighlights);
-          if (kind === "center") match = !cur.value && targetCenter.size > 0 && hasAll(cur.notes.center, targetCenter);
-          if (kind === "corner") match = !cur.value && targetCorner.size > 0 && hasAll(cur.notes.corner, targetCorner);
+          if (kind === "center") match = !targetValue && !cur.value && targetCenter.size > 0 && hasAll(cur.notes.center, targetCenter);
+          if (kind === "corner") match = !targetValue && !cur.value && targetCorner.size > 0 && hasAll(cur.notes.corner, targetCorner);
           if (kind === "blank") match = targetIsBlank && isBlankCell(cur);
           if (match) matches.push({ r, c });
         }
@@ -1191,18 +1191,14 @@ export function PuzzlePage() {
       return matches;
     };
 
-    let matches: CellRC[] = [];
     const priority = priorityOrderByTool[tool] ?? [];
-    for (const kind of priority) {
-      const next = matchesForKind(kind);
-      if (next.length) {
-        matches = next;
-        break;
-      }
-    }
+    const matchGroups = priority.map(matchesForKind).filter((matches) => matches.length > 0);
+    if (!matchGroups.length) return;
+    const matches = selectionCycleIndex === undefined
+      ? matchGroups[0]
+      : matchGroups[selectionCycleIndex % matchGroups.length];
 
-    if (!matches.length) return;
-    if (!data.progress.multiSelect) {
+    if (!data.progress.multiSelect || selectionCycleIndex !== undefined) {
       setSelection(matches);
       return;
     }
