@@ -2172,9 +2172,6 @@ export function PuzzlePage() {
                       </button>
                     );
                   })}
-                  {!addDialogChildFolders.length ? (
-                    <div className="muted">No folders in this location.</div>
-                  ) : null}
                 </div>
 
                 {addFolderNav ? (
@@ -2235,9 +2232,6 @@ export function PuzzlePage() {
                         </div>
                       );
                     })}
-                    {!addDialogFolderPuzzles.length ? (
-                      <div className="muted">No puzzles here.</div>
-                    ) : null}
                   </div>
                 ) : (
                   <div className="muted" style={{ marginTop: 10 }}>

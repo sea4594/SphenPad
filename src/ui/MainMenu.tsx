@@ -1904,9 +1904,6 @@ export function MainMenu(props: { active?: boolean }) {
                       </button>
                     );
                   })}
-                  {!addDialogChildFolders.length ? (
-                    <div className="muted">No folders in this location.</div>
-                  ) : null}
                 </div>
 
                 {addFolderNav ? (
@@ -1967,9 +1964,6 @@ export function MainMenu(props: { active?: boolean }) {
                         </div>
                       );
                     })}
-                    {!addDialogFolderPuzzles.length ? (
-                      <div className="muted">No puzzles here.</div>
-                    ) : null}
                   </div>
                 ) : (
                   <div className="muted" style={{ marginTop: 10 }}>
