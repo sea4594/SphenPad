@@ -32,8 +32,10 @@ import {
   IconToolHighlight,
   IconToolLine,
   IconUndo,
+  IconMenu,
 } from "./icons";
 import { SettingsOverlay } from "./SettingsOverlay";
+import { PuzzleMetadataOverlay } from "./PuzzleMetadataOverlay";
 import { useTheme } from "../app/theme";
 import { readPuzzleOriginState, withPuzzleReturnState } from "./puzzleNavState";
 import { highlightPalettePages, linePalette } from "./toolPalettes";
@@ -497,7 +499,8 @@ function getVideoViewportMode(): VideoViewportMode {
   return viewportWidth > viewportHeight ? "mobile-landscape" : "mobile-portrait";
 }
 
-export function PuzzlePage() {
+export function PuzzlePage(props: { editor?: boolean }) {
+  const editor = props.editor ?? false;
   const { puzzleId } = useParams();
   const key = decodeURIComponent(puzzleId ?? "");
   const nav = useNavigate();
@@ -515,6 +518,7 @@ export function PuzzlePage() {
   const [pauseMenuOpen, setPauseMenuOpen] = useState(false);
   const [completionOpen, setCompletionOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [metadataOpen, setMetadataOpen] = useState(false);
   const [checkResult, setCheckResult] = useState<boolean | null>(null);
   const [restartPromptOpen, setRestartPromptOpen] = useState(false);
   const [reloadingPuzzle, setReloadingPuzzle] = useState(false);
@@ -602,14 +606,18 @@ export function PuzzlePage() {
         startTransition(() => nav("/"));
         return;
       }
-      const normalized = normalizePersistedDefinition({ ...local, progress: normalizeProgress(local.progress) });
+      const normalizedBase = normalizePersistedDefinition({ ...local, progress: normalizeProgress(local.progress) });
+      const normalized = editor
+        ? { ...normalizedBase, progress: { ...normalizedBase.progress, paused: false } }
+        : normalizedBase;
       setData(normalized);
-      setPauseMenuOpen(Boolean(normalized.progress.paused));
+      setPauseMenuOpen(editor ? false : Boolean(normalized.progress.paused));
       await upsertPuzzle(key, normalized);
     })();
-  }, [key, nav]);
+  }, [key, nav, editor]);
 
   useEffect(() => {
+    if (editor) return;
     if (!data) return;
     if (!hasIncompleteMeta(data)) return;
     const source = (data.def.sourceId ?? key ?? "").trim();
@@ -654,7 +662,7 @@ export function PuzzlePage() {
         metadataRefreshInFlightRef.current.delete(refreshKey);
       }
     })();
-  }, [data, key, pauseMenuOpen]);
+  }, [data, key, pauseMenuOpen, editor]);
 
   useEffect(() => {
     const viewport = window.visualViewport;
@@ -718,6 +726,7 @@ export function PuzzlePage() {
   }, [videoPlayerOpen, videoViewportMode]);
 
   useEffect(() => {
+    if (editor) return;
     if (!data) return;
     const currentRevision = data.def.importRevision ?? 0;
     if (currentRevision >= SUDOKUPAD_IMPORT_REVISION) return;
@@ -768,7 +777,7 @@ export function PuzzlePage() {
         definitionRefreshInFlightRef.current.delete(refreshKey);
       }
     })();
-  }, [data, key]);
+  }, [data, key, editor]);
 
   async function refreshFolders() {
     const [nextFolders, nextPuzzleRows] = await Promise.all([listFolders(), listPuzzles()]);
@@ -784,6 +793,7 @@ export function PuzzlePage() {
   // look it up in the archive manifest and silently restore the fields.
   const archiveMetaRecoveryInFlightRef = useRef(new Set<string>());
   useEffect(() => {
+    if (editor) return;
     if (!data) return;
     const meta = data.def.meta ?? {};
     // Skip if archive meta already present.
@@ -832,7 +842,7 @@ export function PuzzlePage() {
         archiveMetaRecoveryInFlightRef.current.delete(puzzleKey);
       }
     })();
-  }, [data, key]);
+  }, [data, key, editor]);
 
   async function persist(next: PersistedPuzzle) {
     setData(next);
@@ -840,6 +850,7 @@ export function PuzzlePage() {
   }
 
   useEffect(() => {
+    if (editor) return;
     if (!data) return;
     if (tickRef.current) window.clearInterval(tickRef.current);
 
@@ -863,7 +874,7 @@ export function PuzzlePage() {
       if (tickRef.current) window.clearInterval(tickRef.current);
       tickRef.current = null;
     };
-  }, [data]);
+  }, [data, editor]);
 
   const meta = data?.def.meta;
   const youtubeVideoId = useMemo(() => parseYouTubeVideoId(meta?.archiveYouTubeUrl), [meta?.archiveYouTubeUrl]);
@@ -947,8 +958,17 @@ export function PuzzlePage() {
       nextRedo = [];
     }
 
+    const nextDefinition = editor
+      ? {
+        ...data.def,
+        givens: nextProgress.cells.flatMap((row, rowIndex) => row.flatMap((cell, colIndex) =>
+          cell.value ? [{ rc: { r: rowIndex, c: colIndex }, v: cell.value }] : [],
+        )),
+      }
+      : data.def;
     persist({
       ...data,
+      def: nextDefinition,
       progress: nextProgress,
       undo: nextUndo,
       redo: nextRedo,
@@ -1936,6 +1956,10 @@ export function PuzzlePage() {
           <button
             className="btn"
             onClick={() => {
+              if (editor) {
+                startTransition(() => nav("/creator"));
+                return;
+              }
               console.log(`[PuzzlePage] User exiting puzzle, key=${key}`);
               if (!puzzleOriginState) {
                 console.log(`[PuzzlePage] No origin state available - returning to main menu`);
@@ -1955,22 +1979,22 @@ export function PuzzlePage() {
               });
             }}
           >
-            ← Menu
+            {editor ? "← Creator" : "← Menu"}
           </button>
           <div className="puzzleTopbarRight">
-            {!hideTimer ? <div className="puzzleTimer">{timeStr}</div> : null}
-            <button className="btn" onClick={onCheckAnswers} title="Check answers" disabled={data.progress.status === "complete" || data.progress.paused}>
+            {!editor && !hideTimer ? <div className="puzzleTimer">{timeStr}</div> : null}
+            {!editor ? <button className="btn" onClick={onCheckAnswers} title="Check answers" disabled={data.progress.status === "complete" || data.progress.paused}>
               <IconCheck />
-            </button>
-            <button className="btn" onClick={onPausePlayClick} title="Pause or resume" disabled={data.progress.status === "complete"}>
+            </button> : null}
+            {!editor ? <button className="btn" onClick={onPausePlayClick} title="Pause or resume" disabled={data.progress.status === "complete"}>
               {data.progress.status === "complete" ? <IconPause /> : data.progress.paused ? <IconPlay /> : <IconPause />}
-            </button>
-            <button className="btn" onClick={onReloadPuzzleClick} title="Restart puzzle" disabled={reloadingPuzzle}>
+            </button> : null}
+            {!editor ? <button className="btn" onClick={onReloadPuzzleClick} title="Restart puzzle" disabled={reloadingPuzzle}>
               <IconReload />
-            </button>
-            <button className="btn" onClick={onCopySudokuPadLinkClick} title="Copy SudokuPad link">
+            </button> : null}
+            {!editor ? <button className="btn" onClick={onCopySudokuPadLinkClick} title="Copy SudokuPad link">
               <IconCopyLink />
-            </button>
+            </button> : null}
             {hasLinkedVideo ? (
               <button
                 className={"btn" + (videoPlayerOpen ? " primary" : "")}
@@ -1982,6 +2006,7 @@ export function PuzzlePage() {
                 <IconVideoPlay />
               </button>
             ) : null}
+            {editor ? <button className="btn" onClick={() => setMetadataOpen(true)} title="Puzzle metadata" aria-label="Puzzle metadata"><IconMenu /></button> : null}
             <button className="btn" onClick={() => setSettingsOpen(true)} title="Settings">
               <IconSettings />
             </button>
@@ -2274,6 +2299,7 @@ export function PuzzlePage() {
       )}
 
       {settingsOpen ? <SettingsOverlay onClose={() => setSettingsOpen(false)} /> : null}
+      {metadataOpen ? <PuzzleMetadataOverlay data={data} onClose={() => setMetadataOpen(false)} onSave={(next) => void persist(next)} /> : null}
 
       {checkResult !== null && (
         <CheckAnswersOverlay correct={checkResult} onClose={() => setCheckResult(null)} />

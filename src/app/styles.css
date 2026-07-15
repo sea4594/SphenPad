@@ -715,6 +715,50 @@ input.url {
   align-content: start;
 }
 
+.creatorEntryButton {
+  width: 100%;
+  min-height: 42px;
+}
+
+.creatorTopbar {
+  justify-content: space-between;
+}
+
+.puzzleMetadataCard {
+  width: min(640px, calc(100vw - 28px));
+  max-height: min(760px, calc(100dvh - 28px));
+  overflow: auto;
+  display: grid;
+  gap: 14px;
+}
+
+.puzzleMetadataFields {
+  display: grid;
+  gap: 10px;
+}
+
+.puzzleMetadataFields label {
+  display: grid;
+  gap: 5px;
+  font-weight: 600;
+}
+
+.puzzleMetadataFields .url {
+  min-width: 0;
+}
+
+.puzzleMetadataTextarea {
+  min-height: 46px;
+  resize: vertical;
+  font: inherit;
+}
+
+.puzzleDimensionFields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
 .foldersPageWrap {
   width: min(980px, 100%);
 }

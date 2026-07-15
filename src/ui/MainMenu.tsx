@@ -1239,6 +1239,9 @@ export function MainMenu(props: { active?: boolean }) {
 
       <div className="page">
         <div className="mainMenuWrap">
+          <button className="btn primary creatorEntryButton" onClick={() => startTransition(() => nav("/creator"))} type="button">
+            Puzzle Creator
+          </button>
           <div className="card menuFilterPanelCard">
             <div className="archiveControls">
               <div className="row mainMenuSearchRow">

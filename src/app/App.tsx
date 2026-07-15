@@ -4,6 +4,7 @@ import { MainMenu } from "../ui/MainMenu";
 import { PuzzlePage } from "../ui/PuzzlePage";
 import { CtCArchivePage } from "../ui/CtCArchivePage";
 import { FoldersPage } from "../ui/FoldersPage";
+import { PuzzleCreatorPage } from "../ui/PuzzleCreatorPage";
 import { AccountSyncProvider } from "./accountSync";
 import { clearForcedPortrait } from "./forcedPortrait";
 import { ThemeProvider } from "./theme";
@@ -19,7 +20,7 @@ function isMainRoute(path: string): path is MainRoute {
 }
 
 function isRestorableRoute(path: string) {
-  return isMainRoute(path) || path.startsWith("/p/");
+  return isMainRoute(path) || path === "/creator" || path.startsWith("/p/") || path.startsWith("/creator/");
 }
 
 /**
@@ -199,6 +200,22 @@ export function App() {
             <MainPages />
             <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
               <Routes>
+                <Route
+                  path="/creator"
+                  element={(
+                    <div style={{ height: "100%", pointerEvents: "auto" }}>
+                      <PuzzleCreatorPage />
+                    </div>
+                  )}
+                />
+                <Route
+                  path="/creator/:puzzleId"
+                  element={(
+                    <div style={{ height: "100%", pointerEvents: "auto" }}>
+                      <PuzzlePage editor />
+                    </div>
+                  )}
+                />
                 <Route
                   path="/p/:puzzleId"
                   element={(

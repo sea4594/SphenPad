@@ -52,6 +52,12 @@ export const IconSettings = () => (
 	</svg>
 );
 
+export const IconMenu = () => (
+	<svg width="18" height="18" viewBox="0 0 20 20" aria-hidden>
+		<path d="M3.5 5.5h13M3.5 10h13M3.5 14.5h13" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+	</svg>
+);
+
 export const IconFolder = () => (
 	<svg width="18" height="18" viewBox="0 0 20 20" aria-hidden>
 		<path
