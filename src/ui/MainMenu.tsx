@@ -17,7 +17,7 @@ import { fillProgressWithSolutionDigits } from "../core/solutionFill";
 import { fmtHMS } from "../core/time";
 import { GridCanvas } from "./GridCanvas";
 import { AppBrand, scrollActiveMainPageToTop } from "./AppBrand";
-import { IconFolder, IconHome, IconImport, IconSettings, IconSort, IconSortAsc, IconSortDesc } from "./icons";
+import { IconChevronDown, IconClose, IconFolder, IconHome, IconImport, IconSettings, IconSort, IconSortAsc, IconSortDesc } from "./icons";
 import { MobileMultiSelectFilter } from "./MobileMultiSelectFilter";
 import { PopupMenuButton } from "./PopupMenuButton";
 import { SelectControl, type SelectControlOption } from "./SelectControl";
@@ -431,6 +431,7 @@ export function MainMenu(props: { active?: boolean }) {
   const [authorFilterQuery, setAuthorFilterQuery] = useState("");
   const [collectionFilterQuery, setCollectionFilterQuery] = useState("");
   const [constraintFilterQuery, setConstraintFilterQuery] = useState("");
+  const [filtersExpanded, setFiltersExpanded] = useState(false);
   const [mobileFilters, setMobileFilters] = useState(() => typeof window !== "undefined" && window.matchMedia(MOBILE_FILTER_MEDIA_QUERY).matches);
   const deferredQuery = useDeferredValue(query);
 
@@ -1240,13 +1241,26 @@ export function MainMenu(props: { active?: boolean }) {
         <div className="mainMenuWrap">
           <div className="card menuFilterPanelCard">
             <div className="archiveControls">
-              <div className="row">
-                <input
-                  className="url"
-                  placeholder="Search your puzzles..."
-                  value={query}
-                  onChange={(event) => setQuery(event.target.value)}
-                />
+              <div className="row mainMenuSearchRow">
+                <div className="mainMenuSearchInputWrap">
+                  <input
+                    className="url"
+                    placeholder="Search your puzzles..."
+                    value={query}
+                    onChange={(event) => setQuery(event.target.value)}
+                  />
+                  {query ? (
+                    <button
+                      className="btn mainMenuSearchClearButton"
+                      onClick={() => setQuery("")}
+                      aria-label="Clear puzzle search"
+                      title="Clear search"
+                      type="button"
+                    >
+                      <IconClose />
+                    </button>
+                  ) : null}
+                </div>
 
                 <SelectControl
                   className="btn menuControlSelect"
@@ -1256,8 +1270,20 @@ export function MainMenu(props: { active?: boolean }) {
                   }}
                   options={MAIN_MENU_SEARCH_FIELD_OPTIONS}
                 />
+                <button
+                  className={`btn mainMenuFilterExpandButton ${filtersExpanded ? "primary" : ""}`}
+                  onClick={() => setFiltersExpanded((expanded) => !expanded)}
+                  aria-expanded={filtersExpanded}
+                  aria-label={filtersExpanded ? "Collapse puzzle filters" : "Expand puzzle filters"}
+                  title={filtersExpanded ? "Collapse filters" : "Expand filters"}
+                  type="button"
+                >
+                  <IconChevronDown open={filtersExpanded} />
+                </button>
               </div>
 
+              {filtersExpanded ? (
+                <>
               <div className="archiveFilterRow">
                 {mobileFilters ? (
                   <>
@@ -1384,6 +1410,8 @@ export function MainMenu(props: { active?: boolean }) {
                   Clear Filters
                 </button>
               </div>
+                </>
+              ) : null}
             </div>
           </div>
 

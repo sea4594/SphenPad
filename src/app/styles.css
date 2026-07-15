@@ -922,6 +922,43 @@ input.url {
   padding-top: 14px;
 }
 
+.mainMenuSearchRow {
+  flex-wrap: nowrap;
+}
+
+.mainMenuSearchInputWrap {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.mainMenuSearchInputWrap > .url {
+  width: 100%;
+  padding-right: 42px;
+}
+
+.mainMenuSearchClearButton,
+.mainMenuFilterExpandButton {
+  flex: 0 0 auto;
+  width: 42px;
+  min-width: 42px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+}
+
+.mainMenuSearchClearButton {
+  position: absolute;
+  top: 50%;
+  right: 2px;
+  min-height: 36px;
+  width: 36px;
+  min-width: 36px;
+  transform: translateY(-50%);
+  background: transparent;
+  border-color: transparent;
+}
+
 .menuStatusTab {
   min-width: 0;
   min-height: 40px;

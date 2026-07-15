@@ -102,6 +102,18 @@ export const IconSortDesc = () => (
 	</svg>
 );
 
+export const IconClose = () => (
+	<svg width="18" height="18" viewBox="0 0 20 20" aria-hidden>
+		<path d="m5 5 10 10M15 5 5 15" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+	</svg>
+);
+
+export const IconChevronDown = (props: { open?: boolean }) => (
+	<svg width="18" height="18" viewBox="0 0 20 20" aria-hidden style={{ transform: props.open ? "rotate(180deg)" : undefined }}>
+		<path d="m5 7.5 5 5 5-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+	</svg>
+);
+
 export const IconFolderAdd = () => (
 	<svg width="18" height="18" viewBox="0 0 20 20" aria-hidden>
 		<path
