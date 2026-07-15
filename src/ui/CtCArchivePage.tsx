@@ -2090,25 +2090,26 @@ export function CtCArchivePage(props: { active?: boolean }) {
                 </button>
               </div>
 
-              <div className="menuPuzzleList addFolderNavigatorList" style={{ marginTop: 10 }}>
-                {importFolderChildren.map((folder) => (
-                  <button
-                    key={`archive-import-folder-nav-${folder.id}`}
-                    className="card folderBrowserItem"
-                    onClick={() => setImportFolderNavId(folder.id)}
-                    type="button"
-                  >
-                    <div className="row" style={{ gap: 6, alignItems: "flex-start" }}>
-                      <IconFolder />
-                      <div style={{ fontWeight: 700, overflowWrap: "anywhere" }}>{folder.name}</div>
-                    </div>
-                  </button>
-                ))}
-                {!importFolderChildren.length ? <div className="muted">No folders in this location.</div> : null}
-              </div>
+              <div className="addFolderNavigatorList" style={{ marginTop: 10 }}>
+                <div className="menuPuzzleList">
+                  {importFolderChildren.map((folder) => (
+                    <button
+                      key={`archive-import-folder-nav-${folder.id}`}
+                      className="card folderBrowserItem"
+                      onClick={() => setImportFolderNavId(folder.id)}
+                      type="button"
+                    >
+                      <div className="row" style={{ gap: 6, alignItems: "flex-start" }}>
+                        <IconFolder />
+                        <div style={{ fontWeight: 700, overflowWrap: "anywhere" }}>{folder.name}</div>
+                      </div>
+                    </button>
+                  ))}
+                  {!importFolderChildren.length ? <div className="muted">No folders in this location.</div> : null}
+                </div>
 
-              {importFolderTarget ? (
-                <div className="menuPuzzleList" style={{ marginTop: 10 }}>
+                {importFolderTarget ? (
+                  <div className="menuPuzzleList" style={{ marginTop: 10 }}>
                   {importFolderPuzzles.map((row) => {
                     const previewProgress = {
                       ...row.progress,
@@ -2159,12 +2160,13 @@ export function CtCArchivePage(props: { active?: boolean }) {
                     );
                   })}
                   {!importFolderPuzzles.length ? <div className="muted">No puzzles here.</div> : null}
-                </div>
-              ) : (
-                <div className="muted" style={{ marginTop: 10 }}>
-                  Select a folder to preview its puzzles.
-                </div>
-              )}
+                  </div>
+                ) : (
+                  <div className="muted" style={{ marginTop: 10 }}>
+                    Select a folder to preview its puzzles.
+                  </div>
+                )}
+              </div>
 
               <div className="muted addFolderBusyLine">{importToFolderBusy || "\u00A0"}</div>
 
