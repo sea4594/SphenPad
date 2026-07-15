@@ -47,6 +47,7 @@ type DragState = {
   startClientX?: number;
   startClientY?: number;
   selectionDragActive?: boolean;
+  longPressTriggered?: boolean;
 };
 
 type TapState = {
@@ -56,6 +57,7 @@ type TapState = {
 };
 
 const DOUBLE_TAP_WINDOW_MS = 400;
+const LONG_PRESS_DELAY_MS = 1000;
 
 function rcKey(rc: CellRC) {
   return `${rc.r},${rc.c}`;
@@ -128,6 +130,7 @@ export function GridCanvas(props: {
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const dragRef = useRef<DragState | null>(null);
   const lastTapRef = useRef<TapState | null>(null);
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const twemojiCacheRef = useRef<Map<string, HTMLImageElement | "loading" | "error">>(new Map());
 
   const rows = Math.max(1, Number(def.rows ?? progress.cells.length ?? def.size));
@@ -327,6 +330,29 @@ export function GridCanvas(props: {
   const inBounds = useCallback((r: number, c: number) => {
     return r >= 0 && c >= 0 && r < rows && c < cols;
   }, [cols, rows]);
+
+  function clearLongPressTimer() {
+    if (longPressTimerRef.current === null) return;
+    clearTimeout(longPressTimerRef.current);
+    longPressTimerRef.current = null;
+  }
+
+  function startLongPress(drag: DragState, rc: CellRC) {
+    clearLongPressTimer();
+    longPressTimerRef.current = setTimeout(() => {
+      longPressTimerRef.current = null;
+      if (dragRef.current !== drag || drag.moved) return;
+      drag.longPressTriggered = true;
+      lastTapRef.current = null;
+      props.onDoubleCell(rc);
+    }, LONG_PRESS_DELAY_MS);
+  }
+
+  useEffect(() => {
+    return () => {
+      if (longPressTimerRef.current !== null) clearTimeout(longPressTimerRef.current);
+    };
+  }, []);
 
   function keyToRc(key: string): CellRC {
     const [r, c] = key.split(",").map((v) => Number(v));
@@ -2434,6 +2460,7 @@ export function GridCanvas(props: {
 
   function onDown(e: React.PointerEvent) {
     if (!interactive) return;
+    clearLongPressTimer();
     const pt = eventPoint(e.clientX, e.clientY);
     if (!pt) return;
     e.currentTarget.setPointerCapture(e.pointerId);
@@ -2487,6 +2514,7 @@ export function GridCanvas(props: {
         selectionDragActive: false,
       };
       props.onSelection(Array.from(nextSelection).map(keyToRc));
+      startLongPress(dragRef.current, rc);
       return;
     }
 
@@ -2510,6 +2538,7 @@ export function GridCanvas(props: {
       selectionDragActive: false,
     };
     props.onSelection(Array.from(nextSelection).map(keyToRc));
+    startLongPress(dragRef.current, rc);
   }
 
   function onMove(e: React.PointerEvent) {
@@ -2582,7 +2611,10 @@ export function GridCanvas(props: {
       const activationPx = Math.max(6, Math.round(cellPx * 0.14));
       if (Math.hypot(dx, dy) < activationPx) return;
       drag.selectionDragActive = true;
+      clearLongPressTimer();
     }
+
+    if (drag.longPressTriggered) return;
 
     const hops = centerLineHopsFromPointer(
       drag.last,
@@ -2615,6 +2647,7 @@ export function GridCanvas(props: {
     if (!interactive) return;
     const drag = dragRef.current;
     if (!drag) return;
+    clearLongPressTimer();
 
     if (progress.activeTool === "line") {
       const kind = drag.lineKind ?? "center";
@@ -2635,7 +2668,7 @@ export function GridCanvas(props: {
         props.onLineStroke(drag.segments, kind, drag.lineAction);
       }
       setLinePreview(null);
-    } else if (!progress.multiSelect && !drag.moved && drag.startedSelected && drag.startedSelectionSize === 1) {
+    } else if (!drag.longPressTriggered && !progress.multiSelect && !drag.moved && drag.startedSelected && drag.startedSelectionSize === 1) {
       const pt = eventPoint(e.clientX, e.clientY);
       if (pt && drag.startedCellKey === `${pt.r},${pt.c}`) {
         props.onSelection([]);
@@ -2643,7 +2676,9 @@ export function GridCanvas(props: {
     }
 
     const pt = eventPoint(e.clientX, e.clientY);
-    if (progress.activeTool !== "line" && !drag.moved && pt) {
+    if (drag.longPressTriggered) {
+      lastTapRef.current = null;
+    } else if (progress.activeTool !== "line" && !drag.moved && pt) {
       const now = Date.now();
       const cellKey = rcKey(pt);
       const lastTap = lastTapRef.current;
@@ -2667,6 +2702,7 @@ export function GridCanvas(props: {
 
   function onCancel() {
     if (!interactive) return;
+    clearLongPressTimer();
     dragRef.current = null;
     setLinePreview(null);
   }
