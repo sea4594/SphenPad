@@ -49,6 +49,14 @@ type DragState = {
   selectionDragActive?: boolean;
 };
 
+type TapState = {
+  cellKey: string;
+  timestamp: number;
+  pointerType: string;
+};
+
+const DOUBLE_TAP_WINDOW_MS = 400;
+
 function rcKey(rc: CellRC) {
   return `${rc.r},${rc.c}`;
 }
@@ -119,6 +127,7 @@ export function GridCanvas(props: {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const dragRef = useRef<DragState | null>(null);
+  const lastTapRef = useRef<TapState | null>(null);
   const twemojiCacheRef = useRef<Map<string, HTMLImageElement | "loading" | "error">>(new Map());
 
   const rows = Math.max(1, Number(def.rows ?? progress.cells.length ?? def.size));
@@ -2633,6 +2642,26 @@ export function GridCanvas(props: {
       }
     }
 
+    const pt = eventPoint(e.clientX, e.clientY);
+    if (progress.activeTool !== "line" && !drag.moved && pt) {
+      const now = Date.now();
+      const cellKey = rcKey(pt);
+      const lastTap = lastTapRef.current;
+      const isDoubleTap = lastTap
+        && lastTap.pointerType === e.pointerType
+        && lastTap.cellKey === cellKey
+        && now - lastTap.timestamp <= DOUBLE_TAP_WINDOW_MS;
+
+      if (isDoubleTap) {
+        lastTapRef.current = null;
+        props.onDoubleCell(pt);
+      } else {
+        lastTapRef.current = { cellKey, timestamp: now, pointerType: e.pointerType };
+      }
+    } else if (drag.moved) {
+      lastTapRef.current = null;
+    }
+
     dragRef.current = null;
   }
 
@@ -2640,13 +2669,6 @@ export function GridCanvas(props: {
     if (!interactive) return;
     dragRef.current = null;
     setLinePreview(null);
-  }
-
-  function onDoubleClick(e: React.MouseEvent<HTMLCanvasElement>) {
-    if (!interactive) return;
-    const pt = eventPoint(e.clientX, e.clientY);
-    if (!pt) return;
-    props.onDoubleCell({ r: pt.r, c: pt.c });
   }
 
   return (
@@ -2667,7 +2689,6 @@ export function GridCanvas(props: {
         onPointerUp={interactive ? onUp : undefined}
         onPointerCancel={interactive ? onCancel : undefined}
         onPointerLeave={interactive ? onCancel : undefined}
-        onDoubleClick={interactive ? onDoubleClick : undefined}
       />
     </div>
   );
