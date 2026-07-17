@@ -7,11 +7,70 @@ import { GridCanvas } from "./GridCanvas";
 import { Keyboard } from "./Keyboard";
 import { IconRedo, IconSelectMode, IconToolBig, IconToolCenter, IconToolCorner, IconToolHighlight, IconToolLine, IconUndo } from "./icons";
 
-type EditorTab = "setup" | "elements" | "details";
 type ElementKind = "given" | "cage" | "thermo" | "arrow" | "whisper" | "renban" | "palindrome" | "dot" | "region" | "fog";
 type ConstraintKind = Exclude<ElementKind, "given">;
+type CreatorTab = "file" | "elements" | "tools";
+
+type CatalogElement = {
+  id: string;
+  icon: string;
+  name: string;
+  description: string;
+  elementKind?: ElementKind;
+};
 
 const NOOP = () => {};
+
+const CATALOG: CatalogElement[] = [
+  ["negative-diagonal", "\\", "Negative diagonal", "Digits cannot repeat along the negative diagonal."],
+  ["positive-diagonal", "/", "Positive diagonal", "Digits cannot repeat along the positive diagonal."],
+  ["extra-region", "R", "Extra region/different values", "Digits cannot repeat in the marked cells.", "region"],
+  ["antiking", "K", "Antiking", "Cells separated by a king's move cannot have the same digit."],
+  ["antiknight", "N", "Antiknight", "Cells separated by a knight's move cannot have the same digit."],
+  ["disjoint-groups", "D", "Disjoint groups", "Matching box positions contain all digits."],
+  ["nonconsecutive", "-", "Nonconsecutive", "Orthogonally adjacent cells cannot contain consecutive digits."],
+  ["even", "E", "Even", "Marked squares must contain even digits."],
+  ["odd", "O", "Odd", "Marked circles must contain odd digits."],
+  ["maximum", "M", "Maximum", "Marked cells are greater than adjacent unmarked cells."],
+  ["minimum", "m", "Minimum", "Marked cells are smaller than adjacent unmarked cells."],
+  ["difference-kropki", "W", "Difference Kropki dots", "White dots specify a digit difference.", "dot"],
+  ["ratio-kropki", "B", "Ratio Kropki dots", "Black dots specify a digit ratio.", "dot"],
+  ["xv", "XV", "XV", "X and V marks sum to 10 and 5."],
+  ["thermometers", "T", "Thermometers", "Digits strictly increase away from the bulb.", "thermo"],
+  ["slow-thermometers", "t", "Slow thermometers", "Digits increase or stay the same away from the bulb."],
+  ["killer-cages", "C", "Killer cages", "Cage digits sum to the clue and cannot repeat.", "cage"],
+  ["clones", "=", "Clones", "Two marked groups share the same digit arrangement."],
+  ["quadruples", "Q", "Quadruples", "Circle digits occur in its surrounding cells."],
+  ["look-and-say-cages", "L", "Look-and-say cages", "A clue describes the digits in its cage."],
+  ["renban-lines", "R", "Renban lines", "A line contains consecutive, non-repeating digits.", "renban"],
+  ["german-whispers", "G", "German whisper lines", "Connected cells differ by at least 5."],
+  ["dutch-whispers", "D", "Dutch whisper lines", "Connected cells differ by at least 4.", "whisper"],
+  ["palindromes", "P", "Palindromes", "Line digits read the same in either direction.", "palindrome"],
+  ["between-lines", "B", "Between lines", "Line digits are between the circled end digits."],
+  ["region-sum-lines", "S", "Region sum lines", "Each box segment of a line has the same sum."],
+  ["sequence-lines", "S", "Sequence lines", "Line digits have a constant difference."],
+  ["entropic-lines", "E", "Entropic lines", "Every three cells contain low, middle, and high digits."],
+  ["3-modular-lines", "3", "3-modular lines", "Every three cells cover all modulo-3 residuals."],
+  ["parity-lines", "P", "Parity (odd/even) lines", "Each adjacent pair has one even and one odd digit."],
+  ["global-entropy", "E", "Global entropy", "Every 2x2 contains low, middle, and high digits."],
+  ["global-modulo-3", "3", "Global modulo-3", "Every 2x2 covers all modulo-3 residuals."],
+  ["lockout-lines", "L", "Lockout lines", "Line digits lie outside the circled end digits."],
+  ["arrows", "A", "Arrows", "Arrow digits sum to the circled cells.", "arrow"],
+  ["double-arrows", "A", "Double arrows", "Line sum equals the sum of both circled ends."],
+  ["little-killers", "K", "Little killers", "Marked diagonal digits sum to the outside clue."],
+  ["sandwich-sums", "S", "Sandwich sums", "Digits between 1 and 9 sum to the clue."],
+  ["x-sums", "X", "X-sums", "An edge clue sums the first X digits."],
+  ["skyscrapers", "H", "Skyscrapers", "Edge clues count visible building heights."],
+  ["numbered-rooms", "N", "Numbered rooms", "An edge clue identifies the Nth digit."],
+  ["row-indexers", "R", "Row indexers", "A mark identifies a row position for its digit."],
+  ["column-indexers", "C", "Column indexers", "A mark identifies a column position for its digit."],
+  ["custom-constraint", "JS", "Custom constraint", "Custom JavaScript constraint logic."],
+  ["cosmetic-lines", "-", "Cosmetic lines", "Lines without programmed logic."],
+  ["cosmetic-cages", "C", "Cosmetic cages", "Cages without programmed logic."],
+  ["cosmetic-symbols", "*", "Cosmetic symbols", "Squares, circles, text, and arrows without logic."],
+  ["fog-lights", "F", "Fog lights", "Lights that clear fog at the start.", "fog"],
+  ["custom-fog-clearing", "F", "Custom fog clearing", "Customize conditions that clear fog."],
+].map(([id, icon, name, description, elementKind]) => ({ id, icon, name, description, elementKind: elementKind as ElementKind | undefined }));
 
 function sameCell(a: CellRC, b: CellRC) {
   return a.r === b.r && a.c === b.c;
@@ -128,14 +187,16 @@ export function PuzzleEditorPage() {
   const [data, setData] = useState<PersistedPuzzle | null>(null);
   const [selection, setSelection] = useState<CellRC[]>([{ r: 0, c: 0 }]);
   const [multiSelect, setMultiSelect] = useState(false);
-  const [tab, setTab] = useState<EditorTab>("elements");
+  const [creatorTab, setCreatorTab] = useState<CreatorTab>("elements");
   const [entryMode] = useState<"given" | "solution">("solution");
   const [elementKind, setElementKind] = useState<ElementKind>("given");
   const [constraintValue, setConstraintValue] = useState("");
   const [addingElement, setAddingElement] = useState(false);
   const [authoringOpen, setAuthoringOpen] = useState(false);
+  const [catalogOpen, setCatalogOpen] = useState(false);
+  const [activeCatalogElement, setActiveCatalogElement] = useState<string | null>(null);
   const [message, setMessage] = useState("");
-  const [testPlay, setTestPlay] = useState(false);
+  const testPlay = false;
   const [history, setHistory] = useState<PuzzleDefinition[]>([]);
   const [future, setFuture] = useState<PuzzleDefinition[]>([]);
   const [testProgress, setTestProgress] = useState<PuzzleProgress | null>(null);
@@ -261,17 +322,6 @@ export function PuzzleEditorPage() {
     setTestProgress(next);
   }
 
-  function beginTestPlay() {
-    if (!data) return;
-    const next = makeInitialProgress(data.def);
-    next.paused = false;
-    setTestProgress(next);
-    setTestHistory([]);
-    setTestFuture([]);
-    setTestPlay(true);
-    setMessage("Test play is isolated from your authored puzzle.");
-  }
-
   function applyTestHighlight(color: string) {
     if (!testProgress || !testProgress.selection.length) return;
     const cells = testProgress.cells.map((row) => row.map((cell) => ({ ...cell, notes: { ...cell.notes } })));
@@ -307,9 +357,51 @@ export function PuzzleEditorPage() {
     setMultiSelect((value) => !value);
   }
 
-  function openAuthoringTab(nextTab: EditorTab) {
-    setTab(nextTab);
-    setAuthoringOpen(true);
+  function selectCatalogElement(element: CatalogElement) {
+    if (!data) return;
+    const active = new Set(data.def.meta.creatorElements ?? []);
+    active.add(element.id);
+    const cosmetics = element.id === "antiking" ? { ...data.def.cosmetics, antiKing: true }
+      : element.id === "antiknight" ? { ...data.def.cosmetics, antiKnight: true }
+      : data.def.cosmetics;
+    save({ ...data.def, cosmetics, meta: { ...data.def.meta, creatorElements: Array.from(active) } });
+    setCatalogOpen(false);
+    setActiveCatalogElement(element.id);
+    if (element.elementKind) {
+      setElementKind(element.elementKind);
+      setAddingElement(true);
+    }
+    setMessage(`${element.name} added.`);
+  }
+
+  function removeCatalogElement(element: CatalogElement) {
+    if (!data) return;
+    const creatorElements = (data.def.meta.creatorElements ?? []).filter((id) => id !== element.id);
+    const cosmetics = element.id === "antiking" ? { ...data.def.cosmetics, antiKing: false }
+      : element.id === "antiknight" ? { ...data.def.cosmetics, antiKnight: false }
+      : data.def.cosmetics;
+    save({ ...data.def, cosmetics, meta: { ...data.def.meta, creatorElements } });
+    setActiveCatalogElement(null);
+    setMessage(`${element.name} removed.`);
+  }
+
+  async function sharePuzzle() {
+    if (!data) return;
+    const url = new URL(`#/p/${encodeURIComponent(data.def.id)}`, window.location.href).href;
+    try {
+      if (navigator.share) await navigator.share({ title: data.def.meta.title || "SphenPad puzzle", text: data.def.meta.rules || "", url });
+      else {
+        await navigator.clipboard.writeText(url);
+        setMessage("Puzzle link copied to clipboard.");
+      }
+    } catch (error) {
+      if ((error as DOMException).name !== "AbortError") setMessage("Unable to share this puzzle.");
+    }
+  }
+
+  function openPlaytest() {
+    if (!data) return;
+    window.open(`#/p/${encodeURIComponent(data.def.id)}`, "_blank", "noopener,noreferrer");
   }
 
   function setCellValue(value: string) {
@@ -401,19 +493,6 @@ export function PuzzleEditorPage() {
     setMessage("Given removed.");
   }
 
-  function resize(rows: number, cols: number) {
-    if (!data || rows < 1 || cols < 1) return;
-    const givens = data.def.givens.filter(({ rc }) => rc.r < rows && rc.c < cols);
-    const priorSolution = data.def.cosmetics.solution ?? "";
-    const solution = Array.from({ length: rows * cols }, (_, index) => {
-      const row = Math.floor(index / cols);
-      const col = index % cols;
-      return priorSolution[row * data.def.cols + col] ?? ".";
-    }).join("");
-    save({ ...data.def, rows, cols, size: Math.max(rows, cols), givens, cosmetics: { ...data.def.cosmetics, solution } });
-    setSelection([{ r: 0, c: 0 }]);
-  }
-
   function exportPuzzle() {
     if (!data) return;
     const blob = new Blob([JSON.stringify(data.def, null, 2)], { type: "application/json" });
@@ -439,7 +518,13 @@ export function PuzzleEditorPage() {
 
   if (!data || !progress) return <div className="shell creatorEditorShell"><div className="creatorLoading">{message || "Opening puzzle creator..."}</div></div>;
 
-  const constraintCount = Object.values(data.def.cosmetics).filter(Array.isArray).reduce((total, item) => total + item.length, 0);
+  const activeCatalogIds = new Set([
+    ...(data.def.meta.creatorElements ?? []),
+    ...(data.def.cosmetics.antiKing ? ["antiking"] : []),
+    ...(data.def.cosmetics.antiKnight ? ["antiknight"] : []),
+  ]);
+  const activeCatalog = CATALOG.filter((element) => activeCatalogIds.has(element.id));
+  const selectedCatalog = CATALOG.find((element) => element.id === activeCatalogElement) ?? null;
   const labels: Record<ElementKind, string> = { given: "Given digit", cage: "Killer cage", thermo: "Thermometer", arrow: "Arrow", whisper: "Whisper", renban: "Renban", palindrome: "Palindrome", dot: "Dot", region: "Irregular region", fog: "Fog light" };
   const elements = [
     ...data.def.givens.map((given, index) => ({ key: `given-${index}`, label: labels.given, detail: `${given.v} at ${cellLabel(given.rc)}`, remove: () => removeGiven(index) })),
@@ -470,13 +555,27 @@ export function PuzzleEditorPage() {
   return (
     <div className="shell creatorEditorShell">
       <header className="topbar puzzleTopbar creatorEditorTopbar">
-        <button className="btn" onClick={() => startTransition(() => navigate("/creator"))} type="button">Back</button>
-        <div className="creatorEditorIdentity"><strong>{data.def.meta.title || "Untitled puzzle"}</strong><span>{data.def.rows} x {data.def.cols} · {constraintCount} constraints</span></div>
-        <div className="creatorEditorActions">
-          <button className="btn" onClick={() => testPlay ? setTestPlay(false) : beginTestPlay()} type="button">{testPlay ? "Edit" : "Test play"}</button>
-          {!testPlay ? <button className="btn" onClick={() => openAuthoringTab("setup")} type="button">Edit puzzle</button> : null}
-        </div>
+        <button className="btn creatorExitButton" onClick={() => startTransition(() => navigate("/creator"))} type="button">Exit</button>
+        <nav className="creatorTopTabs" aria-label="Puzzle creator">
+          <button className={creatorTab === "file" ? "btn primary" : "btn"} onClick={() => { setCreatorTab("file"); setAuthoringOpen(false); }} type="button">File</button>
+          <button className={creatorTab === "elements" ? "btn primary" : "btn"} onClick={() => { setCreatorTab("elements"); setAuthoringOpen(true); }} type="button">Elements</button>
+          <button className={creatorTab === "tools" ? "btn primary" : "btn"} onClick={() => { setCreatorTab("tools"); setAuthoringOpen(true); }} type="button">Tools</button>
+        </nav>
       </header>
+      {creatorTab === "file" ? <main className="page creatorFilePage">
+        <div className="creatorFileContent">
+          <div className="creatorFilePreview card"><GridCanvas def={data.def} progress={progress} onSelection={NOOP} onLineStroke={NOOP} onLineTapCell={NOOP} onLineTapEdge={NOOP} onDoubleCell={NOOP} interactive={false} /></div>
+          <div className="card creatorFileFields">
+            <label>Title<input className="url" value={data.def.meta.title ?? ""} onChange={(event) => save({ ...data.def, meta: { ...data.def.meta, title: event.target.value } })} /></label>
+            <label>Author<input className="url" value={data.def.meta.author ?? ""} onChange={(event) => save({ ...data.def, meta: { ...data.def.meta, author: event.target.value } })} /></label>
+            <label>Rules<textarea className="url creatorRulesInput" value={data.def.meta.rules ?? ""} onChange={(event) => save({ ...data.def, meta: { ...data.def.meta, rules: event.target.value } })} /></label>
+            <label>Completion message<textarea className="url creatorRulesInput" value={data.def.meta.postSolveMessage ?? ""} onChange={(event) => save({ ...data.def, meta: { ...data.def.meta, postSolveMessage: event.target.value } })} /></label>
+            <label>Paste solution<textarea className="url creatorGridInput" value={solutionText} onChange={(event) => setSolutionText(event.target.value)} onBlur={(event) => pasteGrid(event.target.value, "solution")} /></label>
+            <div className="creatorFileActions"><button className="btn primary" onClick={openPlaytest} type="button">Playtest</button><button className="btn" onClick={() => void sharePuzzle()} type="button">Share</button><button className="btn" onClick={exportPuzzle} type="button">Download</button><label className="btn creatorImportButton">Import<input type="file" accept="application/json,.json" onChange={(event) => void importPuzzle(event.target.files?.[0])} /></label></div>
+            <div className={validation.length ? "creatorValidation invalid" : "creatorValidation valid"}>{validation.length ? validation.map((item) => <div key={item}>{item}</div>) : "Puzzle structure looks valid."}</div>
+          </div>
+        </div>
+      </main> : <>
       <main className="page puzzlePage creatorPuzzlePage">
         <div className="gridLayout creatorGridLayout">
           <section className="boardColumn">
@@ -503,32 +602,25 @@ export function PuzzleEditorPage() {
           </div>
         </div>
       </main>
+      </>}
       {testPlay ? <div className="creatorTestNotice creatorFloatingNotice">Test play is isolated from your authored puzzle.</div> : null}
-      {authoringOpen && !testPlay ? <div className="overlayBackdrop creatorOverlayBackdrop" role="dialog" aria-modal="true" aria-label="Puzzle authoring">
+      {creatorTab === "elements" && authoringOpen && !testPlay ? <div className="overlayBackdrop creatorOverlayBackdrop" role="dialog" aria-modal="true" aria-label="Puzzle elements">
         <aside className="creatorInspector card">
           <div className="creatorOverlayHeader">
-          <div className="creatorInspectorHeading">Create puzzle</div>
+          <div className="creatorInspectorHeading">Elements</div>
           <div className="creatorOverlayActions">
-            <button className="btn" onClick={exportPuzzle} type="button">Export</button>
-            <label className="btn creatorImportButton">Import<input type="file" accept="application/json,.json" onChange={(event) => void importPuzzle(event.target.files?.[0])} /></label>
             <button className="btn" onClick={() => setAuthoringOpen(false)} type="button">Close</button>
           </div>
           </div>
-          <div className="creatorTabs">{(["setup", "elements", "details"] as EditorTab[]).map((nextTab) => <button key={nextTab} className={tab === nextTab ? "btn primary" : "btn"} onClick={() => setTab(nextTab)} type="button">{nextTab === "details" ? "Puzzle details" : nextTab}</button>)}</div>
+          <div className="creatorActiveElements">
+            <div className="creatorActiveElementStrip">{activeCatalog.map((element) => <button key={element.id} className={activeCatalogElement === element.id ? "creatorActiveElement active" : "creatorActiveElement"} onClick={() => { setActiveCatalogElement(element.id); if (element.elementKind) { setElementKind(element.elementKind); setAddingElement(true); } }} type="button" title={element.name}><span>{element.icon}</span>{element.name}</button>)}</div>
+            <button className="btn primary creatorAddElement" onClick={() => setCatalogOpen(true)} type="button" title="Add element">+</button>
+          </div>
           <div className="creatorInspectorBody">
-            {tab === "setup" ? <>
-              <label>Rows<input className="url" type="number" min="1" value={data.def.rows} onChange={(event) => resize(Number(event.target.value), data.def.cols)} /></label>
-              <label>Columns<input className="url" type="number" min="1" value={data.def.cols} onChange={(event) => resize(data.def.rows, Number(event.target.value))} /></label>
-              <label>Box rows<input className="url" type="number" min="1" value={data.def.cosmetics.subgrid?.r ?? ""} onChange={(event) => updateCosmetics({ ...data.def.cosmetics, subgrid: { r: Number(event.target.value) || 1, c: data.def.cosmetics.subgrid?.c ?? 1 } })} /></label>
-              <label>Box columns<input className="url" type="number" min="1" value={data.def.cosmetics.subgrid?.c ?? ""} onChange={(event) => updateCosmetics({ ...data.def.cosmetics, subgrid: { r: data.def.cosmetics.subgrid?.r ?? 1, c: Number(event.target.value) || 1 } })} /></label>
-              <label className="creatorToggle"><input type="checkbox" checked={Boolean(data.def.cosmetics.antiKnight)} onChange={(event) => updateCosmetics({ ...data.def.cosmetics, antiKnight: event.target.checked })} />Anti-knight</label>
-              <label className="creatorToggle"><input type="checkbox" checked={Boolean(data.def.cosmetics.antiKing)} onChange={(event) => updateCosmetics({ ...data.def.cosmetics, antiKing: event.target.checked })} />Anti-king</label>
-              <label className="creatorToggle"><input type="checkbox" checked={data.def.cosmetics.conflictChecker !== false} onChange={(event) => updateCosmetics({ ...data.def.cosmetics, conflictChecker: event.target.checked })} />Conflict checker</label>
-            </> : null}
-            {tab === "elements" ? <>
-              <div className="creatorElementsHeading"><strong>Elements</strong><button className="btn primary creatorAddElement" onClick={() => setAddingElement((open) => !open)} aria-expanded={addingElement} type="button" title="Add element">+</button></div>
+            {selectedCatalog ? <div className="creatorSelectedElement"><div><strong>{selectedCatalog.icon} {selectedCatalog.name}</strong><span>{selectedCatalog.description}</span></div><button className="btn danger" onClick={() => removeCatalogElement(selectedCatalog)} type="button">Remove</button></div> : <div className="muted">Add an element, then tap it here to edit it.</div>}
+            {addingElement && selectedCatalog?.elementKind ? <>
               {addingElement ? <div className="creatorAddElementForm">
-                <label>Element<select className="url" value={elementKind} onChange={(event) => setElementKind(event.target.value as ElementKind)}>{Object.entries(labels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+                <div className="creatorSelection">Editing {selectedCatalog.name}</div>
                 {elementKind === "given" ? <label>Digit or symbol<input className="url" value={constraintValue} onChange={(event) => setConstraintValue(event.target.value)} placeholder="e.g. 5" /></label> : null}
                 {elementKind === "cage" ? <label>Cage sum<input className="url" value={constraintValue} onChange={(event) => setConstraintValue(event.target.value)} placeholder="e.g. 15" /></label> : null}
                 {elementKind === "dot" ? <label>Dot type<select className="url" value={constraintValue} onChange={(event) => setConstraintValue(event.target.value)}><option value="white">White: consecutive</option><option value="black">Black: 1:2 ratio</option></select></label> : null}
@@ -536,20 +628,14 @@ export function PuzzleEditorPage() {
                 <button className="btn primary" onClick={addElement} type="button">Add {labels[elementKind]}</button>
                 <div className="creatorHelp">Select cells on the board first. Path elements use the selection order.</div>
               </div> : null}
+            </> : null}
               <div className="creatorElementList">{elements.map((element) => <div className="creatorElementRow" key={element.key}><div><strong>{element.label}</strong><span>{element.detail}</span></div><button className="btn danger" onClick={element.remove} type="button">Remove</button></div>)}</div>
-              {!elements.length ? <div className="muted">No elements yet. Use + to add a given or constraint.</div> : null}
-            </> : null}
-            {tab === "details" ? <>
-              <label>Title<input className="url" value={data.def.meta.title ?? ""} onChange={(event) => save({ ...data.def, meta: { ...data.def.meta, title: event.target.value } })} /></label>
-              <label>Author<input className="url" value={data.def.meta.author ?? ""} onChange={(event) => save({ ...data.def, meta: { ...data.def.meta, author: event.target.value } })} /></label>
-              <label>Rules<textarea className="url creatorRulesInput" value={data.def.meta.rules ?? ""} onChange={(event) => save({ ...data.def, meta: { ...data.def.meta, rules: event.target.value } })} /></label>
-              <label>Paste solution<textarea className="url creatorGridInput" value={solutionText} onChange={(event) => setSolutionText(event.target.value)} onBlur={(event) => pasteGrid(event.target.value, "solution")} /></label>
-              <div className={validation.length ? "creatorValidation invalid" : "creatorValidation valid"}>{validation.length ? validation.map((item) => <div key={item}>{item}</div>) : "Puzzle structure looks valid."}</div>
-            </> : null}
           </div>
           <div className="creatorStatus">{message || `Saved · ${selectionKey(selection) || "no selection"}`}</div>
         </aside>
       </div> : null}
+      {catalogOpen ? <div className="overlayBackdrop creatorCatalogBackdrop" role="dialog" aria-modal="true" aria-label="Add puzzle element"><div className="card creatorCatalog"><div className="creatorOverlayHeader"><div className="creatorInspectorHeading">Add element</div><div className="creatorOverlayActions"><button className="btn" onClick={() => setCatalogOpen(false)} type="button">Close</button></div></div><div className="creatorCatalogList">{CATALOG.map((element) => <button className="creatorCatalogOption" key={element.id} onClick={() => selectCatalogElement(element)} type="button"><span>{element.icon}</span><div><strong>{element.name}</strong><small>{element.description}</small></div></button>)}</div></div></div> : null}
+      {creatorTab === "tools" && authoringOpen ? <div className="overlayBackdrop creatorOverlayBackdrop" role="dialog" aria-modal="true" aria-label="Puzzle tools"><aside className="creatorInspector card"><div className="creatorOverlayHeader"><div className="creatorInspectorHeading">Tools</div><div className="creatorOverlayActions"><button className="btn" onClick={() => setAuthoringOpen(false)} type="button">Close</button></div></div><div className="creatorInspectorBody creatorTools"><button className="btn">Clear all non-given digits and markings</button><button className="btn">Do a single logical step</button><button className="btn">Solve step-by-step</button><button className="btn">Find all solutions and valid candidates</button><button className="btn">Check validity and uniqueness</button><div className="creatorHelp">Automatic solving tools are being prepared for the creator.</div></div></aside></div> : null}
     </div>
   );
 }

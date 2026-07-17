@@ -35,6 +35,9 @@ export type LineEdgeMark = {
 
 export type PuzzleMeta = {
   creatorPuzzle?: boolean;
+  // Creator-only catalog selections. These preserve planned elements whose
+  // solving or rendering support has not been implemented yet.
+  creatorElements?: string[];
   title?: string;
   author?: string;
   collection?: string;
