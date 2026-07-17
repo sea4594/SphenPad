@@ -5,6 +5,7 @@ import { PuzzlePage } from "../ui/PuzzlePage";
 import { CtCArchivePage } from "../ui/CtCArchivePage";
 import { FoldersPage } from "../ui/FoldersPage";
 import { PuzzleCreatorPage } from "../ui/PuzzleCreatorPage";
+import { PuzzleEditorPage } from "../ui/PuzzleEditorPage";
 import { AccountSyncProvider } from "./accountSync";
 import { clearForcedPortrait } from "./forcedPortrait";
 import { ThemeProvider } from "./theme";
@@ -212,7 +213,7 @@ export function App() {
                   path="/creator/:puzzleId"
                   element={(
                     <div style={{ height: "100%", pointerEvents: "auto" }}>
-                      <PuzzlePage editor />
+                      <PuzzleEditorPage />
                     </div>
                   )}
                 />
