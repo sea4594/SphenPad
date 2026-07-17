@@ -2419,9 +2419,9 @@ input.url {
   }
 
   .videoLayoutOn.videoModeMobilePortrait .gridLayout {
-    --portrait-video-h: calc(100vw * 9 / 16);
+    --portrait-video-h: min(calc(100vw * 9 / 16), calc(100% - var(--mobile-controls-h) - 138px));
     --video-resize-h: 10px;
-    grid-template-rows: minmax(112px, min(var(--portrait-video-h), calc(100% - var(--mobile-controls-h) - 138px))) var(--video-resize-h) minmax(128px, 1fr) var(--mobile-controls-h);
+    grid-template-rows: var(--portrait-video-h) var(--video-resize-h) minmax(128px, 1fr) var(--mobile-controls-h);
     --mobile-controls-h: clamp(180px, calc(var(--mobile-controls-h-raw) * 0.84), 41vmax);
   }
 
@@ -2432,8 +2432,10 @@ input.url {
   }
 
   .videoLayoutOn.videoModeMobilePortrait .puzzleVideoFrame {
+    width: auto;
     height: 100%;
-    aspect-ratio: auto;
+    aspect-ratio: 16 / 9;
+    justify-self: center;
   }
 
   .videoResizeHandle {
@@ -2696,14 +2698,13 @@ input.url {
 
   .videoLayoutOn.videoModeMobileLandscape .gridLayout {
     grid-template-columns: minmax(0, 1fr) minmax(220px, 34vw);
-    grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) minmax(0, 60%);
     gap: 8px;
   }
 
   .videoLayoutOn.videoModeMobileLandscape .boardColumn {
     grid-column: 1;
     grid-row: 1 / span 2;
-    align-self: stretch;
   }
 
   .videoLayoutOn.videoModeMobileLandscape .puzzleGridVideoPlayer {

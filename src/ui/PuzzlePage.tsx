@@ -573,7 +573,8 @@ export function PuzzlePage(props: { editor?: boolean }) {
     const controlsHeight = gridLayout.querySelector<HTMLElement>(".kbdPanel")?.getBoundingClientRect().height ?? 0;
     const videoWidth = gridLayout.querySelector<HTMLElement>(".puzzleGridVideoPlayer")?.getBoundingClientRect().width ?? 0;
     const minimumVideoHeight = Math.max(112, Math.min(180, videoWidth * (9 / 16)));
-    const maximumVideoHeight = Math.max(minimumVideoHeight, gridLayout.getBoundingClientRect().height - controlsHeight - 138);
+    const availableVideoHeight = gridLayout.getBoundingClientRect().height - controlsHeight - 138;
+    const maximumVideoHeight = Math.max(minimumVideoHeight, Math.min(videoWidth * (9 / 16), availableVideoHeight));
     const nextHeight = Math.min(maximumVideoHeight, Math.max(minimumVideoHeight, drag.startHeight + event.clientY - drag.startY));
     setPortraitVideoHeight(nextHeight);
   }

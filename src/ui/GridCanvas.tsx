@@ -415,9 +415,10 @@ export function GridCanvas(props: {
         gridLayout?.clientHeight ?? 0,
         pane.clientHeight || 0
       );
-      const controlsTop = kbdPanel?.getBoundingClientRect().top ?? Number.POSITIVE_INFINITY;
-      const frameBottom = Math.min(controlsTop, visualViewportHeight);
-      const spaceAboveControls = Math.max(0, Math.floor(frameBottom - wrapRect.top));
+      const controlsRect = kbdPanel?.getBoundingClientRect() ?? null;
+      const spaceAboveControls = controlsRect && controlsRect.left < wrapRect.right && controlsRect.right > wrapRect.left
+        ? Math.max(0, Math.floor(controlsRect.top - wrapRect.top))
+        : 0;
 
       const measuredOrPaneHeight = Math.max(1, measuredHeight || el.clientHeight || pane.clientHeight || 0);
       const height = previewMode
