@@ -2429,6 +2429,7 @@ input.url {
     display: block;
     grid-column: 1;
     grid-row: 1;
+    place-items: center;
   }
 
   .videoLayoutOn.videoModeMobilePortrait .puzzleVideoFrame {
@@ -2436,6 +2437,7 @@ input.url {
     height: 100%;
     aspect-ratio: 16 / 9;
     justify-self: center;
+    margin-inline: auto;
   }
 
   .videoResizeHandle {

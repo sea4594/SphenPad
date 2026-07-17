@@ -421,8 +421,11 @@ export function GridCanvas(props: {
         : 0;
 
       const measuredOrPaneHeight = Math.max(1, measuredHeight || el.clientHeight || pane.clientHeight || 0);
+      const gridBoardHeight = gridLayout && boardCard ? boardCard.clientHeight : 0;
       const height = previewMode
         ? measuredOrPaneHeight
+        : gridBoardHeight > 1
+          ? gridBoardHeight
         : spaceAboveControls > 0
           ? spaceAboveControls
         : measuredOrPaneHeight > 1

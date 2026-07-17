@@ -577,6 +577,7 @@ export function PuzzlePage(props: { editor?: boolean }) {
     const maximumVideoHeight = Math.max(minimumVideoHeight, Math.min(videoWidth * (9 / 16), availableVideoHeight));
     const nextHeight = Math.min(maximumVideoHeight, Math.max(minimumVideoHeight, drag.startHeight + event.clientY - drag.startY));
     setPortraitVideoHeight(nextHeight);
+    window.requestAnimationFrame(() => window.dispatchEvent(new Event("resize")));
   }
 
   function stopVideoResize(event: React.PointerEvent<HTMLDivElement>) {
