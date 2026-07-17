@@ -133,6 +133,7 @@ export function PuzzleEditorPage() {
   const [elementKind, setElementKind] = useState<ElementKind>("given");
   const [constraintValue, setConstraintValue] = useState("");
   const [addingElement, setAddingElement] = useState(false);
+  const [authoringOpen, setAuthoringOpen] = useState(false);
   const [message, setMessage] = useState("");
   const [testPlay, setTestPlay] = useState(false);
   const [history, setHistory] = useState<PuzzleDefinition[]>([]);
@@ -308,9 +309,7 @@ export function PuzzleEditorPage() {
 
   function openAuthoringTab(nextTab: EditorTab) {
     setTab(nextTab);
-    window.requestAnimationFrame(() => {
-      document.querySelector(".creatorInspector")?.scrollIntoView({ behavior: "smooth", block: "start" });
-    });
+    setAuthoringOpen(true);
   }
 
   function setCellValue(value: string) {
@@ -470,31 +469,51 @@ export function PuzzleEditorPage() {
 
   return (
     <div className="shell creatorEditorShell">
-      <header className="topbar creatorEditorTopbar">
+      <header className="topbar puzzleTopbar creatorEditorTopbar">
         <button className="btn" onClick={() => startTransition(() => navigate("/creator"))} type="button">Back</button>
         <div className="creatorEditorIdentity"><strong>{data.def.meta.title || "Untitled puzzle"}</strong><span>{data.def.rows} x {data.def.cols} · {constraintCount} constraints</span></div>
         <div className="creatorEditorActions">
           <button className="btn" onClick={() => testPlay ? setTestPlay(false) : beginTestPlay()} type="button">{testPlay ? "Edit" : "Test play"}</button>
-          {!testPlay ? <button className="btn" onClick={() => openAuthoringTab("elements")} type="button">Elements</button> : null}
-          {!testPlay ? <button className="btn" onClick={() => openAuthoringTab("details")} type="button">Puzzle details</button> : null}
-          <button className="btn" onClick={exportPuzzle} type="button">Export</button>
-          <label className="btn creatorImportButton">Import<input type="file" accept="application/json,.json" onChange={(event) => void importPuzzle(event.target.files?.[0])} /></label>
+          {!testPlay ? <button className="btn" onClick={() => openAuthoringTab("setup")} type="button">Edit puzzle</button> : null}
         </div>
       </header>
-      <main className="creatorWorkspace">
-        <section className="creatorBoardArea">
-          <div className="creatorModeBar">
-            <span>{testPlay ? "Test preview" : "Solution entry"}</span>
-            {testPlay ? <button className="btn" onClick={beginTestPlay} type="button">Reset test</button> : null}
-          </div>
-          <div className="creatorBoard card">
+      <main className="page puzzlePage creatorPuzzlePage">
+        <div className="gridLayout creatorGridLayout">
+          <section className="boardColumn">
+            <div className="card boardCard">
             <GridCanvas def={data.def} progress={controlProgress} onSelection={testPlay ? (next) => setTestProgress((current) => current ? { ...current, selection: next } : current) : setSelection} onLineStroke={NOOP} onLineTapCell={NOOP} onLineTapEdge={NOOP} onDoubleCell={NOOP} />
+            </div>
+          </section>
+          <div className="kbdPanel">
+          <div className="card controlStack mobileControlPanel creatorControls">
+            <button className="btn panelBtn panelUndo" onClick={testPlay ? undoTest : undoDefinition} disabled={testPlay ? !testHistory.length : !history.length} title="Undo (N)" type="button"><IconUndo /></button>
+            <button className="btn panelBtn panelRedo" onClick={testPlay ? redoTest : redoDefinition} disabled={testPlay ? !testFuture.length : !future.length} title="Redo (M)" type="button"><IconRedo /></button>
+            <button className={"btn panelBtn panelSelectToggle" + (controlProgress.multiSelect ? " primary" : "")} onClick={toggleSelectionMode} title={controlProgress.multiSelect ? "Multi-touch selection enabled" : "Single-touch selection enabled"} type="button"><IconSelectMode multi={controlProgress.multiSelect} /></button>
+            <button title="Big numbers (Z)" className={"btn panelBtn panelTool1" + (controlProgress.activeTool === "value" ? " primary" : "")} onClick={() => setActiveTool("value")} type="button"><IconToolBig /></button>
+            <button title="Edge notes (X)" className={"btn panelBtn panelTool2" + (controlProgress.activeTool === "corner" ? " primary" : "")} onClick={() => setActiveTool("corner")} type="button"><IconToolCorner /></button>
+            <button title="Center notes (C)" className={"btn panelBtn panelTool3" + (controlProgress.activeTool === "center" ? " primary" : "")} onClick={() => setActiveTool("center")} type="button"><IconToolCenter /></button>
+            <button title="Highlight (V)" className={"btn panelBtn panelTool4" + (controlProgress.activeTool === "highlight" ? " primary" : "")} onClick={() => setActiveTool("highlight")} type="button"><IconToolHighlight /></button>
+            <button title="Line (B)" className={"btn panelBtn panelTool5" + (controlProgress.activeTool === "line" ? " primary" : "")} onClick={() => setActiveTool("line")} type="button"><IconToolLine /></button>
+            <div className="panelMainGrid">
+              {(controlProgress.activeTool === "value" || controlProgress.activeTool === "center" || controlProgress.activeTool === "corner") ? <Keyboard compact kind="numbers" progress={controlProgress} onDigit={testPlay ? applyTestDigit : setCellValue} onBackspace={() => testPlay ? applyTestDigit("") : setCellValue("")} onToggleAlphabet={() => testPlay ? setTestProgress((current) => current ? { ...current, alphabetMode: !current.alphabetMode } : current) : setEditorAlphabetMode((value) => !value)} onCycleAlphabetPage={() => testPlay ? setTestProgress((current) => current ? { ...current, alphabetPage: ((current.alphabetPage + 1) % 3) as 0 | 1 | 2 } : current) : setEditorAlphabetPage((value) => ((value + 1) % 3) as 0 | 1 | 2)} /> : null}
+              {controlProgress.activeTool === "highlight" ? <Keyboard compact kind="highlight" progress={controlProgress} onColor={testPlay ? applyTestHighlight : NOOP} onWhite={() => testPlay ? applyTestHighlight("rgba(0,0,0,0)") : NOOP()} onBackspace={() => testPlay ? applyTestHighlight("rgba(0,0,0,0)") : setCellValue("")} onFlipPalette={() => testPlay ? setTestProgress((current) => current ? { ...current, highlightPalettePage: (current.highlightPalettePage === 0 ? 1 : 0) as 0 | 1 } : current) : setEditorHighlightPage((value) => value === 0 ? 1 : 0)} /> : null}
+              {controlProgress.activeTool === "line" ? <Keyboard compact kind="line" progress={controlProgress} onBackspace={() => testPlay ? undefined : setCellValue("")} onColor={(color) => testPlay ? setTestProgress((current) => current ? { ...current, linePaletteColor: color } : current) : setEditorLineColor(color)} onToggleDoubleLine={() => testPlay ? setTestProgress((current) => current ? { ...current, lineDoubleMode: !current.lineDoubleMode } : current) : setEditorLineDouble((value) => !value)} /> : null}
+            </div>
           </div>
-          {testPlay ? <div className="creatorTestNotice">Test play uses a separate solver state and never alters your authored givens or solution.</div> : null}
-        </section>
-        <div className="creatorSidebar">
-          <aside className="creatorInspector card">
+          </div>
+        </div>
+      </main>
+      {testPlay ? <div className="creatorTestNotice creatorFloatingNotice">Test play is isolated from your authored puzzle.</div> : null}
+      {authoringOpen && !testPlay ? <div className="overlayBackdrop creatorOverlayBackdrop" role="dialog" aria-modal="true" aria-label="Puzzle authoring">
+        <aside className="creatorInspector card">
+          <div className="creatorOverlayHeader">
           <div className="creatorInspectorHeading">Create puzzle</div>
+          <div className="creatorOverlayActions">
+            <button className="btn" onClick={exportPuzzle} type="button">Export</button>
+            <label className="btn creatorImportButton">Import<input type="file" accept="application/json,.json" onChange={(event) => void importPuzzle(event.target.files?.[0])} /></label>
+            <button className="btn" onClick={() => setAuthoringOpen(false)} type="button">Close</button>
+          </div>
+          </div>
           <div className="creatorTabs">{(["setup", "elements", "details"] as EditorTab[]).map((nextTab) => <button key={nextTab} className={tab === nextTab ? "btn primary" : "btn"} onClick={() => setTab(nextTab)} type="button">{nextTab === "details" ? "Puzzle details" : nextTab}</button>)}</div>
           <div className="creatorInspectorBody">
             {tab === "setup" ? <>
@@ -529,24 +548,8 @@ export function PuzzleEditorPage() {
             </> : null}
           </div>
           <div className="creatorStatus">{message || `Saved · ${selectionKey(selection) || "no selection"}`}</div>
-          </aside>
-          <div className="card controlStack mobileControlPanel creatorControls">
-            <button className="btn panelBtn panelUndo" onClick={testPlay ? undoTest : undoDefinition} disabled={testPlay ? !testHistory.length : !history.length} title="Undo (N)" type="button"><IconUndo /></button>
-            <button className="btn panelBtn panelRedo" onClick={testPlay ? redoTest : redoDefinition} disabled={testPlay ? !testFuture.length : !future.length} title="Redo (M)" type="button"><IconRedo /></button>
-            <button className={"btn panelBtn panelSelectToggle" + (controlProgress.multiSelect ? " primary" : "")} onClick={toggleSelectionMode} title={controlProgress.multiSelect ? "Multi-touch selection enabled" : "Single-touch selection enabled"} type="button"><IconSelectMode multi={controlProgress.multiSelect} /></button>
-            <button title="Big numbers (Z)" className={"btn panelBtn panelTool1" + (controlProgress.activeTool === "value" ? " primary" : "")} onClick={() => setActiveTool("value")} type="button"><IconToolBig /></button>
-            <button title="Edge notes (X)" className={"btn panelBtn panelTool2" + (controlProgress.activeTool === "corner" ? " primary" : "")} onClick={() => setActiveTool("corner")} type="button"><IconToolCorner /></button>
-            <button title="Center notes (C)" className={"btn panelBtn panelTool3" + (controlProgress.activeTool === "center" ? " primary" : "")} onClick={() => setActiveTool("center")} type="button"><IconToolCenter /></button>
-            <button title="Highlight (V)" className={"btn panelBtn panelTool4" + (controlProgress.activeTool === "highlight" ? " primary" : "")} onClick={() => setActiveTool("highlight")} type="button"><IconToolHighlight /></button>
-            <button title="Line (B)" className={"btn panelBtn panelTool5" + (controlProgress.activeTool === "line" ? " primary" : "")} onClick={() => setActiveTool("line")} type="button"><IconToolLine /></button>
-            <div className="panelMainGrid">
-              {(controlProgress.activeTool === "value" || controlProgress.activeTool === "center" || controlProgress.activeTool === "corner") ? <Keyboard compact kind="numbers" progress={controlProgress} onDigit={testPlay ? applyTestDigit : setCellValue} onBackspace={() => testPlay ? applyTestDigit("") : setCellValue("")} onToggleAlphabet={() => testPlay ? setTestProgress((current) => current ? { ...current, alphabetMode: !current.alphabetMode } : current) : setEditorAlphabetMode((value) => !value)} onCycleAlphabetPage={() => testPlay ? setTestProgress((current) => current ? { ...current, alphabetPage: ((current.alphabetPage + 1) % 3) as 0 | 1 | 2 } : current) : setEditorAlphabetPage((value) => ((value + 1) % 3) as 0 | 1 | 2)} /> : null}
-              {controlProgress.activeTool === "highlight" ? <Keyboard compact kind="highlight" progress={controlProgress} onColor={testPlay ? applyTestHighlight : NOOP} onWhite={() => testPlay ? applyTestHighlight("rgba(0,0,0,0)") : NOOP()} onBackspace={() => testPlay ? applyTestHighlight("rgba(0,0,0,0)") : setCellValue("")} onFlipPalette={() => testPlay ? setTestProgress((current) => current ? { ...current, highlightPalettePage: (current.highlightPalettePage === 0 ? 1 : 0) as 0 | 1 } : current) : setEditorHighlightPage((value) => value === 0 ? 1 : 0)} /> : null}
-              {controlProgress.activeTool === "line" ? <Keyboard compact kind="line" progress={controlProgress} onBackspace={() => testPlay ? undefined : setCellValue("")} onColor={(color) => testPlay ? setTestProgress((current) => current ? { ...current, linePaletteColor: color } : current) : setEditorLineColor(color)} onToggleDoubleLine={() => testPlay ? setTestProgress((current) => current ? { ...current, lineDoubleMode: !current.lineDoubleMode } : current) : setEditorLineDouble((value) => !value)} /> : null}
-            </div>
-          </div>
-        </div>
-      </main>
+        </aside>
+      </div> : null}
     </div>
   );
 }
