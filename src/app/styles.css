@@ -938,6 +938,19 @@ input.url {
   border-bottom: 1px solid var(--ui-border);
 }
 
+.creatorElementsPageLayout {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.creatorElementsPageLayout .creatorGridLayout {
+  height: auto;
+  min-height: 0;
+}
+
 .creatorActiveElementStrip {
   display: flex;
   min-width: 0;
@@ -946,9 +959,15 @@ input.url {
   padding-bottom: 2px;
 }
 
+.creatorActiveElementEntry {
+  position: relative;
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+}
+
 .creatorActiveElement {
   display: inline-flex;
-  flex: 0 0 auto;
   align-items: center;
   gap: 5px;
   min-height: 34px;
@@ -980,6 +999,47 @@ input.url {
   background: color-mix(in oklab, var(--accent) 15%, var(--panel));
 }
 
+.creatorActiveElementEntry.active .creatorActiveElement {
+  border-color: var(--accent);
+  background: color-mix(in oklab, var(--accent) 15%, var(--panel));
+}
+
+.creatorElementMoreButton {
+  min-width: 30px;
+  min-height: 34px;
+  margin-left: 3px;
+  padding: 2px 6px;
+  letter-spacing: 1px;
+}
+
+.creatorElementMoreMenu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 30;
+  display: grid;
+  min-width: 120px;
+  overflow: hidden;
+  border: 1px solid var(--ui-border-strong);
+  border-radius: 4px;
+  background: var(--panel);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.24);
+}
+
+.creatorElementMoreMenu button {
+  padding: 9px 10px;
+  color: var(--text);
+  text-align: left;
+  border: 0;
+  border-bottom: 1px solid var(--ui-border);
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+}
+
+.creatorElementMoreMenu button:last-child { border-bottom: 0; }
+.creatorElementMoreMenu .danger { color: var(--danger); }
+
 .creatorSelectedElement {
   display: flex;
   align-items: start;
@@ -1007,7 +1067,9 @@ input.url {
 
 .creatorCatalog {
   display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
   width: min(720px, 100%);
+  height: min(760px, calc(100dvh - 32px));
   max-height: calc(100dvh - 32px);
   overflow: hidden;
 }
@@ -1015,7 +1077,10 @@ input.url {
 .creatorCatalogList {
   display: grid;
   gap: 7px;
-  overflow: auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 12px;
 }
 
@@ -1185,7 +1250,7 @@ input.url {
   .creatorFilePage { padding: 10px; }
   .creatorFileContent { padding-top: 0; }
   .creatorCatalogBackdrop { padding: 10px; }
-  .creatorCatalog { max-height: calc(100dvh - 20px); }
+  .creatorCatalog { height: calc(100dvh - 20px); max-height: calc(100dvh - 20px); }
   .creatorDigitPad { grid-template-columns: repeat(5, minmax(40px, 1fr)); }
 }
 

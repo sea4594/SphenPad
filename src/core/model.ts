@@ -38,6 +38,7 @@ export type PuzzleMeta = {
   // Creator-only catalog selections. These preserve planned elements whose
   // solving or rendering support has not been implemented yet.
   creatorElements?: string[];
+  creatorElementNames?: Record<string, string>;
   title?: string;
   author?: string;
   collection?: string;

@@ -195,6 +195,7 @@ export function PuzzleEditorPage() {
   const [authoringOpen, setAuthoringOpen] = useState(false);
   const [catalogOpen, setCatalogOpen] = useState(false);
   const [activeCatalogElement, setActiveCatalogElement] = useState<string | null>(null);
+  const [elementMenuOpen, setElementMenuOpen] = useState(false);
   const [message, setMessage] = useState("");
   const testPlay = false;
   const [history, setHistory] = useState<PuzzleDefinition[]>([]);
@@ -367,6 +368,7 @@ export function PuzzleEditorPage() {
     save({ ...data.def, cosmetics, meta: { ...data.def.meta, creatorElements: Array.from(active) } });
     setCatalogOpen(false);
     setActiveCatalogElement(element.id);
+    setAuthoringOpen(true);
     if (element.elementKind) {
       setElementKind(element.elementKind);
       setAddingElement(true);
@@ -377,12 +379,25 @@ export function PuzzleEditorPage() {
   function removeCatalogElement(element: CatalogElement) {
     if (!data) return;
     const creatorElements = (data.def.meta.creatorElements ?? []).filter((id) => id !== element.id);
+    const creatorElementNames = { ...data.def.meta.creatorElementNames };
+    delete creatorElementNames[element.id];
     const cosmetics = element.id === "antiking" ? { ...data.def.cosmetics, antiKing: false }
       : element.id === "antiknight" ? { ...data.def.cosmetics, antiKnight: false }
       : data.def.cosmetics;
-    save({ ...data.def, cosmetics, meta: { ...data.def.meta, creatorElements } });
+    save({ ...data.def, cosmetics, meta: { ...data.def.meta, creatorElements, creatorElementNames } });
     setActiveCatalogElement(null);
+    setElementMenuOpen(false);
     setMessage(`${element.name} removed.`);
+  }
+
+  function renameCatalogElement(element: CatalogElement) {
+    if (!data) return;
+    const currentName = data.def.meta.creatorElementNames?.[element.id] ?? element.name;
+    const nextName = window.prompt("Element name", currentName)?.trim();
+    if (!nextName || nextName === currentName) return;
+    save({ ...data.def, meta: { ...data.def.meta, creatorElementNames: { ...data.def.meta.creatorElementNames, [element.id]: nextName } } });
+    setElementMenuOpen(false);
+    setMessage("Element renamed.");
   }
 
   async function sharePuzzle() {
@@ -525,6 +540,7 @@ export function PuzzleEditorPage() {
   ]);
   const activeCatalog = CATALOG.filter((element) => activeCatalogIds.has(element.id));
   const selectedCatalog = CATALOG.find((element) => element.id === activeCatalogElement) ?? null;
+  const displayElementName = (element: CatalogElement) => data.def.meta.creatorElementNames?.[element.id] ?? element.name;
   const labels: Record<ElementKind, string> = { given: "Given digit", cage: "Killer cage", thermo: "Thermometer", arrow: "Arrow", whisper: "Whisper", renban: "Renban", palindrome: "Palindrome", dot: "Dot", region: "Irregular region", fog: "Fog light" };
   const elements = [
     ...data.def.givens.map((given, index) => ({ key: `given-${index}`, label: labels.given, detail: `${given.v} at ${cellLabel(given.rc)}`, remove: () => removeGiven(index) })),
@@ -558,7 +574,7 @@ export function PuzzleEditorPage() {
         <button className="btn creatorExitButton" onClick={() => startTransition(() => navigate("/creator"))} type="button">Exit</button>
         <nav className="creatorTopTabs" aria-label="Puzzle creator">
           <button className={creatorTab === "file" ? "btn primary" : "btn"} onClick={() => { setCreatorTab("file"); setAuthoringOpen(false); }} type="button">File</button>
-          <button className={creatorTab === "elements" ? "btn primary" : "btn"} onClick={() => { setCreatorTab("elements"); setAuthoringOpen(true); }} type="button">Elements</button>
+          <button className={creatorTab === "elements" ? "btn primary" : "btn"} onClick={() => { setCreatorTab("elements"); setAuthoringOpen(false); }} type="button">Elements</button>
           <button className={creatorTab === "tools" ? "btn primary" : "btn"} onClick={() => { setCreatorTab("tools"); setAuthoringOpen(true); }} type="button">Tools</button>
         </nav>
       </header>
@@ -576,7 +592,12 @@ export function PuzzleEditorPage() {
           </div>
         </div>
       </main> : <>
-      <main className="page puzzlePage creatorPuzzlePage">
+      <main className={"page puzzlePage creatorPuzzlePage" + (creatorTab === "elements" ? " creatorElementsPage" : "")}>
+        <div className="creatorElementsPageLayout">
+          {creatorTab === "elements" ? <div className="creatorActiveElements">
+            <div className="creatorActiveElementStrip">{activeCatalog.map((element) => <div className={activeCatalogElement === element.id ? "creatorActiveElementEntry active" : "creatorActiveElementEntry"} key={element.id}><button className="creatorActiveElement" onClick={() => { setActiveCatalogElement(element.id); setElementMenuOpen(false); if (element.elementKind) { setElementKind(element.elementKind); setAddingElement(true); } setAuthoringOpen(true); }} type="button" title={displayElementName(element)}><span>{element.icon}</span>{displayElementName(element)}</button>{activeCatalogElement === element.id ? <button className="btn creatorElementMoreButton" onClick={() => setElementMenuOpen((open) => !open)} aria-label={`More actions for ${displayElementName(element)}`} type="button">...</button> : null}{activeCatalogElement === element.id && elementMenuOpen ? <div className="creatorElementMoreMenu"><button onClick={() => renameCatalogElement(element)} type="button">Rename</button><button className="danger" onClick={() => removeCatalogElement(element)} type="button">Delete</button></div> : null}</div>)}</div>
+            <button className="btn primary creatorAddElement" onClick={() => setCatalogOpen(true)} type="button" title="Add element">+</button>
+          </div> : null}
         <div className="gridLayout creatorGridLayout">
           <section className="boardColumn">
             <div className="card boardCard">
@@ -601,6 +622,7 @@ export function PuzzleEditorPage() {
           </div>
           </div>
         </div>
+        </div>
       </main>
       </>}
       {testPlay ? <div className="creatorTestNotice creatorFloatingNotice">Test play is isolated from your authored puzzle.</div> : null}
@@ -612,12 +634,8 @@ export function PuzzleEditorPage() {
             <button className="btn" onClick={() => setAuthoringOpen(false)} type="button">Close</button>
           </div>
           </div>
-          <div className="creatorActiveElements">
-            <div className="creatorActiveElementStrip">{activeCatalog.map((element) => <button key={element.id} className={activeCatalogElement === element.id ? "creatorActiveElement active" : "creatorActiveElement"} onClick={() => { setActiveCatalogElement(element.id); if (element.elementKind) { setElementKind(element.elementKind); setAddingElement(true); } }} type="button" title={element.name}><span>{element.icon}</span>{element.name}</button>)}</div>
-            <button className="btn primary creatorAddElement" onClick={() => setCatalogOpen(true)} type="button" title="Add element">+</button>
-          </div>
           <div className="creatorInspectorBody">
-            {selectedCatalog ? <div className="creatorSelectedElement"><div><strong>{selectedCatalog.icon} {selectedCatalog.name}</strong><span>{selectedCatalog.description}</span></div><button className="btn danger" onClick={() => removeCatalogElement(selectedCatalog)} type="button">Remove</button></div> : <div className="muted">Add an element, then tap it here to edit it.</div>}
+            {selectedCatalog ? <div className="creatorSelectedElement"><div><strong>{selectedCatalog.icon} {displayElementName(selectedCatalog)}</strong><span>{selectedCatalog.description}</span></div></div> : <div className="muted">Select an active element above the puzzle to edit it.</div>}
             {addingElement && selectedCatalog?.elementKind ? <>
               {addingElement ? <div className="creatorAddElementForm">
                 <div className="creatorSelection">Editing {selectedCatalog.name}</div>
@@ -629,7 +647,7 @@ export function PuzzleEditorPage() {
                 <div className="creatorHelp">Select cells on the board first. Path elements use the selection order.</div>
               </div> : null}
             </> : null}
-              <div className="creatorElementList">{elements.map((element) => <div className="creatorElementRow" key={element.key}><div><strong>{element.label}</strong><span>{element.detail}</span></div><button className="btn danger" onClick={element.remove} type="button">Remove</button></div>)}</div>
+              {selectedCatalog?.elementKind ? <div className="creatorElementList">{elements.filter((element) => element.label === labels[selectedCatalog.elementKind!]).map((element) => <div className="creatorElementRow" key={element.key}><div><strong>{element.label}</strong><span>{element.detail}</span></div><button className="btn danger" onClick={element.remove} type="button">Remove</button></div>)}</div> : null}
           </div>
           <div className="creatorStatus">{message || `Saved · ${selectionKey(selection) || "no selection"}`}</div>
         </aside>
