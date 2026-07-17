@@ -782,7 +782,7 @@ input.url {
 .creatorWorkspace {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(300px, 370px);
-  height: calc(100dvh - 60px - var(--safe-top));
+  height: 100%;
   min-height: 0;
   gap: 12px;
   padding: 12px;
@@ -920,16 +920,24 @@ input.url {
 }
 
 @media (max-width: 760px) {
-  .creatorEditorTopbar { gap: 8px; }
+  .creatorEditorTopbar {
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: max(6px, var(--safe-top)) 10px 8px;
+  }
+  .creatorEditorIdentity { flex: 1; }
   .creatorEditorIdentity span { display: none; }
-  .creatorEditorActions { gap: 4px; }
+  .creatorEditorActions { width: 100%; margin-left: 0; flex-wrap: wrap; gap: 4px; }
+  .creatorEditorActions .btn { min-height: 34px; padding: 5px 8px; }
   .creatorEditorShell { height: auto; min-height: 100%; overflow: visible; }
   .creatorWorkspace { grid-template-columns: minmax(0, 1fr); height: auto; padding: 8px; overflow: visible; }
-  .creatorBoardArea { height: auto; min-height: 0; padding: 10px; }
+  .creatorBoardArea { height: min(46dvh, 360px); min-height: 0; gap: 6px; padding: 4px; }
+  .creatorBoard { width: min(100%, 420px); padding: 4px; }
   .creatorSidebar { grid-template-rows: auto auto; overflow: visible; }
-  .creatorInspector { height: min(640px, 70dvh); }
+  .creatorControls { order: -1; min-height: 0; height: clamp(210px, 52vw, 290px); max-width: 420px; justify-self: center; }
+  .creatorInspector { height: min(360px, 44dvh); }
   .creatorDigitPad { grid-template-columns: repeat(5, minmax(40px, 1fr)); }
-  .creatorControls { max-width: 390px; justify-self: center; }
 }
 
 .puzzleMetadataCard {

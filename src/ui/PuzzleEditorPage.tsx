@@ -302,6 +302,13 @@ export function PuzzleEditorPage() {
     setMultiSelect((value) => !value);
   }
 
+  function openAuthoringTab(nextTab: EditorTab) {
+    setTab(nextTab);
+    window.requestAnimationFrame(() => {
+      document.querySelector(".creatorInspector")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }
+
   function setCellValue(value: string) {
     if (!data || !selection.length) return;
     if (entryMode === "given") {
@@ -423,15 +430,13 @@ export function PuzzleEditorPage() {
 
   return (
     <div className="shell creatorEditorShell">
-      <header className="creatorEditorTopbar">
+      <header className="topbar creatorEditorTopbar">
         <button className="btn" onClick={() => startTransition(() => navigate("/creator"))} type="button">Back</button>
         <div className="creatorEditorIdentity"><strong>{data.def.meta.title || "Untitled puzzle"}</strong><span>{data.def.rows} x {data.def.cols} · {constraintCount} constraints</span></div>
         <div className="creatorEditorActions">
-          <button className="btn" onClick={testPlay ? undoTest : undoDefinition} disabled={testPlay ? !testHistory.length : !history.length} title={testPlay ? "Undo test entry" : "Undo creator change"} type="button"><IconUndo /></button>
-          <button className="btn" onClick={testPlay ? redoTest : redoDefinition} disabled={testPlay ? !testFuture.length : !future.length} title={testPlay ? "Redo test entry" : "Redo creator change"} type="button"><IconRedo /></button>
           <button className="btn" onClick={() => testPlay ? setTestPlay(false) : beginTestPlay()} type="button">{testPlay ? "Edit" : "Test play"}</button>
-          {!testPlay ? <button className="btn" onClick={() => setTab("constraints")} type="button">Constraints</button> : null}
-          {!testPlay ? <button className="btn" onClick={() => setTab("details")} type="button">Puzzle details</button> : null}
+          {!testPlay ? <button className="btn" onClick={() => openAuthoringTab("constraints")} type="button">Constraints</button> : null}
+          {!testPlay ? <button className="btn" onClick={() => openAuthoringTab("details")} type="button">Puzzle details</button> : null}
           <button className="btn" onClick={exportPuzzle} type="button">Export</button>
           <label className="btn creatorImportButton">Import<input type="file" accept="application/json,.json" onChange={(event) => void importPuzzle(event.target.files?.[0])} /></label>
         </div>
