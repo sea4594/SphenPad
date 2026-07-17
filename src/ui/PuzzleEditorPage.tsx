@@ -21,6 +21,7 @@ type CatalogElement = {
 
 const NOOP = () => {};
 const CHECKABLE_ELEMENT_IDS = new Set(["antiking", "antiknight", "difference-kropki", "ratio-kropki", "thermometers", "dutch-whispers", "palindromes", "renban-lines", "killer-cages"]);
+const VISUAL_EDITOR_IDS = new Set(["even", "odd", "minimum", "maximum", "nonconsecutive", "german-whispers", "entropic-lines", "3-modular-lines", "between-lines", "region-sum-lines", "sequence-lines", "lockout-lines", "cosmetic-lines", "slow-thermometers", "double-arrows", "xv", "clones", "quadruples", "look-and-say-cages", "parity-lines", "cosmetic-cages", "cosmetic-symbols"]);
 
 const CATALOG: CatalogElement[] = [
   ["negative-diagonal", "\\", "Negative diagonal", "Digits cannot repeat along the negative diagonal."],
@@ -390,9 +391,12 @@ export function PuzzleEditorPage() {
     if (!data) return;
     const active = new Set(data.def.meta.creatorElements ?? []);
     active.add(element.id);
-    const cosmetics = element.id === "antiking" ? { ...data.def.cosmetics, antiKing: true }
+    let cosmetics = element.id === "antiking" ? { ...data.def.cosmetics, antiKing: true }
       : element.id === "antiknight" ? { ...data.def.cosmetics, antiKnight: true }
       : data.def.cosmetics;
+    const hasLine = (start: { x: number; y: number }, end: { x: number; y: number }) => (cosmetics.lines ?? []).some((line) => line.wayPoints.length === 2 && line.wayPoints.some((point) => point.x === start.x && point.y === start.y) && line.wayPoints.some((point) => point.x === end.x && point.y === end.y));
+    if (element.id === "negative-diagonal" && !hasLine({ x: 0, y: 0 }, { x: data.def.cols, y: data.def.rows })) cosmetics = { ...cosmetics, lines: [...(cosmetics.lines ?? []), { wayPoints: [{ x: 0, y: 0 }, { x: data.def.cols, y: data.def.rows }], color: "#34bbe6", thickness: 2, target: "overlay" }] };
+    if (element.id === "positive-diagonal" && !hasLine({ x: data.def.cols, y: 0 }, { x: 0, y: data.def.rows })) cosmetics = { ...cosmetics, lines: [...(cosmetics.lines ?? []), { wayPoints: [{ x: data.def.cols, y: 0 }, { x: 0, y: data.def.rows }], color: "#34bbe6", thickness: 2, target: "overlay" }] };
     save({ ...data.def, cosmetics, meta: { ...data.def.meta, creatorElements: Array.from(active) } });
     setCatalogOpen(false);
     setActiveCatalogElement(element.id);
@@ -499,11 +503,11 @@ export function PuzzleEditorPage() {
       return;
     }
     if (elementKind === "cage") updateCosmetics({ ...cosmetics, cages: [...(cosmetics.cages ?? []), { cells, sum: constraintValue.trim() }] });
-    if (elementKind === "thermo") updateCosmetics({ ...cosmetics, thermolines: [...(cosmetics.thermolines ?? []), { path }] });
+    if (elementKind === "thermo") updateCosmetics({ ...cosmetics, thermolines: [...(cosmetics.thermolines ?? []), { path }], lines: [...(cosmetics.lines ?? []), { wayPoints: path.map((cell) => ({ x: cell.c + 0.5, y: cell.r + 0.5 })), color: "#a7a7a7", thickness: 8, target: "underlay" }], underlays: [...(cosmetics.underlays ?? []), { center: { x: path[0].c + 0.5, y: path[0].r + 0.5 }, width: 0.48, height: 0.48, rounded: true, color: "#a7a7a7", target: "underlay" }] });
     if (elementKind === "arrow") updateCosmetics({ ...cosmetics, arrows: [...(cosmetics.arrows ?? []), { bulb: path[0], path }] });
-    if (elementKind === "whisper") updateCosmetics({ ...cosmetics, whispers: [...(cosmetics.whispers ?? []), { path }] });
-    if (elementKind === "renban") updateCosmetics({ ...cosmetics, renbanlines: [...(cosmetics.renbanlines ?? []), { path }] });
-    if (elementKind === "palindrome") updateCosmetics({ ...cosmetics, palindromes: [...(cosmetics.palindromes ?? []), { path }] });
+    if (elementKind === "whisper") updateCosmetics({ ...cosmetics, whispers: [...(cosmetics.whispers ?? []), { path }], lines: [...(cosmetics.lines ?? []), { wayPoints: path.map((cell) => ({ x: cell.c + 0.5, y: cell.r + 0.5 })), color: "#63c7b2", thickness: 7, target: "underlay" }] });
+    if (elementKind === "renban") updateCosmetics({ ...cosmetics, renbanlines: [...(cosmetics.renbanlines ?? []), { path }], lines: [...(cosmetics.lines ?? []), { wayPoints: path.map((cell) => ({ x: cell.c + 0.5, y: cell.r + 0.5 })), color: "#d27ae8", thickness: 7, target: "underlay" }] });
+    if (elementKind === "palindrome") updateCosmetics({ ...cosmetics, palindromes: [...(cosmetics.palindromes ?? []), { path }], lines: [...(cosmetics.lines ?? []), { wayPoints: path.map((cell) => ({ x: cell.c + 0.5, y: cell.r + 0.5 })), color: "#909090", thickness: 6, target: "underlay" }] });
     if (elementKind === "dot" && cells.length === 2) updateCosmetics({ ...cosmetics, dots: [...(cosmetics.dots ?? []), { a: cells[0], b: cells[1], kind: constraintValue === "black" ? "black" : "white" }] });
     if (elementKind === "region") updateCosmetics({ ...cosmetics, irregularRegions: [...(cosmetics.irregularRegions ?? []), { cells }] });
     if (elementKind === "fog") updateCosmetics({ ...cosmetics, fogEnabled: true, fogLights: [...(cosmetics.fogLights ?? []), ...cells] });
@@ -513,6 +517,54 @@ export function PuzzleEditorPage() {
     }
     setAddingElement(false);
     setConstraintValue("");
+  }
+
+  function addVisualElement(element: CatalogElement) {
+    if (!data || !selection.length) return;
+    const cells = selection.map((cell) => ({ ...cell }));
+    const cosmetics = data.def.cosmetics;
+    const makeLine = (color: string, thickness: number, dashArray?: number[]) => ({ wayPoints: cells.map((cell) => ({ x: cell.c + 0.5, y: cell.r + 0.5 })), color, thickness, dashArray, target: "underlay" });
+    if (["german-whispers", "entropic-lines", "3-modular-lines", "between-lines", "region-sum-lines", "sequence-lines", "lockout-lines", "cosmetic-lines", "slow-thermometers", "double-arrows", "parity-lines"].includes(element.id) && cells.length < 2) {
+      setMessage("Select at least two cells for this line.");
+      return;
+    }
+    if (element.id === "even" || element.id === "odd" || element.id === "minimum" || element.id === "maximum") {
+      const markers = cells.map((cell) => element.id === "even"
+        ? { center: { x: cell.c + 0.5, y: cell.r + 0.5 }, width: 0.46, height: 0.46, rounded: false, color: "#a8a8a8", target: "underlay" }
+        : element.id === "odd"
+          ? { center: { x: cell.c + 0.5, y: cell.r + 0.5 }, width: 0.46, height: 0.46, rounded: true, color: "#a8a8a8", target: "underlay" }
+          : { center: { x: cell.c + 0.5, y: cell.r + 0.5 }, width: 0, height: 0, text: element.id === "minimum" ? "<" : ">", textSize: 26, textColor: "#555555", target: "overlay" });
+      updateCosmetics({ ...cosmetics, underlays: [...(cosmetics.underlays ?? []), ...markers.filter((marker) => marker.target === "underlay")], overlays: [...(cosmetics.overlays ?? []), ...markers.filter((marker) => marker.target === "overlay")] });
+    } else if (element.id === "nonconsecutive") {
+      if (cells.length !== 2) { setMessage("Select exactly two adjacent cells."); return; }
+      const a = cells[0]; const b = cells[1];
+      updateCosmetics({ ...cosmetics, overlays: [...(cosmetics.overlays ?? []), { center: { x: (a.c + b.c + 1) / 2, y: (a.r + b.r + 1) / 2 }, width: 0.14, height: 0.42, rounded: true, color: "#666666", target: "overlay", angle: a.r === b.r ? 90 : 0 }] });
+    } else if (element.id === "xv") {
+      if (cells.length !== 2) { setMessage("Select exactly two adjacent cells."); return; }
+      const a = cells[0]; const b = cells[1];
+      updateCosmetics({ ...cosmetics, overlays: [...(cosmetics.overlays ?? []), { center: { x: (a.c + b.c + 1) / 2, y: (a.r + b.r + 1) / 2 }, width: 0, height: 0, text: "X", textSize: 17, textColor: "#333333", target: "overlay" }] });
+    } else if (element.id === "quadruples") {
+      const cell = cells[0];
+      updateCosmetics({ ...cosmetics, overlays: [...(cosmetics.overlays ?? []), { center: { x: cell.c + 0.5, y: cell.r + 0.5 }, width: 0.62, height: 0.62, rounded: true, color: "rgba(255,255,255,0.82)", borderColor: "#444444", borderThickness: 1.3, text: "", target: "overlay" }] });
+    } else if (element.id === "cosmetic-symbols") {
+      updateCosmetics({ ...cosmetics, overlays: [...(cosmetics.overlays ?? []), ...cells.map((cell) => ({ center: { x: cell.c + 0.5, y: cell.r + 0.5 }, width: 0, height: 0, text: "*", textSize: 24, textColor: "#555555", target: "overlay" }))] });
+    } else if (element.id === "clones") {
+      updateCosmetics({ ...cosmetics, underlays: [...(cosmetics.underlays ?? []), ...cells.map((cell) => ({ center: { x: cell.c + 0.5, y: cell.r + 0.5 }, width: 0.84, height: 0.84, rounded: false, color: "rgba(91, 141, 205, 0.17)", borderColor: "#5b8dcd", borderThickness: 1.1, target: "underlay" }))] });
+    } else if (element.id === "cosmetic-cages" || element.id === "look-and-say-cages") {
+      const clue = element.id === "look-and-say-cages" ? window.prompt("Look-and-say clue", "")?.trim() ?? "" : "";
+      updateCosmetics({ ...cosmetics, cages: [...(cosmetics.cages ?? []), { cells, sum: clue, color: "#555555" }] });
+    } else {
+      const styles: Record<string, [string, number, number[]?]> = {
+        "german-whispers": ["#55b36a", 7], "entropic-lines": ["#e777a6", 7], "3-modular-lines": ["#e6a32d", 7], "between-lines": ["#999999", 6], "region-sum-lines": ["#6c83c8", 5], "sequence-lines": ["#5c9da5", 5, [6, 4]], "lockout-lines": ["#525252", 6], "cosmetic-lines": ["#555555", 4], "slow-thermometers": ["#d39b4a", 8], "double-arrows": ["#4f739f", 5], "parity-lines": ["#806cb1", 5, [5, 3]],
+      };
+      const style = styles[element.id];
+      if (style) {
+        const ends = element.id === "double-arrows" ? [cells[0], cells[cells.length - 1]].map((cell) => ({ center: { x: cell.c + 0.5, y: cell.r + 0.5 }, width: 0.5, height: 0.5, rounded: true, color: "#ffffff", borderColor: style[0], borderThickness: 1.5, target: "underlay" })) : [];
+        const bulb = element.id === "slow-thermometers" ? [{ center: { x: cells[0].c + 0.5, y: cells[0].r + 0.5 }, width: 0.48, height: 0.48, rounded: true, color: style[0], target: "underlay" }] : [];
+        updateCosmetics({ ...cosmetics, lines: [...(cosmetics.lines ?? []), makeLine(style[0], style[1], style[2])], underlays: [...(cosmetics.underlays ?? []), ...ends, ...bulb] });
+      }
+    }
+    setAddingElement(false);
   }
 
   function removeElement(kind: ConstraintKind, index: number) {
@@ -622,7 +674,7 @@ export function PuzzleEditorPage() {
       <main className={"page puzzlePage creatorPuzzlePage" + (creatorTab === "elements" ? " creatorElementsPage" : "")}>
         <div className="creatorElementsPageLayout">
           {creatorTab === "elements" ? <div className="creatorActiveElements">
-            <div className="creatorActiveElementStrip">{activeCatalog.map((element) => <div className={activeCatalogElement === element.id ? "creatorActiveElementEntry active" : "creatorActiveElementEntry"} key={element.id}><button className="creatorActiveElement" onClick={() => { setActiveCatalogElement(element.id); setElementMenuOpen(false); if (element.elementKind) { setElementKind(element.elementKind); setAddingElement(true); } setAuthoringOpen(true); }} type="button" title={displayElementName(element)}><span>{element.icon}</span>{displayElementName(element)}</button>{activeCatalogElement === element.id ? <button className="btn creatorElementMoreButton" onClick={() => setElementMenuOpen((open) => !open)} aria-label={`More actions for ${displayElementName(element)}`} type="button">...</button> : null}{activeCatalogElement === element.id && elementMenuOpen ? <div className="creatorElementMoreMenu"><button onClick={() => renameCatalogElement(element)} type="button">Rename</button><button className="danger" onClick={() => removeCatalogElement(element)} type="button">Delete</button></div> : null}</div>)}</div>
+            <div className="creatorActiveElementStrip">{activeCatalog.map((element) => <div className={activeCatalogElement === element.id ? "creatorActiveElementEntry active" : "creatorActiveElementEntry"} key={element.id}><button className="creatorActiveElement" onClick={() => { setActiveCatalogElement(element.id); setElementMenuOpen(false); if (element.elementKind) setElementKind(element.elementKind); setAddingElement(Boolean(element.elementKind || VISUAL_EDITOR_IDS.has(element.id))); setAuthoringOpen(true); }} type="button" title={displayElementName(element)}><span>{element.icon}</span>{displayElementName(element)}</button>{activeCatalogElement === element.id ? <button className="btn creatorElementMoreButton" onClick={() => setElementMenuOpen((open) => !open)} aria-label={`More actions for ${displayElementName(element)}`} type="button">...</button> : null}{activeCatalogElement === element.id && elementMenuOpen ? <div className="creatorElementMoreMenu"><button onClick={() => renameCatalogElement(element)} type="button">Rename</button><button className="danger" onClick={() => removeCatalogElement(element)} type="button">Delete</button></div> : null}</div>)}</div>
             <button className="btn primary creatorAddElement" onClick={() => setCatalogOpen(true)} type="button" title="Add element">+</button>
           </div> : null}
           {creatorTab === "tools" ? <div className="creatorToolStrip"><button className="btn">Clear non-givens</button><button className="btn">Logical step</button><button className="btn">Solve step-by-step</button><button className="btn">Find solutions</button><button className="btn">Check validity</button></div> : null}
@@ -664,14 +716,14 @@ export function PuzzleEditorPage() {
           </div>
           <div className="creatorInspectorBody">
             {selectedCatalog ? <div className="creatorSelectedElement"><div><strong>{selectedCatalog.icon} {displayElementName(selectedCatalog)}</strong><span>{selectedCatalog.description}</span></div>{CHECKABLE_ELEMENT_IDS.has(selectedCatalog.id) ? <label className="creatorToggle"><input type="checkbox" checked={data.def.meta.creatorConstraintChecks?.[selectedCatalog.id] !== false} onChange={(event) => setConstraintChecking(selectedCatalog, event.target.checked)} />Constraint checking</label> : null}</div> : <div className="muted">Select an active element above the puzzle to edit it.</div>}
-            {addingElement && selectedCatalog?.elementKind ? <>
+            {addingElement && selectedCatalog && (selectedCatalog.elementKind || VISUAL_EDITOR_IDS.has(selectedCatalog.id)) ? <>
               {addingElement ? <div className="creatorAddElementForm">
                 <div className="creatorSelection">Editing {selectedCatalog.name}</div>
                 {elementKind === "given" ? <label>Digit or symbol<input className="url" value={constraintValue} onChange={(event) => setConstraintValue(event.target.value)} placeholder="e.g. 5" /></label> : null}
                 {elementKind === "cage" ? <label>Cage sum<input className="url" value={constraintValue} onChange={(event) => setConstraintValue(event.target.value)} placeholder="e.g. 15" /></label> : null}
                 {elementKind === "dot" ? <label>Dot type<select className="url" value={constraintValue} onChange={(event) => setConstraintValue(event.target.value)}><option value="white">White: consecutive</option><option value="black">Black: 1:2 ratio</option></select></label> : null}
                 <div className="creatorSelection">Selected: {selection.length ? selection.map(cellLabel).join(", ") : "none"}</div>
-                <button className="btn primary" onClick={addElement} type="button">Add {labels[elementKind]}</button>
+                <button className="btn primary" onClick={selectedCatalog.elementKind ? addElement : () => addVisualElement(selectedCatalog)} type="button">Add {displayElementName(selectedCatalog)}</button>
                 <div className="creatorHelp">Select cells on the board first. Path elements use the selection order.</div>
               </div> : null}
             </> : null}
