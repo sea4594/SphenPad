@@ -531,6 +531,7 @@ export function PuzzlePage(props: { editor?: boolean }) {
   const [boardReloadNonce, setBoardReloadNonce] = useState(0);
   const [videoPlayerOpen, setVideoPlayerOpen] = useState(false);
   const [videoViewportMode, setVideoViewportMode] = useState<VideoViewportMode>(() => getVideoViewportMode());
+  const [portraitVideoHeight, setPortraitVideoHeight] = useState<number | null>(null);
   const tickRef = useRef<number | null>(null);
   const holdDelayRef = useRef<number | null>(null);
   const holdIntervalRef = useRef<number | null>(null);
@@ -540,12 +541,47 @@ export function PuzzlePage(props: { editor?: boolean }) {
   const redoRef = useRef<() => void>(() => {});
   const metadataRefreshInFlightRef = useRef(new Set<string>());
   const definitionRefreshInFlightRef = useRef(new Set<string>());
+  const gridLayoutRef = useRef<HTMLDivElement | null>(null);
+  const videoResizeRef = useRef<{ pointerId: number; startY: number; startHeight: number } | null>(null);
 
   function blurButtonAfterPointerUp(event: React.PointerEvent<HTMLDivElement>) {
     const target = event.target;
     if (!(target instanceof Element)) return;
     const button = target.closest("button");
     if (button instanceof HTMLButtonElement) button.blur();
+  }
+
+  function startVideoResize(event: React.PointerEvent<HTMLDivElement>) {
+    const gridLayout = gridLayoutRef.current;
+    const video = gridLayout?.querySelector<HTMLElement>(".puzzleGridVideoPlayer");
+    if (!gridLayout || !video) return;
+
+    event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    videoResizeRef.current = {
+      pointerId: event.pointerId,
+      startY: event.clientY,
+      startHeight: video.getBoundingClientRect().height,
+    };
+  }
+
+  function resizeVideo(event: React.PointerEvent<HTMLDivElement>) {
+    const drag = videoResizeRef.current;
+    const gridLayout = gridLayoutRef.current;
+    if (!drag || drag.pointerId !== event.pointerId || !gridLayout) return;
+
+    const controlsHeight = gridLayout.querySelector<HTMLElement>(".kbdPanel")?.getBoundingClientRect().height ?? 0;
+    const videoWidth = gridLayout.querySelector<HTMLElement>(".puzzleGridVideoPlayer")?.getBoundingClientRect().width ?? 0;
+    const minimumVideoHeight = Math.max(112, Math.min(180, videoWidth * (9 / 16)));
+    const maximumVideoHeight = Math.max(minimumVideoHeight, gridLayout.getBoundingClientRect().height - controlsHeight - 138);
+    const nextHeight = Math.min(maximumVideoHeight, Math.max(minimumVideoHeight, drag.startHeight + event.clientY - drag.startY));
+    setPortraitVideoHeight(nextHeight);
+  }
+
+  function stopVideoResize(event: React.PointerEvent<HTMLDivElement>) {
+    if (videoResizeRef.current?.pointerId !== event.pointerId) return;
+    videoResizeRef.current = null;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
   }
 
   function normalizeProgress(progress: PuzzleProgress): PuzzleProgress {
@@ -723,6 +759,10 @@ export function PuzzlePage(props: { editor?: boolean }) {
       window.cancelAnimationFrame(rafA);
       window.cancelAnimationFrame(rafB);
     };
+  }, [videoPlayerOpen, videoViewportMode]);
+
+  useEffect(() => {
+    if (videoViewportMode !== "mobile-portrait" || !videoPlayerOpen) setPortraitVideoHeight(null);
   }, [videoPlayerOpen, videoViewportMode]);
 
   useEffect(() => {
@@ -2015,8 +2055,26 @@ export function PuzzlePage(props: { editor?: boolean }) {
       </div>
 
       <div className="page puzzlePage">
-        <div className="gridLayout">
+        <div
+          className="gridLayout"
+          ref={gridLayoutRef}
+          style={portraitVideoHeight === null ? undefined : ({ "--portrait-video-h": `${portraitVideoHeight}px` } as React.CSSProperties)}
+        >
           {showGridVideoPlayer ? renderVideoPlayer("puzzleGridVideoPlayer") : null}
+          {videoLayoutOn && videoViewportMode === "mobile-portrait" ? (
+            <div
+              className="videoResizeHandle"
+              role="separator"
+              aria-label="Resize puzzle video"
+              aria-orientation="horizontal"
+              onPointerDown={startVideoResize}
+              onPointerMove={resizeVideo}
+              onPointerUp={stopVideoResize}
+              onPointerCancel={stopVideoResize}
+            >
+              <span />
+            </div>
+          ) : null}
           <div className="boardColumn">
             <div className="card boardCard">
               <GridCanvas

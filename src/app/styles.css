@@ -2419,7 +2419,9 @@ input.url {
   }
 
   .videoLayoutOn.videoModeMobilePortrait .gridLayout {
-    grid-template-rows: auto minmax(0, 1fr) var(--mobile-controls-h);
+    --portrait-video-h: calc(100vw * 9 / 16);
+    --video-resize-h: 10px;
+    grid-template-rows: minmax(112px, min(var(--portrait-video-h), calc(100% - var(--mobile-controls-h) - 138px))) var(--video-resize-h) minmax(128px, 1fr) var(--mobile-controls-h);
     --mobile-controls-h: clamp(180px, calc(var(--mobile-controls-h-raw) * 0.84), 41vmax);
   }
 
@@ -2429,15 +2431,36 @@ input.url {
     grid-row: 1;
   }
 
-  .videoLayoutOn.videoModeMobilePortrait .boardColumn {
+  .videoLayoutOn.videoModeMobilePortrait .puzzleVideoFrame {
+    height: 100%;
+    aspect-ratio: auto;
+  }
+
+  .videoResizeHandle {
     grid-column: 1;
     grid-row: 2;
+    display: grid;
+    place-items: center;
+    touch-action: none;
+    cursor: row-resize;
+  }
+
+  .videoResizeHandle span {
+    width: 24px;
+    height: 3px;
+    border-radius: 2px;
+    background: var(--ui-border-strong);
+  }
+
+  .videoLayoutOn.videoModeMobilePortrait .boardColumn {
+    grid-column: 1;
+    grid-row: 3;
     align-content: end;
   }
 
   .videoLayoutOn.videoModeMobilePortrait .kbdPanel {
     grid-column: 1;
-    grid-row: 3;
+    grid-row: 4;
   }
 
   .boardColumn {
@@ -2673,13 +2696,14 @@ input.url {
 
   .videoLayoutOn.videoModeMobileLandscape .gridLayout {
     grid-template-columns: minmax(0, 1fr) minmax(220px, 34vw);
-    grid-template-rows: minmax(0, 1fr) minmax(0, 60%);
+    grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
     gap: 8px;
   }
 
   .videoLayoutOn.videoModeMobileLandscape .boardColumn {
     grid-column: 1;
     grid-row: 1 / span 2;
+    align-self: stretch;
   }
 
   .videoLayoutOn.videoModeMobileLandscape .puzzleGridVideoPlayer {
