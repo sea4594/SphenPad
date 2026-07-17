@@ -718,6 +718,7 @@ export function MainMenu(props: { active?: boolean }) {
     const queryLower = clean(deferredQuery).toLowerCase();
 
     return rows.filter((row) => {
+      if (row.def.meta.creatorPuzzle) return false;
       const rowAuthors = puzzleAuthors(row);
       const rowCollection = puzzleCollection(row);
       const rowConstraints = constraintBulletsByPuzzle.get(row.key) ?? [];

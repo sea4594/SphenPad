@@ -20,6 +20,7 @@ type CatalogElement = {
 };
 
 const NOOP = () => {};
+const CHECKABLE_ELEMENT_IDS = new Set(["antiking", "antiknight", "difference-kropki", "ratio-kropki", "thermometers", "dutch-whispers", "palindromes", "renban-lines", "killer-cages"]);
 
 const CATALOG: CatalogElement[] = [
   ["negative-diagonal", "\\", "Negative diagonal", "Digits cannot repeat along the negative diagonal."],
@@ -177,6 +178,33 @@ function validationMessages(def: PuzzleDefinition) {
     if (!cage.cells.length || !cage.sum?.trim()) messages.push("Every killer cage needs cells and a sum.");
   }
   if (def.cosmetics.irregularRegions?.some((region) => !region.cells.length)) messages.push("An irregular region has no cells.");
+  const checked = (id: string) => def.meta.creatorConstraintChecks?.[id] !== false;
+  const numericValue = (cell: CellRC) => Number(values.get(`${cell.r}:${cell.c}`));
+  const hasValue = (cell: CellRC) => Number.isFinite(numericValue(cell));
+  const pairs = (path: CellRC[]) => path.slice(1).map((cell, index) => [path[index], cell] as const);
+  if (checked("antiking") && def.cosmetics.antiKing) {
+    for (const given of def.givens) for (const dr of [-1, 1]) for (const dc of [-1, 1]) {
+      const other = { r: given.rc.r + dr, c: given.rc.c + dc };
+      if (values.get(`${other.r}:${other.c}`) === given.v) messages.push("Anti-king conflict.");
+    }
+  }
+  if (checked("antiknight") && def.cosmetics.antiKnight) {
+    for (const given of def.givens) for (const [dr, dc] of [[-2, -1], [-2, 1], [-1, -2], [-1, 2], [1, -2], [1, 2], [2, -1], [2, 1]]) {
+      const other = { r: given.rc.r + dr, c: given.rc.c + dc };
+      if (values.get(`${other.r}:${other.c}`) === given.v) messages.push("Anti-knight conflict.");
+    }
+  }
+  if (checked("difference-kropki") || checked("ratio-kropki")) for (const dot of def.cosmetics.dots ?? []) {
+    if (!hasValue(dot.a) || !hasValue(dot.b)) continue;
+    const a = numericValue(dot.a); const b = numericValue(dot.b);
+    if (dot.kind === "white" && checked("difference-kropki") && Math.abs(a - b) !== 1) messages.push("White dot conflict.");
+    if (dot.kind === "black" && checked("ratio-kropki") && Math.max(a, b) !== Math.min(a, b) * 2) messages.push("Black dot conflict.");
+  }
+  if (checked("thermometers")) for (const line of def.cosmetics.thermolines ?? []) for (const [a, b] of pairs(line.path)) if (hasValue(a) && hasValue(b) && numericValue(a) >= numericValue(b)) messages.push("Thermometer conflict.");
+  if (checked("dutch-whispers")) for (const line of def.cosmetics.whispers ?? []) for (const [a, b] of pairs(line.path)) if (hasValue(a) && hasValue(b) && Math.abs(numericValue(a) - numericValue(b)) < 4) messages.push("Dutch whisper conflict.");
+  if (checked("palindromes")) for (const line of def.cosmetics.palindromes ?? []) for (let index = 0; index < Math.floor(line.path.length / 2); index++) { const a = line.path[index]; const b = line.path[line.path.length - 1 - index]; if (hasValue(a) && hasValue(b) && numericValue(a) !== numericValue(b)) messages.push("Palindrome conflict."); }
+  if (checked("renban-lines")) for (const line of def.cosmetics.renbanlines ?? []) { const lineValues = line.path.filter(hasValue).map(numericValue); if (lineValues.length === line.path.length && (new Set(lineValues).size !== lineValues.length || Math.max(...lineValues) - Math.min(...lineValues) !== lineValues.length - 1)) messages.push("Renban conflict."); }
+  if (checked("killer-cages")) for (const cage of def.cosmetics.cages ?? []) { const cageValues = cage.cells.filter(hasValue).map(numericValue); if (new Set(cageValues).size !== cageValues.length) messages.push("Killer cage has repeated digits."); if (cage.sum && cageValues.length === cage.cells.length && cageValues.reduce((sum, value) => sum + value, 0) !== Number(cage.sum)) messages.push("Killer cage sum conflict."); }
   return Array.from(new Set(messages));
 }
 
@@ -368,12 +396,8 @@ export function PuzzleEditorPage() {
     save({ ...data.def, cosmetics, meta: { ...data.def.meta, creatorElements: Array.from(active) } });
     setCatalogOpen(false);
     setActiveCatalogElement(element.id);
-    setAuthoringOpen(true);
-    if (element.elementKind) {
-      setElementKind(element.elementKind);
-      setAddingElement(true);
-    }
-    setMessage(`${element.name} added.`);
+    setAuthoringOpen(false);
+    setAddingElement(false);
   }
 
   function removeCatalogElement(element: CatalogElement) {
@@ -398,6 +422,11 @@ export function PuzzleEditorPage() {
     save({ ...data.def, meta: { ...data.def.meta, creatorElementNames: { ...data.def.meta.creatorElementNames, [element.id]: nextName } } });
     setElementMenuOpen(false);
     setMessage("Element renamed.");
+  }
+
+  function setConstraintChecking(element: CatalogElement, enabled: boolean) {
+    if (!data) return;
+    save({ ...data.def, meta: { ...data.def.meta, creatorConstraintChecks: { ...data.def.meta.creatorConstraintChecks, [element.id]: enabled } } });
   }
 
   async function sharePuzzle() {
@@ -463,7 +492,6 @@ export function PuzzleEditorPage() {
       save({ ...data.def, givens: [...withoutSelection, ...cells.map((rc) => ({ rc, v: value }))] });
       setConstraintValue("");
       setAddingElement(false);
-      setMessage("Given added.");
       return;
     }
     if ((elementKind === "thermo" || elementKind === "arrow" || elementKind === "whisper" || elementKind === "renban" || elementKind === "palindrome") && !path.length) {
@@ -484,7 +512,6 @@ export function PuzzleEditorPage() {
       return;
     }
     setAddingElement(false);
-    setMessage("Element added.");
     setConstraintValue("");
   }
 
@@ -575,7 +602,7 @@ export function PuzzleEditorPage() {
         <nav className="creatorTopTabs" aria-label="Puzzle creator">
           <button className={creatorTab === "file" ? "btn primary" : "btn"} onClick={() => { setCreatorTab("file"); setAuthoringOpen(false); }} type="button">File</button>
           <button className={creatorTab === "elements" ? "btn primary" : "btn"} onClick={() => { setCreatorTab("elements"); setAuthoringOpen(false); }} type="button">Elements</button>
-          <button className={creatorTab === "tools" ? "btn primary" : "btn"} onClick={() => { setCreatorTab("tools"); setAuthoringOpen(true); }} type="button">Tools</button>
+          <button className={creatorTab === "tools" ? "btn primary" : "btn"} onClick={() => { setCreatorTab("tools"); setAuthoringOpen(false); }} type="button">Tools</button>
         </nav>
       </header>
       {creatorTab === "file" ? <main className="page creatorFilePage">
@@ -598,6 +625,7 @@ export function PuzzleEditorPage() {
             <div className="creatorActiveElementStrip">{activeCatalog.map((element) => <div className={activeCatalogElement === element.id ? "creatorActiveElementEntry active" : "creatorActiveElementEntry"} key={element.id}><button className="creatorActiveElement" onClick={() => { setActiveCatalogElement(element.id); setElementMenuOpen(false); if (element.elementKind) { setElementKind(element.elementKind); setAddingElement(true); } setAuthoringOpen(true); }} type="button" title={displayElementName(element)}><span>{element.icon}</span>{displayElementName(element)}</button>{activeCatalogElement === element.id ? <button className="btn creatorElementMoreButton" onClick={() => setElementMenuOpen((open) => !open)} aria-label={`More actions for ${displayElementName(element)}`} type="button">...</button> : null}{activeCatalogElement === element.id && elementMenuOpen ? <div className="creatorElementMoreMenu"><button onClick={() => renameCatalogElement(element)} type="button">Rename</button><button className="danger" onClick={() => removeCatalogElement(element)} type="button">Delete</button></div> : null}</div>)}</div>
             <button className="btn primary creatorAddElement" onClick={() => setCatalogOpen(true)} type="button" title="Add element">+</button>
           </div> : null}
+          {creatorTab === "tools" ? <div className="creatorToolStrip"><button className="btn">Clear non-givens</button><button className="btn">Logical step</button><button className="btn">Solve step-by-step</button><button className="btn">Find solutions</button><button className="btn">Check validity</button></div> : null}
         <div className="gridLayout creatorGridLayout">
           <section className="boardColumn">
             <div className="card boardCard">
@@ -635,7 +663,7 @@ export function PuzzleEditorPage() {
           </div>
           </div>
           <div className="creatorInspectorBody">
-            {selectedCatalog ? <div className="creatorSelectedElement"><div><strong>{selectedCatalog.icon} {displayElementName(selectedCatalog)}</strong><span>{selectedCatalog.description}</span></div></div> : <div className="muted">Select an active element above the puzzle to edit it.</div>}
+            {selectedCatalog ? <div className="creatorSelectedElement"><div><strong>{selectedCatalog.icon} {displayElementName(selectedCatalog)}</strong><span>{selectedCatalog.description}</span></div>{CHECKABLE_ELEMENT_IDS.has(selectedCatalog.id) ? <label className="creatorToggle"><input type="checkbox" checked={data.def.meta.creatorConstraintChecks?.[selectedCatalog.id] !== false} onChange={(event) => setConstraintChecking(selectedCatalog, event.target.checked)} />Constraint checking</label> : null}</div> : <div className="muted">Select an active element above the puzzle to edit it.</div>}
             {addingElement && selectedCatalog?.elementKind ? <>
               {addingElement ? <div className="creatorAddElementForm">
                 <div className="creatorSelection">Editing {selectedCatalog.name}</div>
@@ -653,7 +681,6 @@ export function PuzzleEditorPage() {
         </aside>
       </div> : null}
       {catalogOpen ? <div className="overlayBackdrop creatorCatalogBackdrop" role="dialog" aria-modal="true" aria-label="Add puzzle element"><div className="card creatorCatalog"><div className="creatorOverlayHeader"><div className="creatorInspectorHeading">Add element</div><div className="creatorOverlayActions"><button className="btn" onClick={() => setCatalogOpen(false)} type="button">Close</button></div></div><div className="creatorCatalogList">{CATALOG.map((element) => <button className="creatorCatalogOption" key={element.id} onClick={() => selectCatalogElement(element)} type="button"><span>{element.icon}</span><div><strong>{element.name}</strong><small>{element.description}</small></div></button>)}</div></div></div> : null}
-      {creatorTab === "tools" && authoringOpen ? <div className="overlayBackdrop creatorOverlayBackdrop" role="dialog" aria-modal="true" aria-label="Puzzle tools"><aside className="creatorInspector card"><div className="creatorOverlayHeader"><div className="creatorInspectorHeading">Tools</div><div className="creatorOverlayActions"><button className="btn" onClick={() => setAuthoringOpen(false)} type="button">Close</button></div></div><div className="creatorInspectorBody creatorTools"><button className="btn">Clear all non-given digits and markings</button><button className="btn">Do a single logical step</button><button className="btn">Solve step-by-step</button><button className="btn">Find all solutions and valid candidates</button><button className="btn">Check validity and uniqueness</button><div className="creatorHelp">Automatic solving tools are being prepared for the creator.</div></div></aside></div> : null}
     </div>
   );
 }

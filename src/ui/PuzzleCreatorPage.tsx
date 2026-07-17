@@ -23,6 +23,10 @@ export function PuzzleCreatorPage() {
   const nav = useNavigate();
   const [rows, setRows] = useState<StoredPuzzle[]>([]);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [dimensionsOpen, setDimensionsOpen] = useState(false);
+  const [height, setHeight] = useState(9);
+  const [width, setWidth] = useState(9);
+  const [square, setSquare] = useState(true);
 
   const refresh = async () => setRows((await listPuzzles()).filter((row) => row.def.meta.creatorPuzzle));
   useEffect(() => {
@@ -40,12 +44,12 @@ export function PuzzleCreatorPage() {
     const def: PuzzleDefinition = {
       id: key,
       sourceId: key,
-      size: 9,
-      rows: 9,
-      cols: 9,
+      size: Math.max(height, square ? height : width),
+      rows: height,
+      cols: square ? height : width,
       meta: { creatorPuzzle: true, title: "Untitled puzzle", author: "", rules: "", constraints: [] },
       givens: [],
-      cosmetics: { subgrid: { r: 3, c: 3 } },
+      cosmetics: { subgrid: { r: Math.max(1, Math.min(3, height)), c: Math.max(1, Math.min(3, square ? height : width)) } },
     };
     await upsertPuzzle(key, { def, progress: makeInitialProgress(def), undo: [], redo: [], createdAt: now, updatedAt: now });
     startTransition(() => nav(`/creator/${encodeURIComponent(key)}`));
@@ -65,7 +69,7 @@ export function PuzzleCreatorPage() {
       </div>
       <div className="page">
         <div className="mainMenuWrap">
-          <button className="btn primary creatorEntryButton" onClick={() => void createPuzzle()} type="button">New puzzle</button>
+          <button className="btn primary creatorEntryButton" onClick={() => setDimensionsOpen(true)} type="button">New puzzle</button>
           <div className="card">
             <div className="menuSectionTitle">Your created puzzles</div>
             <div className="menuPuzzleList">
@@ -91,6 +95,7 @@ export function PuzzleCreatorPage() {
           </div>
         </div>
       </div>
+      {dimensionsOpen ? <div className="overlayBackdrop" role="dialog" aria-modal="true" aria-label="Puzzle dimensions"><div className="card creatorDimensionsCard"><div className="creatorDimensionsPreview"><GridCanvas def={{ id: "preview", sourceId: "preview", size: Math.max(height, square ? height : width), rows: height, cols: square ? height : width, meta: {}, givens: [], cosmetics: { subgrid: { r: Math.max(1, Math.min(3, height)), c: Math.max(1, Math.min(3, square ? height : width)) } } }} progress={makeInitialProgress({ id: "preview", sourceId: "preview", size: Math.max(height, square ? height : width), rows: height, cols: square ? height : width, meta: {}, givens: [], cosmetics: { subgrid: { r: Math.max(1, Math.min(3, height)), c: Math.max(1, Math.min(3, square ? height : width)) } } })} onSelection={NOOP} onLineStroke={NOOP} onLineTapCell={NOOP} onLineTapEdge={NOOP} onDoubleCell={NOOP} interactive={false} /></div><div className="creatorDimensionFields"><label>Height <output>{height}</output><input type="range" min="1" max="16" value={height} onChange={(event) => setHeight(Number(event.target.value))} /></label>{!square ? <label>Width <output>{width}</output><input type="range" min="1" max="16" value={width} onChange={(event) => setWidth(Number(event.target.value))} /></label> : null}<label className="creatorToggle"><input type="checkbox" checked={square} onChange={(event) => { setSquare(event.target.checked); if (event.target.checked) setWidth(height); }} />Square</label></div><button className="btn primary creatorDimensionConfirm" onClick={() => void createPuzzle()} type="button">OK</button><button className="btn" onClick={() => setDimensionsOpen(false)} type="button">Cancel</button></div></div> : null}
       {settingsOpen ? <SettingsOverlay onClose={() => setSettingsOpen(false)} /> : null}
     </div>
   );

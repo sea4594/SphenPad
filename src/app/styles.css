@@ -724,6 +724,39 @@ input.url {
   justify-content: space-between;
 }
 
+.creatorDimensionsCard {
+  display: grid;
+  width: min(520px, 100%);
+  max-height: calc(100dvh - 32px);
+  gap: 14px;
+  overflow: auto;
+}
+
+.creatorDimensionsPreview {
+  display: grid;
+  width: min(100%, 360px);
+  aspect-ratio: 1;
+  place-self: center;
+  place-items: center;
+  border: 1px solid var(--ui-border);
+  background: #fff;
+}
+
+.creatorDimensionFields {
+  display: grid;
+  gap: 12px;
+}
+
+.creatorDimensionFields label:not(.creatorToggle) {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 6px 10px;
+  align-items: center;
+}
+
+.creatorDimensionFields input[type="range"] { grid-column: 1 / -1; }
+.creatorDimensionConfirm { min-height: 48px; font-size: 18px; }
+
 .creatorEditorShell {
   height: 100%;
   min-height: 0;
@@ -945,6 +978,17 @@ input.url {
   min-height: 0;
   overflow: hidden;
 }
+
+.creatorToolStrip {
+  display: flex;
+  gap: 6px;
+  min-width: 0;
+  overflow-x: auto;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--ui-border);
+}
+
+.creatorToolStrip .btn { flex: 0 0 auto; }
 
 .creatorElementsPageLayout .creatorGridLayout {
   height: auto;

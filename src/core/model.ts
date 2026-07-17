@@ -39,6 +39,7 @@ export type PuzzleMeta = {
   // solving or rendering support has not been implemented yet.
   creatorElements?: string[];
   creatorElementNames?: Record<string, string>;
+  creatorConstraintChecks?: Record<string, boolean>;
   title?: string;
   author?: string;
   collection?: string;
