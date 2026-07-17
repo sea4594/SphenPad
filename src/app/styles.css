@@ -725,8 +725,10 @@ input.url {
 }
 
 .creatorEditorShell {
-  min-height: 100%;
+  height: 100%;
+  min-height: 0;
   background: var(--bg);
+  overflow: hidden;
 }
 
 .creatorLoading {
@@ -779,11 +781,12 @@ input.url {
 
 .creatorWorkspace {
   display: grid;
-  grid-template-columns: minmax(320px, 1fr) minmax(280px, 390px) minmax(300px, 360px);
-  min-height: calc(100vh - 60px);
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 370px);
+  height: calc(100dvh - 60px - var(--safe-top));
+  min-height: 0;
   gap: 12px;
   padding: 12px;
-  overflow: auto;
+  overflow: hidden;
 }
 
 .creatorBoardArea {
@@ -791,7 +794,7 @@ input.url {
   grid-template-rows: auto minmax(0, 1fr) auto;
   justify-items: center;
   gap: 14px;
-  min-height: 0;
+  height: 100%;
   padding: 6px;
 }
 
@@ -814,11 +817,14 @@ input.url {
   display: grid;
   width: min(100%, 720px);
   place-items: center;
-  padding: 12px;
+  min-height: 0;
+  max-height: 100%;
+  padding: 6px;
 }
 
 .creatorBoard .boardSurface {
   max-width: 100%;
+  max-height: 100%;
 }
 
 .creatorDigitPad {
@@ -829,14 +835,22 @@ input.url {
 
 .creatorControls {
   width: 100%;
-  min-height: 370px;
-  align-self: center;
+  min-height: 340px;
+  align-self: stretch;
+}
+
+.creatorSidebar {
+  display: grid;
+  grid-template-rows: minmax(260px, 1fr) minmax(340px, 1.25fr);
+  min-height: 0;
+  gap: 12px;
+  overflow: auto;
 }
 
 .creatorInspector {
   display: grid;
   grid-template-rows: auto auto minmax(0, 1fr) auto;
-  height: min(760px, calc(100dvh - 84px));
+  height: auto;
   min-height: 0;
   align-self: start;
 }
@@ -909,9 +923,11 @@ input.url {
   .creatorEditorTopbar { gap: 8px; }
   .creatorEditorIdentity span { display: none; }
   .creatorEditorActions { gap: 4px; }
-  .creatorWorkspace { grid-template-columns: minmax(0, 1fr); padding: 8px; overflow: visible; }
-  .creatorBoardArea { padding: 10px; }
-  .creatorInspector { order: -1; height: min(640px, 70dvh); }
+  .creatorEditorShell { height: auto; min-height: 100%; overflow: visible; }
+  .creatorWorkspace { grid-template-columns: minmax(0, 1fr); height: auto; padding: 8px; overflow: visible; }
+  .creatorBoardArea { height: auto; min-height: 0; padding: 10px; }
+  .creatorSidebar { grid-template-rows: auto auto; overflow: visible; }
+  .creatorInspector { height: min(640px, 70dvh); }
   .creatorDigitPad { grid-template-columns: repeat(5, minmax(40px, 1fr)); }
   .creatorControls { max-width: 390px; justify-self: center; }
 }
