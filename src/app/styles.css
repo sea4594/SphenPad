@@ -911,6 +911,60 @@ input.url {
   background: var(--panel-soft);
 }
 
+.creatorElementsHeading,
+.creatorElementRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.creatorElementsHeading {
+  justify-content: space-between;
+}
+
+.creatorAddElement {
+  width: 34px;
+  min-width: 34px;
+  min-height: 34px;
+  padding: 0;
+  font-size: 21px;
+  line-height: 1;
+}
+
+.creatorAddElementForm {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--ui-border);
+  background: var(--panel-soft);
+}
+
+.creatorElementList {
+  display: grid;
+  gap: 7px;
+}
+
+.creatorElementRow {
+  justify-content: space-between;
+  padding: 9px 10px;
+  border: 1px solid var(--ui-border);
+  background: var(--panel-soft);
+}
+
+.creatorElementRow > div {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.creatorElementRow span {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .creatorValidation.valid { color: #3d9462; }
 .creatorValidation.invalid { color: var(--danger); }
 .creatorStatus {

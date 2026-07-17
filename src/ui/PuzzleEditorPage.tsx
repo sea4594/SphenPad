@@ -7,8 +7,9 @@ import { GridCanvas } from "./GridCanvas";
 import { Keyboard } from "./Keyboard";
 import { IconRedo, IconSelectMode, IconToolBig, IconToolCenter, IconToolCorner, IconToolHighlight, IconToolLine, IconUndo } from "./icons";
 
-type EditorTab = "setup" | "clues" | "constraints" | "details";
-type ConstraintKind = "cage" | "thermo" | "arrow" | "whisper" | "renban" | "palindrome" | "dot" | "region" | "fog";
+type EditorTab = "setup" | "elements" | "details";
+type ElementKind = "given" | "cage" | "thermo" | "arrow" | "whisper" | "renban" | "palindrome" | "dot" | "region" | "fog";
+type ConstraintKind = Exclude<ElementKind, "given">;
 
 const NOOP = () => {};
 
@@ -18,6 +19,10 @@ function sameCell(a: CellRC, b: CellRC) {
 
 function selectionKey(selection: CellRC[]) {
   return selection.map((cell) => `${cell.r}:${cell.c}`).sort().join(",");
+}
+
+function cellLabel(cell: CellRC) {
+  return `R${cell.r + 1}C${cell.c + 1}`;
 }
 
 function parseGrid(text: string, rows: number, cols: number): string[] | null {
@@ -123,10 +128,11 @@ export function PuzzleEditorPage() {
   const [data, setData] = useState<PersistedPuzzle | null>(null);
   const [selection, setSelection] = useState<CellRC[]>([{ r: 0, c: 0 }]);
   const [multiSelect, setMultiSelect] = useState(false);
-  const [tab, setTab] = useState<EditorTab>("clues");
-  const [entryMode, setEntryMode] = useState<"given" | "solution">("given");
-  const [constraintKind, setConstraintKind] = useState<ConstraintKind>("cage");
+  const [tab, setTab] = useState<EditorTab>("elements");
+  const [entryMode] = useState<"given" | "solution">("solution");
+  const [elementKind, setElementKind] = useState<ElementKind>("given");
   const [constraintValue, setConstraintValue] = useState("");
+  const [addingElement, setAddingElement] = useState(false);
   const [message, setMessage] = useState("");
   const [testPlay, setTestPlay] = useState(false);
   const [history, setHistory] = useState<PuzzleDefinition[]>([]);
@@ -134,7 +140,6 @@ export function PuzzleEditorPage() {
   const [testProgress, setTestProgress] = useState<PuzzleProgress | null>(null);
   const [testHistory, setTestHistory] = useState<PuzzleProgress[]>([]);
   const [testFuture, setTestFuture] = useState<PuzzleProgress[]>([]);
-  const [givenText, setGivenText] = useState("");
   const [solutionText, setSolutionText] = useState("");
   const [editorTool, setEditorTool] = useState<PuzzleProgress["activeTool"]>("value");
   const [editorAlphabetMode, setEditorAlphabetMode] = useState(false);
@@ -171,7 +176,6 @@ export function PuzzleEditorPage() {
 
   useEffect(() => {
     if (!data) return;
-    setGivenText(formatGrid(data.def, "givens"));
     setSolutionText(formatGrid(data.def, "solution"));
   }, [data]);
 
@@ -338,40 +342,64 @@ export function PuzzleEditorPage() {
     setMessage(`${source === "givens" ? "Givens" : "Solution"} applied.`);
   }
 
-  function addConstraint() {
+  function addElement() {
     if (!data || !selection.length) return;
     const cosmetics = data.def.cosmetics;
     const cells = selection.map((cell) => ({ ...cell }));
     const path = cells.length > 1 ? cells : [];
-    if ((constraintKind === "thermo" || constraintKind === "arrow" || constraintKind === "whisper" || constraintKind === "renban" || constraintKind === "palindrome") && !path.length) {
+    if (elementKind === "given") {
+      const value = constraintValue.trim();
+      if (!value) {
+        setMessage("Enter a given digit or symbol.");
+        return;
+      }
+      const withoutSelection = data.def.givens.filter((given) => !selection.some((cell) => sameCell(cell, given.rc)));
+      save({ ...data.def, givens: [...withoutSelection, ...cells.map((rc) => ({ rc, v: value }))] });
+      setConstraintValue("");
+      setAddingElement(false);
+      setMessage("Given added.");
+      return;
+    }
+    if ((elementKind === "thermo" || elementKind === "arrow" || elementKind === "whisper" || elementKind === "renban" || elementKind === "palindrome") && !path.length) {
       setMessage("Select at least two cells for a path constraint.");
       return;
     }
-    if (constraintKind === "cage") updateCosmetics({ ...cosmetics, cages: [...(cosmetics.cages ?? []), { cells, sum: constraintValue.trim() }] });
-    if (constraintKind === "thermo") updateCosmetics({ ...cosmetics, thermolines: [...(cosmetics.thermolines ?? []), { path }] });
-    if (constraintKind === "arrow") updateCosmetics({ ...cosmetics, arrows: [...(cosmetics.arrows ?? []), { bulb: path[0], path }] });
-    if (constraintKind === "whisper") updateCosmetics({ ...cosmetics, whispers: [...(cosmetics.whispers ?? []), { path }] });
-    if (constraintKind === "renban") updateCosmetics({ ...cosmetics, renbanlines: [...(cosmetics.renbanlines ?? []), { path }] });
-    if (constraintKind === "palindrome") updateCosmetics({ ...cosmetics, palindromes: [...(cosmetics.palindromes ?? []), { path }] });
-    if (constraintKind === "dot" && cells.length === 2) updateCosmetics({ ...cosmetics, dots: [...(cosmetics.dots ?? []), { a: cells[0], b: cells[1], kind: constraintValue === "black" ? "black" : "white" }] });
-    if (constraintKind === "region") updateCosmetics({ ...cosmetics, irregularRegions: [...(cosmetics.irregularRegions ?? []), { cells }] });
-    if (constraintKind === "fog") updateCosmetics({ ...cosmetics, fogEnabled: true, fogLights: [...(cosmetics.fogLights ?? []), ...cells] });
-    if (constraintKind === "dot" && cells.length !== 2) setMessage("Select exactly two cells for a dot.");
-    else setMessage("Constraint added.");
+    if (elementKind === "cage") updateCosmetics({ ...cosmetics, cages: [...(cosmetics.cages ?? []), { cells, sum: constraintValue.trim() }] });
+    if (elementKind === "thermo") updateCosmetics({ ...cosmetics, thermolines: [...(cosmetics.thermolines ?? []), { path }] });
+    if (elementKind === "arrow") updateCosmetics({ ...cosmetics, arrows: [...(cosmetics.arrows ?? []), { bulb: path[0], path }] });
+    if (elementKind === "whisper") updateCosmetics({ ...cosmetics, whispers: [...(cosmetics.whispers ?? []), { path }] });
+    if (elementKind === "renban") updateCosmetics({ ...cosmetics, renbanlines: [...(cosmetics.renbanlines ?? []), { path }] });
+    if (elementKind === "palindrome") updateCosmetics({ ...cosmetics, palindromes: [...(cosmetics.palindromes ?? []), { path }] });
+    if (elementKind === "dot" && cells.length === 2) updateCosmetics({ ...cosmetics, dots: [...(cosmetics.dots ?? []), { a: cells[0], b: cells[1], kind: constraintValue === "black" ? "black" : "white" }] });
+    if (elementKind === "region") updateCosmetics({ ...cosmetics, irregularRegions: [...(cosmetics.irregularRegions ?? []), { cells }] });
+    if (elementKind === "fog") updateCosmetics({ ...cosmetics, fogEnabled: true, fogLights: [...(cosmetics.fogLights ?? []), ...cells] });
+    if (elementKind === "dot" && cells.length !== 2) {
+      setMessage("Select exactly two cells for a dot.");
+      return;
+    }
+    setAddingElement(false);
+    setMessage("Element added.");
     setConstraintValue("");
   }
 
-  function removeLastConstraint() {
+  function removeElement(kind: ConstraintKind, index: number) {
     if (!data) return;
     const cosmetics = data.def.cosmetics;
     const removal: Record<ConstraintKind, keyof PuzzleCosmetics> = {
       cage: "cages", thermo: "thermolines", arrow: "arrows", whisper: "whispers", renban: "renbanlines", palindrome: "palindromes", dot: "dots", region: "irregularRegions", fog: "fogLights",
     };
-    const field = removal[constraintKind];
+    const field = removal[kind];
     const current = cosmetics[field];
-    if (!Array.isArray(current) || !current.length) return;
-    updateCosmetics({ ...cosmetics, [field]: current.slice(0, -1) });
-    setMessage("Last constraint removed.");
+    if (!Array.isArray(current) || !current[index]) return;
+    const remaining = current.filter((_, itemIndex) => itemIndex !== index);
+    updateCosmetics({ ...cosmetics, [field]: remaining, ...(kind === "fog" && !remaining.length ? { fogEnabled: false } : {}) });
+    setMessage("Element removed.");
+  }
+
+  function removeGiven(index: number) {
+    if (!data) return;
+    save({ ...data.def, givens: data.def.givens.filter((_, givenIndex) => givenIndex !== index) });
+    setMessage("Given removed.");
   }
 
   function resize(rows: number, cols: number) {
@@ -413,7 +441,19 @@ export function PuzzleEditorPage() {
   if (!data || !progress) return <div className="shell creatorEditorShell"><div className="creatorLoading">{message || "Opening puzzle creator..."}</div></div>;
 
   const constraintCount = Object.values(data.def.cosmetics).filter(Array.isArray).reduce((total, item) => total + item.length, 0);
-  const labels: Record<ConstraintKind, string> = { cage: "Killer cage", thermo: "Thermometer", arrow: "Arrow", whisper: "Whisper", renban: "Renban", palindrome: "Palindrome", dot: "Dot", region: "Irregular region", fog: "Fog light" };
+  const labels: Record<ElementKind, string> = { given: "Given digit", cage: "Killer cage", thermo: "Thermometer", arrow: "Arrow", whisper: "Whisper", renban: "Renban", palindrome: "Palindrome", dot: "Dot", region: "Irregular region", fog: "Fog light" };
+  const elements = [
+    ...data.def.givens.map((given, index) => ({ key: `given-${index}`, label: labels.given, detail: `${given.v} at ${cellLabel(given.rc)}`, remove: () => removeGiven(index) })),
+    ...(data.def.cosmetics.cages ?? []).map((cage, index) => ({ key: `cage-${index}`, label: labels.cage, detail: `${cage.sum || "No sum"} · ${cage.cells.map(cellLabel).join(", ")}`, remove: () => removeElement("cage", index) })),
+    ...(data.def.cosmetics.thermolines ?? []).map((line, index) => ({ key: `thermo-${index}`, label: labels.thermo, detail: line.path.map(cellLabel).join(" → "), remove: () => removeElement("thermo", index) })),
+    ...(data.def.cosmetics.arrows ?? []).map((arrow, index) => ({ key: `arrow-${index}`, label: labels.arrow, detail: (arrow.path ?? []).map(cellLabel).join(" → "), remove: () => removeElement("arrow", index) })),
+    ...(data.def.cosmetics.whispers ?? []).map((line, index) => ({ key: `whisper-${index}`, label: labels.whisper, detail: line.path.map(cellLabel).join(" → "), remove: () => removeElement("whisper", index) })),
+    ...(data.def.cosmetics.renbanlines ?? []).map((line, index) => ({ key: `renban-${index}`, label: labels.renban, detail: line.path.map(cellLabel).join(" → "), remove: () => removeElement("renban", index) })),
+    ...(data.def.cosmetics.palindromes ?? []).map((line, index) => ({ key: `palindrome-${index}`, label: labels.palindrome, detail: line.path.map(cellLabel).join(" → "), remove: () => removeElement("palindrome", index) })),
+    ...(data.def.cosmetics.dots ?? []).map((dot, index) => ({ key: `dot-${index}`, label: `${dot.kind === "black" ? "Black" : "White"} ${labels.dot}`, detail: `${cellLabel(dot.a)} · ${cellLabel(dot.b)}`, remove: () => removeElement("dot", index) })),
+    ...(data.def.cosmetics.irregularRegions ?? []).map((region, index) => ({ key: `region-${index}`, label: labels.region, detail: region.cells.map(cellLabel).join(", "), remove: () => removeElement("region", index) })),
+    ...(data.def.cosmetics.fogLights ?? []).map((cell, index) => ({ key: `fog-${index}`, label: labels.fog, detail: cellLabel(cell), remove: () => removeElement("fog", index) })),
+  ];
   const displayedProgress = testPlay ? testProgress ?? makeInitialProgress(data.def) : progress;
   const controlProgress: PuzzleProgress = testPlay
     ? displayedProgress
@@ -435,7 +475,7 @@ export function PuzzleEditorPage() {
         <div className="creatorEditorIdentity"><strong>{data.def.meta.title || "Untitled puzzle"}</strong><span>{data.def.rows} x {data.def.cols} · {constraintCount} constraints</span></div>
         <div className="creatorEditorActions">
           <button className="btn" onClick={() => testPlay ? setTestPlay(false) : beginTestPlay()} type="button">{testPlay ? "Edit" : "Test play"}</button>
-          {!testPlay ? <button className="btn" onClick={() => openAuthoringTab("constraints")} type="button">Constraints</button> : null}
+          {!testPlay ? <button className="btn" onClick={() => openAuthoringTab("elements")} type="button">Elements</button> : null}
           {!testPlay ? <button className="btn" onClick={() => openAuthoringTab("details")} type="button">Puzzle details</button> : null}
           <button className="btn" onClick={exportPuzzle} type="button">Export</button>
           <label className="btn creatorImportButton">Import<input type="file" accept="application/json,.json" onChange={(event) => void importPuzzle(event.target.files?.[0])} /></label>
@@ -444,8 +484,8 @@ export function PuzzleEditorPage() {
       <main className="creatorWorkspace">
         <section className="creatorBoardArea">
           <div className="creatorModeBar">
-            <span>{testPlay ? "Test preview" : `${entryMode === "given" ? "Given" : "Solution"} entry`}</span>
-            {!testPlay ? <><button className={entryMode === "given" ? "btn primary" : "btn"} onClick={() => setEntryMode("given")} type="button">Givens</button><button className={entryMode === "solution" ? "btn primary" : "btn"} onClick={() => setEntryMode("solution")} type="button">Solution</button></> : <button className="btn" onClick={beginTestPlay} type="button">Reset test</button>}
+            <span>{testPlay ? "Test preview" : "Solution entry"}</span>
+            {testPlay ? <button className="btn" onClick={beginTestPlay} type="button">Reset test</button> : null}
           </div>
           <div className="creatorBoard card">
             <GridCanvas def={data.def} progress={controlProgress} onSelection={testPlay ? (next) => setTestProgress((current) => current ? { ...current, selection: next } : current) : setSelection} onLineStroke={NOOP} onLineTapCell={NOOP} onLineTapEdge={NOOP} onDoubleCell={NOOP} />
@@ -455,7 +495,7 @@ export function PuzzleEditorPage() {
         <div className="creatorSidebar">
           <aside className="creatorInspector card">
           <div className="creatorInspectorHeading">Create puzzle</div>
-          <div className="creatorTabs">{(["setup", "clues", "constraints", "details"] as EditorTab[]).map((nextTab) => <button key={nextTab} className={tab === nextTab ? "btn primary" : "btn"} onClick={() => setTab(nextTab)} type="button">{nextTab === "details" ? "Puzzle details" : nextTab}</button>)}</div>
+          <div className="creatorTabs">{(["setup", "elements", "details"] as EditorTab[]).map((nextTab) => <button key={nextTab} className={tab === nextTab ? "btn primary" : "btn"} onClick={() => setTab(nextTab)} type="button">{nextTab === "details" ? "Puzzle details" : nextTab}</button>)}</div>
           <div className="creatorInspectorBody">
             {tab === "setup" ? <>
               <label>Rows<input className="url" type="number" min="1" value={data.def.rows} onChange={(event) => resize(Number(event.target.value), data.def.cols)} /></label>
@@ -466,23 +506,25 @@ export function PuzzleEditorPage() {
               <label className="creatorToggle"><input type="checkbox" checked={Boolean(data.def.cosmetics.antiKing)} onChange={(event) => updateCosmetics({ ...data.def.cosmetics, antiKing: event.target.checked })} />Anti-king</label>
               <label className="creatorToggle"><input type="checkbox" checked={data.def.cosmetics.conflictChecker !== false} onChange={(event) => updateCosmetics({ ...data.def.cosmetics, conflictChecker: event.target.checked })} />Conflict checker</label>
             </> : null}
-            {tab === "clues" ? <>
-              <div className="creatorSelection">Selected: {selection.length ? selection.map((cell) => `R${cell.r + 1}C${cell.c + 1}`).join(", ") : "none"}</div>
-              <label>Paste givens<textarea className="url creatorGridInput" value={givenText} onChange={(event) => setGivenText(event.target.value)} onBlur={(event) => pasteGrid(event.target.value, "givens")} /></label>
-              <label>Paste solution<textarea className="url creatorGridInput" value={solutionText} onChange={(event) => setSolutionText(event.target.value)} onBlur={(event) => pasteGrid(event.target.value, "solution")} /></label>
-            </> : null}
-            {tab === "constraints" ? <>
-              <label>Constraint<select className="url" value={constraintKind} onChange={(event) => setConstraintKind(event.target.value as ConstraintKind)}>{Object.entries(labels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
-              {constraintKind === "cage" ? <label>Cage sum<input className="url" value={constraintValue} onChange={(event) => setConstraintValue(event.target.value)} placeholder="e.g. 15" /></label> : null}
-              {constraintKind === "dot" ? <label>Dot type<select className="url" value={constraintValue} onChange={(event) => setConstraintValue(event.target.value)}><option value="white">White: consecutive</option><option value="black">Black: 1:2 ratio</option></select></label> : null}
-              <button className="btn primary" onClick={addConstraint} type="button">Add {labels[constraintKind]}</button>
-              <button className="btn danger" onClick={removeLastConstraint} type="button">Remove last {labels[constraintKind]}</button>
-              <div className="creatorHelp">Select cells on the board first. Path constraints use the selection order.</div>
+            {tab === "elements" ? <>
+              <div className="creatorElementsHeading"><strong>Elements</strong><button className="btn primary creatorAddElement" onClick={() => setAddingElement((open) => !open)} aria-expanded={addingElement} type="button" title="Add element">+</button></div>
+              {addingElement ? <div className="creatorAddElementForm">
+                <label>Element<select className="url" value={elementKind} onChange={(event) => setElementKind(event.target.value as ElementKind)}>{Object.entries(labels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+                {elementKind === "given" ? <label>Digit or symbol<input className="url" value={constraintValue} onChange={(event) => setConstraintValue(event.target.value)} placeholder="e.g. 5" /></label> : null}
+                {elementKind === "cage" ? <label>Cage sum<input className="url" value={constraintValue} onChange={(event) => setConstraintValue(event.target.value)} placeholder="e.g. 15" /></label> : null}
+                {elementKind === "dot" ? <label>Dot type<select className="url" value={constraintValue} onChange={(event) => setConstraintValue(event.target.value)}><option value="white">White: consecutive</option><option value="black">Black: 1:2 ratio</option></select></label> : null}
+                <div className="creatorSelection">Selected: {selection.length ? selection.map(cellLabel).join(", ") : "none"}</div>
+                <button className="btn primary" onClick={addElement} type="button">Add {labels[elementKind]}</button>
+                <div className="creatorHelp">Select cells on the board first. Path elements use the selection order.</div>
+              </div> : null}
+              <div className="creatorElementList">{elements.map((element) => <div className="creatorElementRow" key={element.key}><div><strong>{element.label}</strong><span>{element.detail}</span></div><button className="btn danger" onClick={element.remove} type="button">Remove</button></div>)}</div>
+              {!elements.length ? <div className="muted">No elements yet. Use + to add a given or constraint.</div> : null}
             </> : null}
             {tab === "details" ? <>
               <label>Title<input className="url" value={data.def.meta.title ?? ""} onChange={(event) => save({ ...data.def, meta: { ...data.def.meta, title: event.target.value } })} /></label>
               <label>Author<input className="url" value={data.def.meta.author ?? ""} onChange={(event) => save({ ...data.def, meta: { ...data.def.meta, author: event.target.value } })} /></label>
               <label>Rules<textarea className="url creatorRulesInput" value={data.def.meta.rules ?? ""} onChange={(event) => save({ ...data.def, meta: { ...data.def.meta, rules: event.target.value } })} /></label>
+              <label>Paste solution<textarea className="url creatorGridInput" value={solutionText} onChange={(event) => setSolutionText(event.target.value)} onBlur={(event) => pasteGrid(event.target.value, "solution")} /></label>
               <div className={validation.length ? "creatorValidation invalid" : "creatorValidation valid"}>{validation.length ? validation.map((item) => <div key={item}>{item}</div>) : "Puzzle structure looks valid."}</div>
             </> : null}
           </div>
