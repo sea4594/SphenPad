@@ -574,7 +574,16 @@ export function PuzzlePage(props: { editor?: boolean }) {
 
     const controlsHeight = gridLayout.querySelector<HTMLElement>(".kbdPanel")?.getBoundingClientRect().height ?? 0;
     const videoWidth = gridLayout.querySelector<HTMLElement>(".puzzleGridVideoPlayer")?.getBoundingClientRect().width ?? 0;
-    const minimumVideoHeight = Math.max(56, videoWidth * (9 / 16) * 0.25);
+    const boardSurface = gridLayout.querySelector<HTMLElement>(".boardSurface");
+    const boardCanvas = boardSurface?.querySelector<HTMLCanvasElement>("canvas");
+    const puzzleHeightAtMaximumSize = boardSurface && boardCanvas && boardCanvas.clientWidth > 0
+      ? boardSurface.clientWidth * (boardCanvas.clientHeight / boardCanvas.clientWidth)
+      : 0;
+    const minimumVideoHeight = Math.max(
+      56,
+      videoWidth * (9 / 16) * 0.25,
+      gridLayout.getBoundingClientRect().height - controlsHeight - 10 - puzzleHeightAtMaximumSize
+    );
     const availableVideoHeight = gridLayout.getBoundingClientRect().height - controlsHeight - 138;
     const maximumVideoHeight = Math.max(minimumVideoHeight, Math.min(videoWidth * (9 / 16), availableVideoHeight));
     const nextHeight = Math.min(maximumVideoHeight, Math.max(minimumVideoHeight, drag.startHeight + event.clientY - drag.startY));
