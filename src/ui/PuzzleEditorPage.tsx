@@ -1,9 +1,11 @@
 import { startTransition, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { getPuzzle, upsertPuzzle } from "../core/storage";
-import type { CellRC, PersistedPuzzle, PuzzleCosmetics, PuzzleDefinition } from "../core/model";
+import type { CellRC, PersistedPuzzle, PuzzleCosmetics, PuzzleDefinition, PuzzleProgress } from "../core/model";
 import { makeInitialProgress } from "../core/scl";
 import { GridCanvas } from "./GridCanvas";
+import { Keyboard } from "./Keyboard";
+import { IconRedo, IconSelectMode, IconUndo } from "./icons";
 
 type EditorTab = "setup" | "clues" | "constraints" | "details";
 type ConstraintKind = "cage" | "thermo" | "arrow" | "whisper" | "renban" | "palindrome" | "dot" | "region" | "fog";
@@ -35,14 +37,71 @@ function formatGrid(def: PuzzleDefinition, source: "givens" | "solution") {
   return Array.from({ length: def.rows }, (_, row) => Array.from({ length: def.cols }, (_, col) => byCell.get(`${row}:${col}`) || ".").join("")).join("\n");
 }
 
+function isInBounds(cell: CellRC, rows: number, cols: number) {
+  return cell.r >= 0 && cell.c >= 0 && cell.r < rows && cell.c < cols;
+}
+
+function sanitizeDefinition(def: PuzzleDefinition): PuzzleDefinition {
+  const rows = Math.max(1, def.rows);
+  const cols = Math.max(1, def.cols);
+  const validCells = (cells: CellRC[]) => cells.filter((cell) => isInBounds(cell, rows, cols));
+  const cosmetics = def.cosmetics;
+  return {
+    ...def,
+    rows,
+    cols,
+    size: Math.max(rows, cols),
+    givens: def.givens.filter((given) => isInBounds(given.rc, rows, cols)),
+    cosmetics: {
+      ...cosmetics,
+      cages: cosmetics.cages?.map((cage) => ({ ...cage, cells: validCells(cage.cells) })).filter((cage) => cage.cells.length),
+      arrows: cosmetics.arrows?.map((arrow) => ({ ...arrow, bulb: arrow.bulb && isInBounds(arrow.bulb, rows, cols) ? arrow.bulb : undefined, path: arrow.path ? validCells(arrow.path) : undefined })).filter((arrow) => (arrow.path?.length ?? 0) > 1),
+      dots: cosmetics.dots?.filter((dot) => isInBounds(dot.a, rows, cols) && isInBounds(dot.b, rows, cols)),
+      thermolines: cosmetics.thermolines?.map((line) => ({ ...line, path: validCells(line.path) })).filter((line) => line.path.length > 1),
+      whispers: cosmetics.whispers?.map((line) => ({ ...line, path: validCells(line.path) })).filter((line) => line.path.length > 1),
+      palindromes: cosmetics.palindromes?.map((line) => ({ ...line, path: validCells(line.path) })).filter((line) => line.path.length > 1),
+      renbanlines: cosmetics.renbanlines?.map((line) => ({ ...line, path: validCells(line.path) })).filter((line) => line.path.length > 1),
+      irregularRegions: cosmetics.irregularRegions?.map((region) => ({ ...region, cells: validCells(region.cells) })).filter((region) => region.cells.length),
+      fogLights: cosmetics.fogLights ? validCells(cosmetics.fogLights) : undefined,
+    },
+  };
+}
+
 function validationMessages(def: PuzzleDefinition) {
   const messages: string[] = [];
   const seen = new Set<string>();
+  const values = new Map<string, string>();
   for (const given of def.givens) {
     const key = `${given.rc.r}:${given.rc.c}`;
     if (seen.has(key)) messages.push("A cell has more than one given.");
     seen.add(key);
+    values.set(key, given.v);
     if (given.rc.r < 0 || given.rc.c < 0 || given.rc.r >= def.rows || given.rc.c >= def.cols) messages.push("A given sits outside the board.");
+  }
+  const reportDuplicates = (cells: CellRC[], label: string) => {
+    const symbols = new Set<string>();
+    for (const cell of cells) {
+      const symbol = values.get(`${cell.r}:${cell.c}`)?.trim().toUpperCase();
+      if (!symbol) continue;
+      if (symbols.has(symbol)) {
+        messages.push(`Duplicate given in ${label}.`);
+        return;
+      }
+      symbols.add(symbol);
+    }
+  };
+  for (let row = 0; row < def.rows; row++) reportDuplicates(Array.from({ length: def.cols }, (_, col) => ({ r: row, c: col })), `row ${row + 1}`);
+  for (let col = 0; col < def.cols; col++) reportDuplicates(Array.from({ length: def.rows }, (_, row) => ({ r: row, c: col })), `column ${col + 1}`);
+  const boxRows = def.cosmetics.subgrid?.r ?? 0;
+  const boxCols = def.cosmetics.subgrid?.c ?? 0;
+  if (boxRows > 0 && boxCols > 0) {
+    for (let row = 0; row < def.rows; row += boxRows) {
+      for (let col = 0; col < def.cols; col += boxCols) {
+        const cells = Array.from({ length: boxRows * boxCols }, (_, index) => ({ r: row + Math.floor(index / boxCols), c: col + (index % boxCols) }))
+          .filter((cell) => isInBounds(cell, def.rows, def.cols));
+        reportDuplicates(cells, `box at R${row + 1}C${col + 1}`);
+      }
+    }
   }
   const solution = def.cosmetics.solution ?? "";
   if (solution && solution.length !== def.rows * def.cols) messages.push("Solution length does not match the board dimensions.");
@@ -63,12 +122,20 @@ export function PuzzleEditorPage() {
   const navigate = useNavigate();
   const [data, setData] = useState<PersistedPuzzle | null>(null);
   const [selection, setSelection] = useState<CellRC[]>([{ r: 0, c: 0 }]);
+  const [multiSelect, setMultiSelect] = useState(false);
   const [tab, setTab] = useState<EditorTab>("clues");
   const [entryMode, setEntryMode] = useState<"given" | "solution">("given");
   const [constraintKind, setConstraintKind] = useState<ConstraintKind>("cage");
   const [constraintValue, setConstraintValue] = useState("");
   const [message, setMessage] = useState("");
   const [testPlay, setTestPlay] = useState(false);
+  const [history, setHistory] = useState<PuzzleDefinition[]>([]);
+  const [future, setFuture] = useState<PuzzleDefinition[]>([]);
+  const [testProgress, setTestProgress] = useState<PuzzleProgress | null>(null);
+  const [testHistory, setTestHistory] = useState<PuzzleProgress[]>([]);
+  const [testFuture, setTestFuture] = useState<PuzzleProgress[]>([]);
+  const [givenText, setGivenText] = useState("");
+  const [solutionText, setSolutionText] = useState("");
 
   useEffect(() => {
     void (async () => {
@@ -79,6 +146,11 @@ export function PuzzleEditorPage() {
       }
       setData(stored);
       setSelection([{ r: 0, c: 0 }]);
+      setHistory([]);
+      setFuture([]);
+      setTestProgress(null);
+      setTestHistory([]);
+      setTestFuture([]);
     })();
   }, [key]);
 
@@ -86,16 +158,28 @@ export function PuzzleEditorPage() {
     if (!data) return null;
     const next = makeInitialProgress(data.def);
     next.selection = selection;
+    next.multiSelect = multiSelect;
     return next;
-  }, [data, selection]);
+  }, [data, multiSelect, selection]);
   const validation = useMemo(() => data ? validationMessages(data.def) : [], [data]);
 
-  function save(nextDef: PuzzleDefinition) {
+  useEffect(() => {
     if (!data) return;
+    setGivenText(formatGrid(data.def, "givens"));
+    setSolutionText(formatGrid(data.def, "solution"));
+  }, [data]);
+
+  function save(nextDef: PuzzleDefinition, opts?: { recordHistory?: boolean }) {
+    if (!data) return;
+    const def = sanitizeDefinition(nextDef);
+    if (opts?.recordHistory !== false) {
+      setHistory((entries) => [...entries.slice(-99), data.def]);
+      setFuture([]);
+    }
     const next: PersistedPuzzle = {
       ...data,
-      def: nextDef,
-      progress: makeInitialProgress(nextDef),
+      def,
+      progress: makeInitialProgress(def),
       undo: [],
       redo: [],
       updatedAt: Date.now(),
@@ -107,6 +191,61 @@ export function PuzzleEditorPage() {
   function updateCosmetics(cosmetics: PuzzleCosmetics) {
     if (!data) return;
     save({ ...data.def, cosmetics });
+  }
+
+  function undoDefinition() {
+    if (!data || !history.length) return;
+    const previous = history[history.length - 1];
+    setHistory((entries) => entries.slice(0, -1));
+    setFuture((entries) => [data.def, ...entries].slice(0, 100));
+    save(previous, { recordHistory: false });
+  }
+
+  function redoDefinition() {
+    if (!data || !future.length) return;
+    const next = future[0];
+    setFuture((entries) => entries.slice(1));
+    setHistory((entries) => [...entries, data.def].slice(-100));
+    save(next, { recordHistory: false });
+  }
+
+  function applyTestDigit(value: string) {
+    if (!testProgress) return;
+    const cells = testProgress.cells.map((row) => row.map((cell) => ({ ...cell, notes: { ...cell.notes } })));
+    for (const cell of testProgress.selection) {
+      if (cells[cell.r]?.[cell.c]?.given) continue;
+      cells[cell.r][cell.c] = { ...cells[cell.r][cell.c], value: value || undefined };
+    }
+    setTestHistory((entries) => [...entries.slice(-99), testProgress]);
+    setTestFuture([]);
+    setTestProgress({ ...testProgress, cells });
+  }
+
+  function undoTest() {
+    if (!testProgress || !testHistory.length) return;
+    const previous = testHistory[testHistory.length - 1];
+    setTestHistory((entries) => entries.slice(0, -1));
+    setTestFuture((entries) => [testProgress, ...entries].slice(0, 100));
+    setTestProgress(previous);
+  }
+
+  function redoTest() {
+    if (!testProgress || !testFuture.length) return;
+    const next = testFuture[0];
+    setTestFuture((entries) => entries.slice(1));
+    setTestHistory((entries) => [...entries, testProgress].slice(-100));
+    setTestProgress(next);
+  }
+
+  function beginTestPlay() {
+    if (!data) return;
+    const next = makeInitialProgress(data.def);
+    next.paused = false;
+    setTestProgress(next);
+    setTestHistory([]);
+    setTestFuture([]);
+    setTestPlay(true);
+    setMessage("Test play is isolated from your authored puzzle.");
   }
 
   function setCellValue(value: string) {
@@ -214,6 +353,7 @@ export function PuzzleEditorPage() {
 
   const constraintCount = Object.values(data.def.cosmetics).filter(Array.isArray).reduce((total, item) => total + item.length, 0);
   const labels: Record<ConstraintKind, string> = { cage: "Killer cage", thermo: "Thermometer", arrow: "Arrow", whisper: "Whisper", renban: "Renban", palindrome: "Palindrome", dot: "Dot", region: "Irregular region", fog: "Fog light" };
+  const displayedProgress = testPlay ? testProgress ?? makeInitialProgress(data.def) : progress;
 
   return (
     <div className="shell creatorEditorShell">
@@ -221,7 +361,9 @@ export function PuzzleEditorPage() {
         <button className="btn" onClick={() => startTransition(() => navigate("/creator"))} type="button">Back</button>
         <div className="creatorEditorIdentity"><strong>{data.def.meta.title || "Untitled puzzle"}</strong><span>{data.def.rows} x {data.def.cols} · {constraintCount} constraints</span></div>
         <div className="creatorEditorActions">
-          <button className="btn" onClick={() => setTestPlay((value) => !value)} type="button">{testPlay ? "Edit" : "Test play"}</button>
+          <button className="btn" onClick={testPlay ? undoTest : undoDefinition} disabled={testPlay ? !testHistory.length : !history.length} title={testPlay ? "Undo test entry" : "Undo creator change"} type="button"><IconUndo /></button>
+          <button className="btn" onClick={testPlay ? redoTest : redoDefinition} disabled={testPlay ? !testFuture.length : !future.length} title={testPlay ? "Redo test entry" : "Redo creator change"} type="button"><IconRedo /></button>
+          <button className="btn" onClick={() => testPlay ? setTestPlay(false) : beginTestPlay()} type="button">{testPlay ? "Edit" : "Test play"}</button>
           <button className="btn" onClick={exportPuzzle} type="button">Export</button>
           <label className="btn creatorImportButton">Import<input type="file" accept="application/json,.json" onChange={(event) => void importPuzzle(event.target.files?.[0])} /></label>
         </div>
@@ -230,12 +372,13 @@ export function PuzzleEditorPage() {
         <section className="creatorBoardArea">
           <div className="creatorModeBar">
             <span>{testPlay ? "Test preview" : `${entryMode === "given" ? "Given" : "Solution"} entry`}</span>
-            {!testPlay ? <><button className={entryMode === "given" ? "btn primary" : "btn"} onClick={() => setEntryMode("given")} type="button">Givens</button><button className={entryMode === "solution" ? "btn primary" : "btn"} onClick={() => setEntryMode("solution")} type="button">Solution</button></> : null}
+            {!testPlay ? <><button className={entryMode === "given" ? "btn primary" : "btn"} onClick={() => setEntryMode("given")} type="button">Givens</button><button className={entryMode === "solution" ? "btn primary" : "btn"} onClick={() => setEntryMode("solution")} type="button">Solution</button><button className={"btn" + (multiSelect ? " primary" : "")} onClick={() => setMultiSelect((value) => !value)} title={multiSelect ? "Multi-select on" : "Multi-select off"} type="button"><IconSelectMode multi={multiSelect} /></button></> : <button className="btn" onClick={beginTestPlay} type="button">Reset test</button>}
           </div>
           <div className="creatorBoard card">
-            <GridCanvas def={data.def} progress={progress} onSelection={setSelection} onLineStroke={NOOP} onLineTapCell={NOOP} onLineTapEdge={NOOP} onDoubleCell={NOOP} interactive={!testPlay} />
+            <GridCanvas def={data.def} progress={displayedProgress} onSelection={testPlay ? (next) => setTestProgress((current) => current ? { ...current, selection: next } : current) : setSelection} onLineStroke={NOOP} onLineTapCell={NOOP} onLineTapEdge={NOOP} onDoubleCell={NOOP} />
           </div>
-          {!testPlay ? <div className="creatorDigitPad">{["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((value) => <button key={value} className="btn" onClick={() => setCellValue(value)} type="button">{value}</button>)}<button className="btn danger" onClick={() => setCellValue("")} type="button">Clear</button></div> : <div className="creatorTestNotice">This preview uses the authored givens and hides all solution values. Return to Edit to continue authoring.</div>}
+          <div className="creatorKeyboard card"><Keyboard kind="numbers" progress={displayedProgress} hideEntryModeButtons compact onDigit={testPlay ? applyTestDigit : setCellValue} onBackspace={() => testPlay ? applyTestDigit("") : setCellValue("")} /></div>
+          {testPlay ? <div className="creatorTestNotice">Test play uses a separate solver state and never alters your authored givens or solution.</div> : null}
         </section>
         <aside className="creatorInspector card">
           <div className="creatorTabs">{(["setup", "clues", "constraints", "details"] as EditorTab[]).map((nextTab) => <button key={nextTab} className={tab === nextTab ? "btn primary" : "btn"} onClick={() => setTab(nextTab)} type="button">{nextTab}</button>)}</div>
@@ -251,8 +394,8 @@ export function PuzzleEditorPage() {
             </> : null}
             {tab === "clues" ? <>
               <div className="creatorSelection">Selected: {selection.length ? selection.map((cell) => `R${cell.r + 1}C${cell.c + 1}`).join(", ") : "none"}</div>
-              <label>Paste givens<textarea className="url creatorGridInput" defaultValue={formatGrid(data.def, "givens")} onBlur={(event) => pasteGrid(event.target.value, "givens")} /></label>
-              <label>Paste solution<textarea className="url creatorGridInput" defaultValue={formatGrid(data.def, "solution")} onBlur={(event) => pasteGrid(event.target.value, "solution")} /></label>
+              <label>Paste givens<textarea className="url creatorGridInput" value={givenText} onChange={(event) => setGivenText(event.target.value)} onBlur={(event) => pasteGrid(event.target.value, "givens")} /></label>
+              <label>Paste solution<textarea className="url creatorGridInput" value={solutionText} onChange={(event) => setSolutionText(event.target.value)} onBlur={(event) => pasteGrid(event.target.value, "solution")} /></label>
             </> : null}
             {tab === "constraints" ? <>
               <label>Constraint<select className="url" value={constraintKind} onChange={(event) => setConstraintKind(event.target.value as ConstraintKind)}>{Object.entries(labels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
