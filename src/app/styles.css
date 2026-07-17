@@ -2447,6 +2447,9 @@ input.url {
     place-items: center;
     touch-action: none;
     cursor: row-resize;
+    position: relative;
+    z-index: 1;
+    user-select: none;
   }
 
   .videoResizeHandle span {

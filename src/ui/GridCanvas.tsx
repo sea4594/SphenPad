@@ -124,8 +124,9 @@ export function GridCanvas(props: {
   interactive?: boolean;
   previewMode?: boolean;
   strictScale?: boolean;
+  requestedHeight?: number;
 }) {
-  const { def, progress, interactive = true, previewMode = false, strictScale = false } = props;
+  const { def, progress, interactive = true, previewMode = false, strictScale = false, requestedHeight } = props;
   const { outlineDigits, conflictChecker } = useTheme();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const wrapRef = useRef<HTMLDivElement | null>(null);
@@ -423,6 +424,8 @@ export function GridCanvas(props: {
       const measuredOrPaneHeight = Math.max(1, measuredHeight || el.clientHeight || pane.clientHeight || 0);
       const height = previewMode
         ? measuredOrPaneHeight
+        : typeof requestedHeight === "number"
+          ? requestedHeight
         : spaceAboveControls > 0
           ? spaceAboveControls
         : measuredOrPaneHeight > 1
@@ -512,7 +515,7 @@ export function GridCanvas(props: {
       viewport?.removeEventListener("resize", scheduleUpdate);
       viewport?.removeEventListener("scroll", scheduleUpdate);
     };
-  }, [cols, outsideBottom, outsideLeft, outsideRight, outsideTop, previewMode, rows]);
+  }, [requestedHeight, cols, outsideBottom, outsideLeft, outsideRight, outsideTop, previewMode, rows]);
 
   useEffect(() => {
     if (!def.cosmetics.backgroundImageUrl) {

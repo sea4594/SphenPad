@@ -532,6 +532,7 @@ export function PuzzlePage(props: { editor?: boolean }) {
   const [videoPlayerOpen, setVideoPlayerOpen] = useState(false);
   const [videoViewportMode, setVideoViewportMode] = useState<VideoViewportMode>(() => getVideoViewportMode());
   const [portraitVideoHeight, setPortraitVideoHeight] = useState<number | null>(null);
+  const [portraitBoardHeight, setPortraitBoardHeight] = useState<number | null>(null);
   const tickRef = useRef<number | null>(null);
   const holdDelayRef = useRef<number | null>(null);
   const holdIntervalRef = useRef<number | null>(null);
@@ -557,6 +558,7 @@ export function PuzzlePage(props: { editor?: boolean }) {
     if (!gridLayout || !video) return;
 
     event.preventDefault();
+    event.stopPropagation();
     event.currentTarget.setPointerCapture(event.pointerId);
     videoResizeRef.current = {
       pointerId: event.pointerId,
@@ -577,13 +579,17 @@ export function PuzzlePage(props: { editor?: boolean }) {
     const maximumVideoHeight = Math.max(minimumVideoHeight, Math.min(videoWidth * (9 / 16), availableVideoHeight));
     const nextHeight = Math.min(maximumVideoHeight, Math.max(minimumVideoHeight, drag.startHeight + event.clientY - drag.startY));
     setPortraitVideoHeight(nextHeight);
-    window.requestAnimationFrame(() => window.dispatchEvent(new Event("resize")));
+    setPortraitBoardHeight(Math.max(128, gridLayout.getBoundingClientRect().height - controlsHeight - 10 - nextHeight));
+    event.preventDefault();
+    event.stopPropagation();
   }
 
   function stopVideoResize(event: React.PointerEvent<HTMLDivElement>) {
     if (videoResizeRef.current?.pointerId !== event.pointerId) return;
     videoResizeRef.current = null;
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+    event.preventDefault();
+    event.stopPropagation();
   }
 
   function normalizeProgress(progress: PuzzleProgress): PuzzleProgress {
@@ -764,7 +770,10 @@ export function PuzzlePage(props: { editor?: boolean }) {
   }, [videoPlayerOpen, videoViewportMode]);
 
   useEffect(() => {
-    if (videoViewportMode !== "mobile-portrait" || !videoPlayerOpen) setPortraitVideoHeight(null);
+    if (videoViewportMode !== "mobile-portrait" || !videoPlayerOpen) {
+      setPortraitVideoHeight(null);
+      setPortraitBoardHeight(null);
+    }
   }, [videoPlayerOpen, videoViewportMode]);
 
   useEffect(() => {
@@ -2073,6 +2082,10 @@ export function PuzzlePage(props: { editor?: boolean }) {
               onPointerMove={resizeVideo}
               onPointerUp={stopVideoResize}
               onPointerCancel={stopVideoResize}
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+              }}
             >
               <span />
             </div>
@@ -2088,6 +2101,7 @@ export function PuzzlePage(props: { editor?: boolean }) {
                 onLineTapCell={onLineTapCell}
                 onLineTapEdge={onLineTapEdge}
                 onDoubleCell={onDoubleSelectCell}
+                requestedHeight={portraitBoardHeight ?? undefined}
               />
             </div>
           </div>
