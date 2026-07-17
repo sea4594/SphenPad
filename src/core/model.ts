@@ -40,6 +40,7 @@ export type PuzzleMeta = {
   creatorElements?: string[];
   creatorElementNames?: Record<string, string>;
   creatorConstraintChecks?: Record<string, boolean>;
+  creatorDigitRange?: { min: number; max: number };
   title?: string;
   author?: string;
   collection?: string;
@@ -187,7 +188,7 @@ export type PuzzleCosmetics = {
   littlekillers?: Array<{ rc: CellRC; direction: "tl" | "tr" | "bl" | "br"; value: string; color?: string }>;
   
   // Regions
-  irregularRegions?: Array<{ cells: CellRC[]; color?: string }>;
+  irregularRegions?: Array<{ cells: CellRC[]; color?: string; label?: number }>;
   disjointGroups?: Array<{ cells: CellRC[]; color?: string }>;
   // Explicit row/col constraint domain (cells belonging to any hidden 'rowcol'-type constraint area).
   // Set only when the puzzle uses custom row/col areas instead of the full standard grid,

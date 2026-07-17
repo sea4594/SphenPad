@@ -6,6 +6,7 @@ import { makeInitialProgress } from "../core/scl";
 import { GridCanvas } from "./GridCanvas";
 import { Keyboard } from "./Keyboard";
 import { IconRedo, IconSelectMode, IconToolBig, IconToolCenter, IconToolCorner, IconToolHighlight, IconToolLine, IconUndo } from "./icons";
+import { PopupMenuButton } from "./PopupMenuButton";
 
 type ElementKind = "given" | "cage" | "thermo" | "arrow" | "whisper" | "renban" | "palindrome" | "dot" | "region" | "fog";
 type ConstraintKind = Exclude<ElementKind, "given">;
@@ -24,6 +25,8 @@ const CHECKABLE_ELEMENT_IDS = new Set(["antiking", "antiknight", "difference-kro
 const VISUAL_EDITOR_IDS = new Set(["even", "odd", "minimum", "maximum", "nonconsecutive", "german-whispers", "entropic-lines", "3-modular-lines", "between-lines", "region-sum-lines", "sequence-lines", "lockout-lines", "cosmetic-lines", "slow-thermometers", "double-arrows", "xv", "clones", "quadruples", "look-and-say-cages", "parity-lines", "cosmetic-cages", "cosmetic-symbols"]);
 
 const CATALOG: CatalogElement[] = [
+  ["given-digits", "1", "Given digits", "Prefill some cells with digits.", "given"],
+  ["regions", "#", "Regions", "Digits cannot repeat in marked regions.", "region"],
   ["negative-diagonal", "\\", "Negative diagonal", "Digits cannot repeat along the negative diagonal."],
   ["positive-diagonal", "/", "Positive diagonal", "Digits cannot repeat along the positive diagonal."],
   ["extra-region", "R", "Extra region/different values", "Digits cannot repeat in the marked cells.", "region"],
@@ -107,6 +110,24 @@ function isInBounds(cell: CellRC, rows: number, cols: number) {
   return cell.r >= 0 && cell.c >= 0 && cell.r < rows && cell.c < cols;
 }
 
+function regionEntries(def: PuzzleDefinition) {
+  if (def.cosmetics.irregularRegions?.length) return def.cosmetics.irregularRegions.map((region, index) => ({ cells: region.cells, label: region.label ?? index + 1 }));
+  const subgrid = def.cosmetics.subgrid;
+  if (!subgrid?.r || !subgrid.c) return [];
+  const regions: Array<{ cells: CellRC[]; label: number }> = [];
+  for (let row = 0; row < def.rows; row += subgrid.r) {
+    for (let col = 0; col < def.cols; col += subgrid.c) {
+      if (row + subgrid.r > def.rows || col + subgrid.c > def.cols) continue;
+      regions.push({ label: regions.length + 1, cells: Array.from({ length: subgrid.r * subgrid.c }, (_, index) => ({ r: row + Math.floor(index / subgrid.c), c: col + (index % subgrid.c) })) });
+    }
+  }
+  return regions;
+}
+
+function regionGroups(def: PuzzleDefinition) {
+  return regionEntries(def).map((region) => region.cells);
+}
+
 function sanitizeDefinition(def: PuzzleDefinition): PuzzleDefinition {
   const rows = Math.max(1, def.rows);
   const cols = Math.max(1, def.cols);
@@ -158,16 +179,8 @@ function validationMessages(def: PuzzleDefinition) {
   };
   for (let row = 0; row < def.rows; row++) reportDuplicates(Array.from({ length: def.cols }, (_, col) => ({ r: row, c: col })), `row ${row + 1}`);
   for (let col = 0; col < def.cols; col++) reportDuplicates(Array.from({ length: def.rows }, (_, row) => ({ r: row, c: col })), `column ${col + 1}`);
-  const boxRows = def.cosmetics.subgrid?.r ?? 0;
-  const boxCols = def.cosmetics.subgrid?.c ?? 0;
-  if (boxRows > 0 && boxCols > 0) {
-    for (let row = 0; row < def.rows; row += boxRows) {
-      for (let col = 0; col < def.cols; col += boxCols) {
-        const cells = Array.from({ length: boxRows * boxCols }, (_, index) => ({ r: row + Math.floor(index / boxCols), c: col + (index % boxCols) }))
-          .filter((cell) => isInBounds(cell, def.rows, def.cols));
-        reportDuplicates(cells, `box at R${row + 1}C${col + 1}`);
-      }
-    }
+  if ((def.meta.creatorElements ?? []).includes("regions")) {
+    regionGroups(def).forEach((cells, index) => reportDuplicates(cells, `region ${index + 1}`));
   }
   const solution = def.cosmetics.solution ?? "";
   if (solution && solution.length !== def.rows * def.cols) messages.push("Solution length does not match the board dimensions.");
@@ -224,7 +237,7 @@ export function PuzzleEditorPage() {
   const [authoringOpen, setAuthoringOpen] = useState(false);
   const [catalogOpen, setCatalogOpen] = useState(false);
   const [activeCatalogElement, setActiveCatalogElement] = useState<string | null>(null);
-  const [elementMenuOpen, setElementMenuOpen] = useState(false);
+  const [regionInput, setRegionInput] = useState("");
   const [message, setMessage] = useState("");
   const testPlay = false;
   const [history, setHistory] = useState<PuzzleDefinition[]>([]);
@@ -395,11 +408,12 @@ export function PuzzleEditorPage() {
       : element.id === "antiknight" ? { ...data.def.cosmetics, antiKnight: true }
       : data.def.cosmetics;
     const hasLine = (start: { x: number; y: number }, end: { x: number; y: number }) => (cosmetics.lines ?? []).some((line) => line.wayPoints.length === 2 && line.wayPoints.some((point) => point.x === start.x && point.y === start.y) && line.wayPoints.some((point) => point.x === end.x && point.y === end.y));
-    if (element.id === "negative-diagonal" && !hasLine({ x: 0, y: 0 }, { x: data.def.cols, y: data.def.rows })) cosmetics = { ...cosmetics, lines: [...(cosmetics.lines ?? []), { wayPoints: [{ x: 0, y: 0 }, { x: data.def.cols, y: data.def.rows }], color: "#34bbe6", thickness: 2, target: "overlay" }] };
-    if (element.id === "positive-diagonal" && !hasLine({ x: data.def.cols, y: 0 }, { x: 0, y: data.def.rows })) cosmetics = { ...cosmetics, lines: [...(cosmetics.lines ?? []), { wayPoints: [{ x: data.def.cols, y: 0 }, { x: 0, y: data.def.rows }], color: "#34bbe6", thickness: 2, target: "overlay" }] };
+    if (element.id === "negative-diagonal" && !hasLine({ x: 0, y: 0 }, { x: data.def.cols, y: data.def.rows })) cosmetics = { ...cosmetics, lines: [...(cosmetics.lines ?? []), { wayPoints: [{ x: 0, y: 0 }, { x: data.def.cols, y: data.def.rows }], color: "#34bbe6", thickness: 2, target: "creator:negative-diagonal:overlay" }] };
+    if (element.id === "positive-diagonal" && !hasLine({ x: data.def.cols, y: 0 }, { x: 0, y: data.def.rows })) cosmetics = { ...cosmetics, lines: [...(cosmetics.lines ?? []), { wayPoints: [{ x: data.def.cols, y: 0 }, { x: 0, y: data.def.rows }], color: "#34bbe6", thickness: 2, target: "creator:positive-diagonal:overlay" }] };
     save({ ...data.def, cosmetics, meta: { ...data.def.meta, creatorElements: Array.from(active) } });
     setCatalogOpen(false);
     setActiveCatalogElement(element.id);
+    setRegionInput("");
     setAuthoringOpen(false);
     setAddingElement(false);
   }
@@ -409,12 +423,33 @@ export function PuzzleEditorPage() {
     const creatorElements = (data.def.meta.creatorElements ?? []).filter((id) => id !== element.id);
     const creatorElementNames = { ...data.def.meta.creatorElementNames };
     delete creatorElementNames[element.id];
-    const cosmetics = element.id === "antiking" ? { ...data.def.cosmetics, antiKing: false }
+    let cosmetics = element.id === "antiking" ? { ...data.def.cosmetics, antiKing: false }
       : element.id === "antiknight" ? { ...data.def.cosmetics, antiKnight: false }
       : data.def.cosmetics;
-    save({ ...data.def, cosmetics, meta: { ...data.def.meta, creatorElements, creatorElementNames } });
+    const isCreatorArtifact = (target: string | undefined) => target?.startsWith(`creator:${element.id}:`);
+    cosmetics = {
+      ...cosmetics,
+      ...(element.id === "regions" ? { subgrid: undefined, irregularRegions: undefined } : {}),
+      lines: cosmetics.lines?.filter((line) => !isCreatorArtifact(line.target)),
+      cages: cosmetics.cages?.filter((cage) => !isCreatorArtifact(cage.target)),
+      arrows: cosmetics.arrows?.filter((arrow) => !isCreatorArtifact(arrow.target)),
+      dots: cosmetics.dots?.filter((dot) => !isCreatorArtifact(dot.target)),
+      underlays: cosmetics.underlays?.filter((underlay) => !isCreatorArtifact(underlay.target)),
+      overlays: cosmetics.overlays?.filter((overlay) => !isCreatorArtifact(overlay.target)),
+    };
+    if (element.id === "negative-diagonal") cosmetics = { ...cosmetics, lines: cosmetics.lines?.filter((line) => !(line.wayPoints.length === 2 && line.wayPoints[0].x === 0 && line.wayPoints[0].y === 0 && line.wayPoints[1].x === data.def.cols && line.wayPoints[1].y === data.def.rows)) };
+    if (element.id === "positive-diagonal") cosmetics = { ...cosmetics, lines: cosmetics.lines?.filter((line) => !(line.wayPoints.length === 2 && line.wayPoints[0].x === data.def.cols && line.wayPoints[0].y === 0 && line.wayPoints[1].x === 0 && line.wayPoints[1].y === data.def.rows)) };
+    if (element.id === "given-digits") save({ ...data.def, givens: [], cosmetics, meta: { ...data.def.meta, creatorElements, creatorElementNames } });
+    else if (element.id === "thermometers") save({ ...data.def, cosmetics: { ...cosmetics, thermolines: undefined }, meta: { ...data.def.meta, creatorElements, creatorElementNames } });
+    else if (element.id === "dutch-whispers") save({ ...data.def, cosmetics: { ...cosmetics, whispers: undefined }, meta: { ...data.def.meta, creatorElements, creatorElementNames } });
+    else if (element.id === "renban-lines") save({ ...data.def, cosmetics: { ...cosmetics, renbanlines: undefined }, meta: { ...data.def.meta, creatorElements, creatorElementNames } });
+    else if (element.id === "palindromes") save({ ...data.def, cosmetics: { ...cosmetics, palindromes: undefined }, meta: { ...data.def.meta, creatorElements, creatorElementNames } });
+    else if (element.id === "arrows") save({ ...data.def, cosmetics: { ...cosmetics, arrows: undefined }, meta: { ...data.def.meta, creatorElements, creatorElementNames } });
+    else if (element.id === "killer-cages") save({ ...data.def, cosmetics: { ...cosmetics, cages: undefined }, meta: { ...data.def.meta, creatorElements, creatorElementNames } });
+    else if (element.id === "difference-kropki") save({ ...data.def, cosmetics: { ...cosmetics, dots: cosmetics.dots?.filter((dot) => dot.kind !== "white") }, meta: { ...data.def.meta, creatorElements, creatorElementNames } });
+    else if (element.id === "ratio-kropki") save({ ...data.def, cosmetics: { ...cosmetics, dots: cosmetics.dots?.filter((dot) => dot.kind !== "black") }, meta: { ...data.def.meta, creatorElements, creatorElementNames } });
+    else save({ ...data.def, cosmetics, meta: { ...data.def.meta, creatorElements, creatorElementNames } });
     setActiveCatalogElement(null);
-    setElementMenuOpen(false);
     setMessage(`${element.name} removed.`);
   }
 
@@ -424,7 +459,6 @@ export function PuzzleEditorPage() {
     const nextName = window.prompt("Element name", currentName)?.trim();
     if (!nextName || nextName === currentName) return;
     save({ ...data.def, meta: { ...data.def.meta, creatorElementNames: { ...data.def.meta.creatorElementNames, [element.id]: nextName } } });
-    setElementMenuOpen(false);
     setMessage("Element renamed.");
   }
 
@@ -454,7 +488,30 @@ export function PuzzleEditorPage() {
 
   function setCellValue(value: string) {
     if (!data || !selection.length) return;
-    if (entryMode === "given") {
+    if (activeCatalogElement === "regions") {
+      const nextInput = value ? `${regionInput}${value}`.slice(-2) : "";
+      const regionNumber = Number(nextInput);
+      if (value && (!Number.isInteger(regionNumber) || regionNumber < 1 || regionNumber > 64)) {
+        setMessage("Region numbers must be between 1 and 64.");
+        return;
+      }
+      const assignments = new Map<string, number>();
+      regionEntries(data.def).forEach((region) => region.cells.forEach((cell) => assignments.set(`${cell.r}:${cell.c}`, region.label)));
+      for (const cell of selection) {
+        const key = `${cell.r}:${cell.c}`;
+        if (regionNumber) assignments.set(key, regionNumber);
+        else assignments.delete(key);
+      }
+      const groups = new Map<number, CellRC[]>();
+      assignments.forEach((number, key) => {
+        const [r, c] = key.split(":").map(Number);
+        groups.set(number, [...(groups.get(number) ?? []), { r, c }]);
+      });
+      updateCosmetics({ ...data.def.cosmetics, subgrid: undefined, irregularRegions: Array.from(groups.entries()).map(([label, cells]) => ({ cells, label })) });
+      setRegionInput(nextInput);
+      return;
+    }
+    if (activeCatalogElement === "given-digits" || entryMode === "given") {
       const withoutSelection = data.def.givens.filter((given) => !selection.some((cell) => sameCell(cell, given.rc)));
       const givens = value ? [...withoutSelection, ...selection.map((rc) => ({ rc, v: value }))] : withoutSelection;
       save({ ...data.def, givens });
@@ -484,6 +541,7 @@ export function PuzzleEditorPage() {
   function addElement() {
     if (!data || !selection.length) return;
     const cosmetics = data.def.cosmetics;
+    const creatorTarget = `creator:${activeCatalogElement ?? elementKind}:underlay`;
     const cells = selection.map((cell) => ({ ...cell }));
     const path = cells.length > 1 ? cells : [];
     if (elementKind === "given") {
@@ -503,11 +561,11 @@ export function PuzzleEditorPage() {
       return;
     }
     if (elementKind === "cage") updateCosmetics({ ...cosmetics, cages: [...(cosmetics.cages ?? []), { cells, sum: constraintValue.trim() }] });
-    if (elementKind === "thermo") updateCosmetics({ ...cosmetics, thermolines: [...(cosmetics.thermolines ?? []), { path }], lines: [...(cosmetics.lines ?? []), { wayPoints: path.map((cell) => ({ x: cell.c + 0.5, y: cell.r + 0.5 })), color: "#a7a7a7", thickness: 8, target: "underlay" }], underlays: [...(cosmetics.underlays ?? []), { center: { x: path[0].c + 0.5, y: path[0].r + 0.5 }, width: 0.48, height: 0.48, rounded: true, color: "#a7a7a7", target: "underlay" }] });
+    if (elementKind === "thermo") updateCosmetics({ ...cosmetics, thermolines: [...(cosmetics.thermolines ?? []), { path }], lines: [...(cosmetics.lines ?? []), { wayPoints: path.map((cell) => ({ x: cell.c + 0.5, y: cell.r + 0.5 })), color: "#a7a7a7", thickness: 8, target: creatorTarget }], underlays: [...(cosmetics.underlays ?? []), { center: { x: path[0].c + 0.5, y: path[0].r + 0.5 }, width: 0.48, height: 0.48, rounded: true, color: "#a7a7a7", target: creatorTarget }] });
     if (elementKind === "arrow") updateCosmetics({ ...cosmetics, arrows: [...(cosmetics.arrows ?? []), { bulb: path[0], path }] });
-    if (elementKind === "whisper") updateCosmetics({ ...cosmetics, whispers: [...(cosmetics.whispers ?? []), { path }], lines: [...(cosmetics.lines ?? []), { wayPoints: path.map((cell) => ({ x: cell.c + 0.5, y: cell.r + 0.5 })), color: "#63c7b2", thickness: 7, target: "underlay" }] });
-    if (elementKind === "renban") updateCosmetics({ ...cosmetics, renbanlines: [...(cosmetics.renbanlines ?? []), { path }], lines: [...(cosmetics.lines ?? []), { wayPoints: path.map((cell) => ({ x: cell.c + 0.5, y: cell.r + 0.5 })), color: "#d27ae8", thickness: 7, target: "underlay" }] });
-    if (elementKind === "palindrome") updateCosmetics({ ...cosmetics, palindromes: [...(cosmetics.palindromes ?? []), { path }], lines: [...(cosmetics.lines ?? []), { wayPoints: path.map((cell) => ({ x: cell.c + 0.5, y: cell.r + 0.5 })), color: "#909090", thickness: 6, target: "underlay" }] });
+    if (elementKind === "whisper") updateCosmetics({ ...cosmetics, whispers: [...(cosmetics.whispers ?? []), { path }], lines: [...(cosmetics.lines ?? []), { wayPoints: path.map((cell) => ({ x: cell.c + 0.5, y: cell.r + 0.5 })), color: "#63c7b2", thickness: 7, target: creatorTarget }] });
+    if (elementKind === "renban") updateCosmetics({ ...cosmetics, renbanlines: [...(cosmetics.renbanlines ?? []), { path }], lines: [...(cosmetics.lines ?? []), { wayPoints: path.map((cell) => ({ x: cell.c + 0.5, y: cell.r + 0.5 })), color: "#d27ae8", thickness: 7, target: creatorTarget }] });
+    if (elementKind === "palindrome") updateCosmetics({ ...cosmetics, palindromes: [...(cosmetics.palindromes ?? []), { path }], lines: [...(cosmetics.lines ?? []), { wayPoints: path.map((cell) => ({ x: cell.c + 0.5, y: cell.r + 0.5 })), color: "#909090", thickness: 6, target: creatorTarget }] });
     if (elementKind === "dot" && cells.length === 2) updateCosmetics({ ...cosmetics, dots: [...(cosmetics.dots ?? []), { a: cells[0], b: cells[1], kind: constraintValue === "black" ? "black" : "white" }] });
     if (elementKind === "region") updateCosmetics({ ...cosmetics, irregularRegions: [...(cosmetics.irregularRegions ?? []), { cells }] });
     if (elementKind === "fog") updateCosmetics({ ...cosmetics, fogEnabled: true, fogLights: [...(cosmetics.fogLights ?? []), ...cells] });
@@ -523,44 +581,45 @@ export function PuzzleEditorPage() {
     if (!data || !selection.length) return;
     const cells = selection.map((cell) => ({ ...cell }));
     const cosmetics = data.def.cosmetics;
-    const makeLine = (color: string, thickness: number, dashArray?: number[]) => ({ wayPoints: cells.map((cell) => ({ x: cell.c + 0.5, y: cell.r + 0.5 })), color, thickness, dashArray, target: "underlay" });
+    const creatorTarget = `creator:${element.id}:underlay`;
+    const makeLine = (color: string, thickness: number, dashArray?: number[]) => ({ wayPoints: cells.map((cell) => ({ x: cell.c + 0.5, y: cell.r + 0.5 })), color, thickness, dashArray, target: creatorTarget });
     if (["german-whispers", "entropic-lines", "3-modular-lines", "between-lines", "region-sum-lines", "sequence-lines", "lockout-lines", "cosmetic-lines", "slow-thermometers", "double-arrows", "parity-lines"].includes(element.id) && cells.length < 2) {
       setMessage("Select at least two cells for this line.");
       return;
     }
     if (element.id === "even" || element.id === "odd" || element.id === "minimum" || element.id === "maximum") {
       const markers = cells.map((cell) => element.id === "even"
-        ? { center: { x: cell.c + 0.5, y: cell.r + 0.5 }, width: 0.46, height: 0.46, rounded: false, color: "#a8a8a8", target: "underlay" }
+        ? { center: { x: cell.c + 0.5, y: cell.r + 0.5 }, width: 0.46, height: 0.46, rounded: false, color: "#a8a8a8", target: creatorTarget }
         : element.id === "odd"
-          ? { center: { x: cell.c + 0.5, y: cell.r + 0.5 }, width: 0.46, height: 0.46, rounded: true, color: "#a8a8a8", target: "underlay" }
-          : { center: { x: cell.c + 0.5, y: cell.r + 0.5 }, width: 0, height: 0, text: element.id === "minimum" ? "<" : ">", textSize: 26, textColor: "#555555", target: "overlay" });
-      updateCosmetics({ ...cosmetics, underlays: [...(cosmetics.underlays ?? []), ...markers.filter((marker) => marker.target === "underlay")], overlays: [...(cosmetics.overlays ?? []), ...markers.filter((marker) => marker.target === "overlay")] });
+          ? { center: { x: cell.c + 0.5, y: cell.r + 0.5 }, width: 0.46, height: 0.46, rounded: true, color: "#a8a8a8", target: creatorTarget }
+            : { center: { x: cell.c + 0.5, y: cell.r + 0.5 }, width: 0, height: 0, text: element.id === "minimum" ? "<" : ">", textSize: 26, textColor: "#555555", target: `creator:${element.id}:overlay` });
+          updateCosmetics({ ...cosmetics, underlays: [...(cosmetics.underlays ?? []), ...markers.filter((marker) => marker.target.includes("underlay"))], overlays: [...(cosmetics.overlays ?? []), ...markers.filter((marker) => marker.target.includes("overlay"))] });
     } else if (element.id === "nonconsecutive") {
       if (cells.length !== 2) { setMessage("Select exactly two adjacent cells."); return; }
       const a = cells[0]; const b = cells[1];
-      updateCosmetics({ ...cosmetics, overlays: [...(cosmetics.overlays ?? []), { center: { x: (a.c + b.c + 1) / 2, y: (a.r + b.r + 1) / 2 }, width: 0.14, height: 0.42, rounded: true, color: "#666666", target: "overlay", angle: a.r === b.r ? 90 : 0 }] });
+      updateCosmetics({ ...cosmetics, overlays: [...(cosmetics.overlays ?? []), { center: { x: (a.c + b.c + 1) / 2, y: (a.r + b.r + 1) / 2 }, width: 0.14, height: 0.42, rounded: true, color: "#666666", target: `creator:${element.id}:overlay`, angle: a.r === b.r ? 90 : 0 }] });
     } else if (element.id === "xv") {
       if (cells.length !== 2) { setMessage("Select exactly two adjacent cells."); return; }
       const a = cells[0]; const b = cells[1];
-      updateCosmetics({ ...cosmetics, overlays: [...(cosmetics.overlays ?? []), { center: { x: (a.c + b.c + 1) / 2, y: (a.r + b.r + 1) / 2 }, width: 0, height: 0, text: "X", textSize: 17, textColor: "#333333", target: "overlay" }] });
+      updateCosmetics({ ...cosmetics, overlays: [...(cosmetics.overlays ?? []), { center: { x: (a.c + b.c + 1) / 2, y: (a.r + b.r + 1) / 2 }, width: 0, height: 0, text: "X", textSize: 17, textColor: "#333333", target: `creator:${element.id}:overlay` }] });
     } else if (element.id === "quadruples") {
       const cell = cells[0];
-      updateCosmetics({ ...cosmetics, overlays: [...(cosmetics.overlays ?? []), { center: { x: cell.c + 0.5, y: cell.r + 0.5 }, width: 0.62, height: 0.62, rounded: true, color: "rgba(255,255,255,0.82)", borderColor: "#444444", borderThickness: 1.3, text: "", target: "overlay" }] });
+      updateCosmetics({ ...cosmetics, overlays: [...(cosmetics.overlays ?? []), { center: { x: cell.c + 0.5, y: cell.r + 0.5 }, width: 0.62, height: 0.62, rounded: true, color: "rgba(255,255,255,0.82)", borderColor: "#444444", borderThickness: 1.3, text: "", target: `creator:${element.id}:overlay` }] });
     } else if (element.id === "cosmetic-symbols") {
-      updateCosmetics({ ...cosmetics, overlays: [...(cosmetics.overlays ?? []), ...cells.map((cell) => ({ center: { x: cell.c + 0.5, y: cell.r + 0.5 }, width: 0, height: 0, text: "*", textSize: 24, textColor: "#555555", target: "overlay" }))] });
+      updateCosmetics({ ...cosmetics, overlays: [...(cosmetics.overlays ?? []), ...cells.map((cell) => ({ center: { x: cell.c + 0.5, y: cell.r + 0.5 }, width: 0, height: 0, text: "*", textSize: 24, textColor: "#555555", target: `creator:${element.id}:overlay` }))] });
     } else if (element.id === "clones") {
-      updateCosmetics({ ...cosmetics, underlays: [...(cosmetics.underlays ?? []), ...cells.map((cell) => ({ center: { x: cell.c + 0.5, y: cell.r + 0.5 }, width: 0.84, height: 0.84, rounded: false, color: "rgba(91, 141, 205, 0.17)", borderColor: "#5b8dcd", borderThickness: 1.1, target: "underlay" }))] });
+      updateCosmetics({ ...cosmetics, underlays: [...(cosmetics.underlays ?? []), ...cells.map((cell) => ({ center: { x: cell.c + 0.5, y: cell.r + 0.5 }, width: 0.84, height: 0.84, rounded: false, color: "rgba(91, 141, 205, 0.17)", borderColor: "#5b8dcd", borderThickness: 1.1, target: creatorTarget }))] });
     } else if (element.id === "cosmetic-cages" || element.id === "look-and-say-cages") {
       const clue = element.id === "look-and-say-cages" ? window.prompt("Look-and-say clue", "")?.trim() ?? "" : "";
-      updateCosmetics({ ...cosmetics, cages: [...(cosmetics.cages ?? []), { cells, sum: clue, color: "#555555" }] });
+      updateCosmetics({ ...cosmetics, cages: [...(cosmetics.cages ?? []), { cells, sum: clue, color: "#555555", target: `creator:${element.id}:cages` }] });
     } else {
       const styles: Record<string, [string, number, number[]?]> = {
         "german-whispers": ["#55b36a", 7], "entropic-lines": ["#e777a6", 7], "3-modular-lines": ["#e6a32d", 7], "between-lines": ["#999999", 6], "region-sum-lines": ["#6c83c8", 5], "sequence-lines": ["#5c9da5", 5, [6, 4]], "lockout-lines": ["#525252", 6], "cosmetic-lines": ["#555555", 4], "slow-thermometers": ["#d39b4a", 8], "double-arrows": ["#4f739f", 5], "parity-lines": ["#806cb1", 5, [5, 3]],
       };
       const style = styles[element.id];
       if (style) {
-        const ends = element.id === "double-arrows" ? [cells[0], cells[cells.length - 1]].map((cell) => ({ center: { x: cell.c + 0.5, y: cell.r + 0.5 }, width: 0.5, height: 0.5, rounded: true, color: "#ffffff", borderColor: style[0], borderThickness: 1.5, target: "underlay" })) : [];
-        const bulb = element.id === "slow-thermometers" ? [{ center: { x: cells[0].c + 0.5, y: cells[0].r + 0.5 }, width: 0.48, height: 0.48, rounded: true, color: style[0], target: "underlay" }] : [];
+        const ends = element.id === "double-arrows" ? [cells[0], cells[cells.length - 1]].map((cell) => ({ center: { x: cell.c + 0.5, y: cell.r + 0.5 }, width: 0.5, height: 0.5, rounded: true, color: "#ffffff", borderColor: style[0], borderThickness: 1.5, target: creatorTarget })) : [];
+        const bulb = element.id === "slow-thermometers" ? [{ center: { x: cells[0].c + 0.5, y: cells[0].r + 0.5 }, width: 0.48, height: 0.48, rounded: true, color: style[0], target: creatorTarget }] : [];
         updateCosmetics({ ...cosmetics, lines: [...(cosmetics.lines ?? []), makeLine(style[0], style[1], style[2])], underlays: [...(cosmetics.underlays ?? []), ...ends, ...bulb] });
       }
     }
@@ -646,6 +705,15 @@ export function PuzzleEditorPage() {
       linePaletteColor: editorLineColor,
       lineDoubleMode: editorLineDouble,
     };
+  const regionNumberOverlays = activeCatalogElement === "regions"
+    ? regionEntries(data.def).flatMap((region) => region.cells.map((cell) => ({
+      center: { x: cell.c + 0.5, y: cell.r + 0.5 }, width: 0, height: 0,
+      text: String(region.label), textSize: 18, textColor: "#59606b", target: "overlay",
+    })))
+    : [];
+  const displayedDef = regionNumberOverlays.length
+    ? { ...data.def, cosmetics: { ...data.def.cosmetics, overlays: [...(data.def.cosmetics.overlays ?? []), ...regionNumberOverlays] } }
+    : data.def;
 
   return (
     <div className="shell creatorEditorShell">
@@ -674,14 +742,14 @@ export function PuzzleEditorPage() {
       <main className={"page puzzlePage creatorPuzzlePage" + (creatorTab === "elements" ? " creatorElementsPage" : "")}>
         <div className="creatorElementsPageLayout">
           {creatorTab === "elements" ? <div className="creatorActiveElements">
-            <div className="creatorActiveElementStrip">{activeCatalog.map((element) => <div className={activeCatalogElement === element.id ? "creatorActiveElementEntry active" : "creatorActiveElementEntry"} key={element.id}><button className="creatorActiveElement" onClick={() => { setActiveCatalogElement(element.id); setElementMenuOpen(false); if (element.elementKind) setElementKind(element.elementKind); setAddingElement(Boolean(element.elementKind || VISUAL_EDITOR_IDS.has(element.id))); setAuthoringOpen(true); }} type="button" title={displayElementName(element)}><span>{element.icon}</span>{displayElementName(element)}</button>{activeCatalogElement === element.id ? <button className="btn creatorElementMoreButton" onClick={() => setElementMenuOpen((open) => !open)} aria-label={`More actions for ${displayElementName(element)}`} type="button">...</button> : null}{activeCatalogElement === element.id && elementMenuOpen ? <div className="creatorElementMoreMenu"><button onClick={() => renameCatalogElement(element)} type="button">Rename</button><button className="danger" onClick={() => removeCatalogElement(element)} type="button">Delete</button></div> : null}</div>)}</div>
+            <div className="creatorActiveElementStrip">{activeCatalog.map((element) => <div className={activeCatalogElement === element.id ? "creatorActiveElementEntry active" : "creatorActiveElementEntry"} key={element.id}><button className="creatorActiveElement" onClick={() => { const next = activeCatalogElement === element.id ? null : element.id; setActiveCatalogElement(next); setRegionInput(""); setAuthoringOpen(false); setAddingElement(false); if (next && element.elementKind) setElementKind(element.elementKind); }} type="button" title={displayElementName(element)}><span>{element.icon}</span>{displayElementName(element)}</button><PopupMenuButton className="btn creatorElementMoreButton" ariaLabel={`More actions for ${displayElementName(element)}`} title={`More actions for ${displayElementName(element)}`} items={[...(element.elementKind || VISUAL_EDITOR_IDS.has(element.id) ? [{ label: "Edit", onSelect: () => { setActiveCatalogElement(element.id); setElementKind(element.elementKind ?? "given"); setAddingElement(true); setAuthoringOpen(true); } }] : []), { label: "Rename", onSelect: () => renameCatalogElement(element) }, { label: "Delete", onSelect: () => removeCatalogElement(element), tone: "danger" }]} /></div>)}</div>
             <button className="btn primary creatorAddElement" onClick={() => setCatalogOpen(true)} type="button" title="Add element">+</button>
           </div> : null}
           {creatorTab === "tools" ? <div className="creatorToolStrip"><button className="btn">Clear non-givens</button><button className="btn">Logical step</button><button className="btn">Solve step-by-step</button><button className="btn">Find solutions</button><button className="btn">Check validity</button></div> : null}
         <div className="gridLayout creatorGridLayout">
           <section className="boardColumn">
             <div className="card boardCard">
-            <GridCanvas def={data.def} progress={controlProgress} onSelection={testPlay ? (next) => setTestProgress((current) => current ? { ...current, selection: next } : current) : setSelection} onLineStroke={NOOP} onLineTapCell={NOOP} onLineTapEdge={NOOP} onDoubleCell={NOOP} />
+            <GridCanvas def={displayedDef} progress={controlProgress} onSelection={testPlay ? (next) => setTestProgress((current) => current ? { ...current, selection: next } : current) : (next) => { setSelection(next); setRegionInput(""); }} onLineStroke={NOOP} onLineTapCell={NOOP} onLineTapEdge={NOOP} onDoubleCell={NOOP} />
             </div>
           </section>
           <div className="kbdPanel">
