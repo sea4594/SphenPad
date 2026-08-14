@@ -38,7 +38,7 @@ import { SettingsOverlay } from "./SettingsOverlay";
 import { PuzzleMetadataOverlay } from "./PuzzleMetadataOverlay";
 import { useTheme } from "../app/theme";
 import { readPuzzleOriginState, withPuzzleReturnState } from "./puzzleNavState";
-import { highlightPalettePages, linePalette } from "./toolPalettes";
+import { highlightPalettePages, linePalette, sortHighlightColors } from "./toolPalettes";
 
 const AUTO_IN_PROGRESS_MILLIS = 30_000;
 const TRANSPARENT_HIGHLIGHT_COLOR = "rgba(0,0,0,0)";
@@ -608,7 +608,7 @@ export function PuzzlePage(props: { editor?: boolean }) {
           ? (cell as { highlights?: string[] }).highlights ?? []
           : [];
         const legacy = typeof cell.color === "string" && cell.color ? [cell.color] : [];
-        const merged = Array.from(new Set([...existing, ...legacy].map((color) => normalizeHighlightColor(color)))).slice(0, 18);
+        const merged = sortHighlightColors(Array.from(new Set([...existing, ...legacy].map((color) => normalizeHighlightColor(color)))).slice(0, 18));
         return {
           ...cell,
           highlights: merged,
@@ -1499,7 +1499,7 @@ export function PuzzlePage(props: { editor?: boolean }) {
         const nextSet = new Set(cur);
         if (allHave) nextSet.delete(nextColor);
         else if (nextSet.size < 18 || nextSet.has(nextColor)) nextSet.add(nextColor);
-        const next = Array.from(nextSet).slice(0, 18);
+        const next = sortHighlightColors(Array.from(nextSet).slice(0, 18));
         const unchanged = next.length === cur.length && next.every((v, i) => v === cur[i]);
         if (unchanged) return null;
         return patchAt(data.progress, ["cells", rc.r, rc.c, "highlights"], next);

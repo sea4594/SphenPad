@@ -3,6 +3,7 @@ import twemoji from "twemoji";
 import { mapForcedPortraitPoint, readForcedPortraitDirection } from "../app/forcedPortrait";
 import type { CellRC, PuzzleDefinition, PuzzleProgress } from "../core/model";
 import { useTheme } from "../app/theme";
+import { sortHighlightColors } from "./toolPalettes";
 
 type LineKindResolved = "center" | "edge";
 type LineKindStored = LineKindResolved | "both";
@@ -594,13 +595,14 @@ export function GridCanvas(props: {
 
     const drawCellHighlights = (r: number, c: number, colors: string[], alpha = highlightAlpha) => {
       if (!colors.length) return;
+      const orderedColors = sortHighlightColors(colors);
       const x = cellX(c);
       const y = cellY(r);
       const cx = x + cellPx / 2;
       const cy = y + cellPx / 2;
 
       const radius = cellPx * 0.78;
-      const maxSlices = Math.min(18, colors.length);
+      const maxSlices = Math.min(18, orderedColors.length);
       const step = (Math.PI * 2) / maxSlices;
       const offset = -Math.PI / 2;
       ctx.save();
@@ -619,7 +621,7 @@ export function GridCanvas(props: {
         ctx.moveTo(cx, cy);
         ctx.arc(cx, cy, radius, start, end);
         ctx.closePath();
-        ctx.fillStyle = colors[i] as string;
+        ctx.fillStyle = orderedColors[i] as string;
         ctx.fill();
       }
       ctx.restore();
