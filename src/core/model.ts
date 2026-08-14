@@ -188,7 +188,7 @@ export type PuzzleCosmetics = {
   littlekillers?: Array<{ rc: CellRC; direction: "tl" | "tr" | "bl" | "br"; value: string; color?: string }>;
   
   // Regions
-  irregularRegions?: Array<{ cells: CellRC[]; color?: string; label?: number }>;
+  irregularRegions?: Array<{ cells: CellRC[]; color?: string; label?: string }>;
   disjointGroups?: Array<{ cells: CellRC[]; color?: string }>;
   // Explicit row/col constraint domain (cells belonging to any hidden 'rowcol'-type constraint area).
   // Set only when the puzzle uses custom row/col areas instead of the full standard grid,

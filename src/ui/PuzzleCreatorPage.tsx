@@ -12,12 +12,11 @@ import { onStorageRefreshNeeded } from "../core/syncSignal";
 type StoredPuzzle = Awaited<ReturnType<typeof listPuzzles>>[number];
 const NOOP = () => {};
 
-function subgridForSquareSize(size: number) {
-  let rows = 1;
-  for (let candidate = 1; candidate * candidate <= size; candidate++) {
-    if (size % candidate === 0) rows = candidate;
+function defaultSubgrid(size: number) {
+  for (let shortSide = Math.floor(Math.sqrt(size)); shortSide >= 1; shortSide--) {
+    if (size % shortSide === 0) return { r: shortSide, c: size / shortSide };
   }
-  return { r: rows, c: size / rows };
+  return { r: 1, c: size };
 }
 
 function createPuzzleKey() {
@@ -51,26 +50,23 @@ export function PuzzleCreatorPage() {
   async function createPuzzle() {
     const now = Date.now();
     const key = createPuzzleKey();
-    const rows = height;
-    const cols = custom ? width : height;
-    const subgrid = custom ? undefined : subgridForSquareSize(height);
     const def: PuzzleDefinition = {
       id: key,
       sourceId: key,
-      size: Math.max(rows, cols),
-      rows,
-      cols,
+      size: Math.max(height, custom ? width : height),
+      rows: height,
+      cols: custom ? width : height,
       meta: {
         creatorPuzzle: true,
-        creatorElements: ["given-digits", ...(subgrid ? ["regions"] : [])],
-        creatorDigitRange: { min: lowestDigit, max: highestDigit },
+        creatorElements: custom ? ["given-digits"] : ["given-digits", "regions"],
+        creatorDigitRange: custom ? { min: Math.min(lowestDigit, highestDigit), max: Math.max(lowestDigit, highestDigit) } : undefined,
         title: "Untitled puzzle",
         author: "",
         rules: "",
         constraints: [],
       },
       givens: [],
-      cosmetics: subgrid ? { subgrid } : {},
+      cosmetics: custom ? {} : { subgrid: defaultSubgrid(height) },
     };
     await upsertPuzzle(key, { def, progress: makeInitialProgress(def), undo: [], redo: [], createdAt: now, updatedAt: now });
     startTransition(() => nav(`/creator/${encodeURIComponent(key)}`));
@@ -116,7 +112,7 @@ export function PuzzleCreatorPage() {
           </div>
         </div>
       </div>
-      {dimensionsOpen ? <div className="overlayBackdrop" role="dialog" aria-modal="true" aria-label="Puzzle dimensions"><div className="card creatorDimensionsCard"><div className="creatorDimensionsPreview"><GridCanvas def={{ id: "preview", sourceId: "preview", size: Math.max(height, custom ? width : height), rows: height, cols: custom ? width : height, meta: {}, givens: [], cosmetics: custom ? {} : { subgrid: subgridForSquareSize(height) } }} progress={makeInitialProgress({ id: "preview", sourceId: "preview", size: Math.max(height, custom ? width : height), rows: height, cols: custom ? width : height, meta: {}, givens: [], cosmetics: custom ? {} : { subgrid: subgridForSquareSize(height) } })} onSelection={NOOP} onLineStroke={NOOP} onLineTapCell={NOOP} onLineTapEdge={NOOP} onDoubleCell={NOOP} interactive={false} /></div><div className="creatorDimensionFields"><label>Size <output>{height}</output><input type="range" min="1" max="30" value={height} onChange={(event) => { const next = Number(event.target.value); setHeight(next); if (!custom) setWidth(next); }} /></label><label className="creatorToggle"><input type="checkbox" checked={custom} onChange={(event) => { setCustom(event.target.checked); if (!event.target.checked) setWidth(height); }} />Custom</label>{custom ? <><label>Width <output>{width}</output><input type="range" min="1" max="30" value={width} onChange={(event) => setWidth(Number(event.target.value))} /></label><label>Lowest digit <output>{lowestDigit}</output><input type="range" min="1" max="30" value={lowestDigit} onChange={(event) => setLowestDigit(Math.min(Number(event.target.value), highestDigit))} /></label><label>Highest digit <output>{highestDigit}</output><input type="range" min="1" max="30" value={highestDigit} onChange={(event) => setHighestDigit(Math.max(Number(event.target.value), lowestDigit))} /></label></> : null}</div><button className="btn primary creatorDimensionConfirm" onClick={() => void createPuzzle()} type="button">OK</button><button className="btn" onClick={() => setDimensionsOpen(false)} type="button">Cancel</button></div></div> : null}
+      {dimensionsOpen ? <div className="overlayBackdrop" role="dialog" aria-modal="true" aria-label="Puzzle dimensions"><div className="card creatorDimensionsCard"><div className="creatorDimensionsPreview"><GridCanvas def={{ id: "preview", sourceId: "preview", size: Math.max(height, custom ? width : height), rows: height, cols: custom ? width : height, meta: {}, givens: [], cosmetics: custom ? {} : { subgrid: defaultSubgrid(height) } }} progress={makeInitialProgress({ id: "preview", sourceId: "preview", size: Math.max(height, custom ? width : height), rows: height, cols: custom ? width : height, meta: {}, givens: [], cosmetics: custom ? {} : { subgrid: defaultSubgrid(height) } })} onSelection={NOOP} onLineStroke={NOOP} onLineTapCell={NOOP} onLineTapEdge={NOOP} onDoubleCell={NOOP} interactive={false} /></div><div className="creatorDimensionFields"><label>Size <output>{height}</output><input type="range" min="1" max="30" value={height} onChange={(event) => setHeight(Number(event.target.value))} /></label>{custom ? <><label>Width <output>{width}</output><input type="range" min="1" max="30" value={width} onChange={(event) => setWidth(Number(event.target.value))} /></label><label>Lowest digit <output>{lowestDigit}</output><input type="range" min="1" max="64" value={lowestDigit} onChange={(event) => setLowestDigit(Number(event.target.value))} /></label><label>Highest digit <output>{highestDigit}</output><input type="range" min="1" max="64" value={highestDigit} onChange={(event) => setHighestDigit(Number(event.target.value))} /></label></> : null}<label className="creatorToggle"><input type="checkbox" checked={custom} onChange={(event) => { setCustom(event.target.checked); if (!event.target.checked) setWidth(height); }} />Custom</label></div><button className="btn primary creatorDimensionConfirm" onClick={() => void createPuzzle()} type="button">OK</button><button className="btn" onClick={() => setDimensionsOpen(false)} type="button">Cancel</button></div></div> : null}
       {settingsOpen ? <SettingsOverlay onClose={() => setSettingsOpen(false)} /> : null}
     </div>
   );
