@@ -1508,6 +1508,56 @@ export function PuzzlePage(props: { editor?: boolean }) {
     applyPatches(patches);
   }
 
+  function selectMatchingCells(target: string) {
+    if (!data) return;
+    const { activeTool, cells, lines, lineCenterMarks } = data.progress;
+    const matches: CellRC[] = [];
+    const matched = new Set<string>();
+    const add = (rc: CellRC) => {
+      const key = rcKey(rc);
+      if (!matched.has(key)) {
+        matched.add(key);
+        matches.push(rc);
+      }
+    };
+
+    for (let r = 0; r < cells.length; r++) {
+      for (let c = 0; c < cells[r].length; c++) {
+        const cell = cells[r][c];
+        if (activeTool === "value" && cell.value === target) add({ r, c });
+        if (activeTool === "center" && cell.notes.center.has(target)) add({ r, c });
+        if (activeTool === "corner" && cell.notes.corner.has(target)) add({ r, c });
+        if (activeTool === "highlight" && cell.highlights.includes(normalizeHighlightColor(target))) add({ r, c });
+      }
+    }
+
+    if (activeTool === "line") {
+      const normalizedTarget = target.toLowerCase();
+      for (const stroke of lines) {
+        if (stroke.kind === "edge" || stroke.color.toLowerCase() !== normalizedTarget) continue;
+        for (const segment of stroke.segments) {
+          add(segment.a);
+          add(segment.b);
+        }
+      }
+      for (const mark of lineCenterMarks) {
+        if (mark.color.toLowerCase() === normalizedTarget) add(mark.rc);
+      }
+      applyPatches([
+        patchAt(data.progress, ["selection"], matches),
+        patchAt(data.progress, ["storedSelectionWhenLineTool"], matches),
+      ], { recordHistory: false });
+      return;
+    }
+
+    setSelection(matches);
+  }
+
+  function clearLineToolSelection() {
+    if (!data || data.progress.activeTool !== "line" || !data.progress.selection.length) return;
+    pushPatch(patchAt(data.progress, ["selection"], []), { recordHistory: false });
+  }
+
   function clearLinesForSelection(progress: PuzzleProgress, selected: CellRC[]): { lines: LineStroke[]; changed: boolean } {
     const selectedSet = new Set(selected.map(rcKey));
     const rows = progress.cells.length;
@@ -2109,6 +2159,7 @@ export function PuzzlePage(props: { editor?: boolean }) {
                 onLineStroke={onLineStroke}
                 onLineTapCell={onLineTapCell}
                 onLineTapEdge={onLineTapEdge}
+                onLineGridTouch={clearLineToolSelection}
                 onDoubleCell={onDoubleSelectCell}
                 requestedHeight={portraitBoardHeight ?? undefined}
               />
@@ -2164,6 +2215,7 @@ export function PuzzlePage(props: { editor?: boolean }) {
                     kind="numbers"
                     progress={data.progress}
                     onDigit={applyDigit}
+                    onDigitLongPress={selectMatchingCells}
                     onBackspace={handleBackspace}
                     onToggleAlphabet={() => pushPatch(patchAt(data.progress, ["alphabetMode"], !data.progress.alphabetMode), { recordHistory: false })}
                     onCycleAlphabetPage={() => {
@@ -2179,6 +2231,7 @@ export function PuzzlePage(props: { editor?: boolean }) {
                     kind="highlight"
                     progress={data.progress}
                     onColor={applyHighlight}
+                    onColorLongPress={selectMatchingCells}
                     onWhite={() => applyHighlight(TRANSPARENT_HIGHLIGHT_COLOR)}
                     onBackspace={handleBackspace}
                     onFlipPalette={() => {
@@ -2195,6 +2248,7 @@ export function PuzzlePage(props: { editor?: boolean }) {
                     progress={data.progress}
                     onBackspace={handleBackspace}
                     onColor={(c) => pushPatch(patchAt(data.progress, ["linePaletteColor"], c), { recordHistory: false })}
+                    onColorLongPress={selectMatchingCells}
                     onToggleDoubleLine={() => pushPatch(patchAt(data.progress, ["lineDoubleMode"], !data.progress.lineDoubleMode), { recordHistory: false })}
                   />
                 ) : null}

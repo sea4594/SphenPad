@@ -120,6 +120,7 @@ export function GridCanvas(props: {
   onLineStroke: (segments: LineSegmentDraft[], kind: LineKindResolved, action: "draw" | "erase") => void;
   onLineTapCell: (rc: CellRC) => void;
   onLineTapEdge: (a: CellRC, b: CellRC) => void;
+  onLineGridTouch?: () => void;
   onDoubleCell: (rc: CellRC, selectionCycleIndex?: number) => void;
   interactive?: boolean;
   previewMode?: boolean;
@@ -2476,6 +2477,7 @@ export function GridCanvas(props: {
     const rc = { r: pt.r, c: pt.c };
     const centerStart = nearestCellCenter(e.clientX, e.clientY) ?? rc;
     if (progress.activeTool === "line") {
+      props.onLineGridTouch?.();
       const kind = resolveInitialLineKind(pt);
       const edgeTapCandidate = kind === "edge" ? pickEdgeByPointer(e.clientX, e.clientY, 0.47) ?? undefined : undefined;
       const start = kind === "edge"

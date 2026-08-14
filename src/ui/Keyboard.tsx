@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useRef } from "react";
 import type { PuzzleProgress } from "../core/model";
 import { IconBackspace, IconCycle } from "./icons";
 import { highlightPalettePages, linePalette } from "./toolPalettes";
@@ -22,12 +22,14 @@ export function Keyboard(props: {
   compact?: boolean;
 
   onDigit?: (d: string) => void;
+  onDigitLongPress?: (d: string) => void;
   onBackspace?: () => void;
   onToggleAlphabet?: () => void;
   onCycleAlphabetPage?: () => void;
   onMode?: (m: PuzzleProgress["entryMode"]) => void;
 
   onColor?: (c: string) => void;
+  onColorLongPress?: (c: string) => void;
   onWhite?: () => void;
   onFlipPalette?: () => void;
 
@@ -41,14 +43,14 @@ export function Keyboard(props: {
     const grid = (
       <Grid3x4 compact={compact}>
         {keys.map((k) => (
-          <Key key={k} className="keyButtonValue" onClick={() => props.onDigit?.(k)}>{k}</Key>
+          <Key key={k} className="keyButtonValue" onClick={() => props.onDigit?.(k)} onLongPress={() => props.onDigitLongPress?.(k)}>{k}</Key>
         ))}
         {progress.alphabetMode ? (
           <Key className="keyButtonCycle keyButtonCycleIcon" onClick={() => props.onCycleAlphabetPage?.()} title="Cycle letter page">
             <IconCycle size={17} />
           </Key>
         ) : (
-          <Key className="keyButtonValue" onClick={() => props.onDigit?.("0")}>0</Key>
+          <Key className="keyButtonValue" onClick={() => props.onDigit?.("0")} onLongPress={() => props.onDigitLongPress?.("0")}>0</Key>
         )}
         <Key className="keyButtonCycle" onClick={() => props.onToggleAlphabet?.()}>{progress.alphabetMode ? "123" : "ABC"}</Key>
         <Key className="keyButtonBackspace" onClick={() => props.onBackspace?.()} title="Backspace"><IconBackspace size={26} /></Key>
@@ -86,9 +88,9 @@ export function Keyboard(props: {
     const grid = (
       <Grid3x4 compact={compact}>
         {palette.map((c) => (
-          <ColorKey key={c} color={c} onClick={() => props.onColor?.(c)} />
+          <ColorKey key={c} color={c} onClick={() => props.onColor?.(c)} onLongPress={() => props.onColorLongPress?.(c)} />
         ))}
-        <ColorKey color="#ffffff" onClick={() => props.onWhite?.()} />
+        <ColorKey color="#ffffff" onClick={() => props.onWhite?.()} onLongPress={() => props.onColorLongPress?.("#ffffff")} />
         <Key onClick={() => props.onFlipPalette?.()}>⇄</Key>
         <Key className="keyButtonBackspace" onClick={() => props.onBackspace?.()} title="Backspace"><IconBackspace size={26} /></Key>
       </Grid3x4>
@@ -116,12 +118,14 @@ export function Keyboard(props: {
           color={c}
           selected={progress.linePaletteColor.toLowerCase() === c.toLowerCase()}
           onClick={() => props.onColor?.(c)}
+          onLongPress={() => props.onColorLongPress?.(c)}
         />
       ))}
       <ColorKey
         color="#ffffff"
         selected={progress.linePaletteColor.toLowerCase() === "#ffffff"}
         onClick={() => props.onColor?.("#ffffff")}
+        onLongPress={() => props.onColorLongPress?.("#ffffff")}
       />
       <Key active={progress.lineDoubleMode} className="keyButtonValue" onClick={() => props.onToggleDoubleLine?.()} title="Toggle double-line mode">
         2x
@@ -158,19 +162,82 @@ function Grid3x4(props: { children: React.ReactNode; compact?: boolean }) {
   );
 }
 
-function Key(props: { children: React.ReactNode; onClick?: () => void; style?: React.CSSProperties; title?: string; className?: string; active?: boolean }) {
+function Key(props: { children: React.ReactNode; onClick?: () => void; onLongPress?: () => void; style?: React.CSSProperties; title?: string; className?: string; active?: boolean }) {
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const suppressClickRef = useRef(false);
+
+  const clearLongPress = () => {
+    if (longPressTimerRef.current === null) return;
+    clearTimeout(longPressTimerRef.current);
+    longPressTimerRef.current = null;
+  };
+
+  const startLongPress = () => {
+    if (!props.onLongPress) return;
+    suppressClickRef.current = false;
+    longPressTimerRef.current = setTimeout(() => {
+      longPressTimerRef.current = null;
+      suppressClickRef.current = true;
+      props.onLongPress?.();
+    }, 600);
+  };
+
   return (
-    <button className={"btn keyButton" + (props.active ? " primary" : "") + (props.className ? ` ${props.className}` : "")} style={{ height: "100%", ...props.style }} onClick={props.onClick} title={props.title}>
+    <button
+      className={"btn keyButton" + (props.active ? " primary" : "") + (props.className ? ` ${props.className}` : "")}
+      style={{ height: "100%", ...props.style }}
+      onClick={() => {
+        if (suppressClickRef.current) {
+          suppressClickRef.current = false;
+          return;
+        }
+        props.onClick?.();
+      }}
+      onPointerDown={startLongPress}
+      onPointerUp={clearLongPress}
+      onPointerLeave={clearLongPress}
+      onPointerCancel={clearLongPress}
+      title={props.title}
+    >
       {props.children}
     </button>
   );
 }
 
-function ColorKey(props: { color: string; onClick?: () => void; label?: string; selected?: boolean }) {
+function ColorKey(props: { color: string; onClick?: () => void; onLongPress?: () => void; label?: string; selected?: boolean }) {
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const suppressClickRef = useRef(false);
+
+  const clearLongPress = () => {
+    if (longPressTimerRef.current === null) return;
+    clearTimeout(longPressTimerRef.current);
+    longPressTimerRef.current = null;
+  };
+
+  const startLongPress = () => {
+    if (!props.onLongPress) return;
+    suppressClickRef.current = false;
+    longPressTimerRef.current = setTimeout(() => {
+      longPressTimerRef.current = null;
+      suppressClickRef.current = true;
+      props.onLongPress?.();
+    }, 600);
+  };
+
   return (
     <button
       className={"btn keyButton colorKey" + (props.selected ? " is-selected" : "")}
-      onClick={props.onClick}
+      onClick={() => {
+        if (suppressClickRef.current) {
+          suppressClickRef.current = false;
+          return;
+        }
+        props.onClick?.();
+      }}
+      onPointerDown={startLongPress}
+      onPointerUp={clearLongPress}
+      onPointerLeave={clearLongPress}
+      onPointerCancel={clearLongPress}
       title={props.label ?? props.color}
       aria-pressed={props.selected}
       style={{
