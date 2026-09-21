@@ -3359,6 +3359,8 @@ input.url {
 .puzzleShell.layoutTabletPortrait.videoLayoutOn.videoModeMobilePortrait .gridLayout {
   --mobile-controls-h: clamp(220px, calc(var(--mobile-controls-h-raw) * 1.05), 320px);
   --portrait-video-h: max(180px, min(calc(100vw * 9 / 16), calc(100% - var(--mobile-controls-h) - 138px)));
+  --video-resize-h: 10px;
+  grid-template-rows: var(--portrait-video-h) var(--video-resize-h) minmax(128px, 1fr) calc(var(--mobile-controls-h) + max(8px, var(--safe-bottom)));
 }
 
 .puzzleShell.layoutTabletPortrait .panelBtn svg,
