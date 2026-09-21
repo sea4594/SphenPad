@@ -144,8 +144,9 @@ export function GridCanvas(props: {
   const [linePreview, setLinePreview] = useState<LinePreviewState | null>(null);
   const [emojiRenderVersion, setEmojiRenderVersion] = useState(0);
   const [mobileViewport, setMobileViewport] = useState(() => isLikelyMobileDevice());
+  const [tightBoardLayout, setTightBoardLayout] = useState(false);
 
-  const basePad = Math.max(14, Math.round(cellPx * 0.32));
+  const basePad = tightBoardLayout ? 0 : Math.max(14, Math.round(cellPx * 0.32));
   const previewPadMin = strictScale ? 4 : 3;
   const pad = previewMode
     ? Math.max(previewPadMin, Math.round(basePad * 0.16))
@@ -234,10 +235,10 @@ export function GridCanvas(props: {
     return { minX, minY, maxX, maxY };
   }, [cols, cosmeticUnit, def.cosmetics.lines, def.cosmetics.overlays, def.cosmetics.underlays, rows]);
 
-  const outsideLeft = Math.max(0, -worldBounds.minX);
-  const outsideTop = Math.max(0, -worldBounds.minY);
-  const outsideRight = Math.max(0, worldBounds.maxX - cols);
-  const outsideBottom = Math.max(0, worldBounds.maxY - rows);
+  const outsideLeft = tightBoardLayout ? 0 : Math.max(0, -worldBounds.minX);
+  const outsideTop = tightBoardLayout ? 0 : Math.max(0, -worldBounds.minY);
+  const outsideRight = tightBoardLayout ? 0 : Math.max(0, worldBounds.maxX - cols);
+  const outsideBottom = tightBoardLayout ? 0 : Math.max(0, worldBounds.maxY - rows);
 
   const originX = pad + outsideLeft * cellPx;
   const originY = pad + outsideTop * cellPx;
@@ -397,6 +398,9 @@ export function GridCanvas(props: {
       const gridLayout = (el.closest(".gridLayout") as HTMLElement | null) ?? null;
       const kbdPanel = (el.closest(".gridLayout")?.querySelector(".kbdPanel") as HTMLElement | null) ?? null;
       const desktopVideoLayout = Boolean(el.closest(".videoLayoutOn.videoModeDesktop"));
+      const tabletLandscapeLayout = Boolean(el.closest(".puzzleShell.layoutTabletLandscape"));
+      const nextTightBoardLayout = desktopVideoLayout || tabletLandscapeLayout;
+      setTightBoardLayout((current) => (current === nextTightBoardLayout ? current : nextTightBoardLayout));
       const pane = boardCard ?? boardColumn ?? el;
       const visualViewportWidth = viewport?.width ?? window.innerWidth;
       const visualViewportHeight = viewport?.height ?? window.innerHeight;
@@ -433,11 +437,11 @@ export function GridCanvas(props: {
           ? measuredOrPaneHeight
           : viewportHeight;
 
-      const sideMargin = previewMode ? 0 : isMobile ? 0 : desktopVideoLayout ? 0 : 8;
-      const topBottomPad = previewMode ? 0 : isMobile ? 0 : desktopVideoLayout ? 0 : 8;
+      const sideMargin = previewMode ? 0 : isMobile ? 0 : nextTightBoardLayout ? 0 : 8;
+      const topBottomPad = previewMode ? 0 : isMobile ? 0 : nextTightBoardLayout ? 0 : 8;
       const spanX = cols + outsideLeft + outsideRight;
       const spanY = rows + outsideTop + outsideBottom;
-      const padFactor = isMobile ? 0 : desktopVideoLayout ? 0.1 : 0.68;
+      const padFactor = isMobile ? 0 : nextTightBoardLayout ? 0 : 0.68;
       const availableWidth = Math.max(1, width - sideMargin * 2);
       const availableHeight = Math.max(1, height - topBottomPad * 2);
       const byWidth = availableWidth / (spanX + padFactor);

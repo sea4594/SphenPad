@@ -624,12 +624,16 @@ export function PuzzlePage(props: { editor?: boolean }) {
     if (!drag || drag.pointerId !== event.pointerId || !gridLayout) return;
 
     const gridWidth = gridLayout.getBoundingClientRect().width;
+    const sidePanel = gridLayout.querySelector<HTMLElement>(".puzzleGridVideoPlayer");
     const kbdPanel = gridLayout.querySelector<HTMLElement>(".kbdPanel");
     const controlsMinWidth = Math.max(280, Math.ceil(kbdPanel?.scrollWidth ?? 0));
     const resizeHandleWidth = 10;
     const minBoardWidth = 360;
     const minSideWidth = controlsMinWidth;
-    const maxSideWidth = Math.max(minSideWidth, gridWidth - minBoardWidth - resizeHandleWidth);
+    const maxSideByBoard = Math.max(minSideWidth, gridWidth - minBoardWidth - resizeHandleWidth);
+    const sidePanelHeight = Math.max(1, sidePanel?.getBoundingClientRect().height ?? 0);
+    const maxSideByVideo = Math.max(minSideWidth, Math.floor(sidePanelHeight * (16 / 9)));
+    const maxSideWidth = Math.min(maxSideByBoard, maxSideByVideo);
     const nextWidth = Math.min(
       maxSideWidth,
       Math.max(minSideWidth, drag.startWidth - (event.clientX - drag.startX))
