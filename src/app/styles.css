@@ -2126,14 +2126,15 @@ input.url {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-wrap: nowrap;
+}
+
+.archiveFilterActions > .btn {
+  white-space: nowrap;
 }
 
 .archiveImportAllBtn {
   margin-left: auto;
-}
-
-.archiveSurpriseRow {
-  margin-top: 10px;
 }
 
 .archiveLenInput {
