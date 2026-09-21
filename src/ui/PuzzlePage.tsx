@@ -624,9 +624,12 @@ export function PuzzlePage(props: { editor?: boolean }) {
     if (!drag || drag.pointerId !== event.pointerId || !gridLayout) return;
 
     const gridWidth = gridLayout.getBoundingClientRect().width;
-    const minBoardWidth = 320;
-    const minSideWidth = 280;
-    const maxSideWidth = Math.max(minSideWidth, gridWidth - minBoardWidth - 10);
+    const kbdPanel = gridLayout.querySelector<HTMLElement>(".kbdPanel");
+    const controlsMinWidth = Math.max(280, Math.ceil(kbdPanel?.scrollWidth ?? 0));
+    const resizeHandleWidth = 10;
+    const minBoardWidth = 360;
+    const minSideWidth = controlsMinWidth;
+    const maxSideWidth = Math.max(minSideWidth, gridWidth - minBoardWidth - resizeHandleWidth);
     const nextWidth = Math.min(
       maxSideWidth,
       Math.max(minSideWidth, drag.startWidth - (event.clientX - drag.startX))

@@ -396,6 +396,7 @@ export function GridCanvas(props: {
       const boardColumn = (el.closest(".boardColumn") as HTMLElement | null) ?? null;
       const gridLayout = (el.closest(".gridLayout") as HTMLElement | null) ?? null;
       const kbdPanel = (el.closest(".gridLayout")?.querySelector(".kbdPanel") as HTMLElement | null) ?? null;
+      const desktopVideoLayout = Boolean(el.closest(".videoLayoutOn.videoModeDesktop"));
       const pane = boardCard ?? boardColumn ?? el;
       const visualViewportWidth = viewport?.width ?? window.innerWidth;
       const visualViewportHeight = viewport?.height ?? window.innerHeight;
@@ -432,11 +433,11 @@ export function GridCanvas(props: {
           ? measuredOrPaneHeight
           : viewportHeight;
 
-      const sideMargin = previewMode ? 0 : isMobile ? 0 : 8;
-      const topBottomPad = previewMode ? 0 : isMobile ? 0 : 8;
+      const sideMargin = previewMode ? 0 : isMobile ? 0 : desktopVideoLayout ? 0 : 8;
+      const topBottomPad = previewMode ? 0 : isMobile ? 0 : desktopVideoLayout ? 0 : 8;
       const spanX = cols + outsideLeft + outsideRight;
       const spanY = rows + outsideTop + outsideBottom;
-      const padFactor = isMobile ? 0 : 0.68;
+      const padFactor = isMobile ? 0 : desktopVideoLayout ? 0.1 : 0.68;
       const availableWidth = Math.max(1, width - sideMargin * 2);
       const availableHeight = Math.max(1, height - topBottomPad * 2);
       const byWidth = availableWidth / (spanX + padFactor);

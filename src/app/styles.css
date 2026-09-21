@@ -2476,6 +2476,8 @@ input.url {
   grid-row: 1 / span 2;
   justify-self: end;
   width: 100%;
+  gap: 0;
+  align-content: stretch;
 }
 
 .videoLayoutOn.videoModeDesktop .kbdPanel {
@@ -2488,6 +2490,11 @@ input.url {
 
 .videoLayoutOn.videoModeDesktop .puzzleMetaCard {
   display: none;
+}
+
+.videoLayoutOn.videoModeDesktop .boardCard {
+  padding: 0;
+  border-width: 0;
 }
 
 .gridLayout > * {
