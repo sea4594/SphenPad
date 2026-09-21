@@ -976,8 +976,7 @@ export function PuzzlePage(props: { editor?: boolean }) {
   }, [hasLinkedVideo]);
 
   const videoLayoutOn = videoPlayerOpen;
-  const tabletLandscapeVideoInSidebar = viewportLayoutKind === "tablet-landscape" && videoLayoutOn;
-  const showGridVideoPlayer = videoLayoutOn && !tabletLandscapeVideoInSidebar;
+  const showGridVideoPlayer = videoLayoutOn;
   const videoModeClass = videoViewportMode === "mobile-portrait"
     ? "videoModeMobilePortrait"
     : videoViewportMode === "mobile-landscape"
@@ -2205,15 +2204,11 @@ export function PuzzlePage(props: { editor?: boolean }) {
           </div>
 
           <div className="kbdPanel">
-            {tabletLandscapeVideoInSidebar
-              ? renderVideoPlayer("card puzzleMetaCard puzzleMetaVideoCard")
-              : (
-                <div className="card puzzleMetaCard">
-                  <div className="puzzleTitle">{meta?.title || "(untitled)"}</div>
-                  <div className="puzzleAuthor">{meta?.author || "Unknown author"}</div>
-                  <div className="puzzleRules">{meta?.rules || "No puzzle description provided."}</div>
-                </div>
-              )}
+            <div className="card puzzleMetaCard">
+              <div className="puzzleTitle">{meta?.title || "(untitled)"}</div>
+              <div className="puzzleAuthor">{meta?.author || "Unknown author"}</div>
+              <div className="puzzleRules">{meta?.rules || "No puzzle description provided."}</div>
+            </div>
 
             <div className="card controlStack mobileControlPanel">
               <button
