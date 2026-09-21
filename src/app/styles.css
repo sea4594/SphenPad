@@ -2435,6 +2435,38 @@ input.url {
   overflow: hidden;
 }
 
+.videoModeDesktop .puzzlePage {
+  max-width: none;
+}
+
+.videoModeDesktop .gridLayout {
+  grid-template-columns: minmax(0, 1fr) minmax(320px, min(42vw, 520px));
+  grid-template-rows: 1fr;
+  gap: 8px;
+}
+
+.videoModeDesktop .boardColumn {
+  grid-column: 1;
+  grid-row: 1;
+  gap: 0;
+  align-content: stretch;
+}
+
+.videoModeDesktop .boardCard {
+  padding: 0;
+  border-width: 0;
+}
+
+.videoModeDesktop .kbdPanel {
+  grid-column: 2;
+  grid-row: 1;
+  justify-self: end;
+  width: 100%;
+  height: 100%;
+  max-height: none;
+  grid-template-rows: minmax(0, 1fr) minmax(280px, 1.2fr);
+}
+
 .videoLayoutOn.videoModeDesktop .puzzlePage {
   max-width: none;
 }

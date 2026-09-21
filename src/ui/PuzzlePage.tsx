@@ -532,7 +532,6 @@ export function PuzzlePage(props: { editor?: boolean }) {
   const [viewportLayoutKind, setViewportLayoutKind] = useState<ViewportLayoutKind>(() => getViewportLayoutKind());
   const [videoViewportMode, setVideoViewportMode] = useState<VideoViewportMode>(() => getVideoViewportMode(getViewportLayoutKind()));
   const [portraitVideoHeight, setPortraitVideoHeight] = useState<number | null>(null);
-  const [portraitBoardHeight, setPortraitBoardHeight] = useState<number | null>(null);
   const [sideVideoWidth, setSideVideoWidth] = useState<number | null>(null);
   const tickRef = useRef<number | null>(null);
   const holdDelayRef = useRef<number | null>(null);
@@ -590,7 +589,6 @@ export function PuzzlePage(props: { editor?: boolean }) {
     const maximumVideoHeight = Math.max(minimumVideoHeight, Math.min(videoWidth * (9 / 16), availableVideoHeight));
     const nextHeight = Math.min(maximumVideoHeight, Math.max(minimumVideoHeight, drag.startHeight + event.clientY - drag.startY));
     setPortraitVideoHeight(nextHeight);
-    setPortraitBoardHeight(Math.max(128, gridLayout.getBoundingClientRect().height - controlsHeight - 10 - nextHeight));
     event.preventDefault();
     event.stopPropagation();
   }
@@ -862,7 +860,6 @@ export function PuzzlePage(props: { editor?: boolean }) {
   useEffect(() => {
     if (videoViewportMode !== "mobile-portrait" || !videoPlayerOpen) {
       setPortraitVideoHeight(null);
-      setPortraitBoardHeight(null);
     }
   }, [videoPlayerOpen, videoViewportMode]);
 
@@ -2271,7 +2268,6 @@ export function PuzzlePage(props: { editor?: boolean }) {
                 onLineTapEdge={onLineTapEdge}
                 onLineGridTouch={clearLineToolSelection}
                 onDoubleCell={onDoubleSelectCell}
-                requestedHeight={portraitBoardHeight ?? undefined}
               />
             </div>
           </div>
