@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import twemoji from "twemoji";
 import { mapForcedPortraitPoint, readForcedPortraitDirection } from "../app/forcedPortrait";
+import { getViewportLayoutKind, isMobileFidelityLayout } from "../app/viewportLayout";
 import type { CellRC, PuzzleDefinition, PuzzleProgress } from "../core/model";
 import { useTheme } from "../app/theme";
 import { sortHighlightColors } from "./toolPalettes";
@@ -23,10 +24,7 @@ const VIEWPORT_REFRESH_DELAYS = [120, 320, 620] as const;
 
 function isLikelyMobileDevice(): boolean {
   if (typeof window === "undefined") return false;
-  const mobilePlatform = /android|iphone|ipad|ipod/i.test(window.navigator.userAgent);
-  const coarsePointer = window.matchMedia("(hover: none) and (pointer: coarse)").matches;
-  const touchPrimaryInput = coarsePointer && window.navigator.maxTouchPoints > 1;
-  return mobilePlatform || touchPrimaryInput;
+  return isMobileFidelityLayout(getViewportLayoutKind());
 }
 
 type DragState = {

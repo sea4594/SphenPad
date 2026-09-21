@@ -37,8 +37,10 @@ import {
 import { SettingsOverlay } from "./SettingsOverlay";
 import { PuzzleMetadataOverlay } from "./PuzzleMetadataOverlay";
 import { useTheme } from "../app/theme";
+import { getViewportLayoutKind, type ViewportLayoutKind } from "../app/viewportLayout";
 import { readPuzzleOriginState, withPuzzleReturnState } from "./puzzleNavState";
 import { highlightPalettePages, linePalette, sortHighlightColors } from "./toolPalettes";
+import { onStorageRefreshNeeded } from "../core/syncSignal";
 
 const AUTO_IN_PROGRESS_MILLIS = 30_000;
 const TRANSPARENT_HIGHLIGHT_COLOR = "rgba(0,0,0,0)";
@@ -490,13 +492,10 @@ function parseYouTubeVideoId(url: string | undefined): string | null {
   return fallback?.[1] ?? null;
 }
 
-function getVideoViewportMode(): VideoViewportMode {
-  const viewport = window.visualViewport;
-  const viewportWidth = viewport?.width ?? window.innerWidth;
-  const viewportHeight = viewport?.height ?? window.innerHeight;
-  const isLikelyMobile = viewportWidth <= 760 || window.matchMedia("(hover: none) and (pointer: coarse)").matches;
-  if (!isLikelyMobile) return "desktop";
-  return viewportWidth > viewportHeight ? "mobile-landscape" : "mobile-portrait";
+function getVideoViewportMode(layoutKind: ViewportLayoutKind): VideoViewportMode {
+  if (layoutKind === "phone-landscape") return "mobile-landscape";
+  if (layoutKind === "phone-portrait" || layoutKind === "tablet-portrait") return "mobile-portrait";
+  return "desktop";
 }
 
 export function PuzzlePage(props: { editor?: boolean }) {
@@ -530,7 +529,8 @@ export function PuzzlePage(props: { editor?: boolean }) {
   const [folderCreateBusy, setFolderCreateBusy] = useState("");
   const [boardReloadNonce, setBoardReloadNonce] = useState(0);
   const [videoPlayerOpen, setVideoPlayerOpen] = useState(false);
-  const [videoViewportMode, setVideoViewportMode] = useState<VideoViewportMode>(() => getVideoViewportMode());
+  const [viewportLayoutKind, setViewportLayoutKind] = useState<ViewportLayoutKind>(() => getViewportLayoutKind());
+  const [videoViewportMode, setVideoViewportMode] = useState<VideoViewportMode>(() => getVideoViewportMode(getViewportLayoutKind()));
   const [portraitVideoHeight, setPortraitVideoHeight] = useState<number | null>(null);
   const [portraitBoardHeight, setPortraitBoardHeight] = useState<number | null>(null);
   const tickRef = useRef<number | null>(null);
@@ -670,6 +670,35 @@ export function PuzzlePage(props: { editor?: boolean }) {
   }, [key, nav, editor]);
 
   useEffect(() => {
+    const cancelledRef = { current: false };
+
+    const reloadFromStorage = async () => {
+      const local = await getPuzzle(key);
+      if (cancelledRef.current || !local) return;
+      const normalizedBase = normalizePersistedDefinition({ ...local, progress: normalizeProgress(local.progress) });
+      const normalized = editor
+        ? { ...normalizedBase, progress: { ...normalizedBase.progress, paused: false } }
+        : normalizedBase;
+
+      setData((prev) => {
+        if (!prev) return normalized;
+        if ((prev.updatedAt ?? 0) > (normalized.updatedAt ?? 0)) return prev;
+        return normalized;
+      });
+      setPauseMenuOpen(editor ? false : Boolean(normalized.progress.paused));
+    };
+
+    const unsubscribe = onStorageRefreshNeeded(() => {
+      void reloadFromStorage();
+    });
+
+    return () => {
+      cancelledRef.current = true;
+      unsubscribe();
+    };
+  }, [key, editor]);
+
+  useEffect(() => {
     if (editor) return;
     if (!data) return;
     if (!hasIncompleteMeta(data)) return;
@@ -724,8 +753,10 @@ export function PuzzlePage(props: { editor?: boolean }) {
     const timeoutIds: number[] = [];
 
     const refreshViewportMode = () => {
+      const nextLayoutKind = getViewportLayoutKind();
+      setViewportLayoutKind((current) => (current === nextLayoutKind ? current : nextLayoutKind));
       setVideoViewportMode((current) => {
-        const next = getVideoViewportMode();
+        const next = getVideoViewportMode(nextLayoutKind);
         return current === next ? current : next;
       });
     };
@@ -951,6 +982,11 @@ export function PuzzlePage(props: { editor?: boolean }) {
     : videoViewportMode === "mobile-landscape"
       ? "videoModeMobileLandscape"
       : "videoModeDesktop";
+  const tabletLayoutClass = viewportLayoutKind === "tablet-portrait"
+    ? "layoutTabletPortrait"
+    : viewportLayoutKind === "tablet-landscape"
+      ? "layoutTabletLandscape"
+      : "";
   const timeStr = useMemo(() => fmtHMS(data?.progress.totalMillis ?? 0), [data?.progress.totalMillis]);
   const folderById = useMemo(() => new Map(folders.map((folder) => [folder.id, folder])), [folders]);
   const puzzleByKey = useMemo(() => new Map(folderPuzzleRows.map((row) => [row.key, row])), [folderPuzzleRows]);
@@ -2057,7 +2093,8 @@ export function PuzzlePage(props: { editor?: boolean }) {
 
   return (
     <div
-      className={`shell puzzleShell ${videoLayoutOn ? "videoLayoutOn" : ""} ${videoModeClass}`}
+      className={`shell puzzleShell ${videoLayoutOn ? "videoLayoutOn" : ""} ${videoModeClass} ${tabletLayoutClass}`.trim()}
+      data-layout-mode={viewportLayoutKind}
       onPointerUpCapture={blurButtonAfterPointerUp}
       onContextMenu={(e) => e.preventDefault()}
     >

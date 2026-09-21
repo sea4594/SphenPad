@@ -3318,3 +3318,126 @@ input.url {
   }
 }
 
+/* Tablet-specific baseline: portrait follows mobile pattern with reduced control footprint. */
+.puzzleShell.layoutTabletPortrait .gridLayout {
+  --panel-gap: 4px;
+  --panel-pad: 8px;
+  --panel-cell-ratio: 0.56;
+  --panel-cell: calc((min(78vmin, 540px) - (var(--panel-pad) * 2) - (var(--panel-gap) * 3)) / 4);
+  --panel-row: calc(var(--panel-cell) * var(--panel-cell-ratio));
+  --mobile-controls-h-raw: calc((var(--panel-row) * 5) + (var(--panel-gap) * 4) + (var(--panel-pad) * 2));
+  --mobile-controls-h: clamp(170px, calc(var(--mobile-controls-h-raw) * 0.82), 290px);
+}
+
+.puzzleShell.layoutTabletPortrait .kbdPanel {
+  max-height: 320px;
+}
+
+.puzzleShell.layoutTabletPortrait .panelBtn svg,
+.puzzleShell.layoutTabletPortrait .panelBtn > span {
+  transform: scale(1.25);
+}
+
+.puzzleShell.layoutTabletPortrait .panelMainGrid .keyButtonValue {
+  font-size: 1.48rem;
+}
+
+.puzzleShell.layoutTabletPortrait .panelMainGrid .keyButtonBackspace svg {
+  transform: translateX(1.2px) scale(1.18);
+}
+
+.puzzleShell.layoutTabletPortrait .puzzleTopbar .btn svg,
+.puzzleShell.layoutTabletPortrait .puzzleTopbar .btn > span {
+  transform: scale(1.04);
+}
+
+.puzzleShell.layoutTabletPortrait .sideActions .btn,
+.puzzleShell.layoutTabletPortrait .toolSwitcher .btn {
+  min-height: 36px;
+}
+
+/* Tablet-specific baseline: landscape follows desktop composition instead of mobile landscape stack. */
+.puzzleShell.layoutTabletLandscape {
+  grid-template-columns: 1fr;
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.puzzleShell.layoutTabletLandscape .puzzleTopbar {
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  width: auto;
+  min-width: 0;
+  padding: max(8px, var(--safe-top)) 12px 8px 12px;
+  border-right: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  gap: 8px;
+}
+
+.puzzleShell.layoutTabletLandscape .puzzleTopbarButtons {
+  width: 100%;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+
+.puzzleShell.layoutTabletLandscape .puzzleTopbar > .btn,
+.puzzleShell.layoutTabletLandscape .puzzleTopbarButtons > .btn,
+.puzzleShell.layoutTabletLandscape .puzzleTopbarRight > .btn {
+  width: auto;
+  min-width: 0;
+  min-height: 36px;
+  padding: 6px 10px;
+}
+
+.puzzleShell.layoutTabletLandscape .puzzleTopbarRight {
+  margin-left: auto;
+  width: auto;
+  flex-direction: row;
+  gap: 6px;
+}
+
+.puzzleShell.layoutTabletLandscape .puzzleTopbar .puzzleTimer {
+  font-size: 14px;
+  line-height: 1.2;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.puzzleShell.layoutTabletLandscape .puzzlePage {
+  padding: 8px;
+  overflow: hidden;
+}
+
+.puzzleShell.layoutTabletLandscape .gridLayout {
+  grid-template-columns: minmax(0, 1fr) minmax(240px, 31vw);
+  grid-template-rows: 1fr;
+  gap: 10px;
+  height: 100%;
+  align-items: stretch;
+}
+
+.puzzleShell.layoutTabletLandscape .kbdPanel {
+  width: min(31vw, 300px);
+  justify-self: end;
+  grid-template-rows: minmax(130px, auto) 1fr;
+  height: 100%;
+  max-height: none;
+}
+
+.puzzleShell.layoutTabletLandscape .controlStack,
+.puzzleShell.layoutTabletLandscape .mobileControlPanel {
+  height: 100%;
+  max-height: none;
+}
+
+.puzzleShell.layoutTabletLandscape .mobileControlPanel {
+  --panel-gap: 6px;
+  --panel-pad: 6px;
+}
+
+.puzzleShell.layoutTabletLandscape.videoLayoutOn.videoModeDesktop .gridLayout {
+  grid-template-columns: minmax(240px, 34vw) minmax(300px, 1fr) minmax(220px, 280px);
+  gap: 10px;
+}
+
