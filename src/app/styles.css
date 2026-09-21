@@ -2465,8 +2465,8 @@ input.url {
 }
 
 .videoLayoutOn.videoModeDesktop .videoSideResizeHandle span {
-  width: 3px;
-  height: 34px;
+  width: 6px;
+  height: 56px;
   border-radius: 2px;
   background: var(--ui-border-strong);
 }
@@ -3074,8 +3074,8 @@ input.url {
   }
 
   .videoResizeHandle span {
-    width: 24px;
-    height: 3px;
+    width: 34px;
+    height: 6px;
     border-radius: 2px;
     background: var(--ui-border-strong);
   }
@@ -3359,6 +3359,7 @@ input.url {
   --mobile-controls-h-raw: calc((var(--panel-row) * 5) + (var(--panel-gap) * 4) + (var(--panel-pad) * 2));
   --mobile-controls-h: clamp(280px, calc(var(--mobile-controls-h-raw) * 1.28), 430px);
   grid-template-rows: minmax(0, 1fr) calc(var(--mobile-controls-h) + max(8px, var(--safe-bottom)));
+  gap: 6px;
 }
 
 .puzzleShell.layoutTabletPortrait .kbdPanel {
@@ -3392,6 +3393,7 @@ input.url {
   --portrait-video-h: max(180px, min(calc(100vw * 9 / 16), calc(100% - var(--mobile-controls-h) - 138px)));
   --video-resize-h: 10px;
   grid-template-rows: var(--portrait-video-h) var(--video-resize-h) minmax(128px, 1fr) calc(var(--mobile-controls-h) + max(8px, var(--safe-bottom)));
+  gap: 6px;
 }
 
 .puzzleShell.layoutTabletPortrait .panelBtn svg,
@@ -3496,6 +3498,8 @@ input.url {
   width: 100%;
   max-width: none;
   height: 100%;
+  padding: 0;
+  border-width: 0;
 }
 
 .puzzleShell.layoutTabletLandscape .controlStack,

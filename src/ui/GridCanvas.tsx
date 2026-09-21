@@ -397,9 +397,10 @@ export function GridCanvas(props: {
       const boardColumn = (el.closest(".boardColumn") as HTMLElement | null) ?? null;
       const gridLayout = (el.closest(".gridLayout") as HTMLElement | null) ?? null;
       const kbdPanel = (el.closest(".gridLayout")?.querySelector(".kbdPanel") as HTMLElement | null) ?? null;
+      const desktopModeLayout = Boolean(el.closest(".videoModeDesktop"));
       const desktopVideoLayout = Boolean(el.closest(".videoLayoutOn.videoModeDesktop"));
       const tabletLandscapeLayout = Boolean(el.closest(".puzzleShell.layoutTabletLandscape"));
-      const nextTightBoardLayout = desktopVideoLayout || tabletLandscapeLayout;
+      const nextTightBoardLayout = desktopModeLayout || desktopVideoLayout || tabletLandscapeLayout;
       setTightBoardLayout((current) => (current === nextTightBoardLayout ? current : nextTightBoardLayout));
       const pane = boardCard ?? boardColumn ?? el;
       const visualViewportWidth = viewport?.width ?? window.innerWidth;
@@ -451,7 +452,7 @@ export function GridCanvas(props: {
       const mobileMinCell = 21;
       const desktopMinCell = 14;
       const hardMinCell = previewMode ? 1 : 8;
-      const maxCell = desktop ? 96 : 72;
+      const maxCell = nextTightBoardLayout ? 220 : desktop ? 96 : 72;
       const preferredMinCell = previewMode ? 2 : isMobile ? mobileMinCell : desktopMinCell;
       let next = Math.floor(Math.min(maxCell, Math.max(preferredMinCell, Math.min(byWidth, byHeight))));
 
