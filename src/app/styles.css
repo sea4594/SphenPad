@@ -2133,8 +2133,19 @@ input.url {
   white-space: nowrap;
 }
 
-.archiveImportAllBtn {
+.archiveFilterActionsRight {
   margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.archiveFilterActionsRight > .btn {
+  white-space: nowrap;
+}
+
+.archiveImportAllBtn {
+  margin-left: 0;
 }
 
 .archiveLenInput {

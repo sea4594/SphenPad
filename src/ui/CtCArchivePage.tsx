@@ -1602,24 +1602,26 @@ export function CtCArchivePage(props: { active?: boolean }) {
               <button type="button" className="btn" onClick={onClearFilters}>
                 Clear Filters
               </button>
-              <button
-                type="button"
-                className="btn primary"
-                onClick={() => {
-                  void onSurpriseMe();
-                }}
-                disabled={!filteredRows.length || !!importingId || !!importAllBusy}
-              >
-                Surprise me!
-              </button>
-              <button
-                type="button"
-                className="btn primary archiveImportAllBtn"
-                onClick={onOpenImportAllMenu}
-                disabled={!filteredRows.length || !!importAllBusy}
-              >
-                {importAllBusy ? importAllBusy : "Import All"}
-              </button>
+              <div className="archiveFilterActionsRight">
+                <button
+                  type="button"
+                  className="btn primary"
+                  onClick={() => {
+                    void onSurpriseMe();
+                  }}
+                  disabled={!filteredRows.length || !!importingId || !!importAllBusy}
+                >
+                  Surprise me!
+                </button>
+                <button
+                  type="button"
+                  className="btn primary archiveImportAllBtn"
+                  onClick={onOpenImportAllMenu}
+                  disabled={!filteredRows.length || !!importAllBusy}
+                >
+                  {importAllBusy ? importAllBusy : "Import All"}
+                </button>
+              </div>
             </div>
           </div>
 
