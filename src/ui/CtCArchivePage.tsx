@@ -1207,6 +1207,14 @@ export function CtCArchivePage(props: { active?: boolean }) {
     }
   }
 
+  async function onSurpriseMe() {
+    if (!filteredRows.length || importingId || importAllBusy) return;
+    const randomIndex = Math.floor(Math.random() * filteredRows.length);
+    const selectedEntry = filteredRows[randomIndex];
+    if (!selectedEntry) return;
+    await onImportAndPlay(selectedEntry);
+  }
+
   async function onImportAllToMyPuzzles(entries: PreparedArchiveEntry[]) {
     if (!entries.length || importAllBusy) return;
     setImportAllBusy(`Importing 0/${entries.length}...`);
@@ -1638,6 +1646,19 @@ export function CtCArchivePage(props: { active?: boolean }) {
 
             {error && <div className="muted" style={{ marginTop: 10 }}>{error}</div>}
             {!!uiMessage && <div className="muted" style={{ marginTop: 10 }}>{uiMessage}</div>}
+
+            <div className="row archiveSurpriseRow">
+              <button
+                type="button"
+                className="btn primary"
+                onClick={() => {
+                  void onSurpriseMe();
+                }}
+                disabled={!filteredRows.length || !!importingId || !!importAllBusy}
+              >
+                Surprise me!
+              </button>
+            </div>
 
             <div className="menuPuzzleList">
               {visibleRows.map((entry) => {
