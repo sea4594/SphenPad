@@ -1207,12 +1207,13 @@ export function CtCArchivePage(props: { active?: boolean }) {
     }
   }
 
-  async function onSurpriseMe() {
+  function onSurpriseMe() {
     if (!filteredRows.length || importingId || importAllBusy) return;
     const randomIndex = Math.floor(Math.random() * filteredRows.length);
     const selectedEntry = filteredRows[randomIndex];
     if (!selectedEntry) return;
-    await onImportAndPlay(selectedEntry);
+    setUiMessage("");
+    void onOpenRulesDialog(selectedEntry);
   }
 
   async function onImportAllToMyPuzzles(entries: PreparedArchiveEntry[]) {
