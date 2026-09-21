@@ -1695,9 +1695,13 @@ export function PuzzlePage(props: { editor?: boolean }) {
     if (tool === "center" || tool === "corner") {
       const noteKey = tool === "center" ? "center" : "corner";
       for (const rc of editable) {
-        if (progress.cells[rc.r][rc.c].notes[noteKey].size) {
-          patches.push(patchAt(progress, ["cells", rc.r, rc.c, "notes", noteKey], new Set<string>()));
+        const cell = progress.cells[rc.r][rc.c];
+        // For pencil-mark tools, clear an entered value before clearing hidden notes.
+        if (cell.value != null) {
+          patches.push(patchAt(progress, ["cells", rc.r, rc.c, "value"], undefined));
+          continue;
         }
+        if (cell.notes[noteKey].size) patches.push(patchAt(progress, ["cells", rc.r, rc.c, "notes", noteKey], new Set<string>()));
       }
       return patches;
     }
