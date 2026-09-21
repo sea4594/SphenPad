@@ -3357,7 +3357,18 @@ input.url {
 }
 
 .puzzleShell.layoutTabletPortrait.videoLayoutOn.videoModeMobilePortrait .gridLayout {
-  --portrait-video-h: clamp(164px, min(calc(100vw * 9 / 16), calc(100% - var(--mobile-controls-h) - 116px)), 46vh);
+  --portrait-video-h: min(
+    max(220px, calc(100% - var(--mobile-controls-h) - 124px)),
+    min(calc(100vw * 9 / 16), 52vh)
+  );
+}
+
+.puzzleShell.layoutTabletPortrait.videoLayoutOn.videoModeMobilePortrait .puzzleVideoFrame {
+  width: 100%;
+  max-width: min(100%, calc(var(--portrait-video-h) * (16 / 9)));
+  height: 100%;
+  max-height: 100%;
+  aspect-ratio: 16 / 9;
 }
 
 .puzzleShell.layoutTabletPortrait .panelBtn svg,
