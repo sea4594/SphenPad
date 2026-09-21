@@ -3323,14 +3323,25 @@ input.url {
   --panel-gap: 4px;
   --panel-pad: 8px;
   --panel-cell-ratio: 0.56;
-  --panel-cell: calc((min(78vmin, 540px) - (var(--panel-pad) * 2) - (var(--panel-gap) * 3)) / 4);
+  --panel-cell: calc((min(68vmin, 420px) - (var(--panel-pad) * 2) - (var(--panel-gap) * 3)) / 4);
   --panel-row: calc(var(--panel-cell) * var(--panel-cell-ratio));
   --mobile-controls-h-raw: calc((var(--panel-row) * 5) + (var(--panel-gap) * 4) + (var(--panel-pad) * 2));
-  --mobile-controls-h: clamp(170px, calc(var(--mobile-controls-h-raw) * 0.82), 290px);
+  --mobile-controls-h: clamp(154px, calc(var(--mobile-controls-h-raw) * 0.8), 248px);
 }
 
 .puzzleShell.layoutTabletPortrait .kbdPanel {
-  max-height: 320px;
+  width: min(82vw, 420px);
+  justify-self: center;
+  max-height: 286px;
+}
+
+.puzzleShell.layoutTabletPortrait .boardColumn {
+  align-content: stretch;
+}
+
+.puzzleShell.layoutTabletPortrait .boardCard {
+  width: min(100%, calc(100vh - var(--mobile-controls-h) - 92px));
+  max-width: min(100%, calc(100vh - var(--mobile-controls-h) - 92px));
 }
 
 .puzzleShell.layoutTabletPortrait .panelBtn svg,
@@ -3420,7 +3431,7 @@ input.url {
 .puzzleShell.layoutTabletLandscape .kbdPanel {
   width: min(31vw, 300px);
   justify-self: end;
-  grid-template-rows: minmax(130px, auto) 1fr;
+  grid-template-rows: minmax(130px, 1fr) minmax(250px, 52%);
   height: 100%;
   max-height: none;
 }
@@ -3432,12 +3443,65 @@ input.url {
 }
 
 .puzzleShell.layoutTabletLandscape .mobileControlPanel {
-  --panel-gap: 6px;
-  --panel-pad: 6px;
+  --panel-gap: 8px;
+  --panel-pad: 8px;
+}
+
+.puzzleShell.layoutTabletLandscape .puzzleMetaCard {
+  display: grid;
+  min-height: 0;
+}
+
+.puzzleShell.layoutTabletLandscape.videoLayoutOn .puzzleMetaCard {
+  display: none;
+}
+
+.puzzleShell.layoutTabletLandscape .controlStack {
+  align-content: stretch;
+  padding-bottom: 0;
+}
+
+.puzzleShell.layoutTabletLandscape .panelMainGrid .keyGrid {
+  gap: 8px !important;
+}
+
+.puzzleShell.layoutTabletLandscape .panelMainGrid .keyButton,
+.puzzleShell.layoutTabletLandscape .panelMainGrid .lineKindSelect {
+  min-height: 58px;
+}
+
+.puzzleShell.layoutTabletLandscape .panelMainGrid .keyButtonValue {
+  font-size: 1.7rem;
+}
+
+.puzzleShell.layoutTabletLandscape .panelBtn svg,
+.puzzleShell.layoutTabletLandscape .panelBtn > span {
+  transform: scale(1.18);
+  transform-origin: center;
+}
+
+.puzzleShell.layoutTabletLandscape .videoLayoutOn.videoModeDesktop .puzzleGridVideoPlayer {
+  display: block;
+  grid-column: 2;
+  grid-row: 1;
+  align-self: stretch;
+}
+
+.puzzleShell.layoutTabletLandscape .videoLayoutOn.videoModeDesktop .boardColumn {
+  grid-column: 1;
+  grid-row: 1;
+  width: 100%;
+}
+
+.puzzleShell.layoutTabletLandscape .videoLayoutOn.videoModeDesktop .kbdPanel {
+  grid-column: 2;
+  grid-row: 2;
+  width: min(31vw, 300px);
 }
 
 .puzzleShell.layoutTabletLandscape.videoLayoutOn.videoModeDesktop .gridLayout {
-  grid-template-columns: minmax(240px, 34vw) minmax(300px, 1fr) minmax(220px, 280px);
+  grid-template-columns: minmax(0, 1fr) minmax(250px, 31vw);
+  grid-template-rows: minmax(0, 1fr) minmax(250px, 52%);
   gap: 10px;
 }
 
