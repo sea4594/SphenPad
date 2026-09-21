@@ -533,6 +533,7 @@ export function PuzzlePage(props: { editor?: boolean }) {
   const [videoViewportMode, setVideoViewportMode] = useState<VideoViewportMode>(() => getVideoViewportMode(getViewportLayoutKind()));
   const [portraitVideoHeight, setPortraitVideoHeight] = useState<number | null>(null);
   const [portraitBoardHeight, setPortraitBoardHeight] = useState<number | null>(null);
+  const [sideVideoWidth, setSideVideoWidth] = useState<number | null>(null);
   const tickRef = useRef<number | null>(null);
   const holdDelayRef = useRef<number | null>(null);
   const holdIntervalRef = useRef<number | null>(null);
@@ -544,6 +545,7 @@ export function PuzzlePage(props: { editor?: boolean }) {
   const definitionRefreshInFlightRef = useRef(new Set<string>());
   const gridLayoutRef = useRef<HTMLDivElement | null>(null);
   const videoResizeRef = useRef<{ pointerId: number; startY: number; startHeight: number } | null>(null);
+  const sideVideoResizeRef = useRef<{ pointerId: number; startX: number; startWidth: number } | null>(null);
 
   function blurButtonAfterPointerUp(event: React.PointerEvent<HTMLDivElement>) {
     const target = event.target;
@@ -596,6 +598,47 @@ export function PuzzlePage(props: { editor?: boolean }) {
   function stopVideoResize(event: React.PointerEvent<HTMLDivElement>) {
     if (videoResizeRef.current?.pointerId !== event.pointerId) return;
     videoResizeRef.current = null;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+    event.preventDefault();
+    event.stopPropagation();
+  }
+
+  function startSideVideoResize(event: React.PointerEvent<HTMLDivElement>) {
+    const gridLayout = gridLayoutRef.current;
+    const sidePanel = gridLayout?.querySelector<HTMLElement>(".puzzleGridVideoPlayer");
+    if (!gridLayout || !sidePanel) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    sideVideoResizeRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startWidth: sidePanel.getBoundingClientRect().width,
+    };
+  }
+
+  function resizeSideVideo(event: React.PointerEvent<HTMLDivElement>) {
+    const drag = sideVideoResizeRef.current;
+    const gridLayout = gridLayoutRef.current;
+    if (!drag || drag.pointerId !== event.pointerId || !gridLayout) return;
+
+    const gridWidth = gridLayout.getBoundingClientRect().width;
+    const minBoardWidth = 320;
+    const minSideWidth = 280;
+    const maxSideWidth = Math.max(minSideWidth, gridWidth - minBoardWidth - 10);
+    const nextWidth = Math.min(
+      maxSideWidth,
+      Math.max(minSideWidth, drag.startWidth - (event.clientX - drag.startX))
+    );
+    setSideVideoWidth(nextWidth);
+    event.preventDefault();
+    event.stopPropagation();
+  }
+
+  function stopSideVideoResize(event: React.PointerEvent<HTMLDivElement>) {
+    if (sideVideoResizeRef.current?.pointerId !== event.pointerId) return;
+    sideVideoResizeRef.current = null;
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
     event.preventDefault();
     event.stopPropagation();
@@ -977,6 +1020,7 @@ export function PuzzlePage(props: { editor?: boolean }) {
 
   const videoLayoutOn = videoPlayerOpen;
   const showGridVideoPlayer = videoLayoutOn;
+  const sideBySideVideoMode = videoLayoutOn && videoViewportMode === "desktop";
   const videoModeClass = videoViewportMode === "mobile-portrait"
     ? "videoModeMobilePortrait"
     : videoViewportMode === "mobile-landscape"
@@ -987,6 +1031,10 @@ export function PuzzlePage(props: { editor?: boolean }) {
     : viewportLayoutKind === "tablet-landscape"
       ? "layoutTabletLandscape"
       : "";
+  const gridLayoutStyle = {
+    ...(portraitVideoHeight === null ? {} : { "--portrait-video-h": `${portraitVideoHeight}px` }),
+    ...(sideVideoWidth === null ? {} : { "--video-side-w": `${Math.round(sideVideoWidth)}px` }),
+  } as React.CSSProperties;
   const timeStr = useMemo(() => fmtHMS(data?.progress.totalMillis ?? 0), [data?.progress.totalMillis]);
   const folderById = useMemo(() => new Map(folders.map((folder) => [folder.id, folder])), [folders]);
   const puzzleByKey = useMemo(() => new Map(folderPuzzleRows.map((row) => [row.key, row])), [folderPuzzleRows]);
@@ -2165,7 +2213,7 @@ export function PuzzlePage(props: { editor?: boolean }) {
         <div
           className="gridLayout"
           ref={gridLayoutRef}
-          style={portraitVideoHeight === null ? undefined : ({ "--portrait-video-h": `${portraitVideoHeight}px` } as React.CSSProperties)}
+          style={Object.keys(gridLayoutStyle).length === 0 ? undefined : gridLayoutStyle}
         >
           {showGridVideoPlayer ? renderVideoPlayer("puzzleGridVideoPlayer") : null}
           {videoLayoutOn && videoViewportMode === "mobile-portrait" ? (
@@ -2178,6 +2226,24 @@ export function PuzzlePage(props: { editor?: boolean }) {
               onPointerMove={resizeVideo}
               onPointerUp={stopVideoResize}
               onPointerCancel={stopVideoResize}
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+              }}
+            >
+              <span />
+            </div>
+          ) : null}
+          {sideBySideVideoMode ? (
+            <div
+              className="videoSideResizeHandle"
+              role="separator"
+              aria-label="Resize puzzle and video panels"
+              aria-orientation="vertical"
+              onPointerDown={startSideVideoResize}
+              onPointerMove={resizeSideVideo}
+              onPointerUp={stopSideVideoResize}
+              onPointerCancel={stopSideVideoResize}
               onClick={(event) => {
                 event.preventDefault();
                 event.stopPropagation();

@@ -2440,30 +2440,54 @@ input.url {
 }
 
 .videoLayoutOn.videoModeDesktop .gridLayout {
-  grid-template-columns: minmax(360px, 1fr) minmax(420px, min(58vw, 76vh)) minmax(280px, 360px);
-  grid-template-rows: 1fr;
-  gap: 12px;
+  --video-side-w: min(38vw, 520px);
+  --video-resize-w: 10px;
+  grid-template-columns: minmax(0, 1fr) var(--video-resize-w) minmax(300px, var(--video-side-w));
+  grid-template-rows: minmax(0, 1fr) minmax(250px, 1.15fr);
+  gap: 8px;
 }
 
 .videoLayoutOn.videoModeDesktop .puzzleGridVideoPlayer {
   display: block;
-  grid-column: 1;
+  grid-column: 3;
   grid-row: 1;
   align-self: stretch;
 }
 
-.videoLayoutOn.videoModeDesktop .boardColumn {
+.videoLayoutOn.videoModeDesktop .videoSideResizeHandle {
   grid-column: 2;
-  grid-row: 1;
+  grid-row: 1 / span 2;
+  display: grid;
+  place-items: center;
+  touch-action: none;
+  cursor: col-resize;
+  user-select: none;
+}
+
+.videoLayoutOn.videoModeDesktop .videoSideResizeHandle span {
+  width: 3px;
+  height: 34px;
+  border-radius: 2px;
+  background: var(--ui-border-strong);
+}
+
+.videoLayoutOn.videoModeDesktop .boardColumn {
+  grid-column: 1;
+  grid-row: 1 / span 2;
   justify-self: end;
   width: 100%;
 }
 
 .videoLayoutOn.videoModeDesktop .kbdPanel {
   grid-column: 3;
-  grid-row: 1;
+  grid-row: 2;
   justify-self: end;
   width: 100%;
+  grid-template-rows: 1fr;
+}
+
+.videoLayoutOn.videoModeDesktop .puzzleMetaCard {
+  display: none;
 }
 
 .gridLayout > * {
@@ -3512,10 +3536,7 @@ input.url {
 }
 
 .puzzleShell.layoutTabletLandscape.videoLayoutOn.videoModeDesktop .puzzleGridVideoPlayer {
-  display: block;
-  grid-column: 2;
-  grid-row: 1;
-  align-self: stretch;
+  grid-column: 3;
 }
 
 .puzzleShell.layoutTabletLandscape.videoLayoutOn.videoModeDesktop .boardColumn {
@@ -3525,14 +3546,15 @@ input.url {
 }
 
 .puzzleShell.layoutTabletLandscape.videoLayoutOn.videoModeDesktop .kbdPanel {
-  grid-column: 2;
+  grid-column: 3;
   grid-row: 2;
   width: min(46vw, 450px);
   grid-template-rows: 1fr;
 }
 
 .puzzleShell.layoutTabletLandscape.videoLayoutOn.videoModeDesktop .gridLayout {
-  grid-template-columns: minmax(0, 1fr) minmax(360px, 46vw);
+  --video-side-w: min(46vw, 450px);
+  grid-template-columns: minmax(0, 1fr) var(--video-resize-w, 10px) minmax(320px, var(--video-side-w));
   grid-template-rows: minmax(0, 1fr) minmax(280px, 1.2fr);
   gap: 8px;
 }
