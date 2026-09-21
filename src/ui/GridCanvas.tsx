@@ -120,6 +120,7 @@ export function GridCanvas(props: {
   onLineTapCell: (rc: CellRC) => void;
   onLineTapEdge: (a: CellRC, b: CellRC) => void;
   onLineGridTouch?: () => void;
+  onNonCellPointerDown?: () => void;
   onDoubleCell: (rc: CellRC, selectionCycleIndex?: number) => void;
   interactive?: boolean;
   previewMode?: boolean;
@@ -2475,7 +2476,10 @@ export function GridCanvas(props: {
     if (!interactive) return;
     clearLongPressTimer();
     const pt = eventPoint(e.clientX, e.clientY);
-    if (!pt) return;
+    if (!pt) {
+      props.onNonCellPointerDown?.();
+      return;
+    }
     e.currentTarget.setPointerCapture(e.pointerId);
 
     const rc = { r: pt.r, c: pt.c };

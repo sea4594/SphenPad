@@ -558,8 +558,8 @@ export function PuzzlePage(props: { editor?: boolean }) {
     const target = event.target;
     if (!(target instanceof Element)) return;
 
-    // Keep selection while interacting with the board and interactive controls.
-    if (target.closest(".boardSurface")) return;
+    // Keep selection while interacting with true cell hits on the canvas.
+    if (target.closest("canvas")) return;
     if (target.closest("button, input, textarea, select, a, label, [role='button']")) return;
 
     setSelection([]);
@@ -2276,6 +2276,10 @@ export function PuzzlePage(props: { editor?: boolean }) {
                 def={data.def}
                 progress={data.progress}
                 onSelection={setSelection}
+                onNonCellPointerDown={() => {
+                  if (!data || data.progress.activeTool === "line" || data.progress.selection.length === 0) return;
+                  setSelection([]);
+                }}
                 onLineStroke={onLineStroke}
                 onLineTapCell={onLineTapCell}
                 onLineTapEdge={onLineTapEdge}
