@@ -2440,7 +2440,7 @@ input.url {
 }
 
 .videoModeDesktop .gridLayout {
-  grid-template-columns: minmax(0, 1fr) minmax(320px, min(42vw, 520px));
+  grid-template-columns: minmax(0, 1fr) minmax(280px, min(34vw, 420px));
   grid-template-rows: 1fr;
   gap: 8px;
 }
@@ -2464,7 +2464,7 @@ input.url {
   width: 100%;
   height: 100%;
   max-height: none;
-  grid-template-rows: minmax(0, 1fr) minmax(280px, 1.2fr);
+  grid-template-rows: minmax(0, 1fr) minmax(260px, 1.1fr);
 }
 
 .videoLayoutOn.videoModeDesktop .puzzlePage {
@@ -3507,7 +3507,7 @@ input.url {
 }
 
 .puzzleShell.layoutTabletLandscape .gridLayout {
-  grid-template-columns: minmax(0, 1fr) minmax(360px, 46vw);
+  grid-template-columns: minmax(0, 1fr) minmax(280px, min(34vw, 390px));
   grid-template-rows: 1fr;
   gap: 8px;
   height: 100%;
@@ -3515,7 +3515,7 @@ input.url {
 }
 
 .puzzleShell.layoutTabletLandscape .kbdPanel {
-  width: min(46vw, 450px);
+  width: min(34vw, 390px);
   justify-self: end;
   grid-template-rows: minmax(0, 1fr) minmax(280px, 1.2fr);
   height: 100%;

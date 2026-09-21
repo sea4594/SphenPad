@@ -395,7 +395,6 @@ export function GridCanvas(props: {
     const update = () => {
       const boardCard = (el.closest(".boardCard") as HTMLElement | null) ?? (el.parentElement as HTMLElement | null) ?? null;
       const boardColumn = (el.closest(".boardColumn") as HTMLElement | null) ?? null;
-      const gridLayout = (el.closest(".gridLayout") as HTMLElement | null) ?? null;
       const kbdPanel = (el.closest(".gridLayout")?.querySelector(".kbdPanel") as HTMLElement | null) ?? null;
       const desktopModeLayout = Boolean(el.closest(".videoModeDesktop"));
       const desktopVideoLayout = Boolean(el.closest(".videoLayoutOn.videoModeDesktop"));
@@ -419,7 +418,6 @@ export function GridCanvas(props: {
       const measuredHeight = Math.max(
         boardCard?.clientHeight ?? 0,
         boardColumn?.clientHeight ?? 0,
-        gridLayout?.clientHeight ?? 0,
         pane.clientHeight || 0
       );
       const controlsRect = kbdPanel?.getBoundingClientRect() ?? null;
