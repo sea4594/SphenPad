@@ -553,6 +553,18 @@ export function PuzzlePage(props: { editor?: boolean }) {
     if (button instanceof HTMLButtonElement) button.blur();
   }
 
+  function onShellPointerDownCapture(event: React.PointerEvent<HTMLDivElement>) {
+    if (!data || data.progress.activeTool === "line" || data.progress.selection.length === 0) return;
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+
+    // Keep selection while interacting with the board and interactive controls.
+    if (target.closest(".boardSurface")) return;
+    if (target.closest("button, input, textarea, select, a, label, [role='button']")) return;
+
+    setSelection([]);
+  }
+
   function startVideoResize(event: React.PointerEvent<HTMLDivElement>) {
     const gridLayout = gridLayoutRef.current;
     const video = gridLayout?.querySelector<HTMLElement>(".puzzleGridVideoPlayer");
@@ -2147,6 +2159,7 @@ export function PuzzlePage(props: { editor?: boolean }) {
     <div
       className={`shell puzzleShell ${videoLayoutOn ? "videoLayoutOn" : ""} ${videoModeClass} ${tabletLayoutClass}`.trim()}
       data-layout-mode={viewportLayoutKind}
+      onPointerDownCapture={onShellPointerDownCapture}
       onPointerUpCapture={blurButtonAfterPointerUp}
       onContextMenu={(e) => e.preventDefault()}
     >
