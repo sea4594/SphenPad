@@ -27,6 +27,16 @@ function isLikelyMobileDevice(): boolean {
   return isMobileFidelityLayout(getViewportLayoutKind());
 }
 
+function selectionStrokeColor(selectionColor: ReturnType<typeof useTheme>["selectionColor"]): string {
+  if (selectionColor === "green") return "rgba(16,163,77,.95)";
+  if (selectionColor === "yellow") return "rgba(214,166,0,.95)";
+  if (selectionColor === "orange") return "rgba(230,121,0,.95)";
+  if (selectionColor === "red") return "rgba(220,45,55,.95)";
+  if (selectionColor === "purple") return "rgba(123,69,217,.95)";
+  if (selectionColor === "pink") return "rgba(212,59,130,.95)";
+  return "rgba(46,120,255,.95)";
+}
+
 type DragState = {
   path: CellRC[];
   segments: LineSegmentDraft[];
@@ -128,7 +138,7 @@ export function GridCanvas(props: {
   requestedHeight?: number;
 }) {
   const { def, progress, interactive = true, previewMode = false, strictScale = false, requestedHeight } = props;
-  const { outlineDigits, conflictChecker } = useTheme();
+  const { outlineDigits, conflictChecker, selectionColor } = useTheme();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const dragRef = useRef<DragState | null>(null);
@@ -633,10 +643,11 @@ export function GridCanvas(props: {
     const drawSelectionOutlines = () => {
       if (!interactive || !progress.selection.length) return;
       const selected = new Set(progress.selection.map(rcKey));
+      const isPhoneLayout = getViewportLayoutKind().startsWith("phone");
       const inset = 1;
       ctx.save();
-      ctx.strokeStyle = "rgba(46,120,255,.95)";
-      ctx.lineWidth = 3.3;
+      ctx.strokeStyle = selectionStrokeColor(selectionColor);
+      ctx.lineWidth = isPhoneLayout ? 3.3 : 5.8;
       ctx.lineCap = "round";
       ctx.lineJoin = "round";
       for (const rc of progress.selection) {

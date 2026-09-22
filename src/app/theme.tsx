@@ -3,6 +3,7 @@ import { onSyncedLocalDataApplied, setSyncedLocalStorageItem } from "../core/loc
 
 export type ThemeMode = "light" | "dark";
 export type ThemeColor = "bw" | "ocean" | "forest" | "clay" | "berry";
+export type SelectionColor = "blue" | "green" | "yellow" | "orange" | "red" | "purple" | "pink";
 
 type ThemeContextValue = {
   mode: ThemeMode;
@@ -10,12 +11,14 @@ type ThemeContextValue = {
   hideTimer: boolean;
   outlineDigits: boolean;
   conflictChecker: boolean;
+  selectionColor: SelectionColor;
   setTheme: (mode: ThemeMode, color: ThemeColor) => void;
   setMode: (mode: ThemeMode) => void;
   setColor: (color: ThemeColor) => void;
   setHideTimer: (hideTimer: boolean) => void;
   setOutlineDigits: (outlineDigits: boolean) => void;
   setConflictChecker: (conflictChecker: boolean) => void;
+  setSelectionColor: (selectionColor: SelectionColor) => void;
 };
 
 const STORAGE_KEY = "sphenpad-theme-v1";
@@ -33,6 +36,7 @@ function readInitialTheme(): {
   hideTimer: boolean;
   outlineDigits: boolean;
   conflictChecker: boolean;
+  selectionColor: SelectionColor;
 } {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -43,6 +47,7 @@ function readInitialTheme(): {
         hideTimer: false,
         outlineDigits: true,
         conflictChecker: true,
+        selectionColor: "blue",
       };
     }
     const parsed = JSON.parse(raw) as {
@@ -51,6 +56,7 @@ function readInitialTheme(): {
       hideTimer?: boolean;
       outlineDigits?: boolean;
       conflictChecker?: boolean;
+      selectionColor?: SelectionColor;
     };
     const mode: ThemeMode = parsed.mode === "light" || parsed.mode === "dark" ? parsed.mode : "light";
     const mappedColor = parsed.color === "sunset" || parsed.color === "sepia" ? "clay" : parsed.color;
@@ -61,7 +67,10 @@ function readInitialTheme(): {
     const hideTimer = typeof parsed.hideTimer === "boolean" ? parsed.hideTimer : false;
     const outlineDigits = typeof parsed.outlineDigits === "boolean" ? parsed.outlineDigits : true;
     const conflictChecker = typeof parsed.conflictChecker === "boolean" ? parsed.conflictChecker : true;
-    return { mode: normalizedTheme.mode, color: normalizedTheme.color, hideTimer, outlineDigits, conflictChecker };
+    const selectionColor: SelectionColor = ["blue", "green", "yellow", "orange", "red", "purple", "pink"].includes(parsed.selectionColor ?? "")
+      ? (parsed.selectionColor as SelectionColor)
+      : "blue";
+    return { mode: normalizedTheme.mode, color: normalizedTheme.color, hideTimer, outlineDigits, conflictChecker, selectionColor };
   } catch {
     return {
       mode: "light",
@@ -69,6 +78,7 @@ function readInitialTheme(): {
       hideTimer: false,
       outlineDigits: true,
       conflictChecker: true,
+      selectionColor: "blue",
     };
   }
 }
@@ -80,6 +90,7 @@ export function ThemeProvider(props: { children: ReactNode }) {
   const [hideTimer, setHideTimer] = useState<boolean>(initialTheme.hideTimer);
   const [outlineDigits, setOutlineDigits] = useState<boolean>(initialTheme.outlineDigits);
   const [conflictChecker, setConflictChecker] = useState<boolean>(initialTheme.conflictChecker);
+  const [selectionColor, setSelectionColor] = useState<SelectionColor>(initialTheme.selectionColor);
 
   const setTheme = (nextMode: ThemeMode, nextColor: ThemeColor) => {
     const normalized = normalizeThemeSelection(nextMode, nextColor);
@@ -103,6 +114,7 @@ export function ThemeProvider(props: { children: ReactNode }) {
       setHideTimer(next.hideTimer);
       setOutlineDigits(next.outlineDigits);
       setConflictChecker(next.conflictChecker);
+      setSelectionColor(next.selectionColor);
     };
     return onSyncedLocalDataApplied(applyThemeFromStorage);
   }, []);
@@ -124,8 +136,8 @@ export function ThemeProvider(props: { children: ReactNode }) {
     document.documentElement.style.backgroundColor = bg;
     document.body.style.backgroundColor = bg;
 
-    setSyncedLocalStorageItem(STORAGE_KEY, JSON.stringify({ mode, color, hideTimer, outlineDigits, conflictChecker }));
-  }, [mode, color, hideTimer, outlineDigits, conflictChecker]);
+    setSyncedLocalStorageItem(STORAGE_KEY, JSON.stringify({ mode, color, hideTimer, outlineDigits, conflictChecker, selectionColor }));
+  }, [mode, color, hideTimer, outlineDigits, conflictChecker, selectionColor]);
 
   const value = useMemo(
     () => ({
@@ -134,14 +146,16 @@ export function ThemeProvider(props: { children: ReactNode }) {
       hideTimer,
       outlineDigits,
       conflictChecker,
+      selectionColor,
       setTheme,
       setMode,
       setColor,
       setHideTimer,
       setOutlineDigits,
       setConflictChecker,
+      setSelectionColor,
     }),
-    [mode, color, hideTimer, outlineDigits, conflictChecker, setMode, setColor],
+    [mode, color, hideTimer, outlineDigits, conflictChecker, selectionColor, setMode, setColor],
   );
   return <ThemeContext.Provider value={value}>{props.children}</ThemeContext.Provider>;
 }

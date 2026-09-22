@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useAccountSync } from "../app/accountSync";
-import { useTheme, type ThemeColor } from "../app/theme";
+import { useTheme, type SelectionColor, type ThemeColor } from "../app/theme";
 
 type ThemePreset = {
   id: string;
@@ -18,6 +18,16 @@ const themePresets: ThemePreset[] = [
   { id: "ocean-dark", label: "Ocean (dark)", mode: "dark", color: "ocean", preview: ["#000000", "#475F73", "#93A7BF"] },
   { id: "forest-light", label: "Forest", mode: "light", color: "forest", preview: ["#ffffff", "#93A390", "#5E6E5B"] },
   { id: "berry-light", label: "Berry", mode: "light", color: "berry", preview: ["#ffffff", "#DEBFCE", "#9E6A84"] },
+];
+
+const selectionColorOptions: Array<{ value: SelectionColor; label: string }> = [
+  { value: "blue", label: "Blue" },
+  { value: "green", label: "Green" },
+  { value: "yellow", label: "Yellow" },
+  { value: "orange", label: "Orange" },
+  { value: "red", label: "Red" },
+  { value: "purple", label: "Purple" },
+  { value: "pink", label: "Pink" },
 ];
 
 export function SettingsOverlay(props: { onClose: () => void }) {
@@ -38,10 +48,12 @@ export function SettingsOverlay(props: { onClose: () => void }) {
     hideTimer,
     outlineDigits,
     conflictChecker,
+    selectionColor,
     setTheme,
     setHideTimer,
     setOutlineDigits,
     setConflictChecker,
+    setSelectionColor,
   } = useTheme();
   const activePreset = themePresets.find((preset) => preset.mode === mode && preset.color === color) ?? themePresets[0];
 
@@ -152,6 +164,21 @@ export function SettingsOverlay(props: { onClose: () => void }) {
               >
                 <span className="switchThumb" />
               </button>
+            </div>
+
+            <div className="settingsRow" style={{ marginTop: 4, alignItems: "center", gap: 10 }}>
+              <div className="muted">Selection Color</div>
+              <select
+                className="settingsThemeNativeSelect"
+                aria-label="Select selection outline color"
+                style={{ width: "min(220px, 60%)", minHeight: 38, padding: "8px 10px" }}
+                value={selectionColor}
+                onChange={(event) => setSelectionColor(event.target.value as SelectionColor)}
+              >
+                {selectionColorOptions.map((option) => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
+              </select>
             </div>
           </div>
         </div>
