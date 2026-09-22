@@ -870,36 +870,39 @@ export function GridCanvas(props: {
     const drawRegionBoundaries = (thickGridLine: number) => {
       if (!hasImportedRegionBoundaries) return;
       ctx.lineWidth = thickGridLine;
+      const edges = new Map<string, { x1: number; y1: number; x2: number; y2: number }>();
+      const addEdge = (x1: number, y1: number, x2: number, y2: number) => {
+        const forward = `${x1},${y1}|${x2},${y2}`;
+        const reverse = `${x2},${y2}|${x1},${y1}`;
+        const key = forward < reverse ? forward : reverse;
+        if (!edges.has(key)) edges.set(key, { x1, y1, x2, y2 });
+      };
+
       for (let r = 0; r < rows; r++) {
         for (let c = 0; c < cols; c++) {
           const id = regionByCell.get(`${r},${c}`);
           if (id == null) continue;
 
           if (r === 0 || regionByCell.get(`${r - 1},${c}`) !== id) {
-            ctx.beginPath();
-            ctx.moveTo(cellX(c), cellY(r));
-            ctx.lineTo(cellX(c + 1), cellY(r));
-            ctx.stroke();
+            addEdge(cellX(c), cellY(r), cellX(c + 1), cellY(r));
           }
           if (c === 0 || regionByCell.get(`${r},${c - 1}`) !== id) {
-            ctx.beginPath();
-            ctx.moveTo(cellX(c), cellY(r));
-            ctx.lineTo(cellX(c), cellY(r + 1));
-            ctx.stroke();
+            addEdge(cellX(c), cellY(r), cellX(c), cellY(r + 1));
           }
           if (regionByCell.get(`${r + 1},${c}`) !== id) {
-            ctx.beginPath();
-            ctx.moveTo(cellX(c), cellY(r + 1));
-            ctx.lineTo(cellX(c + 1), cellY(r + 1));
-            ctx.stroke();
+            addEdge(cellX(c), cellY(r + 1), cellX(c + 1), cellY(r + 1));
           }
           if (regionByCell.get(`${r},${c + 1}`) !== id) {
-            ctx.beginPath();
-            ctx.moveTo(cellX(c + 1), cellY(r));
-            ctx.lineTo(cellX(c + 1), cellY(r + 1));
-            ctx.stroke();
+            addEdge(cellX(c + 1), cellY(r), cellX(c + 1), cellY(r + 1));
           }
         }
+      }
+
+      for (const edge of edges.values()) {
+        ctx.beginPath();
+        ctx.moveTo(edge.x1, edge.y1);
+        ctx.lineTo(edge.x2, edge.y2);
+        ctx.stroke();
       }
     };
 
