@@ -3,7 +3,7 @@ import { mapForcedPortraitPoint, readForcedPortraitDirection } from "../app/forc
 import type { CellRC, PuzzleProgress } from "../core/model";
 import { SUDOKUPAD_CELL_SIZE } from "../sudokupad/types/scene";
 import { getCellOutline } from "../sudokupad/render/cellOutline";
-import type { SelectionColor } from "../app/theme";
+import type { SelectionColor, SelectionOutlineThickness } from "../app/theme";
 
 export type BoardLineKind = "center" | "edge";
 export type BoardLineSegment = { a: CellRC; b: CellRC; edgeTrack?: "top" | "bottom" | "left" | "right" };
@@ -38,7 +38,13 @@ type ViewBox = { x: number; y: number; width: number; height: number };
 const DOUBLE_TAP_WINDOW_MS = 400;
 const LONG_PRESS_DELAY_MS = 750;
 const LINE_NODE_RADIUS = 0.5;
-const SELECTION_STROKE_WIDTH = 3.3 * 1.15; // pre-Phase-1 outline, 15% thicker
+const SELECTION_STROKE_WIDTHS: Record<SelectionOutlineThickness, number> = {
+  thin: 3.3,
+  normal: 3.3 * 1.15,
+  medium: 4.75,
+  thick: 5.9,
+  extra: 7.5,
+};
 const GRID_STROKE_WIDTH_PX = 1;
 
 function keyOf(rc: CellRC): string { return `${rc.r},${rc.c}`; }
@@ -81,6 +87,7 @@ export interface BoardInteractionLayerProps {
   cols: number;
   progress: PuzzleProgress;
   selectionColor: SelectionColor;
+  selectionOutlineThickness: SelectionOutlineThickness;
   interactive?: boolean;
   onSelection: (selection: CellRC[]) => void;
   onLineStroke: (segments: BoardLineSegment[], kind: BoardLineKind, action: "draw" | "erase") => void;
@@ -99,7 +106,8 @@ export function BoardInteractionLayer(props: BoardInteractionLayerProps) {
   const longPressRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [viewBox, setViewBox] = useState<ViewBox>(() => parseViewBox(svg));
   const [preview, setPreview] = useState<{ segments: BoardLineSegment[]; kind: BoardLineKind; action: "draw" | "erase" } | null>(null);
-  const [selectionOutlineOffset, setSelectionOutlineOffset] = useState((GRID_STROKE_WIDTH_PX / 2 + SELECTION_STROKE_WIDTH / 2) / SUDOKUPAD_CELL_SIZE);
+  const selectionStrokeWidth = SELECTION_STROKE_WIDTHS[props.selectionOutlineThickness];
+  const [selectionOutlineOffset, setSelectionOutlineOffset] = useState((GRID_STROKE_WIDTH_PX / 2 + selectionStrokeWidth / 2) / SUDOKUPAD_CELL_SIZE);
 
   useEffect(() => {
     if (!svg) return;
@@ -119,7 +127,7 @@ export function BoardInteractionLayer(props: BoardInteractionLayerProps) {
       // Grid strokes are 1 CSS px and centered on the geometric cell edge.
       // Put the selection's OUTER edge on the grid stroke's inner edge, so the
       // selection is entirely inside the cell and never paints over the border.
-      const insetSvg = (GRID_STROKE_WIDTH_PX / 2 + SELECTION_STROKE_WIDTH / 2) / scale;
+      const insetSvg = (GRID_STROKE_WIDTH_PX / 2 + selectionStrokeWidth / 2) / scale;
       setSelectionOutlineOffset(insetSvg / SUDOKUPAD_CELL_SIZE);
     };
     const ro = new ResizeObserver(update);
@@ -132,7 +140,7 @@ export function BoardInteractionLayer(props: BoardInteractionLayerProps) {
       window.removeEventListener("resize", update);
       window.visualViewport?.removeEventListener("resize", update);
     };
-  }, [viewBox.width, viewBox.height]);
+  }, [viewBox.width, viewBox.height, selectionStrokeWidth]);
 
   useEffect(() => () => { if (longPressRef.current) clearInterval(longPressRef.current); }, []);
 
@@ -531,7 +539,7 @@ export function BoardInteractionLayer(props: BoardInteractionLayerProps) {
       onPointerLeave={interactive ? cancel : undefined}
       aria-hidden="true"
     >
-      {selectionPath ? <path d={selectionPath} fill="none" stroke={stroke} strokeWidth={SELECTION_STROKE_WIDTH} vectorEffect="non-scaling-stroke" strokeLinejoin="round" strokeLinecap="butt" /> : null}
+      {selectionPath ? <path d={selectionPath} fill="none" stroke={stroke} strokeWidth={selectionStrokeWidth} vectorEffect="non-scaling-stroke" strokeLinejoin="miter" strokeMiterlimit={4} strokeLinecap="butt" /> : null}
       {preview?.segments.map((segment, index) => {
         const center = preview.kind === "center";
         const x1 = (segment.a.c + (center ? 0.5 : 0)) * 64;

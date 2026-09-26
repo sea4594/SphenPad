@@ -170,6 +170,7 @@ export function GridCanvas(props: GridCanvasProps) {
         cols={scene.cols}
         progress={renderProgress}
         selectionColor={theme.selectionColor}
+        selectionOutlineThickness={theme.selectionOutlineThickness}
         interactive={interactive}
         onSelection={props.onSelection}
         onLineStroke={props.onLineStroke}

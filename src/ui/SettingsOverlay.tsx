@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useAccountSync } from "../app/accountSync";
-import { useTheme, type SelectionColor, type ThemeColor } from "../app/theme";
+import { useTheme, type SelectionColor, type SelectionOutlineThickness, type ThemeColor } from "../app/theme";
 
 type ThemePreset = {
   id: string;
@@ -30,6 +30,14 @@ const selectionColorOptions: Array<{ value: SelectionColor; label: string }> = [
   { value: "pink", label: "Pink" },
 ];
 
+const selectionThicknessOptions: Array<{ value: SelectionOutlineThickness; label: string }> = [
+  { value: "thin", label: "Thin" },
+  { value: "normal", label: "Current" },
+  { value: "medium", label: "Medium" },
+  { value: "thick", label: "Thick" },
+  { value: "extra", label: "Extra thick" },
+];
+
 export function SettingsOverlay(props: { onClose: () => void }) {
   const { onClose } = props;
   const appCommitSha = __APP_COMMIT_SHA__ || "unknown";
@@ -51,6 +59,7 @@ export function SettingsOverlay(props: { onClose: () => void }) {
     labelRowsCols,
     conflictChecker,
     selectionColor,
+    selectionOutlineThickness,
     setTheme,
     setHideTimer,
     setOutlineDigits,
@@ -58,6 +67,7 @@ export function SettingsOverlay(props: { onClose: () => void }) {
     setLabelRowsCols,
     setConflictChecker,
     setSelectionColor,
+    setSelectionOutlineThickness,
   } = useTheme();
   const activePreset = themePresets.find((preset) => preset.mode === mode && preset.color === color) ?? themePresets[0];
 
@@ -193,7 +203,7 @@ export function SettingsOverlay(props: { onClose: () => void }) {
             </div>
 
             <div className="settingsRow" style={{ marginTop: 4, alignItems: "center", gap: 10 }}>
-              <div className="muted">Selection Color</div>
+              <div className="muted">Selection color</div>
               <select
                 className="settingsThemeNativeSelect"
                 aria-label="Select selection outline color"
@@ -202,6 +212,21 @@ export function SettingsOverlay(props: { onClose: () => void }) {
                 onChange={(event) => setSelectionColor(event.target.value as SelectionColor)}
               >
                 {selectionColorOptions.map((option) => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="settingsRow" style={{ marginTop: 4, alignItems: "center", gap: 10 }}>
+              <div className="muted">Selection outline</div>
+              <select
+                className="settingsThemeNativeSelect"
+                aria-label="Select selection outline thickness"
+                style={{ width: "min(220px, 60%)", minHeight: 38, padding: "8px 10px" }}
+                value={selectionOutlineThickness}
+                onChange={(event) => setSelectionOutlineThickness(event.target.value as SelectionOutlineThickness)}
+              >
+                {selectionThicknessOptions.map((option) => (
                   <option key={option.value} value={option.value}>{option.label}</option>
                 ))}
               </select>

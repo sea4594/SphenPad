@@ -1,7 +1,7 @@
 import type { PuzzleProgress } from "../../core/model";
 import type { SudokuPadScene } from "../types/scene";
 import type { PuzzleLogic } from "../types/logic";
-import { computePuzzleConflictCells } from "./conflicts";
+import { computePuzzleConflictCells, computePuzzleConflictMarks } from "./conflicts";
 import type { SudokuPadSourceGraphic, SudokuPadSourceLine } from "../types/source";
 
 function symbolRank(symbol: string): number {
@@ -143,6 +143,7 @@ function parseSudorkle(value: unknown): Array<{ row: number; col: number; backgr
  */
 export function sceneWithPuzzleProgress(scene: SudokuPadScene, progress: PuzzleProgress, logic?: PuzzleLogic, conflictChecker = true): SudokuPadScene {
   const conflictCells = computePuzzleConflictCells(progress, logic, scene.rows, scene.cols, conflictChecker);
+  const conflictMarks = computePuzzleConflictMarks(progress, logic, scene.rows, scene.cols, conflictChecker);
   const cells = scene.cells.map((row, r) => row.map((sourceCell, c) => {
     const progressCell = progress.cells?.[r]?.[c];
     if (!progressCell) return { ...sourceCell };
@@ -157,7 +158,11 @@ export function sceneWithPuzzleProgress(scene: SudokuPadScene, progress: PuzzleP
       // renderer still applies normal given > value visual precedence.
       value: progressCell.value ?? sourceCell.value,
       ...(progressCell.notes?.center?.size ? { candidates: sortSymbols(progressCell.notes.center) } : {}),
-      ...(progressCell.notes?.corner?.size ? { pencilmarks: sortSymbols(progressCell.notes.corner) } : {}),
+      ...(progressCell.notes?.corner?.size ? { pencilmarks: sortSymbols(progressCell.notes.corner), playerPencilmarks: true } : {}),
+      ...(conflictMarks.get(`${r}:${c}`)?.size ? {
+        candidateErrors: sortSymbols([...(progressCell.notes?.center ?? [])].filter((mark) => conflictMarks.get(`${r}:${c}`)?.has(mark))),
+        pencilmarkErrors: sortSymbols([...(progressCell.notes?.corner ?? [])].filter((mark) => conflictMarks.get(`${r}:${c}`)?.has(mark))),
+      } : {}),
       colours,
     };
   }));

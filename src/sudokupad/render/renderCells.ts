@@ -83,6 +83,11 @@ export function renderSceneCells(
         const tspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
         tspan.dataset.val = String(candidate);
         if ((cell.givenCentremarks ?? []).includes(String(candidate))) tspan.classList.add("given");
+        const rangeMatch = String(candidate).match(/^(\d+)-(\d+)$/);
+        const candidateHasError = rangeMatch
+          ? (cell.candidateErrors ?? []).some((error) => Number(error) >= Number(rangeMatch[1]) && Number(error) <= Number(rangeMatch[2]))
+          : (cell.candidateErrors ?? []).includes(String(candidate));
+        if (candidateHasError) tspan.classList.add("mark-error");
         tspan.textContent = displayZeroIsTen(String(candidate), zeroIsTen);
         elem.appendChild(tspan);
       });
@@ -92,7 +97,7 @@ export function renderSceneCells(
     pencilmarks.slice(0, 10).forEach((mark, index) => {
       const elem = renderer.renderText({
         target: "cell-pencilmarks",
-        className: `cell-pencilmark pm-${index}`,
+        className: `cell-pencilmark pm-${index}${cell.playerPencilmarks ? " playerPencilmark" : ""}${(cell.pencilmarkErrors ?? []).includes(String(mark)) ? " mark-error" : ""}`,
         center,
         width: 1,
         height: 1,

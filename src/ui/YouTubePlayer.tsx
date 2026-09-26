@@ -84,6 +84,7 @@ export function YouTubePlayer(props: YouTubePlayerProps) {
     destroy?: () => void;
   } | null>(null);
   const progressTimerRef = useRef<number | null>(null);
+  const readyTimerRef = useRef<number | null>(null);
   const [fallbackMode, setFallbackMode] = useState(false);
   const [roundedStart] = useState(() => Math.max(0, Math.floor(startSeconds)));
 
@@ -92,7 +93,7 @@ export function YouTubePlayer(props: YouTubePlayerProps) {
   }, [onProgress]);
 
   const fallbackSrc = useMemo(
-    () => `https://www.youtube.com/embed/${videoId}?autoplay=0&playsinline=1&rel=0&modestbranding=1&start=${roundedStart}`,
+    () => `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=0&playsinline=1&rel=0&modestbranding=1&start=${roundedStart}`,
     [roundedStart, videoId]
   );
 
@@ -107,12 +108,29 @@ export function YouTubePlayer(props: YouTubePlayerProps) {
     void loadYouTubeIframeApi()
       .then(() => {
         if (cancelled) return;
-        if (!hostRef.current || !window.YT?.Player) {
+        const host = hostRef.current;
+        if (!host || !window.YT?.Player) {
           setFallbackMode(true);
           return;
         }
 
-        const player = new window.YT.Player(hostRef.current, {
+        // Let YouTube replace an imperative child rather than the React-owned
+        // host itself. This avoids occasional stale/black iframes when React
+        // and the iframe API both try to own the same DOM node.
+        const mount = document.createElement("div");
+        mount.style.width = "100%";
+        mount.style.height = "100%";
+        host.replaceChildren(mount);
+
+        const fallBack = () => {
+          if (cancelled) return;
+          if (readyTimerRef.current !== null) { window.clearTimeout(readyTimerRef.current); readyTimerRef.current = null; }
+          try { playerRef.current?.destroy?.(); } catch { /* no-op */ }
+          playerRef.current = null;
+          setFallbackMode(true);
+        };
+
+        const player = new window.YT.Player(mount, {
           videoId,
           width: "100%",
           height: "100%",
@@ -127,15 +145,20 @@ export function YouTubePlayer(props: YouTubePlayerProps) {
           },
           events: {
             onReady: () => {
+              if (readyTimerRef.current !== null) { window.clearTimeout(readyTimerRef.current); readyTimerRef.current = null; }
               if (roundedStart > 0) player.seekTo?.(roundedStart, true);
               reportProgress();
             },
             onStateChange: reportProgress,
-            onError: reportProgress,
+            onError: fallBack,
           },
         });
 
         playerRef.current = player;
+        // If the API creates an iframe but never reaches Ready, it presents as
+        // a persistent black rectangle. Fall back to a plain privacy-enhanced
+        // embed instead of leaving the player stuck.
+        readyTimerRef.current = window.setTimeout(fallBack, 8000);
         progressTimerRef.current = window.setInterval(reportProgress, 5000);
       })
       .catch(() => {
@@ -149,6 +172,10 @@ export function YouTubePlayer(props: YouTubePlayerProps) {
         window.clearInterval(progressTimerRef.current);
         progressTimerRef.current = null;
       }
+      if (readyTimerRef.current !== null) {
+        window.clearTimeout(readyTimerRef.current);
+        readyTimerRef.current = null;
+      }
       const seconds = playerRef.current?.getCurrentTime?.();
       if (Number.isFinite(seconds)) onProgressRef.current(Math.max(0, seconds as number));
       try {
@@ -161,7 +188,7 @@ export function YouTubePlayer(props: YouTubePlayerProps) {
   }, [roundedStart, videoId]);
 
   if (fallbackMode) {
-    return <iframe src={fallbackSrc} title="Puzzle video" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerPolicy="strict-origin-when-cross-origin" allowFullScreen />;
+    return <iframe src={fallbackSrc} title="Puzzle video" loading="eager" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerPolicy="strict-origin-when-cross-origin" allowFullScreen />;
   }
 
   return <div className="youtubePlayerHost" ref={hostRef} />;

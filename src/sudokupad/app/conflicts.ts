@@ -36,6 +36,50 @@ function addDuplicateGroup(errors: Set<string>, values: Map<string, string>, cel
   for (const keys of byValue.values()) if (keys.length > 1) keys.forEach((key) => errors.add(key));
 }
 
+
+function markConflictsAt(
+  values: Map<string, string>,
+  logic: PuzzleLogic | undefined,
+  rows: number,
+  cols: number,
+  r: number,
+  c: number,
+  rawValue: string,
+): boolean {
+  const value = symbol(rawValue);
+  if (!value) return false;
+  const targetKey = `${r}:${c}`;
+  const sameValueAt = (cell: PuzzleLogicCell) => inBounds(cell, rows, cols) && cellKey(cell) !== targetKey && values.get(cellKey(cell)) === value;
+  const explicitDomain = new Set((logic?.rowColCells ?? []).filter((cell) => inBounds(cell, rows, cols)).map(cellKey));
+  const inRowColDomain = (row: number, col: number) => explicitDomain.size === 0 || explicitDomain.has(`${row}:${col}`);
+  const customAreas = (logic?.rowColAreas ?? [])
+    .map((area) => area.filter((cell) => inBounds(cell, rows, cols)))
+    .filter((area) => area.length > 0);
+
+  if (logic?.sudokuRules !== false) {
+    if (customAreas.length) {
+      if (customAreas.some((area) => area.some((cell) => cell.r === r && cell.c === c) && area.some(sameValueAt))) return true;
+    } else if (inRowColDomain(r, c)) {
+      for (let cc = 0; cc < cols; cc += 1) if (cc !== c && inRowColDomain(r, cc) && values.get(`${r}:${cc}`) === value) return true;
+      for (let rr = 0; rr < rows; rr += 1) if (rr !== r && inRowColDomain(rr, c) && values.get(`${rr}:${c}`) === value) return true;
+    }
+  }
+
+  for (const region of logic?.regions ?? []) {
+    const bounded = region.filter((cell) => inBounds(cell, rows, cols));
+    if (bounded.some((cell) => cell.r === r && cell.c === c) && bounded.some(sameValueAt)) return true;
+  }
+
+  if (logic?.antiKing) {
+    for (const dr of [-1, 1]) for (const dc of [-1, 1]) if (values.get(`${r + dr}:${c + dc}`) === value) return true;
+  }
+  if (logic?.antiKnight) {
+    const moves = [[1,2],[2,1],[-1,2],[-2,1],[1,-2],[2,-1],[-1,-2],[-2,-1]] as const;
+    for (const [dr, dc] of moves) if (values.get(`${r + dr}:${c + dc}`) === value) return true;
+  }
+  return false;
+}
+
 /**
  * Return cells that Sudoku-style conflict checking should mark as errors.
  * Semantic rule knowledge lives here, never in the SVG renderer.
@@ -96,5 +140,32 @@ export function computePuzzleConflictCells(
     }
   }
 
+  return errors;
+}
+
+/** Return conflicting player pencilmark symbols per cell, using the same active Sudoku conflict rules as values. */
+export function computePuzzleConflictMarks(
+  progress: PuzzleProgress,
+  logic: PuzzleLogic | undefined,
+  rows: number,
+  cols: number,
+  enabled = true,
+): Map<string, Set<string>> {
+  const errors = new Map<string, Set<string>>();
+  if (!enabled || logic?.conflictChecker === false) return errors;
+  const values = valuesFromProgress(progress);
+  for (let r = 0; r < progress.cells.length; r += 1) {
+    for (let c = 0; c < (progress.cells[r] ?? []).length; c += 1) {
+      const notes = progress.cells[r]?.[c]?.notes;
+      const marks = new Set<string>([...(notes?.center ?? []), ...(notes?.corner ?? [])]);
+      for (const mark of marks) {
+        if (!markConflictsAt(values, logic, rows, cols, r, c, mark)) continue;
+        const key = `${r}:${c}`;
+        const cellErrors = errors.get(key) ?? new Set<string>();
+        cellErrors.add(mark);
+        errors.set(key, cellErrors);
+      }
+    }
+  }
   return errors;
 }

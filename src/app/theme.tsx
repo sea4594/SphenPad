@@ -4,6 +4,7 @@ import { onSyncedLocalDataApplied, setSyncedLocalStorageItem } from "../core/loc
 export type ThemeMode = "light" | "dark";
 export type ThemeColor = "bw" | "ocean" | "forest" | "clay" | "berry";
 export type SelectionColor = "blue" | "green" | "yellow" | "orange" | "red" | "purple" | "pink";
+export type SelectionOutlineThickness = "thin" | "normal" | "medium" | "thick" | "extra";
 
 type ThemeContextValue = {
   mode: ThemeMode;
@@ -14,6 +15,7 @@ type ThemeContextValue = {
   labelRowsCols: boolean;
   conflictChecker: boolean;
   selectionColor: SelectionColor;
+  selectionOutlineThickness: SelectionOutlineThickness;
   setTheme: (mode: ThemeMode, color: ThemeColor) => void;
   setMode: (mode: ThemeMode) => void;
   setColor: (color: ThemeColor) => void;
@@ -23,6 +25,7 @@ type ThemeContextValue = {
   setLabelRowsCols: (labelRowsCols: boolean) => void;
   setConflictChecker: (conflictChecker: boolean) => void;
   setSelectionColor: (selectionColor: SelectionColor) => void;
+  setSelectionOutlineThickness: (selectionOutlineThickness: SelectionOutlineThickness) => void;
 };
 
 const STORAGE_KEY = "sphenpad-theme-v1";
@@ -43,6 +46,7 @@ function readInitialTheme(): {
   labelRowsCols: boolean;
   conflictChecker: boolean;
   selectionColor: SelectionColor;
+  selectionOutlineThickness: SelectionOutlineThickness;
 } {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -56,6 +60,7 @@ function readInitialTheme(): {
         labelRowsCols: false,
         conflictChecker: true,
         selectionColor: "blue",
+        selectionOutlineThickness: "normal",
       };
     }
     const parsed = JSON.parse(raw) as {
@@ -67,6 +72,7 @@ function readInitialTheme(): {
       labelRowsCols?: boolean;
       conflictChecker?: boolean;
       selectionColor?: SelectionColor;
+      selectionOutlineThickness?: SelectionOutlineThickness;
     };
     const mode: ThemeMode = parsed.mode === "light" || parsed.mode === "dark" ? parsed.mode : "light";
     const mappedColor = parsed.color === "sunset" || parsed.color === "sepia" ? "clay" : parsed.color;
@@ -82,7 +88,10 @@ function readInitialTheme(): {
     const selectionColor: SelectionColor = ["blue", "green", "yellow", "orange", "red", "purple", "pink"].includes(parsed.selectionColor ?? "")
       ? (parsed.selectionColor as SelectionColor)
       : "blue";
-    return { mode: normalizedTheme.mode, color: normalizedTheme.color, hideTimer, outlineDigits, compactMarks, labelRowsCols, conflictChecker, selectionColor };
+    const selectionOutlineThickness: SelectionOutlineThickness = ["thin", "normal", "medium", "thick", "extra"].includes(parsed.selectionOutlineThickness ?? "")
+      ? (parsed.selectionOutlineThickness as SelectionOutlineThickness)
+      : "normal";
+    return { mode: normalizedTheme.mode, color: normalizedTheme.color, hideTimer, outlineDigits, compactMarks, labelRowsCols, conflictChecker, selectionColor, selectionOutlineThickness };
   } catch {
     return {
       mode: "light",
@@ -93,6 +102,7 @@ function readInitialTheme(): {
       labelRowsCols: false,
       conflictChecker: true,
       selectionColor: "blue",
+      selectionOutlineThickness: "normal",
     };
   }
 }
@@ -107,6 +117,7 @@ export function ThemeProvider(props: { children: ReactNode }) {
   const [labelRowsCols, setLabelRowsCols] = useState<boolean>(initialTheme.labelRowsCols);
   const [conflictChecker, setConflictChecker] = useState<boolean>(initialTheme.conflictChecker);
   const [selectionColor, setSelectionColor] = useState<SelectionColor>(initialTheme.selectionColor);
+  const [selectionOutlineThickness, setSelectionOutlineThickness] = useState<SelectionOutlineThickness>(initialTheme.selectionOutlineThickness);
 
   const setTheme = (nextMode: ThemeMode, nextColor: ThemeColor) => {
     const normalized = normalizeThemeSelection(nextMode, nextColor);
@@ -133,6 +144,7 @@ export function ThemeProvider(props: { children: ReactNode }) {
       setLabelRowsCols(next.labelRowsCols);
       setConflictChecker(next.conflictChecker);
       setSelectionColor(next.selectionColor);
+      setSelectionOutlineThickness(next.selectionOutlineThickness);
     };
     return onSyncedLocalDataApplied(applyThemeFromStorage);
   }, []);
@@ -154,8 +166,8 @@ export function ThemeProvider(props: { children: ReactNode }) {
     document.documentElement.style.backgroundColor = bg;
     document.body.style.backgroundColor = bg;
 
-    setSyncedLocalStorageItem(STORAGE_KEY, JSON.stringify({ mode, color, hideTimer, outlineDigits, compactMarks, labelRowsCols, conflictChecker, selectionColor }));
-  }, [mode, color, hideTimer, outlineDigits, compactMarks, labelRowsCols, conflictChecker, selectionColor]);
+    setSyncedLocalStorageItem(STORAGE_KEY, JSON.stringify({ mode, color, hideTimer, outlineDigits, compactMarks, labelRowsCols, conflictChecker, selectionColor, selectionOutlineThickness }));
+  }, [mode, color, hideTimer, outlineDigits, compactMarks, labelRowsCols, conflictChecker, selectionColor, selectionOutlineThickness]);
 
   const value = useMemo(
     () => ({
@@ -167,6 +179,7 @@ export function ThemeProvider(props: { children: ReactNode }) {
       labelRowsCols,
       conflictChecker,
       selectionColor,
+      selectionOutlineThickness,
       setTheme,
       setMode,
       setColor,
@@ -176,8 +189,9 @@ export function ThemeProvider(props: { children: ReactNode }) {
       setLabelRowsCols,
       setConflictChecker,
       setSelectionColor,
+      setSelectionOutlineThickness,
     }),
-    [mode, color, hideTimer, outlineDigits, compactMarks, labelRowsCols, conflictChecker, selectionColor, setMode, setColor],
+    [mode, color, hideTimer, outlineDigits, compactMarks, labelRowsCols, conflictChecker, selectionColor, selectionOutlineThickness, setMode, setColor],
   );
   return <ThemeContext.Provider value={value}>{props.children}</ThemeContext.Provider>;
 }

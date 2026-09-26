@@ -1,4 +1,4 @@
-Phase 11 dependency-backed release gate — 2026-09-26T13:59:43Z
+Phase 11 dependency-backed release gate — 2026-09-26T23:05:29Z
 Node: v20.20.2
 npm: 10.8.2
 
@@ -30,8 +30,8 @@ found 0 vulnerabilities
   567:6  warning  React Hook useEffect has a missing dependency: 'reconcileCloudUpdates'. Either include it or remove the dependency array                       react-hooks/exhaustive-deps
 
 /Users/sea/SphenPad-phase11-deploy/src/app/theme.tsx
-  117:9  warning  The 'setMode' function makes the dependencies of useMemo Hook (at line 180) change on every render. Move it inside the useMemo callback. Alternatively, wrap the definition of 'setMode' in its own useCallback() Hook    react-hooks/exhaustive-deps
-  121:9  warning  The 'setColor' function makes the dependencies of useMemo Hook (at line 180) change on every render. Move it inside the useMemo callback. Alternatively, wrap the definition of 'setColor' in its own useCallback() Hook  react-hooks/exhaustive-deps
+  128:9  warning  The 'setMode' function makes the dependencies of useMemo Hook (at line 194) change on every render. Move it inside the useMemo callback. Alternatively, wrap the definition of 'setMode' in its own useCallback() Hook    react-hooks/exhaustive-deps
+  132:9  warning  The 'setColor' function makes the dependencies of useMemo Hook (at line 194) change on every render. Move it inside the useMemo callback. Alternatively, wrap the definition of 'setColor' in its own useCallback() Hook  react-hooks/exhaustive-deps
 
 /Users/sea/SphenPad-phase11-deploy/src/ui/PopupMenuButton.tsx
    96:6  warning  React Hook useEffect has a missing dependency: 'positionMenu'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
@@ -56,14 +56,14 @@ transforming...
 rendering chunks...
 computing gzip size...
 dist/index.html                     1.12 kB │ gzip:   0.50 kB
-dist/assets/index-BcgTGpKl.css     78.29 kB │ gzip:  14.12 kB
-dist/assets/index-DzgOeiBf.js   1,228.56 kB │ gzip: 371.02 kB
+dist/assets/index-Cc6zkiCA.css     81.47 kB │ gzip:  14.41 kB
+dist/assets/index-BX4fksh6.js   1,232.39 kB │ gzip: 371.98 kB
 
 (!) Some chunks are larger than 500 kB after minification. Consider:
 - Using dynamic import() to code-split the application
 - Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
 - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
-✓ built in 2.78s
+✓ built in 2.82s
 [5/10] Complete Phase 11 creator regression matrix
 
 > sphenpad@0.0.0 test-creator-phase11
@@ -160,7 +160,7 @@ Production smoke: PASS (2 built asset references checked)
 > sphenpad@0.0.0 verify-production-bundle-clean
 > node scripts/verify-production-bundle-clean.mjs
 
-Production bundle cleanliness: PASS (4114 files, no test/debug/conformance leakage)
+Production bundle cleanliness: PASS (4282 files, no test/debug/conformance leakage)
 [7/10] Built-app browser smoke
 
 > sphenpad@0.0.0 verify-production-browser
@@ -186,7 +186,7 @@ SudokuPad compatibility manifest: PASS (67 JS/CSS assets, 13 fonts)
 > sphenpad@0.0.0 write-phase11-release-hashes
 > node scripts/write-phase11-release-hashes.mjs
 
-Phase 11 release hash manifest: PASS (4248 production inputs, 15 creator tests, 4114 built files)
-releaseContentSha256=28594ebcaa7cdada692e35e9fb65b0eb0d22394a714da3a21cde0a1bf36ed099
+Phase 11 release hash manifest: PASS (4416 production inputs, 15 creator tests, 4282 built files)
+releaseContentSha256=e9458b93fd074b8b141563a2219df272bdddfe763c201a48417711e2652050ec
 
 PHASE 11 DEPENDENCY-BACKED RELEASE GATE PASSED
