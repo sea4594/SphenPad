@@ -85,13 +85,12 @@ export function YouTubePlayer(props: YouTubePlayerProps) {
   } | null>(null);
   const progressTimerRef = useRef<number | null>(null);
   const [fallbackMode, setFallbackMode] = useState(false);
-  const sessionStartRef = useRef(Math.max(0, Math.floor(startSeconds)));
+  const [roundedStart] = useState(() => Math.max(0, Math.floor(startSeconds)));
 
   useEffect(() => {
     onProgressRef.current = onProgress;
   }, [onProgress]);
 
-  const roundedStart = sessionStartRef.current;
   const fallbackSrc = useMemo(
     () => `https://www.youtube.com/embed/${videoId}?autoplay=0&playsinline=1&rel=0&modestbranding=1&start=${roundedStart}`,
     [roundedStart, videoId]

@@ -1,3 +1,7 @@
+import type { PuzzleLogic } from "../sudokupad/types/logic";
+import type { SudokuPadScene } from "../sudokupad/types/scene";
+import type { SudokuPadImportContext } from "../sudokupad/types/import";
+
 export type CellRC = { r: number; c: number };
 
 export type NoteSet = {
@@ -35,18 +39,27 @@ export type LineEdgeMark = {
 
 export type PuzzleMeta = {
   creatorPuzzle?: boolean;
+  /** Creator projects stay out of My Puzzles until explicitly published. */
+  creatorPublished?: boolean;
   // Creator-only catalog selections. These preserve planned elements whose
   // solving or rendering support has not been implemented yet.
   creatorElements?: string[];
   creatorElementNames?: Record<string, string>;
   creatorConstraintChecks?: Record<string, boolean>;
   creatorDigitRange?: { min: number; max: number };
+  creatorRegionMode?: "none" | "regular" | "irregular";
+  creatorBoxSize?: { rows: number; cols: number };
+  creatorSudokuRules?: boolean;
+  creatorSolverSettings?: { maxSolutions?: number; maxNodes?: number; logicalStepLimit?: number };
+  creatorToolDefaults?: Record<string, { constraintValue?: string; patch?: Record<string, unknown> }>;
   title?: string;
   author?: string;
   collection?: string;
   constraints?: string[];
   rules?: string;
   postSolveMessage?: string;
+  /** SphenPad-local solution override; persists even when imported scene/logic are derived. */
+  solutionOverride?: string;
   solveCount?: number;
   archiveConstraints?: string[];
   archiveVideoTitle?: string;
@@ -57,165 +70,16 @@ export type PuzzleMeta = {
   archiveSudokuPadUrl?: string;
 };
 
-export type PuzzleCosmetics = {
-  sourceCellSize?: number;
-  subgrid?: { r: number; c: number };
-  backgroundImageUrl?: string;
-  cages?: Array<{
-    cells: CellRC[];
-    sum?: string;
-    color?: string;
-    textColor?: string;
-    clueTextSize?: number;
-    fillColor?: string;
-    thickness?: number;
-    dashArray?: number[];
-    opacity?: number;
-    target?: string;
-    renderOrder?: number;
-  }>;
-  arrows?: Array<{
-    bulb?: CellRC;
-    path?: CellRC[];
-    wayPoints?: Array<{ x: number; y: number }>;
-    headLength?: number;
-    headLengthUnit?: "cell" | "cosmetic";
-    headStyle?: "stroke" | "fill";
-    headAngle?: number;
-    headIndent?: number;
-    color?: string;
-    thickness?: number;
-    bulbFill?: string;
-    bulbStroke?: string;
-    bulbStrokeThickness?: number;
-    target?: string;
-    renderOrder?: number;
-  }>;
-  dots?: Array<{
-    a: CellRC;
-    b: CellRC;
-    kind: "black" | "white";
-    color?: string;
-    borderColor?: string;
-    radius?: number;
-    borderThickness?: number;
-    opacity?: number;
-    target?: string;
-    renderOrder?: number;
-  }>;
-  lines?: Array<{
-    wayPoints: Array<{ x: number; y: number }>;
-    color?: string;
-    thickness?: number;
-    target?: string;
-    fillColor?: string;
-    closePath?: boolean;
-    svgPathData?: string;
-    svgUnitsPerCell?: number;
-    lineCap?: CanvasLineCap;
-    lineJoin?: CanvasLineJoin;
-    dashArray?: number[];
-    dashOffset?: number;
-    opacity?: number;
-    renderOrder?: number;
-  }>;
-  underlays?: Array<{
-    center: { x: number; y: number };
-    width?: number;
-    height?: number;
-    rounded?: boolean;
-    color?: string;
-    borderColor?: string;
-    borderThickness?: number;
-    dashArray?: number[];
-    dashOffset?: number;
-    lineCap?: CanvasLineCap;
-    lineJoin?: CanvasLineJoin;
-    text?: string;
-    textColor?: string;
-    textStrokeColor?: string;
-    textStrokeWidth?: number;
-    textSize?: number;
-    textAlign?: CanvasTextAlign;
-    textBaseline?: CanvasTextBaseline;
-    className?: string;
-    role?: string;
-    angle?: number;
-    opacity?: number;
-    target?: string;
-    renderOrder?: number;
-  }>;
-  overlays?: Array<{
-    center: { x: number; y: number };
-    width?: number;
-    height?: number;
-    rounded?: boolean;
-    color?: string;
-    borderColor?: string;
-    borderThickness?: number;
-    dashArray?: number[];
-    dashOffset?: number;
-    lineCap?: CanvasLineCap;
-    lineJoin?: CanvasLineJoin;
-    text?: string;
-    textColor?: string;
-    textStrokeColor?: string;
-    textStrokeWidth?: number;
-    textSize?: number;
-    textAlign?: CanvasTextAlign;
-    textBaseline?: CanvasTextBaseline;
-    className?: string;
-    role?: string;
-    angle?: number;
-    opacity?: number;
-    target?: string;
-    renderOrder?: number;
-  }>;
-  
-  // Line constraints
-  thermolines?: Array<{ path: CellRC[]; color?: string }>;
-  whispers?: Array<{ path: CellRC[]; color?: string }>;
-  palindromes?: Array<{ path: CellRC[]; color?: string }>;
-  renbanlines?: Array<{ path: CellRC[]; color?: string }>;
-  entropics?: Array<{ path: CellRC[]; color?: string }>;
-  germanwhispers?: Array<{ path: CellRC[]; color?: string }>;
-  modularlines?: Array<{ path: CellRC[]; color?: string }>;
-  
-  // Clues around grid
-  skyscraper?: { top?: string[]; bottom?: string[]; left?: string[]; right?: string[] };
-  sandwich?: { top?: string[]; bottom?: string[]; left?: string[]; right?: string[] };
-  xsum?: { top?: string[]; bottom?: string[]; left?: string[]; right?: string[] };
-  littlekillers?: Array<{ rc: CellRC; direction: "tl" | "tr" | "bl" | "br"; value: string; color?: string }>;
-  
-  // Regions
-  irregularRegions?: Array<{ cells: CellRC[]; color?: string; label?: string }>;
-  disjointGroups?: Array<{ cells: CellRC[]; color?: string }>;
-  // Explicit row/col constraint domain (cells belonging to any hidden 'rowcol'-type constraint area).
-  // Set only when the puzzle uses custom row/col areas instead of the full standard grid,
-  // e.g. puzzles with outer helper cells surrounding a smaller inner grid.
-  rowColCells?: CellRC[];
-  // Explicit hidden row/col groups. When present, these groups are authoritative for row/column
-  // conflict checks and may not align with board-indexed rows/columns.
-  rowColAreas?: CellRC[][];
-  
-  // Anti-constraints
-  antiKnight?: boolean;
-  antiKing?: boolean;
-  antiRook?: boolean;
-
-  // Fog of war
-  fogEnabled?: boolean;
-  fogLights?: CellRC[];
-  fogTriggerEffects?: Array<{ triggerCells: CellRC[]; revealCells: CellRC[]; triggerMode?: string }>;
-  solution?: string;
-  conflictChecker?: boolean;
-  gridVisible?: boolean;
-};
-
 export type PuzzleDefinition = {
+  /** Native scene/logic schema version. */
+  schemaVersion?: number;
+
   id: string;
   sourceId: string;
   sourcePayload?: string;
+  /** Persisted alongside sourcePayload because URL settings/pack index are not encoded in the payload itself. */
+  sourceContext?: SudokuPadImportContext;
+  /** @deprecated Legacy duplicated decoded payload. New imports should not persist this. */
   sourceData?: unknown;
   importRevision?: number;
   size: number;
@@ -223,7 +87,16 @@ export type PuzzleDefinition = {
   cols: number;
   meta: PuzzleMeta;
   givens: Array<{ rc: CellRC; v: string }>;
-  cosmetics: PuzzleCosmetics;
+
+  /**
+   * Authoritative visual model. Imported scenes are derived from sourcePayload
+   * during storage hydration; SphenPad-authored puzzles persist this directly.
+   */
+  scene?: SudokuPadScene;
+
+  /** Semantic/checker state, deliberately separate from visual rendering. */
+  logic?: PuzzleLogic;
+
 };
 
 export type PlayStatus = "not_started" | "in_progress" | "complete";

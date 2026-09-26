@@ -1,7 +1,9 @@
 import { startTransition, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { deletePuzzle, listPuzzles, upsertPuzzle } from "../core/storage";
+import { createCreatorProject, createCreatorProjectKey, deleteCreatorProject, duplicateCreatorProject, listCreatorProjects, renameCreatorProject, type CreatorProjectStorageRow } from "../core/storage";
 import type { PuzzleDefinition } from "../core/model";
+import { createAuthoredPuzzleDefinition } from "../sudokupad/creator/nativeAuthoring";
+import { creatorProjectFromDefinition, definitionFromCreatorProject } from "../sudokupad/creator/project";
 import { makeInitialProgress } from "../core/scl";
 import { GridCanvas } from "./GridCanvas";
 import { IconSettings } from "./icons";
@@ -9,7 +11,7 @@ import { PopupMenuButton } from "./PopupMenuButton";
 import { SettingsOverlay } from "./SettingsOverlay";
 import { onStorageRefreshNeeded } from "../core/syncSignal";
 
-type StoredPuzzle = Awaited<ReturnType<typeof listPuzzles>>[number];
+type StoredPuzzle = CreatorProjectStorageRow;
 const NOOP = () => {};
 
 function defaultSubgrid(size: number) {
@@ -19,12 +21,6 @@ function defaultSubgrid(size: number) {
   return { r: 1, c: size };
 }
 
-function createPuzzleKey() {
-  const id = typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
-    ? crypto.randomUUID()
-    : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
-  return `creator-${id}`;
-}
 
 export function PuzzleCreatorPage() {
   const nav = useNavigate();
@@ -37,7 +33,7 @@ export function PuzzleCreatorPage() {
   const [lowestDigit, setLowestDigit] = useState(1);
   const [highestDigit, setHighestDigit] = useState(9);
 
-  const refresh = async () => setRows((await listPuzzles()).filter((row) => row.def.meta.creatorPuzzle));
+  const refresh = async () => setRows(await listCreatorProjects());
   useEffect(() => {
     const initialRefresh = window.setTimeout(() => void refresh(), 0);
     const unsubscribe = onStorageRefreshNeeded(() => void refresh());
@@ -49,13 +45,12 @@ export function PuzzleCreatorPage() {
 
   async function createPuzzle() {
     const now = Date.now();
-    const key = createPuzzleKey();
-    const def: PuzzleDefinition = {
+    const key = createCreatorProjectKey();
+    const def = createAuthoredPuzzleDefinition({
       id: key,
-      sourceId: key,
-      size: Math.max(height, custom ? width : height),
       rows: height,
       cols: custom ? width : height,
+      subgrid: custom ? undefined : defaultSubgrid(height),
       meta: {
         creatorPuzzle: true,
         creatorElements: custom ? ["given-digits"] : ["given-digits", "regions"],
@@ -65,18 +60,55 @@ export function PuzzleCreatorPage() {
         rules: "",
         constraints: [],
       },
-      givens: [],
-      cosmetics: custom ? {} : { subgrid: defaultSubgrid(height) },
-    };
-    await upsertPuzzle(key, { def, progress: makeInitialProgress(def), undo: [], redo: [], createdAt: now, updatedAt: now });
+    });
+    await createCreatorProject(creatorProjectFromDefinition(def), now);
     startTransition(() => nav(`/creator/${encodeURIComponent(key)}`));
   }
 
+  function previewDefinition(): PuzzleDefinition {
+    return createAuthoredPuzzleDefinition({
+      id: "preview",
+      rows: height,
+      cols: custom ? width : height,
+      subgrid: custom ? undefined : defaultSubgrid(height),
+      meta: {},
+    });
+  }
+
   async function removePuzzle(row: StoredPuzzle) {
-    if (!window.confirm(`Delete puzzle?\n\n${row.def.meta.title || "Untitled puzzle"}`)) return;
-    await deletePuzzle(row.key);
+    if (!window.confirm(`Delete creator project?\n\n${row.project.metadata.title || "Untitled puzzle"}`)) return;
+    await deleteCreatorProject(row.key);
     await refresh();
   }
+
+  async function duplicatePuzzle(row: StoredPuzzle) {
+    const duplicate = await duplicateCreatorProject(row.key);
+    await refresh();
+    startTransition(() => nav(`/creator/${encodeURIComponent(duplicate.key)}`));
+  }
+
+  async function renamePuzzle(row: StoredPuzzle) {
+    const next = window.prompt("Puzzle title", row.project.metadata.title || "Untitled puzzle")?.trim();
+    if (!next || next === row.project.metadata.title) return;
+    await renameCreatorProject(row.key, next);
+    await refresh();
+  }
+
+  function openPuzzle(row: StoredPuzzle) {
+    startTransition(() => nav(`/creator/${encodeURIComponent(row.key)}`));
+  }
+
+  function projectDefinition(row: StoredPuzzle) { return definitionFromCreatorProject(row.project); }
+
+  const recentRows = rows.filter((row) => row.lastOpenedAt > 0).slice(0, 5);
+
+  const projectRow = (row: StoredPuzzle) => {
+    const def = projectDefinition(row);
+    return <div key={row.key} className="card menuPuzzleRow" onClick={() => openPuzzle(row)}>
+      <div className="menuPuzzleSummary"><div className="menuPuzzleTitle">{row.project.metadata.title || "(untitled)"}</div>{row.project.metadata.author ? <div className="muted menuPuzzleAuthor">{row.project.metadata.author}</div> : null}<div className="muted">{row.project.grid.rows} x {row.project.grid.cols}</div></div>
+      <div className="menuPuzzleDeleteStack"><div className="menuPuzzlePreview" aria-hidden="true"><GridCanvas def={def} progress={{ ...makeInitialProgress(def), selection: [] }} onSelection={NOOP} onLineStroke={NOOP} onLineTapCell={NOOP} onLineTapEdge={NOOP} onDoubleCell={NOOP} interactive={false} previewMode strictScale /></div><div className="row menuPuzzleActions" onClick={(event) => event.stopPropagation()}><PopupMenuButton ariaLabel={`Options for ${row.project.metadata.title || "puzzle"}`} title="Puzzle options" items={[{ label: "Open", onSelect: () => openPuzzle(row) }, { label: "Duplicate", onSelect: () => void duplicatePuzzle(row) }, { label: "Rename", onSelect: () => void renamePuzzle(row) }, { label: "Delete", onSelect: () => void removePuzzle(row), tone: "danger" }]} /></div></div>
+    </div>;
+  };
 
   return (
     <div className="shell">
@@ -88,31 +120,13 @@ export function PuzzleCreatorPage() {
         <div className="mainMenuWrap">
           <button className="btn primary creatorEntryButton" onClick={() => setDimensionsOpen(true)} type="button">New puzzle</button>
           <div className="card">
-            <div className="menuSectionTitle">Your created puzzles</div>
-            <div className="menuPuzzleList">
-              {rows.map((row) => (
-                <div key={row.key} className="card menuPuzzleRow" onClick={() => nav(`/creator/${encodeURIComponent(row.key)}`)}>
-                  <div className="menuPuzzleSummary">
-                    <div className="menuPuzzleTitle">{row.def.meta.title || "(untitled)"}</div>
-                    {row.def.meta.author ? <div className="muted menuPuzzleAuthor">{row.def.meta.author}</div> : null}
-                    <div className="muted">{row.def.rows} x {row.def.cols}</div>
-                  </div>
-                  <div className="menuPuzzleDeleteStack">
-                    <div className="menuPuzzlePreview" aria-hidden="true">
-                      <GridCanvas def={row.def} progress={{ ...row.progress, selection: [] }} onSelection={NOOP} onLineStroke={NOOP} onLineTapCell={NOOP} onLineTapEdge={NOOP} onDoubleCell={NOOP} interactive={false} previewMode strictScale />
-                    </div>
-                    <div className="row menuPuzzleActions" onClick={(event) => event.stopPropagation()}>
-                      <PopupMenuButton ariaLabel={`Options for ${row.def.meta.title || "puzzle"}`} title="Puzzle options" items={[{ label: "Delete", onSelect: () => void removePuzzle(row), tone: "danger" }]} />
-                    </div>
-                  </div>
-                </div>
-              ))}
-              {!rows.length ? <div className="muted">No created puzzles yet.</div> : null}
-            </div>
+            {recentRows.length ? <><div className="menuSectionTitle">Recent projects</div><div className="menuPuzzleList">{recentRows.map(projectRow)}</div></> : null}
+            <div className="menuSectionTitle">All creator projects</div>
+            <div className="menuPuzzleList">{rows.map(projectRow)}{!rows.length ? <div className="muted">No created puzzles yet.</div> : null}</div>
           </div>
         </div>
       </div>
-      {dimensionsOpen ? <div className="overlayBackdrop" role="dialog" aria-modal="true" aria-label="Puzzle dimensions"><div className="card creatorDimensionsCard"><div className="creatorDimensionsPreview"><GridCanvas def={{ id: "preview", sourceId: "preview", size: Math.max(height, custom ? width : height), rows: height, cols: custom ? width : height, meta: {}, givens: [], cosmetics: custom ? {} : { subgrid: defaultSubgrid(height) } }} progress={makeInitialProgress({ id: "preview", sourceId: "preview", size: Math.max(height, custom ? width : height), rows: height, cols: custom ? width : height, meta: {}, givens: [], cosmetics: custom ? {} : { subgrid: defaultSubgrid(height) } })} onSelection={NOOP} onLineStroke={NOOP} onLineTapCell={NOOP} onLineTapEdge={NOOP} onDoubleCell={NOOP} interactive={false} /></div><div className="creatorDimensionFields"><label>Size <output>{height}</output><input type="range" min="1" max="30" value={height} onChange={(event) => setHeight(Number(event.target.value))} /></label>{custom ? <><label>Width <output>{width}</output><input type="range" min="1" max="30" value={width} onChange={(event) => setWidth(Number(event.target.value))} /></label><label>Lowest digit <output>{lowestDigit}</output><input type="range" min="1" max="64" value={lowestDigit} onChange={(event) => setLowestDigit(Number(event.target.value))} /></label><label>Highest digit <output>{highestDigit}</output><input type="range" min="1" max="64" value={highestDigit} onChange={(event) => setHighestDigit(Number(event.target.value))} /></label></> : null}<label className="creatorToggle"><input type="checkbox" checked={custom} onChange={(event) => { setCustom(event.target.checked); if (!event.target.checked) setWidth(height); }} />Custom</label></div><button className="btn primary creatorDimensionConfirm" onClick={() => void createPuzzle()} type="button">OK</button><button className="btn" onClick={() => setDimensionsOpen(false)} type="button">Cancel</button></div></div> : null}
+      {dimensionsOpen ? <div className="overlayBackdrop" role="dialog" aria-modal="true" aria-label="Puzzle dimensions"><div className="card creatorDimensionsCard"><div className="creatorDimensionsPreview"><GridCanvas def={previewDefinition()} progress={makeInitialProgress(previewDefinition())} onSelection={NOOP} onLineStroke={NOOP} onLineTapCell={NOOP} onLineTapEdge={NOOP} onDoubleCell={NOOP} interactive={false} previewMode strictScale /></div><div className="creatorDimensionFields"><label>Size <output>{height}</output><input type="range" min="1" max="30" value={height} onChange={(event) => setHeight(Number(event.target.value))} /></label>{custom ? <><label>Width <output>{width}</output><input type="range" min="1" max="30" value={width} onChange={(event) => setWidth(Number(event.target.value))} /></label><label>Lowest digit <output>{lowestDigit}</output><input type="range" min="1" max="64" value={lowestDigit} onChange={(event) => setLowestDigit(Number(event.target.value))} /></label><label>Highest digit <output>{highestDigit}</output><input type="range" min="1" max="64" value={highestDigit} onChange={(event) => setHighestDigit(Number(event.target.value))} /></label></> : null}<label className="creatorToggle"><input type="checkbox" checked={custom} onChange={(event) => { setCustom(event.target.checked); if (!event.target.checked) setWidth(height); }} />Custom</label></div><button className="btn primary creatorDimensionConfirm" onClick={() => void createPuzzle()} type="button">OK</button><button className="btn" onClick={() => setDimensionsOpen(false)} type="button">Cancel</button></div></div> : null}
       {settingsOpen ? <SettingsOverlay onClose={() => setSettingsOpen(false)} /> : null}
     </div>
   );

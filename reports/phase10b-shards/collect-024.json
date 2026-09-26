@@ -1,0 +1,615 @@
+{
+  "target": "SudokuPad 0.612.0 captured HAR",
+  "referenceHar": "/mnt/data/sudokupad.app.har",
+  "referenceHarSha256": "12d6ffd3ec204ba14cb6d5aab3da98444be49438d5aab8b664fe1fde34d2ecca",
+  "referenceScriptSha256": "3c53d973ffa62d541e300be9fddb53f19c2a4cc32eb98769a54904240343c9fe",
+  "chromium": "/usr/bin/chromium",
+  "chromiumVersion": "Chromium 144.0.7559.96 built on Debian GNU/Linux 13 (trixie)",
+  "suite": "archive",
+  "fixtures": 25,
+  "passed": 25,
+  "failed": 0,
+  "pixelRatioThreshold": 0.002,
+  "results": [
+    {
+      "name": "archive:sudoku/F92tJ2HbLJ",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          656,
+          656
+        ],
+        "candidateSize": [
+          656,
+          656
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 0,
+        "meanChannelDelta": 0.0
+      },
+      "rasterRetry": null,
+      "pixelRatioThresholdUsed": 0.002,
+      "candidateAssertions": [],
+      "note": "Archive file index 2378"
+    },
+    {
+      "name": "archive:sudoku/FB378fm267",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          608,
+          608
+        ],
+        "candidateSize": [
+          608,
+          608
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 0,
+        "meanChannelDelta": 0.0
+      },
+      "rasterRetry": null,
+      "pixelRatioThresholdUsed": 0.002,
+      "candidateAssertions": [],
+      "note": "Archive file index 2380"
+    },
+    {
+      "name": "archive:sudoku/FJf8mBHjH9",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          608,
+          608
+        ],
+        "candidateSize": [
+          608,
+          608
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 0,
+        "meanChannelDelta": 0.0
+      },
+      "rasterRetry": null,
+      "pixelRatioThresholdUsed": 0.002,
+      "candidateAssertions": [],
+      "note": "Archive file index 2388"
+    },
+    {
+      "name": "archive:sudoku/FLqFBMpTJB",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          656,
+          656
+        ],
+        "candidateSize": [
+          656,
+          656
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 0,
+        "meanChannelDelta": 0.0
+      },
+      "rasterRetry": null,
+      "pixelRatioThresholdUsed": 0.002,
+      "candidateAssertions": [],
+      "note": "Archive file index 2390"
+    },
+    {
+      "name": "archive:sudoku/FPPb3T2JqT",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          608,
+          608
+        ],
+        "candidateSize": [
+          608,
+          608
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 0,
+        "meanChannelDelta": 0.0
+      },
+      "rasterRetry": null,
+      "pixelRatioThresholdUsed": 0.002,
+      "candidateAssertions": [],
+      "note": "Archive file index 2396"
+    },
+    {
+      "name": "archive:sudoku/FPg9HPgDqT",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          608,
+          608
+        ],
+        "candidateSize": [
+          608,
+          608
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 0,
+        "meanChannelDelta": 0.0
+      },
+      "rasterRetry": null,
+      "pixelRatioThresholdUsed": 0.002,
+      "candidateAssertions": [],
+      "note": "Archive file index 2397"
+    },
+    {
+      "name": "archive:sudoku/FQDpNL27R2",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          656,
+          656
+        ],
+        "candidateSize": [
+          656,
+          656
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 0,
+        "meanChannelDelta": 0.0
+      },
+      "rasterRetry": null,
+      "pixelRatioThresholdUsed": 0.002,
+      "candidateAssertions": [],
+      "note": "Archive file index 2398"
+    },
+    {
+      "name": "archive:sudoku/FQQf6HQfm7",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          608,
+          608
+        ],
+        "candidateSize": [
+          608,
+          608
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 0,
+        "meanChannelDelta": 0.0
+      },
+      "rasterRetry": null,
+      "pixelRatioThresholdUsed": 0.002,
+      "candidateAssertions": [],
+      "note": "Archive file index 2399"
+    },
+    {
+      "name": "archive:sudoku/FRph2b4g2g",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          672,
+          688
+        ],
+        "candidateSize": [
+          672,
+          688
+        ],
+        "differentPixelRatio": 7.786544850498338e-05,
+        "maxChannelDelta": 139,
+        "meanChannelDelta": 0.002963212901439646
+      },
+      "rasterRetry": null,
+      "pixelRatioThresholdUsed": 0.002,
+      "candidateAssertions": [],
+      "note": "Archive file index 2403"
+    },
+    {
+      "name": "archive:sudoku/Fbf8q9pGJT",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          608,
+          608
+        ],
+        "candidateSize": [
+          608,
+          608
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 0,
+        "meanChannelDelta": 0.0
+      },
+      "rasterRetry": null,
+      "pixelRatioThresholdUsed": 0.002,
+      "candidateAssertions": [],
+      "note": "Archive file index 2406"
+    },
+    {
+      "name": "archive:sudoku/Fbhjtgr8Mf",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          608,
+          608
+        ],
+        "candidateSize": [
+          608,
+          608
+        ],
+        "differentPixelRatio": 0.00011902700831024931,
+        "maxChannelDelta": 87,
+        "meanChannelDelta": 0.0034626038781163434
+      },
+      "rasterRetry": null,
+      "pixelRatioThresholdUsed": 0.002,
+      "candidateAssertions": [],
+      "note": "Archive file index 2407"
+    },
+    {
+      "name": "archive:sudoku/Fm9HLrhJ69",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          608,
+          608
+        ],
+        "candidateSize": [
+          608,
+          608
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 0,
+        "meanChannelDelta": 0.0
+      },
+      "rasterRetry": null,
+      "pixelRatioThresholdUsed": 0.002,
+      "candidateAssertions": [],
+      "note": "Archive file index 2416"
+    },
+    {
+      "name": "archive:sudoku/Fp2Tn37qnG",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          608,
+          608
+        ],
+        "candidateSize": [
+          608,
+          608
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 0,
+        "meanChannelDelta": 0.0
+      },
+      "rasterRetry": null,
+      "pixelRatioThresholdUsed": 0.002,
+      "candidateAssertions": [],
+      "note": "Archive file index 2422"
+    },
+    {
+      "name": "archive:sudoku/Ftfnn4L2tQ",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          608,
+          608
+        ],
+        "candidateSize": [
+          608,
+          608
+        ],
+        "differentPixelRatio": 0.00021370758310249307,
+        "maxChannelDelta": 52,
+        "meanChannelDelta": 0.00429308777700831
+      },
+      "rasterRetry": null,
+      "pixelRatioThresholdUsed": 0.002,
+      "candidateAssertions": [],
+      "note": "Archive file index 2429"
+    },
+    {
+      "name": "archive:sudoku/G2jJbhbGtQ",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          608,
+          608
+        ],
+        "candidateSize": [
+          608,
+          608
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 0,
+        "meanChannelDelta": 0.0
+      },
+      "rasterRetry": null,
+      "pixelRatioThresholdUsed": 0.002,
+      "candidateAssertions": [],
+      "note": "Archive file index 2431"
+    },
+    {
+      "name": "archive:sudoku/G9mBNJr24F",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          608,
+          608
+        ],
+        "candidateSize": [
+          608,
+          608
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 0,
+        "meanChannelDelta": 0.0
+      },
+      "rasterRetry": null,
+      "pixelRatioThresholdUsed": 0.002,
+      "candidateAssertions": [],
+      "note": "Archive file index 2440"
+    },
+    {
+      "name": "archive:sudoku/GGrd2GTMLT",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          608,
+          608
+        ],
+        "candidateSize": [
+          608,
+          608
+        ],
+        "differentPixelRatio": 5.9513504155124655e-05,
+        "maxChannelDelta": 87,
+        "meanChannelDelta": 0.002734916031855956
+      },
+      "rasterRetry": null,
+      "pixelRatioThresholdUsed": 0.002,
+      "candidateAssertions": [],
+      "note": "Archive file index 2450"
+    },
+    {
+      "name": "archive:sudoku/GLFmHPbrmh",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          672,
+          672
+        ],
+        "candidateSize": [
+          672,
+          672
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 0,
+        "meanChannelDelta": 0.0
+      },
+      "rasterRetry": null,
+      "pixelRatioThresholdUsed": 0.002,
+      "candidateAssertions": [],
+      "note": "Archive file index 2453"
+    },
+    {
+      "name": "archive:sudoku/GLmtfHpmnD",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          608,
+          608
+        ],
+        "candidateSize": [
+          608,
+          608
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 0,
+        "meanChannelDelta": 0.0
+      },
+      "rasterRetry": null,
+      "pixelRatioThresholdUsed": 0.002,
+      "candidateAssertions": [],
+      "note": "Archive file index 2455"
+    },
+    {
+      "name": "archive:sudoku/GMmTTqFhp2",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          608,
+          608
+        ],
+        "candidateSize": [
+          608,
+          608
+        ],
+        "differentPixelRatio": 0.0006979310941828254,
+        "maxChannelDelta": 176,
+        "meanChannelDelta": 0.025731475069252076
+      },
+      "rasterRetry": null,
+      "pixelRatioThresholdUsed": 0.002,
+      "candidateAssertions": [],
+      "note": "Archive file index 2457"
+    },
+    {
+      "name": "archive:sudoku/GT9f3PBhJ3",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          656,
+          656
+        ],
+        "candidateSize": [
+          656,
+          656
+        ],
+        "differentPixelRatio": 3.253271861986912e-05,
+        "maxChannelDelta": 18,
+        "meanChannelDelta": 0.0005646750446162999
+      },
+      "rasterRetry": null,
+      "pixelRatioThresholdUsed": 0.002,
+      "candidateAssertions": [],
+      "note": "Archive file index 2467"
+    },
+    {
+      "name": "archive:sudoku/Gg8MND3M98",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          608,
+          608
+        ],
+        "candidateSize": [
+          608,
+          608
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 0,
+        "meanChannelDelta": 0.0
+      },
+      "rasterRetry": null,
+      "pixelRatioThresholdUsed": 0.002,
+      "candidateAssertions": [],
+      "note": "Archive file index 2473"
+    },
+    {
+      "name": "archive:sudoku/GjnL983hGT",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          608,
+          608
+        ],
+        "candidateSize": [
+          608,
+          608
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 0,
+        "meanChannelDelta": 0.0
+      },
+      "rasterRetry": null,
+      "pixelRatioThresholdUsed": 0.002,
+      "candidateAssertions": [],
+      "note": "Archive file index 2481"
+    },
+    {
+      "name": "archive:sudoku/GpfBbHBhPM",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          608,
+          608
+        ],
+        "candidateSize": [
+          608,
+          608
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 0,
+        "meanChannelDelta": 0.0
+      },
+      "rasterRetry": null,
+      "pixelRatioThresholdUsed": 0.002,
+      "candidateAssertions": [],
+      "note": "Archive file index 2487"
+    },
+    {
+      "name": "archive:sudoku/GtRpGn2tJ4",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          608,
+          608
+        ],
+        "candidateSize": [
+          608,
+          608
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 0,
+        "meanChannelDelta": 0.0
+      },
+      "rasterRetry": null,
+      "pixelRatioThresholdUsed": 0.002,
+      "candidateAssertions": [],
+      "note": "Archive file index 2491"
+    }
+  ]
+}

@@ -43,8 +43,6 @@ export function SelectControl(props: SelectControlProps) {
     options,
     disabled,
     title,
-    searchable: _searchable,
-    searchPlaceholder: _searchPlaceholder,
   } = props;
   const ariaLabel = props["aria-label"];
   const rootRef = useRef<HTMLDivElement | null>(null);

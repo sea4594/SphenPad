@@ -1,0 +1,25 @@
+Phase 11D verification — 2026-09-25
+
+PASS: Phase 11A creator project + SudokuMaker parity regression suite.
+PASS: Phase 11B creator project storage-model regression suite.
+PASS: Phase 11C creator grid-structure regression suite.
+PASS: Phase 11D generic object/cosmetics regression suite.
+
+Phase 11D cases exercised:
+- Generic constraint discovery by stable constraint ID.
+- Enable/disable state dims/hides visuals and excludes disabled constraints from creator checking.
+- Independent per-constraint ignore-in-solver/checker state.
+- Common property updates and object naming.
+- New cosmetics are serialized through CreatorProject.cosmetics rather than PuzzleLogic constraints.
+- CreatorProject round-trip preserves cosmetic object IDs and image properties.
+- Cosmetic graphic underlay/overlay movement.
+- Constraint/cosmetic duplication under new stable IDs.
+- Visual source-order movement.
+- Background image add/edit/enable-disable/layer/delete behavior.
+- Legacy untagged cosmetic visuals receive stable object IDs and remain deletable.
+
+PASS: targeted strict TypeScript checks for the changed pure creator/model/renderer modules.
+PASS: PuzzleEditorPage targeted TypeScript diagnostic audit: the modified editor itself reports only missing external React/react-router/react-jsx-runtime declarations in this clean dependency-free environment. Transitive app modules also report their expected missing package declarations without node_modules.
+
+Environment limitation:
+A clean Phase 11D `npm ci --ignore-scripts --prefer-offline` attempt timed out while retrieving/installing dependencies. The partial `node_modules` directory was removed immediately afterward. Therefore the full dependency-backed Vite build and ESLint gate could not be rerun in this environment. No dependency versions were changed in Phase 11D.

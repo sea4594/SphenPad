@@ -1,0 +1,35 @@
+Phase 11G verification — 2026-09-25
+
+PASS — strict TypeScript check for the new global/outside/advanced model, project bridge, conflict checker, and creator checker:
+  tsc --noEmit --target ES2022 --module commonjs --moduleResolution node --lib ES2023,DOM --strict --skipLibCheck \
+    src/core/model.ts src/sudokupad/types/logic.ts src/sudokupad/creator/project.ts \
+    src/sudokupad/app/conflicts.ts src/sudokupad/creator/globalConstraints.ts src/sudokupad/creator/checker.ts
+
+PASS — syntax/transpile check for the modified creator editor using the installed global TypeScript compiler API:
+  src/ui/PuzzleEditorPage.tsx
+
+PASS — isolated creator regression suites compiled with global TypeScript and run with Node:
+  scripts/test-creator-project.ts
+  scripts/test-creator-project-storage.ts
+  scripts/test-creator-grid-structure.ts
+  scripts/test-creator-object-editing.ts
+  scripts/test-creator-line-constraints.ts
+  scripts/test-creator-group-constraints.ts
+  scripts/test-creator-global-constraints.ts
+
+Phase 11G tests cover:
+- explicit SudokuRules row/column-rule toggle and CreatorProject round-trip
+- both diagonal rules and tagged native visuals
+- disjoint groups and nonconsecutive
+- Global Entropy and Global Modulo-3 groups, edits, and malformed groups
+- Little Killer, Sandwich Sum, X-Sum, Skyscraper, and Numbered Room semantics
+- outside-ray expansion plus malformed/non-edge ray diagnostics
+- Row and Column Indexers
+- custom definition/input/schema/components/backend-code persistence
+- Fog Lights and independent Fog Trigger trigger/effect cells
+- native scene fog synchronization and CreatorProject round-trip
+- compatibility normalization for legacy generic global/fog creator records
+- 16 unique 11G authoring IDs
+
+DEPENDENCY-BACKED APP GATE NOT AVAILABLE IN THIS EXECUTION ENVIRONMENT:
+`npm run build` reaches the project TypeScript build but cannot resolve `vite/client` or Node type definitions because this clean checkpoint has no installed node_modules. `npm run lint` cannot start because eslint is not installed. This is an environment/dependency availability limitation, not reported as a pass. No dependency versions or package-lock.json dependency contents were changed for 11G.

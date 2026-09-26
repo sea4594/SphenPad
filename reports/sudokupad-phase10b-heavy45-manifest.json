@@ -1,0 +1,210 @@
+{
+  "total": 41,
+  "cases": [
+    {
+      "name": "archive:06vt5y9nwu",
+      "archiveIndex": 7,
+      "heavyPhase9E": true
+    },
+    {
+      "name": "archive:100ywt1d63",
+      "archiveIndex": 38,
+      "heavyPhase9E": false
+    },
+    {
+      "name": "archive:27v1lv24c3",
+      "archiveIndex": 109,
+      "heavyPhase9E": false
+    },
+    {
+      "name": "archive:4b16rwzym1",
+      "archiveIndex": 261,
+      "heavyPhase9E": false
+    },
+    {
+      "name": "archive:7d9f9mb2y3",
+      "archiveIndex": 439,
+      "heavyPhase9E": true
+    },
+    {
+      "name": "archive:7llvcaivec",
+      "archiveIndex": 452,
+      "heavyPhase9E": false
+    },
+    {
+      "name": "archive:869hsb49kn",
+      "archiveIndex": 491,
+      "heavyPhase9E": false
+    },
+    {
+      "name": "archive:9snrpdy9fe",
+      "archiveIndex": 588,
+      "heavyPhase9E": true
+    },
+    {
+      "name": "archive:MONOPOLYSUDOKU",
+      "archiveIndex": 683,
+      "heavyPhase9E": true
+    },
+    {
+      "name": "archive:ays2k7hm6t",
+      "archiveIndex": 788,
+      "heavyPhase9E": false
+    },
+    {
+      "name": "archive:b193jegg4x",
+      "archiveIndex": 791,
+      "heavyPhase9E": true
+    },
+    {
+      "name": "archive:eb90s76a4e",
+      "archiveIndex": 1028,
+      "heavyPhase9E": true
+    },
+    {
+      "name": "archive:esjz6meusc",
+      "archiveIndex": 1055,
+      "heavyPhase9E": true
+    },
+    {
+      "name": "archive:f6xcgzdav3",
+      "archiveIndex": 1078,
+      "heavyPhase9E": false
+    },
+    {
+      "name": "archive:gbwivexeh7",
+      "archiveIndex": 1190,
+      "heavyPhase9E": true
+    },
+    {
+      "name": "archive:i2r7za43kv",
+      "archiveIndex": 1278,
+      "heavyPhase9E": true
+    },
+    {
+      "name": "archive:ik85shpid7",
+      "archiveIndex": 1305,
+      "heavyPhase9E": true
+    },
+    {
+      "name": "archive:iutvqv1ht8",
+      "archiveIndex": 1319,
+      "heavyPhase9E": false
+    },
+    {
+      "name": "archive:james-sinclair/stickiest-notes",
+      "archiveIndex": 1364,
+      "heavyPhase9E": false
+    },
+    {
+      "name": "archive:jgdFdqhmn2",
+      "archiveIndex": 1384,
+      "heavyPhase9E": false
+    },
+    {
+      "name": "archive:jw1onozqhg",
+      "archiveIndex": 1400,
+      "heavyPhase9E": true
+    },
+    {
+      "name": "archive:l00604nlbr",
+      "archiveIndex": 1448,
+      "heavyPhase9E": false
+    },
+    {
+      "name": "archive:l01qpi8oc3",
+      "archiveIndex": 1449,
+      "heavyPhase9E": false
+    },
+    {
+      "name": "archive:lhid2td2zu",
+      "archiveIndex": 1459,
+      "heavyPhase9E": false
+    },
+    {
+      "name": "archive:lipt9yn6r4",
+      "archiveIndex": 1460,
+      "heavyPhase9E": true
+    },
+    {
+      "name": "archive:ntqufgkvcx",
+      "archiveIndex": 1582,
+      "heavyPhase9E": true
+    },
+    {
+      "name": "archive:o4u3kz1764",
+      "archiveIndex": 1600,
+      "heavyPhase9E": false
+    },
+    {
+      "name": "archive:p676oglsv8",
+      "archiveIndex": 1643,
+      "heavyPhase9E": true
+    },
+    {
+      "name": "archive:p8ushghwpc",
+      "archiveIndex": 1650,
+      "heavyPhase9E": true
+    },
+    {
+      "name": "archive:rpdtjt36r7",
+      "archiveIndex": 1809,
+      "heavyPhase9E": false
+    },
+    {
+      "name": "archive:sudoku/944Mg3fnJH",
+      "archiveIndex": 2204,
+      "heavyPhase9E": true
+    },
+    {
+      "name": "archive:sudoku/Nmg943btqh",
+      "archiveIndex": 2759,
+      "heavyPhase9E": true
+    },
+    {
+      "name": "archive:sudoku/Pm8N43nTMG",
+      "archiveIndex": 2804,
+      "heavyPhase9E": false
+    },
+    {
+      "name": "archive:sudoku/jMQR24JRBN",
+      "archiveIndex": 3271,
+      "heavyPhase9E": false
+    },
+    {
+      "name": "archive:sudoku/jfrf3mHRbN",
+      "archiveIndex": 3286,
+      "heavyPhase9E": true
+    },
+    {
+      "name": "archive:sudoku/pM7jd2QbmD",
+      "archiveIndex": 3428,
+      "heavyPhase9E": true
+    },
+    {
+      "name": "archive:sudoku/tgQJNqqB6r",
+      "archiveIndex": 3590,
+      "heavyPhase9E": true
+    },
+    {
+      "name": "archive:t4vu4ndtl3",
+      "archiveIndex": 3617,
+      "heavyPhase9E": true
+    },
+    {
+      "name": "archive:xag582l3t0",
+      "archiveIndex": 3903,
+      "heavyPhase9E": false
+    },
+    {
+      "name": "archive:ybaev4x39i",
+      "archiveIndex": 3948,
+      "heavyPhase9E": false
+    },
+    {
+      "name": "archive:zsmtekox43",
+      "archiveIndex": 4039,
+      "heavyPhase9E": false
+    }
+  ]
+}

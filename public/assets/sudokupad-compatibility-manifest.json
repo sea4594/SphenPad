@@ -1,0 +1,494 @@
+{
+  "target": "SudokuPad 0.612.0",
+  "origin": "https://sudokupad.app",
+  "reference": {
+    "normalHarSha256": "12d6ffd3ec204ba14cb6d5aab3da98444be49438d5aab8b664fe1fde34d2ecca",
+    "fogHarSha256": "00acd5a49eb5860bfa60ba09a59be87eea75459b0f62558129b79e4ba9189b69",
+    "mainScriptSha256": "3c53d973ffa62d541e300be9fddb53f19c2a4cc32eb98769a54904240343c9fe"
+  },
+  "policy": "Pinned captured target. Drift is reported; this manifest is never auto-updated by the verifier.",
+  "webAssets": [
+    {
+      "path": "/app-settings.js",
+      "kind": "js",
+      "bytes": 7104,
+      "sha256": "7521813ee73415844c5632a529c011131e507d363e15132179eee23dc8cec9b6"
+    },
+    {
+      "path": "/appmenu.js",
+      "kind": "js",
+      "bytes": 1790,
+      "sha256": "644411a3ba3d50edb23a1354e559abcd0be6a9ce7ed662255679954d886e93c0"
+    },
+    {
+      "path": "/assets/twemoji/twemoji.min.js",
+      "kind": "js",
+      "bytes": 18050,
+      "sha256": "ae55ff5aacd3f257aac914f57925e577e3fb0fbdae426048375d534b7c7b7dae"
+    },
+    {
+      "path": "/controls-app.js",
+      "kind": "js",
+      "bytes": 5412,
+      "sha256": "33360166c22efeaa5cf410dfb85002e1b5d823a9df4927bc689a280c31ae7a44"
+    },
+    {
+      "path": "/controls-tools.js",
+      "kind": "js",
+      "bytes": 1404,
+      "sha256": "7ea250c8a123f049bde21127ea1711d7ff3a749ecf5e113abfaaffcf7cb8a034"
+    },
+    {
+      "path": "/feature-aiassistant.js",
+      "kind": "js",
+      "bytes": 17364,
+      "sha256": "936b29f0f30e2d2cfa54941d8c05747fb46f4e570262809e2aa9d7fc95db250a"
+    },
+    {
+      "path": "/feature-bgimage.js",
+      "kind": "js",
+      "bytes": 8011,
+      "sha256": "01267f0f570eff74a63d79346c8274bb6ee48fa802cbf38fb05dacaa7ac310f3"
+    },
+    {
+      "path": "/feature-cellpaste.js",
+      "kind": "js",
+      "bytes": 4190,
+      "sha256": "e941bdea0c03b6599f965a41356b170b2926fda947d6364ec30e3aa21fa52309"
+    },
+    {
+      "path": "/feature-compactmarks.js",
+      "kind": "js",
+      "bytes": 4159,
+      "sha256": "d0c26ba3f4234d4d96326683dbd6c859e36d010b26f716c993811b1e095b6282"
+    },
+    {
+      "path": "/feature-conflictchecker.js",
+      "kind": "js",
+      "bytes": 5229,
+      "sha256": "311c2d01fbb8841af54092ea4d7825975705829ae9dd4786cbd1a6f091b20a62"
+    },
+    {
+      "path": "/feature-copycells.js",
+      "kind": "js",
+      "bytes": 2685,
+      "sha256": "f6d45dbbd87b4117bbd8cd18b1548ec7f3aa529fec7b02ea52efa2b413fe7c11"
+    },
+    {
+      "path": "/feature-customcolors.js",
+      "kind": "js",
+      "bytes": 1367,
+      "sha256": "e88150303783e0c4fe7087445a9b2c21fde91f50aba910a2bf89a026b6f44907"
+    },
+    {
+      "path": "/feature-debug.js",
+      "kind": "js",
+      "bytes": 12539,
+      "sha256": "d0962a5aa86b6356be411af328ebdfea597b1217b3bd94aa9178675e52a13157"
+    },
+    {
+      "path": "/feature-emoji.js",
+      "kind": "js",
+      "bytes": 8992,
+      "sha256": "898404c184644fbb6e2fc3b29183afec568baa7b7e152986916ed3f747ab0b6a"
+    },
+    {
+      "path": "/feature-endless.js",
+      "kind": "js",
+      "bytes": 19312,
+      "sha256": "710d48241efdc770936810e9104adcbc826ed763e5e302a1503cd50ef7450d4e"
+    },
+    {
+      "path": "/feature-fog.js",
+      "kind": "js",
+      "bytes": 17680,
+      "sha256": "ae198508e161c07961977d9e60baacc350107eeeb126135e02af61e2b75bd63f"
+    },
+    {
+      "path": "/feature-fpuz.js",
+      "kind": "js",
+      "bytes": 4352,
+      "sha256": "f9c67778e5acaa0af973ec737c2d8bb962d0e4a00770d10545c0af66760c5a48"
+    },
+    {
+      "path": "/feature-gifting.js",
+      "kind": "js",
+      "bytes": 8153,
+      "sha256": "632a72731ed0c544a283e07bee74c9c96cda0037c3552c4d872d4ae7203d900c"
+    },
+    {
+      "path": "/feature-gridrules.js",
+      "kind": "js",
+      "bytes": 4656,
+      "sha256": "178ca0650cb28281ff62a42538fb9092808bed37504fe75f15761e155a197751"
+    },
+    {
+      "path": "/feature-hairgag.js",
+      "kind": "js",
+      "bytes": 5832,
+      "sha256": "4d765240c79af46596e03b2deaaeefd3194df87d279df37cd89663ed7724af50"
+    },
+    {
+      "path": "/feature-labelrowscols.js",
+      "kind": "js",
+      "bytes": 2972,
+      "sha256": "3a1ff9d85e0da5389418afb3b638c9cd11c8cebd4d9015586d9fdef21731e24c"
+    },
+    {
+      "path": "/feature-largepuzzle.js",
+      "kind": "js",
+      "bytes": 9337,
+      "sha256": "943a9d5691d4c40f860be36a3a3ee2ca2510157c9475e7a283418053c5f2c2ab"
+    },
+    {
+      "path": "/feature-layout.js",
+      "kind": "js",
+      "bytes": 5326,
+      "sha256": "fbc529a23912df0ca231e662cd8da9cd53648b976893a8578b2729e6c04a44af"
+    },
+    {
+      "path": "/feature-marksolveddigits.js",
+      "kind": "js",
+      "bytes": 7112,
+      "sha256": "17bb4337377ecc3019547cad6794312385d4349307cdf83c5e57b7cce16b5dd4"
+    },
+    {
+      "path": "/feature-markup.js",
+      "kind": "js",
+      "bytes": 3968,
+      "sha256": "7bda5fa41f7656b5d7a6f4578668dbbf94d119ce2014da8e81969ace9dcdb22e"
+    },
+    {
+      "path": "/feature-project9x9.js",
+      "kind": "js",
+      "bytes": 21473,
+      "sha256": "67a1b658d30dca6e18652564da7085cb72e04b577d9b0824d85fafd96204528f"
+    },
+    {
+      "path": "/feature-puzzleevents.js",
+      "kind": "js",
+      "bytes": 31683,
+      "sha256": "87bdb7db122c8e18e0097ba1032976e1ebc4c5f3955e4e9064b624a131e3778e"
+    },
+    {
+      "path": "/feature-puzzlefont.js",
+      "kind": "js",
+      "bytes": 7240,
+      "sha256": "e2b2c39d22e34ff8b8787e3b51859ee56fc8a3ec76f073a1528a5da05d731e06"
+    },
+    {
+      "path": "/feature-puzzlepack.js",
+      "kind": "js",
+      "bytes": 12219,
+      "sha256": "9ba06323088bf359122a56ee086097acf37e33b51ad52a1e15ec08318c6604b2"
+    },
+    {
+      "path": "/feature-replaygif.js",
+      "kind": "js",
+      "bytes": 13990,
+      "sha256": "3285b7aa73615a213677cd94cc232010e65264b139a0735aeb290edc147c5b0f"
+    },
+    {
+      "path": "/feature-replaysave.js",
+      "kind": "js",
+      "bytes": 9129,
+      "sha256": "9195eb54cacc270648cfb2d1a2c912901e9c6ce38c9c7bb44e2b7a76935c476b"
+    },
+    {
+      "path": "/feature-rulealert.js",
+      "kind": "js",
+      "bytes": 2900,
+      "sha256": "84f6c1a3d90cbce3ab7b60bd91bd04aa04657d9fea4fcdd9412825ca9397871e"
+    },
+    {
+      "path": "/feature-screenshot.js",
+      "kind": "js",
+      "bytes": 12811,
+      "sha256": "a4d648f00e7160ee99daad36065970d22dd0f8589029a0bb8b1ee4d315456276"
+    },
+    {
+      "path": "/feature-seasonal.js",
+      "kind": "js",
+      "bytes": 5888,
+      "sha256": "dd4cf487cc4bc03b68233b6d38483e5700801d9d69ad8ee34435c309f9448426"
+    },
+    {
+      "path": "/feature-settingssave.js",
+      "kind": "js",
+      "bytes": 1993,
+      "sha256": "7c392f56aa4308f00b1cf4c4e335db9516607d05e07f0ffdb7c4281235367331"
+    },
+    {
+      "path": "/feature-shorturl.js",
+      "kind": "js",
+      "bytes": 7974,
+      "sha256": "2d8eee9208fbc7e006593f5be029726c6b7961cd6459afe9d631368f8226e375"
+    },
+    {
+      "path": "/feature-showseencells.js",
+      "kind": "js",
+      "bytes": 3048,
+      "sha256": "a13ab45d670d3c7f9cd403ede2f1a25ae4f4bd75f5e8bb0b89da154c18e4eaba"
+    },
+    {
+      "path": "/feature-solvedcounter.js",
+      "kind": "js",
+      "bytes": 10059,
+      "sha256": "62244d4d5aabc698cfa150ff183a4e3421d4fbbd13dfc8754c88951d0af68c62"
+    },
+    {
+      "path": "/feature-streamtool.js",
+      "kind": "js",
+      "bytes": 29960,
+      "sha256": "c1f87aaf722a7b23ca5f1dcbd81ce604b06a131c83eecea7339fb19c6cb59f9b"
+    },
+    {
+      "path": "/feature-sudokupadpro.js",
+      "kind": "js",
+      "bytes": 6114,
+      "sha256": "a0584fc4557a28267dd31d7c2979f96c32fabe90a98c6682c2abb486870aa29a"
+    },
+    {
+      "path": "/feature-uitheme.js",
+      "kind": "js",
+      "bytes": 4661,
+      "sha256": "4cafaf3289ccac6117318a2334805cfdf3bf81dab92a5f810e04dcf477e4035f"
+    },
+    {
+      "path": "/feature-userplugins.js",
+      "kind": "js",
+      "bytes": 6392,
+      "sha256": "0636f40cd77d15b49996d0cada895ce4d001aa89725fe21ff6b99d7c9dc3d57d"
+    },
+    {
+      "path": "/framework.js",
+      "kind": "js",
+      "bytes": 46257,
+      "sha256": "baa06a228783267b6b5d307815c0efea1aab2a30b60fbfbd2d4f6ccf2cda3d59"
+    },
+    {
+      "path": "/js/script.manual.js",
+      "kind": "js",
+      "bytes": 2350,
+      "sha256": "2be08da81bc32594daa3ee8b797bc4ab0875f85fb2dc2f0a192305f3fb324533"
+    },
+    {
+      "path": "/lazygtmloader.js",
+      "kind": "js",
+      "bytes": 1304,
+      "sha256": "687e5ccdb1a263bff4dd919fbd130ae959ef9408a37a47bb3d0a3e25cef59a92"
+    },
+    {
+      "path": "/portableevents.js",
+      "kind": "js",
+      "bytes": 2241,
+      "sha256": "a6b58aec3c0bc675b69e64ac1eed097bcb8246d62b39856e195c823f0a07fd74"
+    },
+    {
+      "path": "/puzpatcher.bundle.js",
+      "kind": "js",
+      "bytes": 38829,
+      "sha256": "84fdcc7239b930cea88289ee6d5550c0b04f5227ce5fe20941137c872f731367"
+    },
+    {
+      "path": "/puzzleloader.js",
+      "kind": "js",
+      "bytes": 5528,
+      "sha256": "d9d354f3b485a28ccc498b21c031b73de309aadfa8c6f9f3f8c90605d063dcf1"
+    },
+    {
+      "path": "/puzzletools.js",
+      "kind": "js",
+      "bytes": 28020,
+      "sha256": "ebd62467b42af4a53158a987b07c33336f1d55e30a631fe55e93a1e8dccbd3b5"
+    },
+    {
+      "path": "/rulesparser.js",
+      "kind": "js",
+      "bytes": 9075,
+      "sha256": "5b46203d9045aa76d22fddf128cea64299d484629948096a2009cdf3e7192679"
+    },
+    {
+      "path": "/script.js",
+      "kind": "js",
+      "bytes": 226432,
+      "sha256": "3c53d973ffa62d541e300be9fddb53f19c2a4cc32eb98769a54904240343c9fe"
+    },
+    {
+      "path": "/solver.js",
+      "kind": "js",
+      "bytes": 5334,
+      "sha256": "4d66793f36fd6ebe5980da3af9564712a990408ecdb7419ee4889467c78cdaad"
+    },
+    {
+      "path": "/stegosaur.js",
+      "kind": "js",
+      "bytes": 2121,
+      "sha256": "9c96681e6c7b7cd6f0a741f2dab04c8eb22ccd4c0ad452013f8a717d3be6e666"
+    },
+    {
+      "path": "/style.css",
+      "kind": "css",
+      "bytes": 33438,
+      "sha256": "9b5b11a59d553918afac2e5e8bd0f4d9e21f531ca43a396650c602e79778fb17"
+    },
+    {
+      "path": "/sudokupad-colors.css",
+      "kind": "css",
+      "bytes": 4949,
+      "sha256": "91d24e1df81b66a7bf4f4ff945801d327d6babb21303545ae02e84f5ef72b66b"
+    },
+    {
+      "path": "/tool-calculator.css",
+      "kind": "css",
+      "bytes": 5216,
+      "sha256": "13fe3d21f0ddab7f3acc84e1eb77ecbd264652003e06b06ea5f78590d5956253"
+    },
+    {
+      "path": "/tool-calculator.js",
+      "kind": "js",
+      "bytes": 29766,
+      "sha256": "11bba1618b5fc58de3200fe92a76cca583f653d3630d496588955ef6e203e93c"
+    },
+    {
+      "path": "/tool-color.css",
+      "kind": "css",
+      "bytes": 5963,
+      "sha256": "0d7975f8a5f211b8e1fcd81006f77c56310eab5228a4f424b236b5458eb36f80"
+    },
+    {
+      "path": "/tool-color.js",
+      "kind": "js",
+      "bytes": 15584,
+      "sha256": "d5ca0b926289f4260942b90e7ee0e8e5e47396d8b0c7457198b73399bfabf5f6"
+    },
+    {
+      "path": "/tool-letter.css",
+      "kind": "css",
+      "bytes": 1896,
+      "sha256": "f57001e1811e1b66f6175eeb8056555861d2c4f17bb4eac2144e6bb23c7d2f1b"
+    },
+    {
+      "path": "/tool-letter.js",
+      "kind": "js",
+      "bytes": 9256,
+      "sha256": "da092bfca115cc69806dfe09d85fb284e9abfeeac16f9f8990ce98a015832d7d"
+    },
+    {
+      "path": "/tool-pen.css",
+      "kind": "css",
+      "bytes": 2752,
+      "sha256": "3794c3d5cab5da62a01d80f5b9b2821bc92cf1a84e81dfbaf0255b56d07d661b"
+    },
+    {
+      "path": "/tool-pen.js",
+      "kind": "js",
+      "bytes": 14984,
+      "sha256": "b9e64a90c6ba43bcfee3edea31e9c2162f210e0abddc5653bc0f4192cb467c16"
+    },
+    {
+      "path": "/tool-replay.css",
+      "kind": "css",
+      "bytes": 18417,
+      "sha256": "cde9b147bc668da899c87ce0d9c23c8e755e0106293ab8ea7af85963ae0ad717"
+    },
+    {
+      "path": "/tool-replay.js",
+      "kind": "js",
+      "bytes": 3943,
+      "sha256": "de708e38b2fc5fefb3913ea5b6b578a93590f1088b8805d2d0380129d04ab2ca"
+    },
+    {
+      "path": "/tool-select.js",
+      "kind": "js",
+      "bytes": 992,
+      "sha256": "c49f9d9dc10cdd806e418f5fac0559e63d902a26bfbef555f063c391c23711df"
+    },
+    {
+      "path": "/utilities.js",
+      "kind": "js",
+      "bytes": 30140,
+      "sha256": "044005e3a939dc01dd3778d8f53397aadfab759c350859b6f7aa2dc68d5dca17"
+    }
+  ],
+  "fonts": [
+    {
+      "id": "baublemonogram",
+      "file": "Bauble_Monogram.ttf",
+      "path": "/assets/fonts/Bauble_Monogram.ttf",
+      "sha256": "75f5f003907debec11c2ffa733e94300123f402a5e335b807e7b031f52d38975"
+    },
+    {
+      "id": "bonnet",
+      "file": "Bonnet__.ttf",
+      "path": "/assets/fonts/Bonnet__.ttf",
+      "sha256": "dc3cd1f1670851d2452861215d7b1c513bd7d500e273c8af2977ba37832d478c"
+    },
+    {
+      "id": "cartoonblocks",
+      "file": "CartoonBlocksChristmas-Regular.ttf",
+      "path": "/assets/fonts/CartoonBlocksChristmas-Regular.ttf",
+      "sha256": "651b6eb0077100d948e59b42a5218bd5681c9b1f32cb4b379cf0e6b523901864"
+    },
+    {
+      "id": "dickensianchristmas",
+      "file": "DickensianChristmas.ttf",
+      "path": "/assets/fonts/DickensianChristmas.ttf",
+      "sha256": "349757af56ea4a2134439bd2065a33abaa195646b011baacedbd144d23a701c3"
+    },
+    {
+      "id": "firstsnow",
+      "file": "Firstsnow-nRYmg.ttf",
+      "path": "/assets/fonts/Firstsnow-nRYmg.ttf",
+      "sha256": "eb78760952d2d18a57fbf8d03e172111587ae5eb2fe4badfe61dbdd39209b66c"
+    },
+    {
+      "id": "christmastinsel",
+      "file": "PWChristmasTinsel.ttf",
+      "path": "/assets/fonts/PWChristmasTinsel.ttf",
+      "sha256": "f217e979b56c0a45fa73d2ea5cb36b7b6b69b4288fc491cf0988cd5d30b8404f"
+    },
+    {
+      "id": "christmasfont",
+      "file": "PWChristmasfont.ttf",
+      "path": "/assets/fonts/PWChristmasfont.ttf",
+      "sha256": "9fe75f431a5a0fed14bbeb431124814d4823e800401e7ec27c2c366ea5cd0749"
+    },
+    {
+      "id": "happychristmas",
+      "file": "PWHappyChristmas.ttf",
+      "path": "/assets/fonts/PWHappyChristmas.ttf",
+      "sha256": "4042d346e38798aa689ee33d8b7dd870f87291652210bc65266b9bedabe6063b"
+    },
+    {
+      "id": "rudolph",
+      "file": "Rudolph.otf",
+      "path": "/assets/fonts/Rudolph.otf",
+      "sha256": "e6a5af3c38e32c61b604fa0d17037513d662af75d42d852204d748a86ae13e3e"
+    },
+    {
+      "id": "snowballs",
+      "file": "Snowballs.ttf",
+      "path": "/assets/fonts/Snowballs.ttf",
+      "sha256": "b4fa7db8c954f3f8d04d2d926aa8d42855b1564565d0a449ca43ed0870a1e949"
+    },
+    {
+      "id": "stnichols",
+      "file": "stnicholas.ttf",
+      "path": "/assets/fonts/stnicholas.ttf",
+      "sha256": "ef633dd52927bad5eb7d77e925a7ac37fa67bf286eaef98509ce6046ddafca28"
+    },
+    {
+      "id": "xtree",
+      "file": "XTREE.TTF",
+      "path": "/assets/fonts/XTREE.TTF",
+      "sha256": "9994a69649ba333b558cc3a4ab51506a7a75f1874da2c18ccd86ae5d1967289f"
+    },
+    {
+      "id": "sevensegment",
+      "file": "SevenSegment.ttf",
+      "path": "/assets/fonts/SevenSegment.ttf",
+      "sha256": "3d1907073d083ffcb1c8ba0f180e011ae14a6c24ddf89bf39489fb11da1e4dae"
+    }
+  ]
+}

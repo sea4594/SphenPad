@@ -1,0 +1,615 @@
+{
+  "target": "SudokuPad 0.612.0 captured HAR",
+  "referenceHar": "/mnt/data/sudokupad.app.har",
+  "referenceHarSha256": "12d6ffd3ec204ba14cb6d5aab3da98444be49438d5aab8b664fe1fde34d2ecca",
+  "referenceScriptSha256": "3c53d973ffa62d541e300be9fddb53f19c2a4cc32eb98769a54904240343c9fe",
+  "chromium": "/usr/bin/chromium",
+  "chromiumVersion": "Chromium 144.0.7559.96 built on Debian GNU/Linux 13 (trixie)",
+  "suite": "archive",
+  "fixtures": 25,
+  "passed": 25,
+  "failed": 0,
+  "pixelRatioThreshold": 0.002,
+  "results": [
+    {
+      "name": "archive:u1u3olem22",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          608,
+          608
+        ],
+        "candidateSize": [
+          608,
+          608
+        ],
+        "differentPixelRatio": 0.00013525796398891968,
+        "maxChannelDelta": 11,
+        "meanChannelDelta": 0.0012633093836565098
+      },
+      "rasterRetry": null,
+      "pixelRatioThresholdUsed": 0.002,
+      "candidateAssertions": [],
+      "note": "Archive file index 3652"
+    },
+    {
+      "name": "archive:u2pnuvnrcy",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          640,
+          656
+        ],
+        "candidateSize": [
+          640,
+          656
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 0,
+        "meanChannelDelta": 0.0
+      },
+      "rasterRetry": null,
+      "pixelRatioThresholdUsed": 0.002,
+      "candidateAssertions": [],
+      "note": "Archive file index 3654"
+    },
+    {
+      "name": "archive:u3e1puzryz",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          608,
+          608
+        ],
+        "candidateSize": [
+          608,
+          608
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 0,
+        "meanChannelDelta": 0.0
+      },
+      "rasterRetry": null,
+      "pixelRatioThresholdUsed": 0.002,
+      "candidateAssertions": [],
+      "note": "Archive file index 3655"
+    },
+    {
+      "name": "archive:uoyv9ny78e",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          640,
+          624
+        ],
+        "candidateSize": [
+          640,
+          624
+        ],
+        "differentPixelRatio": 4.0064102564102564e-05,
+        "maxChannelDelta": 13,
+        "meanChannelDelta": 0.0006961137820512821
+      },
+      "rasterRetry": null,
+      "pixelRatioThresholdUsed": 0.002,
+      "candidateAssertions": [],
+      "note": "Archive file index 3673"
+    },
+    {
+      "name": "archive:upl9la4vp8",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          608,
+          608
+        ],
+        "candidateSize": [
+          608,
+          608
+        ],
+        "differentPixelRatio": 0.000811547783933518,
+        "maxChannelDelta": 52,
+        "meanChannelDelta": 0.014964941135734072
+      },
+      "rasterRetry": null,
+      "pixelRatioThresholdUsed": 0.002,
+      "candidateAssertions": [],
+      "note": "Archive file index 3675"
+    },
+    {
+      "name": "archive:ur11o44tv3",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          608,
+          608
+        ],
+        "candidateSize": [
+          608,
+          608
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 0,
+        "meanChannelDelta": 0.0
+      },
+      "rasterRetry": null,
+      "pixelRatioThresholdUsed": 0.002,
+      "candidateAssertions": [],
+      "note": "Archive file index 3677"
+    },
+    {
+      "name": "archive:utaq8fddwh",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          608,
+          608
+        ],
+        "candidateSize": [
+          608,
+          608
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 0,
+        "meanChannelDelta": 0.0
+      },
+      "rasterRetry": null,
+      "pixelRatioThresholdUsed": 0.002,
+      "candidateAssertions": [],
+      "note": "Archive file index 3684"
+    },
+    {
+      "name": "archive:uy5efqsnus",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          608,
+          608
+        ],
+        "candidateSize": [
+          608,
+          608
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 0,
+        "meanChannelDelta": 0.0
+      },
+      "rasterRetry": null,
+      "pixelRatioThresholdUsed": 0.002,
+      "candidateAssertions": [],
+      "note": "Archive file index 3688"
+    },
+    {
+      "name": "archive:uyakkp4064",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          608,
+          608
+        ],
+        "candidateSize": [
+          608,
+          608
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 0,
+        "meanChannelDelta": 0.0
+      },
+      "rasterRetry": null,
+      "pixelRatioThresholdUsed": 0.002,
+      "candidateAssertions": [],
+      "note": "Archive file index 3689"
+    },
+    {
+      "name": "archive:uz0380wkfg",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          608,
+          608
+        ],
+        "candidateSize": [
+          608,
+          608
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 0,
+        "meanChannelDelta": 0.0
+      },
+      "rasterRetry": null,
+      "pixelRatioThresholdUsed": 0.002,
+      "candidateAssertions": [],
+      "note": "Archive file index 3690"
+    },
+    {
+      "name": "archive:v2ey7c3lac",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          608,
+          608
+        ],
+        "candidateSize": [
+          608,
+          608
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 0,
+        "meanChannelDelta": 0.0
+      },
+      "rasterRetry": null,
+      "pixelRatioThresholdUsed": 0.002,
+      "candidateAssertions": [],
+      "note": "Archive file index 3695"
+    },
+    {
+      "name": "archive:vagzppve3v",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          608,
+          608
+        ],
+        "candidateSize": [
+          608,
+          608
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 0,
+        "meanChannelDelta": 0.0
+      },
+      "rasterRetry": null,
+      "pixelRatioThresholdUsed": 0.002,
+      "candidateAssertions": [],
+      "note": "Archive file index 3702"
+    },
+    {
+      "name": "archive:vlkzbme0k2",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          608,
+          608
+        ],
+        "candidateSize": [
+          608,
+          608
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 0,
+        "meanChannelDelta": 0.0
+      },
+      "rasterRetry": null,
+      "pixelRatioThresholdUsed": 0.002,
+      "candidateAssertions": [],
+      "note": "Archive file index 3713"
+    },
+    {
+      "name": "archive:vsuh3lbq7r",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          608,
+          608
+        ],
+        "candidateSize": [
+          608,
+          608
+        ],
+        "differentPixelRatio": 3.246191135734072e-05,
+        "maxChannelDelta": 139,
+        "meanChannelDelta": 0.001320117728531856
+      },
+      "rasterRetry": null,
+      "pixelRatioThresholdUsed": 0.002,
+      "candidateAssertions": [],
+      "note": "Archive file index 3724"
+    },
+    {
+      "name": "archive:w3ve69np9y",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          608,
+          608
+        ],
+        "candidateSize": [
+          608,
+          608
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 0,
+        "meanChannelDelta": 0.0
+      },
+      "rasterRetry": null,
+      "pixelRatioThresholdUsed": 0.002,
+      "candidateAssertions": [],
+      "note": "Archive file index 3734"
+    },
+    {
+      "name": "archive:w5gfd237vx",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          608,
+          608
+        ],
+        "candidateSize": [
+          608,
+          608
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 0,
+        "meanChannelDelta": 0.0
+      },
+      "rasterRetry": null,
+      "pixelRatioThresholdUsed": 0.002,
+      "candidateAssertions": [],
+      "note": "Archive file index 3736"
+    },
+    {
+      "name": "archive:w6ftuh51wn",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          672,
+          672
+        ],
+        "candidateSize": [
+          672,
+          672
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 0,
+        "meanChannelDelta": 0.0
+      },
+      "rasterRetry": null,
+      "pixelRatioThresholdUsed": 0.002,
+      "candidateAssertions": [],
+      "note": "Archive file index 3737"
+    },
+    {
+      "name": "archive:w6uzuj1m0m",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          608,
+          608
+        ],
+        "candidateSize": [
+          608,
+          608
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 0,
+        "meanChannelDelta": 0.0
+      },
+      "rasterRetry": null,
+      "pixelRatioThresholdUsed": 0.002,
+      "candidateAssertions": [],
+      "note": "Archive file index 3738"
+    },
+    {
+      "name": "archive:wa9fbfdl75",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          608,
+          608
+        ],
+        "candidateSize": [
+          608,
+          608
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 0,
+        "meanChannelDelta": 0.0
+      },
+      "rasterRetry": null,
+      "pixelRatioThresholdUsed": 0.002,
+      "candidateAssertions": [],
+      "note": "Archive file index 3739"
+    },
+    {
+      "name": "archive:wcqbcsw8lr",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          608,
+          608
+        ],
+        "candidateSize": [
+          608,
+          608
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 0,
+        "meanChannelDelta": 0.0
+      },
+      "rasterRetry": null,
+      "pixelRatioThresholdUsed": 0.002,
+      "candidateAssertions": [],
+      "note": "Archive file index 3743"
+    },
+    {
+      "name": "archive:webapp/29GpBRDJrN",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          608,
+          608
+        ],
+        "candidateSize": [
+          608,
+          608
+        ],
+        "differentPixelRatio": 0.0006357124307479224,
+        "maxChannelDelta": 58,
+        "meanChannelDelta": 0.009857600415512466
+      },
+      "rasterRetry": null,
+      "pixelRatioThresholdUsed": 0.002,
+      "candidateAssertions": [],
+      "note": "Archive file index 3746"
+    },
+    {
+      "name": "archive:webapp/4FFRfBF9dt",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          608,
+          608
+        ],
+        "candidateSize": [
+          608,
+          608
+        ],
+        "differentPixelRatio": 3.246191135734072e-05,
+        "maxChannelDelta": 18,
+        "meanChannelDelta": 0.0005680834487534626
+      },
+      "rasterRetry": null,
+      "pixelRatioThresholdUsed": 0.002,
+      "candidateAssertions": [],
+      "note": "Archive file index 3753"
+    },
+    {
+      "name": "archive:webapp/7Jrg7g4FMF",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          736,
+          736
+        ],
+        "candidateSize": [
+          736,
+          736
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 0,
+        "meanChannelDelta": 0.0
+      },
+      "rasterRetry": null,
+      "pixelRatioThresholdUsed": 0.002,
+      "candidateAssertions": [],
+      "note": "Archive file index 3762"
+    },
+    {
+      "name": "archive:webapp/9G8mNR8Rj3",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          736,
+          736
+        ],
+        "candidateSize": [
+          736,
+          736
+        ],
+        "differentPixelRatio": 2.5844754253308128e-05,
+        "maxChannelDelta": 18,
+        "meanChannelDelta": 0.0004430529300567108
+      },
+      "rasterRetry": null,
+      "pixelRatioThresholdUsed": 0.002,
+      "candidateAssertions": [],
+      "note": "Archive file index 3770"
+    },
+    {
+      "name": "archive:webapp/B8hF4G7dfG",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          608,
+          608
+        ],
+        "candidateSize": [
+          608,
+          608
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 0,
+        "meanChannelDelta": 0.0
+      },
+      "rasterRetry": null,
+      "pixelRatioThresholdUsed": 0.002,
+      "candidateAssertions": [],
+      "note": "Archive file index 3774"
+    }
+  ]
+}

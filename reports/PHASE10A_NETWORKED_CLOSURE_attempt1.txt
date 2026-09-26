@@ -1,0 +1,80 @@
+Phase 10A networked closure — 2026-09-24T17:29:29Z
+Node: v26.9.0
+npm: 11.19.1
+
+[1/8] Clean dependency install
+
+added 275 packages, and audited 276 packages in 12s
+
+51 packages are looking for funding
+  run `npm fund` for details
+
+18 vulnerabilities (2 low, 3 moderate, 11 high, 2 critical)
+
+To address all issues, run:
+  npm audit fix
+
+Run `npm audit` for details.
+npm warn install-scripts 4 packages have install scripts not yet covered by allowScripts:
+npm warn install-scripts   @firebase/util@1.14.0 (postinstall: node ./postinstall.js)
+npm warn install-scripts   esbuild@0.27.3 (postinstall: node install.js)
+npm warn install-scripts   fsevents@2.3.3 (install: (install scripts present))
+npm warn install-scripts   protobufjs@7.5.4 (postinstall: node scripts/postinstall)
+npm warn install-scripts
+npm warn install-scripts Run `npm install-scripts ls` to review, or `npm install-scripts approve <pkg>` to allow.
+[2/8] Proxy/unit asset tests
+
+> sphenpad@0.0.0 test-sudokupad-proxy
+> node scripts/test-sudokupad-proxy.mjs
+
+SudokuPad proxy tests: PASS
+
+> sphenpad@0.0.0 test-sudokupad-assets
+> node --experimental-strip-types scripts/test-sudokupad-asset-resolver.mjs && node --experimental-strip-types scripts/test-sudokupad-font-loader.mjs
+
+SudokuPad asset resolver tests: PASS
+SudokuPad font loader tests: PASS
+[3/8] Exact upstream SudokuPad font-byte verification
+
+> sphenpad@0.0.0 verify-sudokupad-upstream-fonts
+> node scripts/verify-sudokupad-upstream-fonts.mjs
+
+PASS christmastinsel: 200, 101936 bytes, f217e979b56c0a45fa73d2ea5cb36b7b6b69b4288fc491cf0988cd5d30b8404f
+PASS bonnet: 200, 81428 bytes, dc3cd1f1670851d2452861215d7b1c513bd7d500e273c8af2977ba37832d478c
+PASS happychristmas: 200, 70528 bytes, 4042d346e38798aa689ee33d8b7dd870f87291652210bc65266b9bedabe6063b
+PASS sevensegment: 200, 29076 bytes, 3d1907073d083ffcb1c8ba0f180e011ae14a6c24ddf89bf39489fb11da1e4dae
+PASS baublemonogram: 200, 26924 bytes, 75f5f003907debec11c2ffa733e94300123f402a5e335b807e7b031f52d38975
+PASS christmasfont: 200, 67172 bytes, 9fe75f431a5a0fed14bbeb431124814d4823e800401e7ec27c2c366ea5cd0749
+PASS xtree: 200, 191152 bytes, 9994a69649ba333b558cc3a4ab51506a7a75f1874da2c18ccd86ae5d1967289f
+PASS snowballs: 200, 207096 bytes, b4fa7db8c954f3f8d04d2d926aa8d42855b1564565d0a449ca43ed0870a1e949
+PASS firstsnow: 200, 44480 bytes, eb78760952d2d18a57fbf8d03e172111587ae5eb2fe4badfe61dbdd39209b66c
+PASS stnichols: 200, 40548 bytes, ef633dd52927bad5eb7d77e925a7ac37fa67bf286eaef98509ce6046ddafca28
+PASS cartoonblocks: 200, 684744 bytes, 651b6eb0077100d948e59b42a5218bd5681c9b1f32cb4b379cf0e6b523901864
+PASS dickensianchristmas: 200, 466032 bytes, 349757af56ea4a2134439bd2065a33abaa195646b011baacedbd144d23a701c3
+PASS rudolph: 200, 930340 bytes, e6a5af3c38e32c61b604fa0d17037513d662af75d42d852204d748a86ae13e3e
+[4/8] Real archive external-background verification
+
+> sphenpad@0.0.0 verify-sudokupad-external-assets
+> node scripts/verify-sudokupad-external-assets.mjs
+
+OK   0787piuafi.json          4261 bytes image/png https://i.imgur.com/bZpmslF.png
+OK   28k5j6fvfe.json        236163 bytes image/png https://i.postimg.cc/tCcCxHbT/bear8.png
+OK   5060viuw2v.json        201174 bytes image/png https://i.imgur.com/mU44Fxx.png
+OK   7qo4oi3fi3.json         14319 bytes image/png https://i.ibb.co/bgGSdVyP/25.png
+OK   9mne4c61lf.json         29595 bytes image/png https://i.imgur.com/3Zxa3z9.png
+OK   azp64ejj1v.json         20326 bytes image/png https://i.imgur.com/boaEOmI.png
+OK   iutvqv1ht8.json        466933 bytes image/png https://i.imgur.com/xRoRPiG.png
+OK   rpdtjt36r7.json         50480 bytes image/png https://i.imgur.com/35ySpwy.png
+OK   wq1p4nwud6.json         47932 bytes image/png https://i.ibb.co/wFzSh37N/sudoku-background.png
+[5/8] TypeScript/Vite production build
+
+> sphenpad@0.0.0 build
+> tsc -b && vite build
+
+src/sudokupad/creator/nativeAuthoring.ts(34,10): error TS6133: 'center' is declared but its value is never read.
+src/sudokupad/render/SvgRenderer.ts(49,15): error TS1294: This syntax is not allowed when 'erasableSyntaxOnly' is enabled.
+src/sudokupad/semantics/rulesParser.ts(66,7): error TS6133: 'reKillerRule' is declared but its value is never read.
+src/ui/BoardInteractionLayer.tsx(37,7): error TS6133: 'NODE_RADIUS' is declared but its value is never read.
+src/ui/CtCArchivePage.tsx(25,34): error TS6133: 'puzzleSolution' is declared but its value is never read.
+src/ui/PuzzleEditorPage.tsx(481,11): error TS6133: 'sourceElementId' is declared but its value is never read.
+src/sudokupad/semantics/rulesParser.ts(66,7): error TS6133: 'reKillerRule' is declared but its value is never read.

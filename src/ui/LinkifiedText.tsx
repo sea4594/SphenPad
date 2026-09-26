@@ -71,14 +71,16 @@ function isSudokuPadHref(href: string): boolean {
 export function LinkifiedText(props: LinkifiedTextProps) {
   const text = props.text ?? "";
   const parts: Array<{ type: "text"; value: string } | { type: "link"; value: string; href: string; suffix: string }> = [];
+  const markdownPattern = new RegExp(MARKDOWN_LINK_PATTERN.source, MARKDOWN_LINK_PATTERN.flags);
+  const urlPattern = new RegExp(URL_PATTERN.source, URL_PATTERN.flags);
   let cursor = 0;
 
   while (cursor < text.length) {
-    MARKDOWN_LINK_PATTERN.lastIndex = cursor;
-    URL_PATTERN.lastIndex = cursor;
+    markdownPattern.lastIndex = cursor;
+    urlPattern.lastIndex = cursor;
 
-    const markdownMatch = MARKDOWN_LINK_PATTERN.exec(text);
-    const urlMatch = URL_PATTERN.exec(text);
+    const markdownMatch = markdownPattern.exec(text);
+    const urlMatch = urlPattern.exec(text);
 
     const markdownIndex = markdownMatch?.index ?? Number.POSITIVE_INFINITY;
     const urlIndex = urlMatch?.index ?? Number.POSITIVE_INFINITY;

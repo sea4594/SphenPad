@@ -1,0 +1,100 @@
+{
+  "target": "SudokuPad 0.612.0",
+  "source": "Decoded native archive metadata.bgimage values",
+  "externalBackgrounds": [
+    {
+      "puzzle": "0787piuafi.json",
+      "url": "https://i.imgur.com/bZpmslF.png",
+      "verifiedBaseline": {
+        "checkedAt": "2026-09-24T17:29:43Z",
+        "bytes": 4261,
+        "mime": "image/png"
+      }
+    },
+    {
+      "puzzle": "28k5j6fvfe.json",
+      "url": "https://i.postimg.cc/tCcCxHbT/bear8.png",
+      "verifiedBaseline": {
+        "checkedAt": "2026-09-24T17:29:43Z",
+        "bytes": 236163,
+        "mime": "image/png"
+      }
+    },
+    {
+      "puzzle": "5060viuw2v.json",
+      "url": "https://i.imgur.com/mU44Fxx.png",
+      "verifiedBaseline": {
+        "checkedAt": "2026-09-24T17:29:43Z",
+        "bytes": 201174,
+        "mime": "image/png"
+      }
+    },
+    {
+      "puzzle": "7qo4oi3fi3.json",
+      "url": "https://i.ibb.co/bgGSdVyP/25.png",
+      "verifiedBaseline": {
+        "checkedAt": "2026-09-24T17:29:43Z",
+        "bytes": 14319,
+        "mime": "image/png"
+      }
+    },
+    {
+      "puzzle": "9mne4c61lf.json",
+      "url": "https://i.imgur.com/3Zxa3z9.png",
+      "verifiedBaseline": {
+        "checkedAt": "2026-09-24T17:29:43Z",
+        "bytes": 29595,
+        "mime": "image/png"
+      }
+    },
+    {
+      "puzzle": "azp64ejj1v.json",
+      "url": "https://i.imgur.com/boaEOmI.png",
+      "verifiedBaseline": {
+        "checkedAt": "2026-09-24T17:29:43Z",
+        "bytes": 20326,
+        "mime": "image/png"
+      }
+    },
+    {
+      "puzzle": "iutvqv1ht8.json",
+      "url": "https://i.imgur.com/xRoRPiG.png",
+      "verifiedBaseline": {
+        "checkedAt": "2026-09-24T17:29:43Z",
+        "bytes": 466933,
+        "mime": "image/png"
+      }
+    },
+    {
+      "puzzle": "rpdtjt36r7.json",
+      "url": "https://i.imgur.com/35ySpwy.png",
+      "verifiedBaseline": {
+        "checkedAt": "2026-09-24T17:29:43Z",
+        "bytes": 50480,
+        "mime": "image/png"
+      }
+    },
+    {
+      "puzzle": "wq1p4nwud6.json",
+      "url": "https://i.ibb.co/wFzSh37N/sudoku-background.png",
+      "verifiedBaseline": {
+        "checkedAt": "2026-09-24T17:29:43Z",
+        "bytes": 47932,
+        "mime": "image/png"
+      }
+    }
+  ],
+  "historicalStockAssets": [
+    {
+      "puzzle": "TmMBJj8jbr",
+      "path": "/images/puzzles/TmMBJj8jbr.png",
+      "experimental": true
+    },
+    {
+      "puzzle": "MONOPOLYSUDOKU",
+      "path": "/images/puzzles/monopolysudoku.png",
+      "experimental": false
+    }
+  ],
+  "verificationPolicy": "Live fetch is attempted on every run. A network-only timeout/fetch failure may fall back to the recorded successful baseline; HTTP/content mismatches still fail."
+}

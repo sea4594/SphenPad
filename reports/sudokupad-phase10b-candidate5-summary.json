@@ -1,0 +1,113 @@
+{
+  "rows": [
+    {
+      "idx": 791,
+      "name": "b193jegg4x",
+      "rc": 0,
+      "passed": 1,
+      "failed": 0,
+      "result": {
+        "name": "archive:b193jegg4x",
+        "passed": true,
+        "structuralEqual": true,
+        "structuralDifference": null,
+        "raster": {
+          "sameSize": true,
+          "stockSize": [
+            608,
+            608
+          ],
+          "candidateSize": [
+            608,
+            608
+          ],
+          "differentPixelRatio": 0.0,
+          "maxChannelDelta": 0,
+          "meanChannelDelta": 0.0
+        },
+        "rasterRetry": null,
+        "pixelRatioThresholdUsed": 0.01,
+        "candidateAssertions": [],
+        "note": "Archive file index 791"
+      },
+      "seconds": 25.4
+    },
+    {
+      "idx": 3271,
+      "name": "sudoku/jMQR24JRBN",
+      "rc": 0,
+      "passed": 1,
+      "failed": 0,
+      "result": {
+        "name": "archive:sudoku/jMQR24JRBN",
+        "passed": true,
+        "structuralEqual": true,
+        "structuralDifference": null,
+        "raster": {
+          "sameSize": true,
+          "stockSize": [
+            544,
+            544
+          ],
+          "candidateSize": [
+            544,
+            544
+          ],
+          "differentPixelRatio": 0.0,
+          "maxChannelDelta": 0,
+          "meanChannelDelta": 0.0
+        },
+        "rasterRetry": null,
+        "pixelRatioThresholdUsed": 0.01,
+        "candidateAssertions": [],
+        "note": "Archive file index 3271"
+      },
+      "seconds": 30.9
+    },
+    {
+      "idx": 1400,
+      "name": "jw1onozqhg",
+      "rc": 1,
+      "passed": 0,
+      "failed": 1,
+      "result": {
+        "name": "archive:jw1onozqhg",
+        "passed": false,
+        "error": "TimeoutError()",
+        "timeoutStage": "candidate-raster",
+        "note": "Archive file index 1400"
+      },
+      "seconds": 34.7
+    },
+    {
+      "idx": 1028,
+      "name": "eb90s76a4e",
+      "rc": 1,
+      "passed": 0,
+      "failed": 1,
+      "result": {
+        "name": "archive:eb90s76a4e",
+        "passed": false,
+        "error": "TimeoutError()",
+        "timeoutStage": "candidate-raster",
+        "note": "Archive file index 1028"
+      },
+      "seconds": 35.4
+    },
+    {
+      "idx": 3286,
+      "name": "sudoku/jfrf3mHRbN",
+      "rc": 1,
+      "passed": 0,
+      "failed": 1,
+      "result": {
+        "name": "archive:sudoku/jfrf3mHRbN",
+        "passed": false,
+        "error": "TimeoutError()",
+        "timeoutStage": "candidate-raster",
+        "note": "Archive file index 3286"
+      },
+      "seconds": 35.4
+    }
+  ]
+}

@@ -97,7 +97,6 @@ export function PopupMenuButton(props: {
 
   useEffect(() => {
     if (!open) return;
-    positionMenu();
     const raf = window.requestAnimationFrame(() => positionMenu());
     return () => window.cancelAnimationFrame(raf);
   }, [open, activeSubmenuItems]);

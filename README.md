@@ -64,3 +64,7 @@ If the URL does not appear immediately, in GitHub go to:
 - Ensure `Source` is set to `GitHub Actions`
 
 Then re-run the workflow from the `Actions` tab if needed.
+
+## Creator Phase 11 status
+
+Creator Phase 11 is **complete through Phase 11L**. The final audit exercises all 47 inventoried SudokuMaker first-class tool types (50 SphenPad mappings/variants), along with project persistence/account sync, validation/solver tools, import/export, real SphenPad playtesting, Home/My Puzzles integration, and SudokuMaker-style editing UX. One intentional security limitation remains: Custom constraint backend JavaScript is preserved and explicitly reported, but arbitrary author code is not executed locally. See `MIGRATION_PROGRESS.md`, `reports/PHASE11L_FINAL_PARITY_AUDIT.md`, and `reports/PHASE11L_RELEASE_GATE.md`. Before a production/live deployment, run `npm run finish-phase11-release` in a networked environment so the dependency-backed lint/build/browser gate can pass.

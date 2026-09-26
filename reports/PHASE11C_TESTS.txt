@@ -1,0 +1,21 @@
+Phase 11C verification — 2026-09-25
+
+PASS: Phase 11A creator project + SudokuMaker parity regression suite.
+PASS: Phase 11B creator project storage-model regression suite.
+PASS: Phase 11C creator grid-structure suite.
+
+Phase 11C cases exercised:
+- 9x9 regular 3x3 structure and validation.
+- 6x6 conversion with 1-6 digits and 2x3 boxes.
+- 4x4 10-13 multi-digit solution storage and CreatorProject round trip.
+- Multi-digit grid parsing/formatting.
+- Irregular-region overlap and missing-cell diagnostics.
+- Resize cropping of givens and solutions.
+- Removal of constraints and tagged visuals that touch cropped cells.
+- Clear givens/solution/regions behavior.
+
+PASS: targeted strict TypeScript check for the changed pure creator/model modules.
+PASS: TypeScript syntax transpile check for all modified TS/TSX source files.
+
+Environment limitation:
+A clean full `npm ci` could not complete in this execution environment because the required npm packages were not available from the local cache and package retrieval did not complete. Consequently the full dependency-backed Vite build and ESLint gate could not be rerun here. No dependency versions were changed in Phase 11C. The partial `node_modules` directory produced by that failed install attempt was removed before packaging.

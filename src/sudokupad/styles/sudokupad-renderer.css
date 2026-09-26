@@ -1,0 +1,229 @@
+@import url("https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap");
+
+.sphenpad-sudokupad-renderer {
+  --color-white: #fff;
+  --color-black: #000;
+  --body-bg: #fff;
+  --puzzle-selectioncage: rgba(0, 126, 255, 0.7);
+  --puzzle-given: #000;
+  --puzzle-givenCornermark: #000;
+  --puzzle-givenCandidate: #000;
+  --puzzle-value: rgb(29, 106, 229);
+  --puzzle-candidate: #1d6ae5;
+  --puzzle-pencilmark: #1d6ae5;
+  --puzzle-outlines: rgba(255, 255, 255, 0.7);
+  --puzzle-cellerror: rgba(179, 58, 58, 0.5);
+  --puzzle-pencilmarkerror: rgba(179, 58, 58, 1);
+  --text-stroke-width: 0;
+  display: block;
+  overflow: visible;
+  font-family: Tahoma, Roboto, Arial, sans-serif;
+  pointer-events: all;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+.sphenpad-sudokupad-renderer * { pointer-events: none; }
+.sphenpad-sudokupad-renderer text {
+  fill: var(--color-black);
+  stroke: var(--puzzle-outlines);
+  text-anchor: middle;
+  dominant-baseline: middle;
+  stroke-width: var(--text-stroke-width);
+  stroke-linecap: butt;
+  stroke-linejoin: miter;
+  paint-order: stroke fill;
+}
+.sphenpad-sudokupad-renderer .cell-highlight { fill: rgba(255, 215, 0, 0.5); }
+.sphenpad-sudokupad-renderer .cell-error { fill: var(--puzzle-cellerror); }
+.sphenpad-sudokupad-renderer .cell-grid {
+  fill: none;
+  stroke: #000;
+  stroke-width: 1;
+  stroke-linecap: butt;
+  stroke-linejoin: bevel;
+  vector-effect: non-scaling-stroke;
+}
+.sphenpad-sudokupad-renderer .cage-box { stroke-width: 3px; }
+.sphenpad-sudokupad-renderer .cell-given { font-size: 3rem; fill: var(--puzzle-given); }
+.sphenpad-sudokupad-renderer .cell-value { font-size: 3rem; fill: var(--puzzle-value); }
+.sphenpad-sudokupad-renderer .cell-candidate { font-size: 1.2rem; fill: var(--puzzle-candidate); }
+.sphenpad-sudokupad-renderer .cell-pencilmark { font-size: 1.1rem; fill: var(--puzzle-pencilmark); }
+.sphenpad-sudokupad-renderer .cell-pencilmark.givenCornermark { fill: var(--puzzle-givenCornermark); }
+.sphenpad-sudokupad-renderer .cell-candidate .given { fill: var(--puzzle-givenCandidate); }
+.sphenpad-sudokupad-renderer .cage-selectioncage { stroke: var(--puzzle-selectioncage); }
+.sphenpad-sudokupad-renderer rect.cage-label { fill: var(--body-bg); }
+.sphenpad-sudokupad-renderer text.cage-label { font-size: 13px; text-anchor: start; fill: var(--puzzle-given); }
+.sphenpad-sudokupad-renderer .pm-0 { transform: translate(-15px, -15px); }
+.sphenpad-sudokupad-renderer .pm-1 { transform: translate(15px, -15px); }
+.sphenpad-sudokupad-renderer .pm-2 { transform: translate(-15px, 15px); }
+.sphenpad-sudokupad-renderer .pm-3 { transform: translate(15px, 15px); }
+.sphenpad-sudokupad-renderer .pm-4 { transform: translate(0, -15px); }
+.sphenpad-sudokupad-renderer .pm-5 { transform: translate(0, 15px); }
+.sphenpad-sudokupad-renderer .pm-6 { transform: translate(-15px, 0); }
+.sphenpad-sudokupad-renderer .pm-7 { transform: translate(15px, 0); }
+.sphenpad-sudokupad-renderer .pm-8 { transform: translate(-5px, 0); }
+.sphenpad-sudokupad-renderer .pm-9 { transform: translate(5px, 0); }
+.sphenpad-sudokupad-renderer .cell-candidate[data-count="6"] { font-size: 97%; }
+.sphenpad-sudokupad-renderer .cell-candidate[data-count="7"] { font-size: 90%; }
+.sphenpad-sudokupad-renderer .cell-candidate[data-count="8"] { font-size: 80%; }
+.sphenpad-sudokupad-renderer .cell-candidate[data-count="9"] { font-size: 70%; }
+.sphenpad-sudokupad-renderer.setting-largedigits .pm-0 { transform: translate(-20px, -20px); }
+.sphenpad-sudokupad-renderer.setting-largedigits .pm-1 { transform: translate(20px, -20px); }
+.sphenpad-sudokupad-renderer.setting-largedigits .pm-2 { transform: translate(-20px, 20px); }
+.sphenpad-sudokupad-renderer.setting-largedigits .pm-3 { transform: translate(20px, 20px); }
+.sphenpad-sudokupad-renderer.setting-largedigits .pm-4 { transform: translate(0, -20px); }
+.sphenpad-sudokupad-renderer.setting-largedigits .pm-5 { transform: translate(0, 20px); }
+.sphenpad-sudokupad-renderer.setting-largedigits .pm-6 { transform: translate(-20px, 0); }
+.sphenpad-sudokupad-renderer.setting-largedigits .pm-7 { transform: translate(20px, 0); }
+.sphenpad-sudokupad-renderer.setting-largedigits .pm-8 { transform: translate(-7px, -4px); }
+.sphenpad-sudokupad-renderer.setting-largedigits .pm-9 { transform: translate(7px, 4px); }
+.sphenpad-sudokupad-renderer.setting-largedigits .cell-candidate,
+.sphenpad-sudokupad-renderer.setting-largedigits .cell-pencilmark { font-size: 1.3rem; }
+.sphenpad-sudokupad-renderer.setting-largedigits .cell-candidate[data-count="9"] { font-size: 65%; }
+.sphenpad-sudokupad-renderer.setting-nogrid .cell-grid { display: none; }
+.sphenpad-sudokupad-renderer.setting-dashedgrid .cell-grid { stroke-dasharray: 3 10; }
+.sphenpad-sudokupad-renderer.setting-outlinesondigits { --text-stroke-width: 2px; }
+.sphenpad-sudokupad-renderer.setting-darkmode {
+  --dm-black: #1a1a1a;
+  --dm-white: #eee;
+  --color-white: var(--dm-black);
+  --color-black: var(--dm-white);
+  --body-bg: var(--dm-black);
+  --puzzle-given: var(--dm-white);
+  --puzzle-givenCornermark: var(--body-bg);
+  --puzzle-givenCandidate: var(--body-bg);
+  --puzzle-value: #5f95ec;
+  --puzzle-candidate: #5f95ec;
+  --puzzle-pencilmark: #5f95ec;
+  --puzzle-outlines: rgba(26,26,26,0.7);
+}
+.sphenpad-sudokupad-renderer.setting-darkmode rect.feature-kropki[fill="#000" i],
+.sphenpad-sudokupad-renderer.setting-darkmode rect.feature-kropki[fill="#000000" i] { stroke: var(--dm-white); fill: var(--dm-black); }
+.sphenpad-sudokupad-renderer.setting-darkmode rect.feature-kropki[fill="#fff" i],
+.sphenpad-sudokupad-renderer.setting-darkmode rect.feature-kropki[fill="#ffffff" i] { stroke: var(--dm-black); fill: var(--dm-white); }
+
+.sphenpad-sudokupad-renderer.setting-outlinesonlines #arrows,
+.sphenpad-sudokupad-renderer.setting-outlinesonlines #overlay { filter: var(--sphenpad-outline-filter); }
+.sphenpad-sudokupad-renderer.setting-darkmode.setting-outlinesonlines #arrows,
+.sphenpad-sudokupad-renderer.setting-darkmode.setting-outlinesonlines #overlay { filter: var(--sphenpad-outline-filter-dark); }
+.sphenpad-sudokupad-renderer.setting-hidecolours #background image { opacity: 0; }
+.sphenpad-sudokupad-renderer.setting-hidecolours #underlay rect[width="64"][height="64"]:not([rounded="true"]):not([fill="#000000"]) { fill-opacity: 0; }
+.sphenpad-sudokupad-renderer.setting-hidecolours #overlay rect:not([rounded="true"]):not([rx]):not([ry]):not([fill="#ffffff"]):not([text]) { fill: #ffffff; }
+.sphenpad-sudokupad-renderer.setting-altmarks .cell-pencilmark[data-val="0"] { transform: translate(-25px,-25px); }
+.sphenpad-sudokupad-renderer.setting-altmarks .cell-pencilmark[data-val="1"] { transform: translate(-15px,-15px); }
+.sphenpad-sudokupad-renderer.setting-altmarks .cell-pencilmark[data-val="2"] { transform: translate(0,-15px); }
+.sphenpad-sudokupad-renderer.setting-altmarks .cell-pencilmark[data-val="3"] { transform: translate(15px,-15px); }
+.sphenpad-sudokupad-renderer.setting-altmarks .cell-pencilmark[data-val="4"] { transform: translate(-15px,0); }
+.sphenpad-sudokupad-renderer.setting-altmarks .cell-pencilmark[data-val="5"] { transform: translate(0,0); }
+.sphenpad-sudokupad-renderer.setting-altmarks .cell-pencilmark[data-val="6"] { transform: translate(15px,0); }
+.sphenpad-sudokupad-renderer.setting-altmarks .cell-pencilmark[data-val="7"] { transform: translate(-15px,15px); }
+.sphenpad-sudokupad-renderer.setting-altmarks .cell-pencilmark[data-val="8"] { transform: translate(0,15px); }
+.sphenpad-sudokupad-renderer.setting-altmarks .cell-pencilmark[data-val="9"] { transform: translate(15px,15px); }
+.sphenpad-sudokupad-renderer .cell-pen { fill:none; stroke-linecap:round; stroke-linejoin:round; stroke-width:5; opacity:.8; }
+.sphenpad-sudokupad-renderer .pen-3, .sphenpad-sudokupad-renderer .pen-4, .sphenpad-sudokupad-renderer .pen-b, .sphenpad-sudokupad-renderer .pen-c { stroke-width:2.5; }
+.sphenpad-sudokupad-renderer .pencolor-1 { stroke: rgb(31,128,32); }
+.sphenpad-sudokupad-renderer .pencolor-2 { stroke: rgb(232,124,241); }
+.sphenpad-sudokupad-renderer .pencolor-3 { stroke: rgb(228,150,50); }
+.sphenpad-sudokupad-renderer .pencolor-4 { stroke: rgb(245,58,55); }
+.sphenpad-sudokupad-renderer .pencolor-5 { stroke: rgb(210,190,50); }
+.sphenpad-sudokupad-renderer .pencolor-6 { stroke: rgb(61,153,245); }
+.sphenpad-sudokupad-renderer .pencolor-7 { stroke: rgb(214,214,214); }
+.sphenpad-sudokupad-renderer .pencolor-8 { stroke: rgb(124,124,124); }
+.sphenpad-sudokupad-renderer .pencolor-9 { stroke: rgb(-36,-36,-36); }
+
+/* SudokuPad fog feature. */
+.sphenpad-sudokupad-renderer { --fog-mask-white:#fff; --fog-mask-black:#000; }
+.sphenpad-sudokupad-renderer .fog-mask-white { fill:var(--fog-mask-white); }
+.sphenpad-sudokupad-renderer .fog-mask-black { fill:var(--fog-mask-black); }
+.sphenpad-sudokupad-renderer [data-sphenpad-fog-edge] * { fill:var(--fog-mask-black); stroke-linecap:butt; stroke-linejoin:round; }
+/* Stock SudokuPad fog cover: #afafaf in light mode, #4d4d4d in dark mode. */
+.sphenpad-sudokupad-renderer [data-sphenpad-fog-root="cover"] { fill:#afafaf; }
+.sphenpad-sudokupad-renderer.setting-darkmode [data-sphenpad-fog-root="cover"] { fill:#4d4d4d; }
+.sphenpad-sudokupad-renderer image.twemoji { transform-box:fill-box; transform-origin:center; }
+
+.sphenpad-sudokupad-renderer.puzzlefont-baublemonogram .cell-given,
+.sphenpad-sudokupad-renderer.puzzlefont-baublemonogram .cell-value { font-family:puzzlefont-baublemonogram; transform:translate(0px,-10px); font-size:58px; }
+
+.sphenpad-sudokupad-renderer.puzzlefont-bonnet .cell-given,
+.sphenpad-sudokupad-renderer.puzzlefont-bonnet .cell-value { font-family:puzzlefont-bonnet; transform:translate(0px,5px); font-size:58px; }
+
+.sphenpad-sudokupad-renderer.puzzlefont-cartoonblocks .cell-given,
+.sphenpad-sudokupad-renderer.puzzlefont-cartoonblocks .cell-value { font-family:puzzlefont-cartoonblocks; transform:translate(0px,0px); font-size:62px; }
+
+.sphenpad-sudokupad-renderer.puzzlefont-dickensianchristmas .cell-given,
+.sphenpad-sudokupad-renderer.puzzlefont-dickensianchristmas .cell-value { font-family:puzzlefont-dickensianchristmas; transform:translate(0px,-3px); font-size:48px; }
+
+.sphenpad-sudokupad-renderer.puzzlefont-firstsnow .cell-given,
+.sphenpad-sudokupad-renderer.puzzlefont-firstsnow .cell-value { font-family:puzzlefont-firstsnow; transform:translate(0px,0px); font-size:72px; }
+
+.sphenpad-sudokupad-renderer.puzzlefont-christmastinsel .cell-given,
+.sphenpad-sudokupad-renderer.puzzlefont-christmastinsel .cell-value { font-family:puzzlefont-christmastinsel; transform:translate(0px,-5px); font-size:60px; }
+
+.sphenpad-sudokupad-renderer.puzzlefont-christmasfont .cell-given,
+.sphenpad-sudokupad-renderer.puzzlefont-christmasfont .cell-value { font-family:puzzlefont-christmasfont; transform:translate(0px,-5px); font-size:48px; }
+
+.sphenpad-sudokupad-renderer.puzzlefont-happychristmas .cell-given,
+.sphenpad-sudokupad-renderer.puzzlefont-happychristmas .cell-value { font-family:puzzlefont-happychristmas; transform:translate(0px,-5px); font-size:53px; }
+
+.sphenpad-sudokupad-renderer.puzzlefont-rudolph .cell-given,
+.sphenpad-sudokupad-renderer.puzzlefont-rudolph .cell-value { font-family:puzzlefont-rudolph; transform:translate(0px,0px); font-size:58px; }
+
+.sphenpad-sudokupad-renderer.puzzlefont-snowballs .cell-given,
+.sphenpad-sudokupad-renderer.puzzlefont-snowballs .cell-value { font-family:puzzlefont-snowballs; transform:translate(0px,-5px); font-size:67px; }
+
+.sphenpad-sudokupad-renderer.puzzlefont-stnichols .cell-given,
+.sphenpad-sudokupad-renderer.puzzlefont-stnichols .cell-value { font-family:puzzlefont-stnichols; transform:translate(0px,5px); font-size:53px; }
+
+.sphenpad-sudokupad-renderer.puzzlefont-xtree .cell-given,
+.sphenpad-sudokupad-renderer.puzzlefont-xtree .cell-value { font-family:puzzlefont-xtree; transform:translate(0px,10px); font-size:58px; }
+
+.sphenpad-sudokupad-renderer.puzzlefont-sevensegment .cell-given,
+.sphenpad-sudokupad-renderer.puzzlefont-sevensegment .cell-value { font-family:puzzlefont-sevensegment; transform:translate(0px,5px); font-size:53px; }
+
+/* Phase-8 parity: stock FeatureRowColLabels. */
+.sphenpad-sudokupad-renderer .rowcollabel { font-size: 0.9rem; }
+.sphenpad-sudokupad-renderer .rowlabel { text-anchor: end; }
+
+/* Exact combined large-digit + alternate-mark positions from stock style.css. */
+.sphenpad-sudokupad-renderer.setting-largedigits.setting-altmarks .cell-pencilmark[data-val="0"] { transform: translate(-27px,-25px); }
+.sphenpad-sudokupad-renderer.setting-largedigits.setting-altmarks .cell-pencilmark[data-val="1"] { transform: translate(-20px,-20px); }
+.sphenpad-sudokupad-renderer.setting-largedigits.setting-altmarks .cell-pencilmark[data-val="2"] { transform: translate(0,-20px); }
+.sphenpad-sudokupad-renderer.setting-largedigits.setting-altmarks .cell-pencilmark[data-val="3"] { transform: translate(20px,-20px); }
+.sphenpad-sudokupad-renderer.setting-largedigits.setting-altmarks .cell-pencilmark[data-val="4"] { transform: translate(-20px,0); }
+.sphenpad-sudokupad-renderer.setting-largedigits.setting-altmarks .cell-pencilmark[data-val="5"] { transform: translate(0,0); }
+.sphenpad-sudokupad-renderer.setting-largedigits.setting-altmarks .cell-pencilmark[data-val="6"] { transform: translate(20px,0); }
+.sphenpad-sudokupad-renderer.setting-largedigits.setting-altmarks .cell-pencilmark[data-val="7"] { transform: translate(-20px,20px); }
+.sphenpad-sudokupad-renderer.setting-largedigits.setting-altmarks .cell-pencilmark[data-val="8"] { transform: translate(0,20px); }
+.sphenpad-sudokupad-renderer.setting-largedigits.setting-altmarks .cell-pencilmark[data-val="9"] { transform: translate(20px,20px); }
+.sphenpad-sudokupad-renderer .cell-candidate[data-count="10"] { font-size: 65%; }
+
+/* Complete stock dark-mode SVG black/white remapping, including custom cosmetics. */
+.sphenpad-sudokupad-renderer.setting-darkmode { --dm-black-alpha: rgba(18,18,18,0.7); }
+.sphenpad-sudokupad-renderer.setting-darkmode .cell-grid,
+.sphenpad-sudokupad-renderer.setting-darkmode .cage-box { stroke: var(--dm-white); }
+.sphenpad-sudokupad-renderer.setting-darkmode [stroke="#000"],
+.sphenpad-sudokupad-renderer.setting-darkmode [stroke="#000000"],
+.sphenpad-sudokupad-renderer.setting-darkmode [stroke="rgba(0, 0, 0, 1)"] { stroke: var(--dm-white); }
+.sphenpad-sudokupad-renderer.setting-darkmode [fill="#000"],
+.sphenpad-sudokupad-renderer.setting-darkmode [fill="#000000"] { fill: var(--dm-white); }
+.sphenpad-sudokupad-renderer.setting-darkmode [stroke="rgba(255,255,255,0.7)"] { stroke: var(--dm-black-alpha); }
+.sphenpad-sudokupad-renderer.setting-darkmode [fill="rgba(255,255,255,0.7)"] { fill: var(--dm-black-alpha); }
+.sphenpad-sudokupad-renderer.setting-darkmode [stroke="#fff"],
+.sphenpad-sudokupad-renderer.setting-darkmode [stroke="#ffffff"],
+.sphenpad-sudokupad-renderer.setting-darkmode [stroke="#FFF"],
+.sphenpad-sudokupad-renderer.setting-darkmode [stroke="#FFFFFF"] { stroke: var(--dm-black); }
+.sphenpad-sudokupad-renderer.setting-darkmode [fill="#fff"],
+.sphenpad-sudokupad-renderer.setting-darkmode [fill="#ffffff"],
+.sphenpad-sudokupad-renderer.setting-darkmode [fill="#FFF"],
+.sphenpad-sudokupad-renderer.setting-darkmode [fill="#FFFFFF"] { fill: var(--dm-black); }
+.sphenpad-sudokupad-renderer.setting-darkmode text.feature-kropki[fill="#000" i],
+.sphenpad-sudokupad-renderer.setting-darkmode text.feature-kropki[fill="#000000" i] { fill: var(--dm-black); }
+.sphenpad-sudokupad-renderer.setting-darkmode text.feature-kropki[fill="#fff" i],
+.sphenpad-sudokupad-renderer.setting-darkmode text.feature-kropki[fill="#ffffff" i] { fill: var(--dm-white); }
+.sphenpad-sudokupad-renderer.setting-darkmode rect.textbg[fill="#fff" i],
+.sphenpad-sudokupad-renderer.setting-darkmode rect.feature-xv[fill="#fff" i] { fill: var(--dm-black); }
+
+/* Stock /barbie/... route feature-customcolors.js. */
+.sphenpad-sudokupad-renderer.setting-barbie #cell-grids .cell-grid,
+.sphenpad-sudokupad-renderer.setting-barbie #cell-grids .cage-box { stroke: #ff3399; }
+.sphenpad-sudokupad-renderer.setting-barbie #cell-givens .cell-given { fill: #ff3399; color: #ff3399; }

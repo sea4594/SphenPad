@@ -1,0 +1,345 @@
+{
+  "target": "SudokuPad 0.612.0 captured HAR",
+  "referenceHar": "/mnt/data/sudokupad.app.har",
+  "referenceHarSha256": "12d6ffd3ec204ba14cb6d5aab3da98444be49438d5aab8b664fe1fde34d2ecca",
+  "referenceScriptSha256": "3c53d973ffa62d541e300be9fddb53f19c2a4cc32eb98769a54904240343c9fe",
+  "chromium": "/usr/bin/chromium",
+  "chromiumVersion": "Chromium 144.0.7559.96 built on Debian GNU/Linux 13 (trixie)",
+  "suite": "archive",
+  "fixtures": 15,
+  "passed": 15,
+  "failed": 0,
+  "pixelRatioThreshold": 0.002,
+  "results": [
+    {
+      "name": "archive:sudoku/9ThTbRRRt9",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          704,
+          656
+        ],
+        "candidateSize": [
+          704,
+          656
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 1,
+        "meanChannelDelta": 0.00027932718957871395
+      },
+      "candidateAssertions": [],
+      "note": "Deterministic archive sample"
+    },
+    {
+      "name": "archive:sudoku/9jJDgBpLjN",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          608,
+          608
+        ],
+        "candidateSize": [
+          608,
+          608
+        ],
+        "differentPixelRatio": 4.869286703601108e-05,
+        "maxChannelDelta": 139,
+        "meanChannelDelta": 0.0030865867382271466
+      },
+      "candidateAssertions": [],
+      "note": "Deterministic archive sample"
+    },
+    {
+      "name": "archive:sudoku/9mgQ9LgnDj",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          608,
+          608
+        ],
+        "candidateSize": [
+          608,
+          608
+        ],
+        "differentPixelRatio": 7.033414127423823e-05,
+        "maxChannelDelta": 139,
+        "meanChannelDelta": 0.0030487145083102495
+      },
+      "candidateAssertions": [],
+      "note": "Deterministic archive sample"
+    },
+    {
+      "name": "archive:sudoku/B2NJqj7HrL",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          608,
+          608
+        ],
+        "candidateSize": [
+          608,
+          608
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 1,
+        "meanChannelDelta": 0.0012750317405355494
+      },
+      "candidateAssertions": [],
+      "note": "Deterministic archive sample"
+    },
+    {
+      "name": "archive:sudoku/B4fMfpp3FG",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          864,
+          864
+        ],
+        "candidateSize": [
+          864,
+          864
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 1,
+        "meanChannelDelta": 0.0002250514403292181
+      },
+      "candidateAssertions": [],
+      "note": "Deterministic archive sample"
+    },
+    {
+      "name": "archive:sudoku/BB37qrbDqq",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          608,
+          608
+        ],
+        "candidateSize": [
+          608,
+          608
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 2,
+        "meanChannelDelta": 0.0025744099145891043
+      },
+      "candidateAssertions": [],
+      "note": "Deterministic archive sample"
+    },
+    {
+      "name": "archive:sudoku/BJRQ4DnFp3",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          608,
+          608
+        ],
+        "candidateSize": [
+          608,
+          608
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 1,
+        "meanChannelDelta": 0.0024102969182825487
+      },
+      "candidateAssertions": [],
+      "note": "Deterministic archive sample"
+    },
+    {
+      "name": "archive:sudoku/BPb9d9bbG7",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          608,
+          608
+        ],
+        "candidateSize": [
+          608,
+          608
+        ],
+        "differentPixelRatio": 1.0820637119113573e-05,
+        "maxChannelDelta": 87,
+        "meanChannelDelta": 0.01094056584718375
+      },
+      "candidateAssertions": [],
+      "note": "Deterministic archive sample"
+    },
+    {
+      "name": "archive:sudoku/BdG6DPp6pL",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          608,
+          608
+        ],
+        "candidateSize": [
+          608,
+          608
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 1,
+        "meanChannelDelta": 0.00019477146814404433
+      },
+      "candidateAssertions": [],
+      "note": "Deterministic archive sample"
+    },
+    {
+      "name": "archive:sudoku/BjQP3L8QFr",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          704,
+          704
+        ],
+        "candidateSize": [
+          704,
+          704
+        ],
+        "differentPixelRatio": 8.070764462809918e-06,
+        "maxChannelDelta": 15,
+        "meanChannelDelta": 0.00033359159779614326
+      },
+      "candidateAssertions": [],
+      "note": "Deterministic archive sample"
+    },
+    {
+      "name": "archive:sudoku/BpJ3Jgd82T",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          608,
+          608
+        ],
+        "candidateSize": [
+          608,
+          608
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 1,
+        "meanChannelDelta": 0.0006708795013850415
+      },
+      "candidateAssertions": [],
+      "note": "Deterministic archive sample"
+    },
+    {
+      "name": "archive:sudoku/D2hGJbfh3J",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          608,
+          608
+        ],
+        "candidateSize": [
+          608,
+          608
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 2,
+        "meanChannelDelta": 0.0015626803439519853
+      },
+      "candidateAssertions": [],
+      "note": "Deterministic archive sample"
+    },
+    {
+      "name": "archive:sudoku/D6NT6LHTHP",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          832,
+          832
+        ],
+        "candidateSize": [
+          832,
+          832
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 1,
+        "meanChannelDelta": 0.0003495978180473373
+      },
+      "candidateAssertions": [],
+      "note": "Deterministic archive sample"
+    },
+    {
+      "name": "archive:sudoku/DGjdPjDn9P",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          608,
+          608
+        ],
+        "candidateSize": [
+          608,
+          608
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 0,
+        "meanChannelDelta": 0.0
+      },
+      "candidateAssertions": [],
+      "note": "Deterministic archive sample"
+    },
+    {
+      "name": "archive:sudoku/DMdfdnRGDf",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          656,
+          656
+        ],
+        "candidateSize": [
+          656,
+          656
+        ],
+        "differentPixelRatio": 0.00011851204640095181,
+        "maxChannelDelta": 43,
+        "meanChannelDelta": 0.0019682294765020823
+      },
+      "candidateAssertions": [],
+      "note": "Deterministic archive sample"
+    }
+  ]
+}

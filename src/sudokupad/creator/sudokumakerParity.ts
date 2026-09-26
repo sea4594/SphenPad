@@ -1,0 +1,28 @@
+export type SudokuMakerParityStatus = "implemented" | "partial" | "catalog-only" | "missing" | "implicit";
+export type SudokuMakerToolInventoryEntry = { upstreamType: string; upstreamCode: number; category: "grid" | "global" | "cell" | "edge" | "group" | "line" | "outside" | "indexer" | "custom" | "cosmetic" | "fog"; phase: "11C" | "11D" | "11E" | "11F" | "11G"; sphenpadIds: string[]; statusAtPhase10D: SudokuMakerParityStatus; notes?: string };
+const e = (upstreamType: string, upstreamCode: number, category: SudokuMakerToolInventoryEntry["category"], phase: SudokuMakerToolInventoryEntry["phase"], sphenpadIds: string[], statusAtPhase10D: SudokuMakerParityStatus, notes?: string): SudokuMakerToolInventoryEntry => ({ upstreamType, upstreamCode, category, phase, sphenpadIds, statusAtPhase10D, notes });
+export const SUDOKUMAKER_TOOL_INVENTORY: readonly SudokuMakerToolInventoryEntry[] = [
+  e("Givens",0,"grid","11C",["given-digits"],"implemented"), e("Regions",1,"grid","11C",["regions"],"implemented"),
+  e("DiagonalMinus",10,"global","11G",["negative-diagonal"],"partial"), e("DiagonalPlus",11,"global","11G",["positive-diagonal"],"partial"), e("Antiking",12,"global","11G",["antiking"],"partial"), e("Antiknight",13,"global","11G",["antiknight"],"partial"), e("DisjointGroups",14,"global","11G",["disjoint-groups"],"catalog-only"), e("Nonconsecutive",15,"global","11G",["nonconsecutive"],"catalog-only"), e("GlobalEntropy",16,"global","11G",["global-entropy"],"catalog-only"),
+  e("Even",100,"cell","11F",["even"],"partial"), e("Odd",101,"cell","11F",["odd"],"partial"), e("Maximum",102,"cell","11F",["maximum"],"partial"), e("Minimum",103,"cell","11F",["minimum"],"partial"),
+  e("Difference",200,"edge","11F",["difference-kropki"],"partial"), e("Ratio",201,"edge","11F",["ratio-kropki"],"partial"), e("XV",202,"edge","11F",["xv"],"partial"),
+  e("Thermometer",300,"group","11E",["thermometers","slow-thermometers"],"partial","Slow is a property of Thermometer."), e("KillerCages",301,"group","11F",["killer-cages"],"partial"), e("Clone",302,"group","11F",["clones"],"partial"), e("Quadruple",303,"group","11F",["quadruples"],"partial"), e("LookAndSayCages",304,"group","11F",["look-and-say-cages"],"partial"), e("DifferentValues",305,"group","11F",["different-values"],"missing"), e("CountingCircles",306,"group","11F",["counting-circles"],"missing"),
+  e("Renban",400,"line","11E",["renban-lines"],"partial"), e("Whisper",401,"line","11E",["german-whispers","dutch-whispers"],"partial","Minimum difference is configurable; German/Dutch are presets."), e("Palindrome",402,"line","11E",["palindromes"],"partial"), e("BetweenLines",403,"line","11E",["between-lines"],"partial"), e("RegionSumLine",404,"line","11E",["region-sum-lines"],"partial"), e("Sequence",405,"line","11E",["sequence-lines"],"partial"), e("EntropyLines",406,"line","11E",["entropic-lines","3-modular-lines","parity-lines"],"partial","SudokuMaker line editor exposes related configurable/custom line variants."), e("LockoutLines",407,"line","11E",["lockout-lines"],"partial"), e("Arrow",408,"line","11E",["arrows"],"partial"), e("DoubleArrow",409,"line","11E",["double-arrows"],"partial"),
+  e("LittleKillers",500,"outside","11G",["little-killers"],"catalog-only"), e("SandwichSums",501,"outside","11G",["sandwich-sums"],"catalog-only"), e("XSums",502,"outside","11G",["x-sums"],"catalog-only"), e("Skyscrapers",503,"outside","11G",["skyscrapers"],"catalog-only"), e("NumberedRooms",504,"outside","11G",["numbered-rooms"],"catalog-only"),
+  e("RowIndexer",600,"indexer","11G",["row-indexers"],"catalog-only"), e("ColumnIndexer",601,"indexer","11G",["column-indexers"],"catalog-only"), e("Custom",1000,"custom","11G",["custom-constraint"],"catalog-only"),
+  e("CosmeticLine",2000,"cosmetic","11D",["cosmetic-lines"],"partial"), e("CosmeticCage",2001,"cosmetic","11D",["cosmetic-cages"],"partial"), e("CosmeticSymbol",2002,"cosmetic","11D",["cosmetic-symbols"],"partial"), e("SudokuRules",2003,"grid","11C",[],"implicit","SphenPad already enforces base row/column Sudoku behavior; Phase 11C should expose the project/grid setting explicitly."),
+  e("FogLights",4000,"fog","11G",["fog-lights"],"partial"), e("FogTriggers",4001,"fog","11G",["custom-fog-clearing"],"catalog-only"),
+] as const;
+export const SUDOKUMAKER_WORKER_API = ["getCellsSeenByCells", "getComponents", "validateConstraints", "validateGrid"] as const;
+
+export type SudokuMakerCreatorCapability = { area: string; capabilities: string[]; targetPhase: "11B" | "11C" | "11D" | "11H" | "11I" | "11J" | "11K" };
+export const SUDOKUMAKER_CREATOR_CAPABILITIES: readonly SudokuMakerCreatorCapability[] = [
+  { area: "project", capabilities: ["new project", "project specification", "metadata", "constraint list management"], targetPhase: "11B" },
+  { area: "grid", capabilities: ["custom width/height", "digit range", "givens", "solution", "regions"], targetPhase: "11C" },
+  { area: "constraint-management", capabilities: ["add", "remove", "duplicate", "enable/disable", "ignore in solver", "reorder", "properties", "appearance"], targetPhase: "11D" },
+  { area: "validation", capabilities: [...SUDOKUMAKER_WORKER_API], targetPhase: "11H" },
+  { area: "solver", capabilities: ["logical solver", "solutions finder", "solver settings"], targetPhase: "11H" },
+  { area: "interchange", capabilities: ["clipboard/import flows", "SudokuPad export", "F-Puzzles-related export compatibility"], targetPhase: "11I" },
+  { area: "playtest", capabilities: ["playable puzzle projection", "solution-aware test flow"], targetPhase: "11J" },
+  { area: "editing-ux", capabilities: ["undo", "redo", "select all", "delete", "drag editing", "keyboard/hotkeys", "copy/paste", "zoom", "pan"], targetPhase: "11K" },
+] as const;

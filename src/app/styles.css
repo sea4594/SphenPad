@@ -991,7 +991,7 @@ input.url {
 .creatorToolStrip .btn { flex: 0 0 auto; }
 
 .creatorElementsPageLayout .creatorGridLayout {
-  height: auto;
+  height: 100%;
   min-height: 0;
 }
 
@@ -1768,7 +1768,8 @@ input.url {
   height: 100%;
 }
 
-.menuPuzzlePreview canvas {
+.menuPuzzlePreview canvas,
+.menuPuzzlePreview .sphenpad-sudokupad-renderer {
   width: auto !important;
   height: auto !important;
   max-width: 100% !important;
@@ -2360,7 +2361,8 @@ input.url {
   height: 100%;
 }
 
-.archivePreview canvas {
+.archivePreview canvas,
+.archivePreview .sphenpad-sudokupad-renderer {
   width: auto !important;
   height: auto !important;
   max-width: 100% !important;
@@ -2404,7 +2406,8 @@ input.url {
   height: auto;
 }
 
-.archiveRulesPreview canvas {
+.archiveRulesPreview canvas,
+.archiveRulesPreview .sphenpad-sudokupad-renderer {
   width: 100% !important;
   height: auto !important;
   max-width: 100% !important;
@@ -2518,6 +2521,7 @@ input.url {
   justify-self: end;
   width: 100%;
   grid-template-rows: 1fr;
+  min-height: 0;
 }
 
 .videoLayoutOn.videoModeDesktop .puzzleMetaCard {
@@ -2973,6 +2977,21 @@ input.url {
     min-height: 72px;
     font-size: clamp(18px, 2vw, 28px);
   }
+
+  /* With the video open, the controls share the viewport with the player.
+     Let their five rows contract to the available track instead of clipping
+     the bottom row below the viewport. */
+  .videoLayoutOn.videoModeDesktop .mobileControlPanel {
+    min-height: 0;
+    height: 100%;
+    grid-template-rows: repeat(5, minmax(0, 1fr));
+  }
+
+  .videoLayoutOn.videoModeDesktop .panelBtn,
+  .videoLayoutOn.videoModeDesktop .panelMainGrid .keyButton,
+  .videoLayoutOn.videoModeDesktop .panelMainGrid .lineKindSelect {
+    min-height: 0;
+  }
 }
 
 @media (min-width: 1080px) and (hover: hover) and (pointer: fine) {
@@ -3072,7 +3091,7 @@ input.url {
   }
 
   .videoLayoutOn.videoModeMobilePortrait .gridLayout {
-    --portrait-video-h: min(calc(100vw * 9 / 16), calc(100% - var(--mobile-controls-h) - 138px));
+    --portrait-video-h: max(56px, min(calc(100vw * 9 / 16), calc(100% - var(--mobile-controls-h) - 138px)));
     --video-resize-h: 10px;
     grid-template-rows: var(--portrait-video-h) var(--video-resize-h) minmax(128px, 1fr) var(--mobile-controls-h);
     --mobile-controls-h: clamp(180px, calc(var(--mobile-controls-h-raw) * 0.84), 41vmax);
@@ -3602,3 +3621,240 @@ input.url {
   gap: 8px;
 }
 
+
+/* Native SudokuPad SVG board introduced by the importer/renderer replacement. */
+.sphenpad-native-board { min-width: 0; min-height: 0; }
+.sphenpad-native-board > .sphenpad-sudokupad-renderer {
+  grid-area: 1 / 1;
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  user-select: none;
+}
+.sphenpad-native-board > .sphenpad-board-interaction {
+  grid-area: 1 / 1;
+  z-index: 2;
+  max-width: 100%;
+  max-height: 100%;
+}
+/* Live boards always maximize to the largest aspect-ratio-preserving size
+   inside their current layout slot. GridCanvas updates these dimensions whenever
+   the slot changes (viewport/orientation/video splitter/controls). */
+.sphenpad-native-board.fitted > .sphenpad-sudokupad-renderer,
+.sphenpad-native-board.fitted > .sphenpad-board-interaction {
+  width: var(--sphenpad-board-fit-width) !important;
+  height: var(--sphenpad-board-fit-height) !important;
+  max-width: none !important;
+  max-height: none !important;
+  margin: 0 !important;
+}
+/* While the video layout resizes the board, the puzzle itself should behave
+   like a scaled image: line weights shrink and grow with the SVG. */
+.sphenpad-native-board.scalePuzzleStrokes > .sphenpad-sudokupad-renderer [vector-effect="non-scaling-stroke"],
+.sphenpad-native-board.scalePuzzleStrokes > .sphenpad-sudokupad-renderer .cell-grid {
+  vector-effect: none !important;
+}
+/* A preview is the same SVG scaled down, so stock non-scaling strokes must
+   become ordinary strokes at thumbnail scale. */
+.sphenpad-native-board.preview > .sphenpad-sudokupad-renderer {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+  margin: 0 !important;
+}
+.sphenpad-native-board.preview .sphenpad-sudokupad-renderer [vector-effect="non-scaling-stroke"],
+.sphenpad-native-board.preview .sphenpad-sudokupad-renderer .cell-grid {
+  vector-effect: none !important;
+}
+
+/* Phase 11B creator project persistence */
+.creatorSaveState {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 13px;
+  white-space: nowrap;
+}
+.creatorSaveState.dirty { color: var(--danger); font-weight: 600; }
+.creatorManualSave { min-width: 66px; }
+
+/* Phase 11C creator grid structure */
+.creatorFileSection {
+  display: grid;
+  gap: 10px;
+  padding-top: 4px;
+  border-top: 1px solid var(--ui-border);
+}
+.creatorFileSection:first-child { border-top: 0; padding-top: 0; }
+.creatorFileSection h3 { margin: 0; font-size: 16px; }
+.creatorStructureGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.creatorStructureGrid label { min-width: 0; }
+.creatorStructureGrid output {
+  display: flex;
+  min-height: 38px;
+  align-items: center;
+  padding: 0 10px;
+  color: var(--text);
+  border: 1px solid var(--ui-border);
+  border-radius: 8px;
+  background: var(--panel-soft);
+}
+@media (max-width: 620px) {
+  .creatorStructureGrid { grid-template-columns: 1fr; }
+}
+
+/* Phase 11D creator object inspector */
+.creatorObjectToolbar,
+.creatorObjectActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
+}
+.creatorObjectToolbar { justify-content: space-between; }
+.creatorObjectToolbar span { color: var(--muted); font-size: 12px; }
+.creatorInspectorSubheading { font-size: 13px; font-weight: 800; letter-spacing: .02em; text-transform: uppercase; color: var(--muted); }
+.creatorObjectList,
+.creatorPropertyInspector { display: grid; gap: 8px; }
+.creatorObjectRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 10px;
+  border: 1px solid var(--ui-border);
+  border-radius: 8px;
+  background: var(--panel-soft);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+.creatorObjectRow:hover,
+.creatorObjectRow.active { border-color: var(--accent); }
+.creatorObjectRow > div { min-width: 0; display: grid; gap: 2px; }
+.creatorObjectRow span { overflow: hidden; color: var(--muted); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.creatorObjectRow small { color: var(--muted); font-size: 11px; white-space: nowrap; }
+.creatorPropertyInspector {
+  padding-top: 12px;
+  border-top: 1px solid var(--ui-border);
+}
+.creatorPropertyGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.creatorObjectActions { padding-top: 4px; }
+.creatorObjectActions .danger { margin-left: auto; }
+@media (max-width: 560px) {
+  .creatorPropertyGrid { grid-template-columns: 1fr; }
+  .creatorObjectActions .danger { margin-left: 0; }
+}
+
+/* Phase 11E line/path constraint properties */
+.creatorLineProperties {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--ui-border);
+  border-radius: 8px;
+  background: var(--panel-soft);
+}
+.creatorLineGroupsInput { min-height: 72px; resize: vertical; }
+
+.creatorOwnedBadge,
+.creatorPlaytestBadge {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 2px 7px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--muted);
+  background: var(--panel-soft);
+}
+
+.creatorOwnedBadge {
+  margin-top: 4px;
+}
+
+.creatorPlaytestBadge {
+  white-space: nowrap;
+}
+
+/* Phase 11K creator editing UX */
+.creatorObjectToolbarButtons,
+.creatorBulkInspector,
+.creatorAlignActions,
+.creatorPathPoints,
+.creatorCanvasToolbar { display: flex; flex-wrap: wrap; gap: 7px; align-items: center; }
+.creatorObjectToolbarButtons { min-width: 0; }
+.creatorBulkInspector {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--ui-border);
+  border-radius: 8px;
+  background: var(--panel-soft);
+}
+.creatorObjectRow {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  cursor: default;
+}
+.creatorObjectRow > input[type="checkbox"] { width: 16px; height: 16px; margin: 0; }
+.creatorObjectRowMain {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.creatorObjectRowMain > div { min-width: 0; display: grid; gap: 2px; }
+.creatorObjectRowMain span { overflow: hidden; color: var(--muted); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.creatorObjectRowMain small { color: var(--muted); font-size: 11px; white-space: nowrap; }
+.creatorObjectMore { min-width: 32px; min-height: 30px; padding: 3px 7px; }
+.creatorObjectContextMenu {
+  position: fixed;
+  z-index: 160;
+  display: grid;
+  width: 176px;
+  gap: 5px;
+  padding: 8px;
+  transform: translate(2px, 2px);
+}
+.creatorObjectContextMenu .btn { justify-content: flex-start; }
+.creatorPathPoints { display: grid; gap: 5px; }
+.creatorPathPoint {
+  display: grid;
+  grid-template-columns: minmax(90px, 1fr) repeat(7, auto);
+  gap: 4px;
+  align-items: center;
+  padding: 4px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+}
+.creatorPathPoint.active { border-color: var(--accent); background: var(--panel); }
+.creatorPathPointLabel { justify-content: flex-start; }
+.creatorPathPoint[draggable="true"] { cursor: grab; }
+.creatorBoardColumn { min-width: 0; min-height: 0; height: 100%; grid-template-rows: auto minmax(0, 1fr); align-content: stretch; }
+.creatorCanvasToolbar { justify-content: center; margin-bottom: 6px; }
+.creatorCanvasToolbar .btn { min-width: 34px; padding: 5px 8px; }
+.creatorCanvasViewport { overflow: hidden; touch-action: none; min-height: 0; height: 100%; width: 100%; }
+.creatorCanvasTransform { transform-origin: center center; transition: transform 100ms ease-out; }
+@media (max-width: 620px) {
+  .creatorPathPoint { grid-template-columns: minmax(90px, 1fr) repeat(3, auto); }
+  .creatorPathPoint .btn:nth-child(n+5) { display: none; }
+}

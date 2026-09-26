@@ -1,0 +1,345 @@
+{
+  "total": 68,
+  "cases": [
+    {
+      "archiveIndex": 7,
+      "name": "archive:06vt5y9nwu",
+      "heavyPhase9E": true
+    },
+    {
+      "archiveIndex": 38,
+      "name": "archive:100ywt1d63",
+      "heavyPhase9E": false
+    },
+    {
+      "archiveIndex": 109,
+      "name": "archive:27v1lv24c3",
+      "heavyPhase9E": false
+    },
+    {
+      "archiveIndex": 261,
+      "name": "archive:4b16rwzym1",
+      "heavyPhase9E": false
+    },
+    {
+      "archiveIndex": 439,
+      "name": "archive:7d9f9mb2y3",
+      "heavyPhase9E": true
+    },
+    {
+      "archiveIndex": 452,
+      "name": "archive:7llvcaivec",
+      "heavyPhase9E": false
+    },
+    {
+      "archiveIndex": 490,
+      "name": "archive:868i586sml",
+      "heavyPhase9E": false
+    },
+    {
+      "archiveIndex": 491,
+      "name": "archive:869hsb49kn",
+      "heavyPhase9E": false
+    },
+    {
+      "archiveIndex": 588,
+      "name": "archive:9snrpdy9fe",
+      "heavyPhase9E": true
+    },
+    {
+      "archiveIndex": 619,
+      "name": "archive:Dt3rqrQPGR",
+      "heavyPhase9E": false
+    },
+    {
+      "archiveIndex": 667,
+      "name": "archive:L9jqGq4Qtq",
+      "heavyPhase9E": false
+    },
+    {
+      "archiveIndex": 674,
+      "name": "archive:Lf4B9t2p29",
+      "heavyPhase9E": false
+    },
+    {
+      "archiveIndex": 683,
+      "name": "archive:MONOPOLYSUDOKU",
+      "heavyPhase9E": true
+    },
+    {
+      "archiveIndex": 788,
+      "name": "archive:ays2k7hm6t",
+      "heavyPhase9E": false
+    },
+    {
+      "archiveIndex": 791,
+      "name": "archive:b193jegg4x",
+      "heavyPhase9E": true
+    },
+    {
+      "archiveIndex": 866,
+      "name": "archive:bmh85ce33k",
+      "heavyPhase9E": false
+    },
+    {
+      "archiveIndex": 897,
+      "name": "archive:c2yc4u9yl1",
+      "heavyPhase9E": false
+    },
+    {
+      "archiveIndex": 911,
+      "name": "archive:cdifwlxo10",
+      "heavyPhase9E": false
+    },
+    {
+      "archiveIndex": 996,
+      "name": "archive:dqu2xb1itj",
+      "heavyPhase9E": false
+    },
+    {
+      "archiveIndex": 1028,
+      "name": "archive:eb90s76a4e",
+      "heavyPhase9E": true
+    },
+    {
+      "archiveIndex": 1055,
+      "name": "archive:esjz6meusc",
+      "heavyPhase9E": true
+    },
+    {
+      "archiveIndex": 1078,
+      "name": "archive:f6xcgzdav3",
+      "heavyPhase9E": false
+    },
+    {
+      "archiveIndex": 1190,
+      "name": "archive:gbwivexeh7",
+      "heavyPhase9E": true
+    },
+    {
+      "archiveIndex": 1278,
+      "name": "archive:i2r7za43kv",
+      "heavyPhase9E": true
+    },
+    {
+      "archiveIndex": 1305,
+      "name": "archive:ik85shpid7",
+      "heavyPhase9E": true
+    },
+    {
+      "archiveIndex": 1319,
+      "name": "archive:iutvqv1ht8",
+      "heavyPhase9E": false
+    },
+    {
+      "archiveIndex": 1364,
+      "name": "archive:james-sinclair/stickiest-notes",
+      "heavyPhase9E": false
+    },
+    {
+      "archiveIndex": 1384,
+      "name": "archive:jgdFdqhmn2",
+      "heavyPhase9E": false
+    },
+    {
+      "archiveIndex": 1391,
+      "name": "archive:jl4sby2gl2",
+      "heavyPhase9E": false
+    },
+    {
+      "archiveIndex": 1400,
+      "name": "archive:jw1onozqhg",
+      "heavyPhase9E": true
+    },
+    {
+      "archiveIndex": 1448,
+      "name": "archive:l00604nlbr",
+      "heavyPhase9E": false
+    },
+    {
+      "archiveIndex": 1449,
+      "name": "archive:l01qpi8oc3",
+      "heavyPhase9E": false
+    },
+    {
+      "archiveIndex": 1459,
+      "name": "archive:lhid2td2zu",
+      "heavyPhase9E": false
+    },
+    {
+      "archiveIndex": 1460,
+      "name": "archive:lipt9yn6r4",
+      "heavyPhase9E": true
+    },
+    {
+      "archiveIndex": 1465,
+      "name": "archive:lldn0vubxi",
+      "heavyPhase9E": false
+    },
+    {
+      "archiveIndex": 1522,
+      "name": "archive:mvqojfwq9a",
+      "heavyPhase9E": false
+    },
+    {
+      "archiveIndex": 1525,
+      "name": "archive:mwz7l2lvoi",
+      "heavyPhase9E": false
+    },
+    {
+      "archiveIndex": 1582,
+      "name": "archive:ntqufgkvcx",
+      "heavyPhase9E": true
+    },
+    {
+      "archiveIndex": 1600,
+      "name": "archive:o4u3kz1764",
+      "heavyPhase9E": false
+    },
+    {
+      "archiveIndex": 1643,
+      "name": "archive:p676oglsv8",
+      "heavyPhase9E": true
+    },
+    {
+      "archiveIndex": 1647,
+      "name": "archive:p6s6me7gcf",
+      "heavyPhase9E": false
+    },
+    {
+      "archiveIndex": 1650,
+      "name": "archive:p8ushghwpc",
+      "heavyPhase9E": true
+    },
+    {
+      "archiveIndex": 1809,
+      "name": "archive:rpdtjt36r7",
+      "heavyPhase9E": false
+    },
+    {
+      "archiveIndex": 2117,
+      "name": "archive:sudoku/7Qt3HNR2Pj",
+      "heavyPhase9E": false
+    },
+    {
+      "archiveIndex": 2204,
+      "name": "archive:sudoku/944Mg3fnJH",
+      "heavyPhase9E": true
+    },
+    {
+      "archiveIndex": 2314,
+      "name": "archive:sudoku/D7fqF9rbgg",
+      "heavyPhase9E": false
+    },
+    {
+      "archiveIndex": 2355,
+      "name": "archive:sudoku/DrDLbHmj6h",
+      "heavyPhase9E": false
+    },
+    {
+      "archiveIndex": 2622,
+      "name": "archive:sudoku/LNj2JRDpq6",
+      "heavyPhase9E": false
+    },
+    {
+      "archiveIndex": 2632,
+      "name": "archive:sudoku/LTMQhdn3b7",
+      "heavyPhase9E": false
+    },
+    {
+      "archiveIndex": 2633,
+      "name": "archive:sudoku/LTdPqqtpFq",
+      "heavyPhase9E": false
+    },
+    {
+      "archiveIndex": 2669,
+      "name": "archive:sudoku/MHHnf7PDDQ",
+      "heavyPhase9E": false
+    },
+    {
+      "archiveIndex": 2733,
+      "name": "archive:sudoku/NGbgngNgnd",
+      "heavyPhase9E": false
+    },
+    {
+      "archiveIndex": 2759,
+      "name": "archive:sudoku/Nmg943btqh",
+      "heavyPhase9E": true
+    },
+    {
+      "archiveIndex": 2804,
+      "name": "archive:sudoku/Pm8N43nTMG",
+      "heavyPhase9E": false
+    },
+    {
+      "archiveIndex": 3139,
+      "name": "archive:sudoku/g8nbdG8674",
+      "heavyPhase9E": false
+    },
+    {
+      "archiveIndex": 3271,
+      "name": "archive:sudoku/jMQR24JRBN",
+      "heavyPhase9E": false
+    },
+    {
+      "archiveIndex": 3286,
+      "name": "archive:sudoku/jfrf3mHRbN",
+      "heavyPhase9E": true
+    },
+    {
+      "archiveIndex": 3302,
+      "name": "archive:sudoku/m2TTpBPtg2",
+      "heavyPhase9E": false
+    },
+    {
+      "archiveIndex": 3305,
+      "name": "archive:sudoku/m3GGq4Ht96",
+      "heavyPhase9E": false
+    },
+    {
+      "archiveIndex": 3310,
+      "name": "archive:sudoku/m6JLP2B72M",
+      "heavyPhase9E": false
+    },
+    {
+      "archiveIndex": 3428,
+      "name": "archive:sudoku/pM7jd2QbmD",
+      "heavyPhase9E": true
+    },
+    {
+      "archiveIndex": 3512,
+      "name": "archive:sudoku/rFJd9mN82f",
+      "heavyPhase9E": false
+    },
+    {
+      "archiveIndex": 3514,
+      "name": "archive:sudoku/rJDLMnH7LB",
+      "heavyPhase9E": false
+    },
+    {
+      "archiveIndex": 3590,
+      "name": "archive:sudoku/tgQJNqqB6r",
+      "heavyPhase9E": true
+    },
+    {
+      "archiveIndex": 3617,
+      "name": "archive:t4vu4ndtl3",
+      "heavyPhase9E": true
+    },
+    {
+      "archiveIndex": 3903,
+      "name": "archive:xag582l3t0",
+      "heavyPhase9E": false
+    },
+    {
+      "archiveIndex": 3948,
+      "name": "archive:ybaev4x39i",
+      "heavyPhase9E": false
+    },
+    {
+      "archiveIndex": 4039,
+      "name": "archive:zsmtekox43",
+      "heavyPhase9E": false
+    }
+  ]
+}

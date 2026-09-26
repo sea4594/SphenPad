@@ -14,6 +14,8 @@ import { mkdirSync, readdirSync, rmSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import * as XLSX from "xlsx";
+import { getSudokuPadFormat } from "../src/sudokupad/loader/formatRegistry";
+import { apiEncodePuzzleId } from "../src/sudokupad/loader/remotePuzzle";
 
 type ArchiveEntry = {
   id: string;
@@ -183,21 +185,20 @@ async function withConcurrency<T>(
 }
 
 function isEmbeddedPuzzlePayload(sourceId: string): boolean {
-  return /^(scl|ctc|fpuz|fpuzzles)/i.test(clean(sourceId));
+  return Boolean(getSudokuPadFormat(clean(sourceId)));
 }
 
 function looksLikePuzzlePayload(text: string): boolean {
   const t = text.trim();
   if (!t) return false;
   if (/^<!doctype html/i.test(t) || /^<html[\s>]/i.test(t)) return false;
-  if (/^(scl|ctc|fpuz|fpuzzles)/i.test(t)) return true;
+  if (getSudokuPadFormat(t)) return true;
   if (/^[[{]/.test(t)) return true;
   return false;
 }
 
 function buildSudokuPadApiUrl(sourceId: string): string {
-  const encoded = sourceId.split("/").map(encodeURIComponent).join("/");
-  return `${SUDOKUPAD_API_BASE}/${encoded}`;
+  return `${SUDOKUPAD_API_BASE}/${apiEncodePuzzleId(sourceId)}`;
 }
 
 function buildPuzzleSourceIdCandidates(sourceId: string): string[] {

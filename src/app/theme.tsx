@@ -10,6 +10,8 @@ type ThemeContextValue = {
   color: ThemeColor;
   hideTimer: boolean;
   outlineDigits: boolean;
+  compactMarks: boolean;
+  labelRowsCols: boolean;
   conflictChecker: boolean;
   selectionColor: SelectionColor;
   setTheme: (mode: ThemeMode, color: ThemeColor) => void;
@@ -17,6 +19,8 @@ type ThemeContextValue = {
   setColor: (color: ThemeColor) => void;
   setHideTimer: (hideTimer: boolean) => void;
   setOutlineDigits: (outlineDigits: boolean) => void;
+  setCompactMarks: (compactMarks: boolean) => void;
+  setLabelRowsCols: (labelRowsCols: boolean) => void;
   setConflictChecker: (conflictChecker: boolean) => void;
   setSelectionColor: (selectionColor: SelectionColor) => void;
 };
@@ -35,6 +39,8 @@ function readInitialTheme(): {
   color: ThemeColor;
   hideTimer: boolean;
   outlineDigits: boolean;
+  compactMarks: boolean;
+  labelRowsCols: boolean;
   conflictChecker: boolean;
   selectionColor: SelectionColor;
 } {
@@ -46,6 +52,8 @@ function readInitialTheme(): {
         color: "ocean",
         hideTimer: false,
         outlineDigits: true,
+        compactMarks: false,
+        labelRowsCols: false,
         conflictChecker: true,
         selectionColor: "blue",
       };
@@ -55,6 +63,8 @@ function readInitialTheme(): {
       color?: ThemeColor | "sunset" | "sepia";
       hideTimer?: boolean;
       outlineDigits?: boolean;
+      compactMarks?: boolean;
+      labelRowsCols?: boolean;
       conflictChecker?: boolean;
       selectionColor?: SelectionColor;
     };
@@ -66,17 +76,21 @@ function readInitialTheme(): {
     const normalizedTheme = normalizeThemeSelection(mode, color);
     const hideTimer = typeof parsed.hideTimer === "boolean" ? parsed.hideTimer : false;
     const outlineDigits = typeof parsed.outlineDigits === "boolean" ? parsed.outlineDigits : true;
+    const compactMarks = typeof parsed.compactMarks === "boolean" ? parsed.compactMarks : false;
+    const labelRowsCols = typeof parsed.labelRowsCols === "boolean" ? parsed.labelRowsCols : false;
     const conflictChecker = typeof parsed.conflictChecker === "boolean" ? parsed.conflictChecker : true;
     const selectionColor: SelectionColor = ["blue", "green", "yellow", "orange", "red", "purple", "pink"].includes(parsed.selectionColor ?? "")
       ? (parsed.selectionColor as SelectionColor)
       : "blue";
-    return { mode: normalizedTheme.mode, color: normalizedTheme.color, hideTimer, outlineDigits, conflictChecker, selectionColor };
+    return { mode: normalizedTheme.mode, color: normalizedTheme.color, hideTimer, outlineDigits, compactMarks, labelRowsCols, conflictChecker, selectionColor };
   } catch {
     return {
       mode: "light",
       color: "ocean",
       hideTimer: false,
       outlineDigits: true,
+      compactMarks: false,
+      labelRowsCols: false,
       conflictChecker: true,
       selectionColor: "blue",
     };
@@ -89,6 +103,8 @@ export function ThemeProvider(props: { children: ReactNode }) {
   const [color, setColorState] = useState<ThemeColor>(initialTheme.color);
   const [hideTimer, setHideTimer] = useState<boolean>(initialTheme.hideTimer);
   const [outlineDigits, setOutlineDigits] = useState<boolean>(initialTheme.outlineDigits);
+  const [compactMarks, setCompactMarks] = useState<boolean>(initialTheme.compactMarks);
+  const [labelRowsCols, setLabelRowsCols] = useState<boolean>(initialTheme.labelRowsCols);
   const [conflictChecker, setConflictChecker] = useState<boolean>(initialTheme.conflictChecker);
   const [selectionColor, setSelectionColor] = useState<SelectionColor>(initialTheme.selectionColor);
 
@@ -113,6 +129,8 @@ export function ThemeProvider(props: { children: ReactNode }) {
       setColorState(next.color);
       setHideTimer(next.hideTimer);
       setOutlineDigits(next.outlineDigits);
+      setCompactMarks(next.compactMarks);
+      setLabelRowsCols(next.labelRowsCols);
       setConflictChecker(next.conflictChecker);
       setSelectionColor(next.selectionColor);
     };
@@ -136,8 +154,8 @@ export function ThemeProvider(props: { children: ReactNode }) {
     document.documentElement.style.backgroundColor = bg;
     document.body.style.backgroundColor = bg;
 
-    setSyncedLocalStorageItem(STORAGE_KEY, JSON.stringify({ mode, color, hideTimer, outlineDigits, conflictChecker, selectionColor }));
-  }, [mode, color, hideTimer, outlineDigits, conflictChecker, selectionColor]);
+    setSyncedLocalStorageItem(STORAGE_KEY, JSON.stringify({ mode, color, hideTimer, outlineDigits, compactMarks, labelRowsCols, conflictChecker, selectionColor }));
+  }, [mode, color, hideTimer, outlineDigits, compactMarks, labelRowsCols, conflictChecker, selectionColor]);
 
   const value = useMemo(
     () => ({
@@ -145,6 +163,8 @@ export function ThemeProvider(props: { children: ReactNode }) {
       color,
       hideTimer,
       outlineDigits,
+      compactMarks,
+      labelRowsCols,
       conflictChecker,
       selectionColor,
       setTheme,
@@ -152,10 +172,12 @@ export function ThemeProvider(props: { children: ReactNode }) {
       setColor,
       setHideTimer,
       setOutlineDigits,
+      setCompactMarks,
+      setLabelRowsCols,
       setConflictChecker,
       setSelectionColor,
     }),
-    [mode, color, hideTimer, outlineDigits, conflictChecker, selectionColor, setMode, setColor],
+    [mode, color, hideTimer, outlineDigits, compactMarks, labelRowsCols, conflictChecker, selectionColor, setMode, setColor],
   );
   return <ThemeContext.Provider value={value}>{props.children}</ThemeContext.Provider>;
 }

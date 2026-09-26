@@ -1,0 +1,42 @@
+Phase 11J verification
+======================
+
+PASS — focused creator regression suites, compiled with the globally available TypeScript compiler and run with Node because project node_modules/tsx are absent:
+- scripts/test-creator-project.ts (11A)
+- scripts/test-creator-project-storage.ts (11B)
+- scripts/test-creator-grid-structure.ts (11C)
+- scripts/test-creator-object-editing.ts (11D)
+- scripts/test-creator-line-constraints.ts (11E)
+- scripts/test-creator-group-constraints.ts (11F)
+- scripts/test-creator-global-constraints.ts (11G)
+- scripts/test-creator-worker-solver.ts (11H)
+- scripts/test-creator-interchange.ts (11I)
+- scripts/test-creator-playtest.ts (11J)
+
+11J model coverage includes:
+- metadata-only creator saves preserve normal My Puzzles solve progress and history
+- gameplay-definition changes rebase progress safely and invalidate unsafe history
+- newly-authored givens replace stale player values
+- fresh playtest state does not mutate the existing normal solve record
+- creator playtest route state round-trips editor selection/tool/inspector context
+
+PASS — scripts/test-creator-playtest-integration.mjs source-level integration checks:
+- creator projects are not filtered out of Home
+- Home and folder rows expose Creator/edit actions
+- Home/folder deletion uses creator tombstones
+- Playtest routes through PuzzlePage and suppresses persistent playtest writes
+- creator puzzle SudokuPad links use the Phase 11I SCL exporter
+- creator saves use solve-progress rebasing
+
+PASS — strict TypeScript check of src/sudokupad/creator/playtest.ts.
+PASS — standalone TypeScript syntax/transpile check of modified TS/TSX files:
+- src/core/storage.ts
+- src/ui/PuzzleEditorPage.tsx
+- src/ui/PuzzlePage.tsx
+- src/ui/MainMenu.tsx
+- src/ui/FoldersPage.tsx
+
+PASS — package.json parses with 11J test commands.
+PASS — package-lock.json is unchanged from the Phase 11I checkpoint.
+
+NOT RUN — full `npm run build` / `npm run lint` dependency-backed gate. This clean handoff has no node_modules and the execution environment cannot resolve React, Dexie, Firebase, Vite, and ESLint dependencies. No dependency versions were changed in Phase 11J.

@@ -1,0 +1,66 @@
+Phase 11L verification
+Date: 2026-09-25T15:45:14Z
+Node: v22.16.0
+TypeScript: Version 5.8.3
+
+[1] Compile all executable creator model/regression tests without project dependencies
+TypeScript creator compile: PASS
+
+[2] Execute creator model/regression matrix
+--- test-creator-editing-ux.js
+creator 11K editing UX tests passed
+--- test-creator-global-constraints.js
+creator global/outside/advanced constraint tests passed
+--- test-creator-grid-structure.js
+creator grid structure tests passed
+--- test-creator-group-constraints.js
+creator group constraint tests passed
+--- test-creator-interchange.js
+creator interchange tests passed
+--- test-creator-line-constraints.js
+creator line constraint tests passed
+--- test-creator-object-editing.js
+creator object editing tests passed
+--- test-creator-phase11-release.js
+Phase 11 release parity audit passed: 47/47 upstream tools exercised (50 SphenPad mappings).
+--- test-creator-playtest.js
+creator playtest / My Puzzles bridge tests passed
+--- test-creator-project-storage.js
+creator project storage model tests passed
+--- test-creator-project.js
+creator project + SudokuMaker parity tests passed
+--- test-creator-worker-solver.js
+creator worker/solver tests passed
+
+[3] UI/workflow source integration checks
+creator playtest / My Puzzles UI integration checks passed
+creator 11K editor integration checks passed
+Phase 11 release UI/workflow audit passed: 47/47 inventory rows exposed and critical workflows wired.
+
+[4] Source syntax parse across src/**/*.ts,tsx
+Source syntax: PASS (120 TypeScript/TSX files parsed)
+
+[5] Phase 1-10 dependency-free compatibility gates
+SudokuPad proxy tests: PASS
+(node:3314) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+SudokuPad asset resolver tests: PASS
+SudokuPad font loader tests: PASS
+SudokuPad compatibility manifest: PASS (67 JS/CSS assets, 13 fonts)
+
+[6] Release script/package integrity
+package.json: PASS
+package-lock current=fc94ae8a45190eebb08006433b54eb440376cd45befee8f0aa331704d4292a62
+package-lock phase11K=fc94ae8a45190eebb08006433b54eb440376cd45befee8f0aa331704d4292a62
+package-lock unchanged: PASS
+node_modules absent from checkpoint: PASS
+
+[7] Phase 11 source/test hash manifest
+Phase 11 release hash manifest: PASS (4194 production inputs, 15 creator tests, 0 built files)
+releaseContentSha256=1522503e9371f769579b78814d49cf5b7e430d9144077271aeb15569d1f4e139
+
+[8] Dependency-backed gate status
+NOT RUN TO COMPLETION: npm ci was attempted in this execution environment and hit the container transport timeout; the partial node_modules directory was removed.
+Required external command before public deployment: npm run finish-phase11-release
+
+PHASE 11L LOCAL RELEASE AUDIT: PASS WITH EXTERNAL DEPENDENCY-BACKED GATE PENDING

@@ -22,3 +22,10 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Generated browser-conformance build output
+tests/conformance/.build/
+
+# Python test/oracle caches
+__pycache__/
+*.pyc

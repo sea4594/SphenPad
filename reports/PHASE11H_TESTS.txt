@@ -1,0 +1,40 @@
+Phase 11H verification — 2026-09-25
+
+PASS — strict TypeScript check (including noUnusedLocals/noUnusedParameters) for:
+- src/sudokupad/creator/worker.ts
+- src/sudokupad/creator/solver.ts
+
+PASS — PuzzleEditorPage.tsx syntax/transpile check with the global TypeScript compiler.
+
+PASS — focused creator regression suites:
+1. scripts/test-creator-project.ts
+2. scripts/test-creator-project-storage.ts
+3. scripts/test-creator-grid-structure.ts
+4. scripts/test-creator-object-editing.ts
+5. scripts/test-creator-line-constraints.ts
+6. scripts/test-creator-group-constraints.ts
+7. scripts/test-creator-global-constraints.ts
+8. scripts/test-creator-worker-solver.ts
+
+11H worker/solver coverage includes:
+- registered component inspection;
+- single-cell and multi-cell cells-seen intersection;
+- Clone-equivalence seen-cell propagation;
+- stable-ID constraint configuration errors;
+- exact duplicate-cell diagnostics;
+- semantic constraint diagnostics;
+- safe Custom Constraint unsupported-code reporting;
+- persisted solver-settings CreatorProject round-trip;
+- solution-entry extraction;
+- logical single solving;
+- unique and multiple solution search;
+- invalid-given rejection; and
+- executable-custom-constraint solver rejection.
+
+PASS — practical 9x9 solution-search probe: a standard Sudoku is proven unique in 52 search nodes with the 11H MRV solver.
+
+DEPENDENCY-BACKED FULL APP GATE — unavailable in this clean execution environment, not counted as a pass:
+- `npm run build` stops before app compilation because `vite/client` and Node type definitions are absent (`node_modules` is not installed).
+- `npm run lint` cannot start because `eslint` is absent.
+
+No dependency versions were intentionally changed by Phase 11H. This checkpoint is packaged without node_modules or temporary compiler/build directories.

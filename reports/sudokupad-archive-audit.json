@@ -1,0 +1,157 @@
+{
+  "generatedAt": "2026-09-23T14:58:02.997Z",
+  "stats": {
+    "total": 4051,
+    "loaded": 4051,
+    "failed": 0,
+    "rectangular": 39,
+    "non9x9": 296,
+    "outsideGridGraphics": 682,
+    "fog": 251,
+    "triggeredFog": 115,
+    "backgroundImages": 11,
+    "metadataGrids": 0,
+    "norowcol": 15,
+    "maxRows": 21,
+    "maxCols": 22
+  },
+  "diagnostics": {
+    "unknown-top-level-field|settings": {
+      "count": 39,
+      "examples": [
+        "0tzabtgceq.json",
+        "1r4pxkzv1x.json",
+        "21xzz0q3gd.json",
+        "26w1k7rwci.json",
+        "3rr7h8xl3w.json"
+      ]
+    },
+    "unknown-fpuzzles-key|renban": {
+      "count": 30,
+      "examples": [
+        "1imy136lv4.json",
+        "2l8u234v2c.json",
+        "3d513yr35u.json",
+        "3xnydynuih.json",
+        "5ss81z93l4.json"
+      ]
+    },
+    "unknown-fpuzzles-key|whispers": {
+      "count": 21,
+      "examples": [
+        "1imy136lv4.json",
+        "1p9vh22zea.json",
+        "2l8u234v2c.json",
+        "3xnydynuih.json",
+        "7wxsd2awbv.json"
+      ]
+    },
+    "unknown-fpuzzles-key|successMessage": {
+      "count": 14,
+      "examples": [
+        "1snjlipwcb.json",
+        "2301tf6q1e.json",
+        "3doylfz343.json",
+        "7sf4felfun.json",
+        "9ecadg11io.json"
+      ]
+    },
+    "unknown-fpuzzles-key|nabner": {
+      "count": 6,
+      "examples": [
+        "7wxsd2awbv.json",
+        "james-sinclair_birdcage.json",
+        "james-sinclair_polar-foil.json",
+        "james-sinclair_quadrilateral.json",
+        "rlkbec6hy3.json"
+      ]
+    },
+    "unknown-fpuzzles-key|regionsumline": {
+      "count": 5,
+      "examples": [
+        "4mlp7jvob1.json",
+        "7xe7r6dwgb.json",
+        "8grq4908um.json",
+        "james-sinclair_evening-shade.json",
+        "james-sinclair_polar-foil.json"
+      ]
+    },
+    "unknown-fpuzzles-key|entropicline": {
+      "count": 4,
+      "examples": [
+        "7wxsd2awbv.json",
+        "by5mckerp5.json",
+        "james-sinclair_quadrilateral.json",
+        "pd3iu03kvk.json"
+      ]
+    },
+    "unknown-fpuzzles-key|zipperline": {
+      "count": 3,
+      "examples": [
+        "4qt4n1bnz3.json",
+        "pgbxx02f1l.json",
+        "z7eug3yrqd.json"
+      ]
+    },
+    "unknown-fpuzzles-key|highlightConflicts": {
+      "count": 3,
+      "examples": [
+        "aejjn7fm52.json",
+        "edz9ll8csv.json",
+        "fpuzN4IgzglgXgpiBcBOANCALhNAbO8QDkYBzAQzQHsAnAAgA0BlEVEgVzQAsqF1OWj20AIwCeaOKkoscYGGm74qAWxJZq9FgBNyAaxbVJ06iQAOxrMIB01AIIaNmCOQB2K8_AA6Tz4VIVKYeGonCCcYagBjGCwsMGoACmcwkOoYEnD2fXIAdwB6cPIsFkUnHMFyAA8A.json"
+      ]
+    },
+    "unknown-fpuzzles-key|columnindexer": {
+      "count": 3,
+      "examples": [
+        "james-sinclair_159-miracle.json",
+        "rlkbec6hy3.json",
+        "sudoku_w0jq5h9rti.json"
+      ]
+    },
+    "unknown-fpuzzles-key|modularline": {
+      "count": 2,
+      "examples": [
+        "by5mckerp5.json",
+        "kszsitwn8p.json"
+      ]
+    },
+    "unknown-fpuzzles-key|poweroftwo": {
+      "count": 1,
+      "examples": [
+        "1snjlipwcb.json"
+      ]
+    },
+    "unknown-fpuzzles-key|prime": {
+      "count": 1,
+      "examples": [
+        "1snjlipwcb.json"
+      ]
+    },
+    "unknown-fpuzzles-key|inequality": {
+      "count": 1,
+      "examples": [
+        "aejjn7fm52.json"
+      ]
+    },
+    "unknown-top-level-field|norowcol": {
+      "count": 1,
+      "examples": [
+        "da3cezx5at.json"
+      ]
+    },
+    "unknown-fpuzzles-key|metadata": {
+      "count": 1,
+      "examples": [
+        "ntqufgkvcx.json"
+      ]
+    },
+    "unknown-fpuzzles-key|regionsum": {
+      "count": 1,
+      "examples": [
+        "qj5fmj2art.json"
+      ]
+    }
+  },
+  "failures": []
+}

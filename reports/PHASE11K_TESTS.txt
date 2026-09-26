@@ -1,0 +1,33 @@
+Phase 11K verification
+======================
+
+PASS — all focused creator model suites 11A–11K compiled with the available global TypeScript compiler and ran under Node:
+- scripts/test-creator-project.ts
+- scripts/test-creator-project-storage.ts
+- scripts/test-creator-grid-structure.ts
+- scripts/test-creator-object-editing.ts
+- scripts/test-creator-line-constraints.ts
+- scripts/test-creator-group-constraints.ts
+- scripts/test-creator-global-constraints.ts
+- scripts/test-creator-worker-solver.ts
+- scripts/test-creator-interchange.ts
+- scripts/test-creator-playtest.ts
+- scripts/test-creator-editing-ux.ts
+
+11K model coverage includes:
+- versioned object clipboard serialization/parsing
+- fresh IDs and semantic/visual preservation on paste
+- cross-project catalog activation on paste
+- multi-object patch/delete
+- send-to-front/back ordering
+- cosmetic alignment and cell/grid snapping
+- individual line path-point replace/nudge/insert/reorder/delete
+- persistent tool-default CreatorProject round-trip
+
+PASS — scripts/test-creator-playtest-integration.mjs (11J lifecycle integration retained).
+PASS — scripts/test-creator-editing-ux-integration.mjs verifies 11K editor wiring for keyboard shortcuts, bulk selection, context actions, path-point tools, alignment/snapping, zoom/pan, and persistent defaults.
+PASS — strict TypeScript check of src/sudokupad/creator/editingUx.ts.
+PASS — PuzzleEditorPage dependency-backed type invocation reaches no 11K-specific diagnostic; unresolved diagnostics are from absent React/Dexie/Twemoji/Vite types in this clean environment.
+PASS — package.json parses with 11K test commands.
+
+NOT RUN — full `npm run build` / `npm run lint` dependency-backed gate. The clean checkpoint has no node_modules, and dependencies are unavailable in this execution environment. No dependency versions are changed by Phase 11K.

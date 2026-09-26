@@ -1,0 +1,37 @@
+# SudokuPad Browser Conformance
+
+Target: **SudokuPad 0.612.0 captured HAR**
+
+Reference HAR SHA-256: `12d6ffd3ec204ba14cb6d5aab3da98444be49438d5aab8b664fe1fde34d2ecca`
+Reference `/script.js` SHA-256: `3c53d973ffa62d541e300be9fddb53f19c2a4cc32eb98769a54904240343c9fe`
+Chromium: `Chromium 144.0.7559.96 built on Debian GNU/Linux 13 (trixie)`
+Suite: `archive`
+
+Fixtures: **15** — passed **14**, failed **1**.
+
+| Fixture | Result | SVG | Pixel diff | Notes |
+|---|---:|---:|---:|---|
+| `archive:fmcdu9br5g` | PASS | True | 0.000000% | Deterministic archive sample |
+| `archive:fosir7x3ud` | PASS | True | 0.000000% | Deterministic archive sample |
+| `archive:fpuzN4IgzglgXgpiBcBOANCALhNAbO8QCEB7AJxgEMsIwACAETIDsBjCBgcxFTIFc0ALEggIQsWagFluxAA58AnpxDFuOMDDRCACr2r8Y1ACYQ2mGgEYAtImqtq5Jn2oAjQgA9k1YoQDu1RgeomQixuAFsGADpqABU%2BMjQAchpMAEJFNmIIAwQAbRzQEwA3GAZNEpYscTJiAGswBAYVLABfZFBCim5cABZUIpKENGUYPohi0vKRKtr6%2BEbRVoKxkrLmKeq6hqbFkH6JtcqN2fmWtpAOkNwAdlHxweHblcnDma2Fs4uuhAAOR4Z7rp%2FVYVaabObbM57YHrV7g97tTq4ADMfwBI12y32IKOb1OS3G0JeYJOzQAush8hiCc9QccIfingdabidlCaTi4XjzoiEABWVHwIaAqmM7GwkkfHnwABsAqF6LZTI5EoZWJhxPpIrVRLp8K1hOZnNZmINyu25MpirFGr1VvVuq5n2Rcoe%2BvZ4s1ToQvS1aKB7ptXLtOpZkJNAYdxupSo9tvDMcDOy98DMLuFwcNJItqtNscdUtTvsFrozZr1yYATGmFfHrZGw9G66GcxHm26E%2FWWx226W80mpT69n7202jdmR%2Fae7XJ0aG6KZyqJyHZ13R4ve4m59rM5qN52lzuFuPk7Ki%2FL%2Fd2Vwey0Hp8v13fD7fGwvd4%2Bb%2F3Lj9qxe156pSgZ4lu%2BfZbrmibHgBP7XqBq6vnGL73m%2BiFPlG85IeWUqnkOxbpiBm4Il%2B8A3EBeEoR%2BYGtlee4suONHUfh%2B70Q%2B5GwdyRGDpiw7Mf%2BRH8qRNasQRMHCTxCHoahdGMW2yYkTh54iUx0lXpW0FifmREogJv7wc%2BEkUXBGEaV8MpqcpLH6X2pLkiARhgGQTg4AYWCECYTC5DZ8pMP4WTxDAYCENIGCEAwsw5CAQQuaQ2Sks0QA%3D%3D%3D` | PASS | True | 0.000000% | Deterministic archive sample |
+| `archive:fpuzN4IgzglgXgpiBcBOANCALhNAbO8QDYB6AJgHYSBmeAAgHUIA7AEwHsB3MalgM2rQAsY1AMossANzioAhgFcBLAE4IQABX4QsEAA7UAcjDYBbaQxCpFsnGBhoVepSazUws1gGtZ1S9erTt2lgAngB0ADoM9MwsnjQAotIAxvzUJoruMEzUYSBsjKxsOd4wAOYQLAypsmBo1IkVaNKM1DBJKTx8gtRMEGVonNyKLEbUAIx8LNSI1HkK8sXarf3hZqglihBMCADa26Di0liyuKNrEJJm8GiWMGcXqjAMiZoAstLpYAgMVlgAvsigMr3R7PLBvD5fH7%2FQHnR4PJ6vd7uT7wb5YP4AkBAuEgxEQ1FQzEHI64Ch3R4Ia7HckMeGg8HIyHo6FY2G03FgpEotEYmHAhGc%2FE8lnY9kChncwn7Q7HBDEGmUm40ul4xkE5kAXWQe1Z%2FPpXKZvJAxNl8HluopVyVFrF%2BqFUptKsFauFRJluAArAqrdTHRyJYaRWynQH1UbRSGDWGg3rVZLmW6SQgACzeqm3P3iqOuvk4rP2zXa3O2uOBzER%2F3Zh0m0lp60V%2FMuh0Nu1NhPFyMF8PBytdlk1hCnG2K30t0vR8s9xvx7ux50z35anVj%2Bdlju9tuzvOtheJ02p4c%2BjMr0M5zM7tfG90IMmH9PKje79fTy8nqvt8%2Fj4VL6VJ%2BD4OtRynC8J2fECzzfPtJznU9q2veAvTvetgK%2FZsUNXUDPwwiD0Ngj8B3gA9RRHY9cPfP4fywvCtxLbC0Jg8j%2B3g0hANIhioLA1D8PggCkKA9jNxjbcuJoztBOg4S6MLZcyI4qjGL3XAUD4tjJOooTaPUiTNIUzipKNAiWJUh8X0wyDxL09TKPMp8rz%2FXjiKPEzwPotTdPkuSbMvAjEMc%2B8PIsgLbIIgAOVjnJEjSxIXSjQvCoLX1kwKvLMpLguY%2BKUpwgTbKy1ydLkgjlL85CcsDDUtRAdxNBwRREmkEpcB1RIYHRFFthAAAlYgAGFiHMLreooAbup65MRooPqJp64bUE6ybxrm5MpqWmaRuW8aNRZFq2p2QaevwEbetII6epC6bDrmyaTqus71oO%2B6bq65bzq2zEdqwdquvwFbvrWuafsWrrSF%2BzqQdm4GxpGkLQZhiHOphzbttaz69s6n7Lr%2Bp70buuaQcxsGeuxkHzrmmGCZh7GYdexdUB6MBpAAIxwJgsBYMpEh2Sr03q5hNmkNAYDAFhtAwCp2q2oA` | PASS | True | 0.000000% | Deterministic archive sample |
+| `archive:fpuzN4IgzglgXgpiBcBOANCALhNAbO8QEEBXAc0LDQAIAmARmWoAYqBmeCgYSwEMxIBjEKi6E0ACwD2AJwQg%2BWcQDcYkgISCQkwjjAw0MgHJSAtlywUwhACbiA1oQqbtFLgAcXWAJ4A6CvgB2lhRiXGgA5GAUmGqoxJIQlggA2omgxBBKfgAKMH58EFgAslySNmAIflpYAL7Iqek52bn5RSVl8BVY1bUgCqaEuADsMfV%2BCGiaMMMZjXmFxaXllTWgvVj9CAAcUzljE9tZObMtC%2B1L3avr8ABs%2B7v9%2BzPN820dXXXTh0%2Bti53LIGkfJpzb6nX7dAENT7Ak6vP4Qg5A44vJYAXWQKX%2BI0e0ORYPekMRzx%2Bbx6fVwN0xGTuk0pBKORNBJPh2KRxLhWKhrMZ7MB9JBsPBHMJ%2FLO%2BIRfJhotp4q%2Bkt%2BaIxF1wzFu8HG92lLIZApWZIQABZVeqaczOdqpUqEABWI17TVmkV4%2B3CuVMoUS3Fu3myz1%2FS3wOjS6kPB2unl0n1swXenFshW6ta4Ki2jWml2%2B6MR2PczMy7M650eqNirWOkn%2BlVBtV2tNFnMl0MZhvp4uFyPc%2BOkxMIQPw4Nt%2FNS2vtgvDwdOsdc0fukdDmfjr1ZqdzmPLp3%2B5NV40hlsd9HNuvT1fmifztflvXwQ1bmtnk%2BLvPn8OP%2B%2FP0th3Pvptdy6VvvV1M7zLKpO0nV9P0bVt%2FS2G9AOPYCIN3I8l3Ag9Z3XS8KX%2FbcByfc5LxtWCTSAj8E0ua9sNveCw1AkjvzAhC0IXN9IPrXDUPYxif0GFNiOo%2Bi6NbBiaP3TjSLEgT%2BKEwS2P9QjKLglCuP9FAiJ3Q8LUvGCFL4pTxOEyS9N9FE0RASwIDALgACMcEseQ0gEeBElkcQ%2FHGLhzL4DBXLKUzjT4LgAniEIYDAcQXG8vw2kSUywrWSKkhQZMhi2G46BVQ0bS2Ogbgy5AbWTFAhjygrkCK5AcuQLZky2TKKuQFVyrS%2FKGrK5AhhuQ1quQG4hhQQ0apa9L2ra7LWuTG4bTqlVKtqkbCuQQ0bmSlqUC2GaUSqIA` | PASS | True | 0.000000% | Deterministic archive sample |
+| `archive:fpuzN4IgzglgXgpiBcBOANCALhNAbO8QGEB7QgJwBMIA7AQzRgAIBlAVzMIGtmRVrm0ALUghAB1alnYwS3ECWY4wMNMICi1AMb96JQgHdk9dYSzMAtpXrVKZegGYAHrfoAjQvfqnmYNIcKU01FT0AgwUAOaYYPQAjMH8OsxhWogAdPQAOpQAKvyhEBFoUQAaBgCaltb0AFr0QQAOEFhY9GD81HUwUQAUJDDUFJRh9DgAZj5ohNr5/GgAlC35lBAjAJ5xtNpF6uUAvNUpMmEkEGQIANpnoABu4sy4KCARVzCUCGhyMAC+yMDfvz9/QEAn4gG4mXDRVBPF5vD5/UG3XAAVihEGer3g7zunwAushLvCwXcECjHmiYZi4SCibgACyo9Gw7HUxEIWwMilYr7A/68wF4gk8oF8oUAgXXVnwABsHIxXMJkoe0LlVJFauFuPxaoR4JJsqZ3PVLN18HpZMZlOZfPFGtFvJ1xPgAA59ZbDQ7cAB2V3ysVa21G9U2u0Kk0AJh9qo9evNnNVocdSvJKqtmsu0fgEdjKfdNIQ3uzBoDxeNjpdhbduLxIGoJB0unOoCwVE652r6hgTTA5xAACUw/hbDJ+/hacOB0iQDj4c3KK34Gd252sN2F32B1Lx/hPVunVOZy3V4vUB2uz3e7T8NFh5ewzfB/uQbP58eQKeV+ekaPh1/J6he1+m7Tk+h5tiey5Hn2UrbsO0F7v+0GII+TagQuS5nmuvZOvgd7/thQ54d+wEoXOR7oR+mHYX+fbYZuhE7tO05AA=` | PASS | True | 0.000000% | Deterministic archive sample |
+| `archive:fpuzN4IgzglgXgpiBcBOANCALhNAbO8QHYB6AJn3gAIAVACxnIGEBDMbOgQUc4CceeBzPtWohUjAK5pqAey4IQABWoQsEAA7kAcjADuAW0YA7ESC5icYGGjkaZ%2BrOTBiAJlIDWY8qfPlGq1VgBPADoAHQMAMRk0LhgwMAoAEQg%2BTDByCANyPhiA8gBjGCwsNN0xFnIAIzpsmEY0GC5ySUNyJ2TU9Myo6T4pA0Yi3MYnACtGAoM0cm0levzC4qDjbIgnBABtddAANwGxXBQQFO2YI3ho%2FYBfZGBr25u7x4fnnb3cAA5UY9OEC5hLgC6yC2T3uryw%2BwQh2%2BZz%2BoPhDyBIJedxAuwhuAAbF8ICdYaZ%2Fi80W8EABWHF434EhG3JFg1HoyHwYgUn7nalExm4ADMrPxV05JPg5KOuLZcJRdJpxIxCAALHyqQKwTKmSzRZT2cr4VLBbL4LyNeKOSquQgAIyKrWE01ChVG%2Fk2x66%2Bk3VU8q0S236%2B0wpVOyXA13BhlCz4O%2F00wFB90IbER61RlHJ8FM%2FCe6kAoEgfQADwgpV0G1ABSKcgASsR6HKQKjS1gK1XMbW3fWK3L6O8WyWFhXMZ3uyA23hy%2B96M2672R2Oa5OyyP%2B8RB8OQOWO0u5w2R%2Fh6KTl1PV6T6Nz9%2FPV9zd6et4f6Pgr%2B3q%2FeF4%2FN33x0%2FVx2J62D%2BWj%2BaP3Lc1L1fEdEBAn8z3LC8T1Am9EEAi87zg8sd1gyDr1Q29AKPPdo3AKQIQwPoNhQFlsUtBVeXTclPlo5AFTI5B00tbFeUtajkGxOjkCYhUFWxFlPl5FByRY5BPktckFXTcjkBE5jePk5ByVYhiJOQFkWXTFBeWxBVJJU5SFUtGiNJZFBsWxeiLOQDj1PwAFLiAA` | PASS | True | 0.000000% | Deterministic archive sample |
+| `archive:fsq3l4xjbi` | PASS | True | 0.000000% | Deterministic archive sample |
+| `archive:g337cy04rc` | PASS | True | 0.007234% | Deterministic archive sample |
+| `archive:g78oascrp0` | PASS | True | 0.000000% | Deterministic archive sample |
+| `archive:gPdj8GrQrR` | PASS | True | 0.000000% | Deterministic archive sample |
+| `archive:gbwivexeh7` | FAIL | — | — | Deterministic archive sample |
+
+Error for `archive:gbwivexeh7`: `TimeoutError()`
+
+| `archive:gfjgpqtw7z` | PASS | True | 0.000000% | Deterministic archive sample |
+| `archive:gjwn9e0c5u` | PASS | True | 0.000000% | Deterministic archive sample |
+| `archive:gomrgn0npb` | PASS | True | 0.000000% | Deterministic archive sample |
+
+## Interpretation
+
+This oracle executes the captured stock SudokuPad JavaScript/CSS and the SphenPad renderer in the same installed Chromium. The stock page is fully inlined from the HAR, so the comparison does not depend on the current sudokupad.app deployment. Raster comparisons standardize the SVG to its viewBox dimensions before screenshots.
+
+Optional puzzle-font binary verification remains a production-hardening task because those 13 binary files were not present in the supplied HAR.

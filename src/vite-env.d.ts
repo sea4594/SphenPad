@@ -11,3 +11,10 @@ interface ImportMeta {
 }
 
 declare const __APP_COMMIT_SHA__: string;
+
+interface ImportMetaEnv {
+  readonly VITE_SUDOKUPAD_PROXY_BASE?: string;
+}
+interface ImportMeta {
+  readonly env: ImportMetaEnv;
+}

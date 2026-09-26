@@ -1,0 +1,103 @@
+{
+  "target": "SudokuPad 0.612.0 captured HAR",
+  "referenceHar": "/mnt/data/sudokupad.app.har",
+  "referenceHarSha256": "12d6ffd3ec204ba14cb6d5aab3da98444be49438d5aab8b664fe1fde34d2ecca",
+  "referenceScriptSha256": "3c53d973ffa62d541e300be9fddb53f19c2a4cc32eb98769a54904240343c9fe",
+  "chromium": "/usr/bin/chromium",
+  "chromiumVersion": "Chromium 144.0.7559.96 built on Debian GNU/Linux 13 (trixie)",
+  "suite": "all",
+  "fixtures": 4,
+  "passed": 4,
+  "failed": 0,
+  "pixelRatioThreshold": 0.002,
+  "results": [
+    {
+      "name": "captured-real",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          608,
+          608
+        ],
+        "candidateSize": [
+          608,
+          608
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 1,
+        "meanChannelDelta": 0.00045266331948291784
+      },
+      "candidateAssertions": [],
+      "note": "Exact puzzle captured in the HAR"
+    },
+    {
+      "name": "primitives-outside",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          288,
+          336
+        ],
+        "candidateSize": [
+          288,
+          336
+        ],
+        "differentPixelRatio": 0.0003823578042328042,
+        "maxChannelDelta": 18,
+        "meanChannelDelta": 0.008597883597883597
+      },
+      "candidateAssertions": [],
+      "note": "Lines, raw path, arrows, rounded/rotated graphics, multiline/outside text, marks, killer cage"
+    },
+    {
+      "name": "recognized-features",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          288,
+          288
+        ],
+        "candidateSize": [
+          288,
+          288
+        ],
+        "differentPixelRatio": 7.233796296296296e-05,
+        "maxChannelDelta": 10,
+        "meanChannelDelta": 0.009733474794238682
+      },
+      "candidateAssertions": [],
+      "note": "Kropki/XV/palindrome/Sudoku-X recognition"
+    },
+    {
+      "name": "progress-entered-value",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          288,
+          288
+        ],
+        "candidateSize": [
+          288,
+          288
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 1,
+        "meanChannelDelta": 9.645061728395061e-05
+      },
+      "candidateAssertions": [],
+      "note": "Production progress adapter: entered value"
+    }
+  ]
+}

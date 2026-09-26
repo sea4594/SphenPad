@@ -59,6 +59,16 @@ function metadataPuzzleKeys(snapshot: CloudStateMetadata | null): string[] {
   return snapshot.puzzleKeys;
 }
 
+function snapshotCreatorProjectKeys(snapshot: CloudAppSnapshot | null): string[] {
+  if (!snapshot) return [];
+  return snapshot.creatorProjects.map((row) => row.key);
+}
+
+function metadataCreatorProjectKeys(snapshot: CloudStateMetadata | null): string[] {
+  if (!snapshot) return [];
+  return snapshot.creatorProjectKeys;
+}
+
 function havePuzzleKeysChanged(previous: string[], next: string[]): boolean {
   if (previous.length !== next.length) return true;
   const previousSet = new Set(previous);
@@ -84,6 +94,7 @@ function sameLocalStorageSnapshot(
 function snapshotNeedsLocalApply(local: CloudAppSnapshot, merged: CloudAppSnapshot): boolean {
   if (local.updatedAt !== merged.updatedAt) return true;
   if (local.puzzles.length !== merged.puzzles.length) return true;
+  if (local.creatorProjects.length !== merged.creatorProjects.length) return true;
   if (local.folders.length !== merged.folders.length) return true;
   if (!sameLocalStorageSnapshot(local.localStorage, merged.localStorage)) return true;
 
@@ -91,6 +102,11 @@ function snapshotNeedsLocalApply(local: CloudAppSnapshot, merged: CloudAppSnapsh
   for (const row of merged.puzzles) {
     if (!localPuzzleUpdatedAt.has(row.key)) return true;
     if (localPuzzleUpdatedAt.get(row.key) !== (row.data.updatedAt ?? 0)) return true;
+  }
+
+  const localCreatorProjects = new Map(local.creatorProjects.map((row) => [row.key, `${row.updatedAt}:${row.lastOpenedAt}:${row.deletedAt ?? 0}`]));
+  for (const row of merged.creatorProjects) {
+    if (localCreatorProjects.get(row.key) !== `${row.updatedAt}:${row.lastOpenedAt}:${row.deletedAt ?? 0}`) return true;
   }
 
   const localFolderUpdatedAt = new Map(local.folders.map((folder) => [folder.id, folder.updatedAt]));
@@ -109,6 +125,7 @@ function makeEmptySnapshot(): CloudAppSnapshot {
     localStorage: {},
     folders: [],
     puzzles: [],
+    creatorProjects: [],
   };
 }
 
@@ -166,6 +183,7 @@ export function AccountSyncProvider(props: { children: ReactNode }) {
   const initializingForUidRef = useRef<string | null>(null);
   const loginInFlightRef = useRef(false);
   const cloudPuzzleKeysRef = useRef<string[]>([]);
+  const cloudCreatorProjectKeysRef = useRef<string[]>([]);
   const lastSuccessfulSyncAtRef = useRef(0);
   const cloudMetadataUpdatedAtRef = useRef(0);
   const cloudRevisionRef = useRef(0);
@@ -177,8 +195,9 @@ export function AccountSyncProvider(props: { children: ReactNode }) {
     }
   }
 
-  function updateCloudSyncPointers(updatedAt: number, puzzleKeys: string[], revision = cloudRevisionRef.current) {
+  function updateCloudSyncPointers(updatedAt: number, puzzleKeys: string[], creatorProjectKeys: string[], revision = cloudRevisionRef.current) {
     cloudPuzzleKeysRef.current = puzzleKeys;
+    cloudCreatorProjectKeysRef.current = creatorProjectKeys;
     lastSuccessfulSyncAtRef.current = updatedAt;
     cloudMetadataUpdatedAtRef.current = updatedAt;
     cloudRevisionRef.current = revision;
@@ -195,6 +214,7 @@ export function AccountSyncProvider(props: { children: ReactNode }) {
     updateCloudSyncPointers(
       localSnapshot.updatedAt,
       localSnapshot.puzzles.map((row) => row.key),
+      localSnapshot.creatorProjects.map((row) => row.key),
       result.revision,
     );
   }
@@ -208,6 +228,7 @@ export function AccountSyncProvider(props: { children: ReactNode }) {
           exportLocalAppSnapshot(),
         ]);
         const cloudPuzzleKeys = snapshotPuzzleKeys(cloudSnapshot);
+        const cloudCreatorProjectKeys = snapshotCreatorProjectKeys(cloudSnapshot);
         const expectedRevision = cloudMetadata?.revision ?? 0;
 
         if (!cloudSnapshot && hasLocalAppSnapshotData(localSnapshot)) {
@@ -220,6 +241,7 @@ export function AccountSyncProvider(props: { children: ReactNode }) {
           updateCloudSyncPointers(
             localSnapshot.updatedAt,
             localSnapshot.puzzles.map((row) => row.key),
+            localSnapshot.creatorProjects.map((row) => row.key),
             result.revision,
           );
           return;
@@ -227,14 +249,14 @@ export function AccountSyncProvider(props: { children: ReactNode }) {
 
         if (cloudSnapshot && !hasLocalAppSnapshotData(localSnapshot)) {
           await importLocalAppSnapshot(cloudSnapshot, false);
-          updateCloudSyncPointers(cloudSnapshot.updatedAt, cloudPuzzleKeys, expectedRevision);
+          updateCloudSyncPointers(cloudSnapshot.updatedAt, cloudPuzzleKeys, cloudCreatorProjectKeys, expectedRevision);
           notifyStorageRefreshNeeded();
           setAppStateNonce((n) => n + 1);
           return;
         }
 
         if (!cloudSnapshot) {
-          updateCloudSyncPointers(0, [], expectedRevision);
+          updateCloudSyncPointers(0, [], [], expectedRevision);
           return;
         }
 
@@ -249,6 +271,7 @@ export function AccountSyncProvider(props: { children: ReactNode }) {
         updateCloudSyncPointers(
           merged.updatedAt,
           merged.puzzles.map((row) => row.key),
+          merged.creatorProjects.map((row) => row.key),
           result.revision,
         );
         return;
@@ -280,19 +303,22 @@ export function AccountSyncProvider(props: { children: ReactNode }) {
           await uploadLocalSnapshot(activeUser);
           setSyncStatus("idle");
         } else {
-          updateCloudSyncPointers(0, [], 0);
+          updateCloudSyncPointers(0, [], [], 0);
         }
         return;
       }
 
       const nextPuzzleKeys = metadataPuzzleKeys(cloudMetadata);
+      const nextCreatorProjectKeys = metadataCreatorProjectKeys(cloudMetadata);
       const remoteChanged =
         cloudMetadata.revision > cloudRevisionRef.current ||
         cloudMetadata.updatedAt > cloudMetadataUpdatedAtRef.current ||
-        havePuzzleKeysChanged(cloudPuzzleKeysRef.current, nextPuzzleKeys);
+        havePuzzleKeysChanged(cloudPuzzleKeysRef.current, nextPuzzleKeys) ||
+        havePuzzleKeysChanged(cloudCreatorProjectKeysRef.current, nextCreatorProjectKeys);
 
       if (!force && !remoteChanged) {
         cloudPuzzleKeysRef.current = nextPuzzleKeys;
+        cloudCreatorProjectKeysRef.current = nextCreatorProjectKeys;
         cloudMetadataUpdatedAtRef.current = cloudMetadata.updatedAt;
         cloudRevisionRef.current = cloudMetadata.revision;
         return;
@@ -341,7 +367,7 @@ export function AccountSyncProvider(props: { children: ReactNode }) {
         if (!cloudLikelyHasData) {
           const empty = makeEmptySnapshot();
           await importLocalAppSnapshot(empty, false);
-          updateCloudSyncPointers(0, [], 0);
+          updateCloudSyncPointers(0, [], [], 0);
         } else {
           const cloudSnapshot = await pullCloudState(activeUser.uid);
           const safeCloud = cloudSnapshot ?? makeEmptySnapshot();
@@ -349,6 +375,7 @@ export function AccountSyncProvider(props: { children: ReactNode }) {
           updateCloudSyncPointers(
             safeCloud.updatedAt,
             snapshotPuzzleKeys(cloudSnapshot),
+            snapshotCreatorProjectKeys(cloudSnapshot),
             cloudMetadata?.revision ?? 0,
           );
         }
@@ -361,6 +388,7 @@ export function AccountSyncProvider(props: { children: ReactNode }) {
           updateCloudSyncPointers(
             cloudMetadata?.updatedAt ?? 0,
             cloudMetadata ? metadataPuzzleKeys(cloudMetadata) : [],
+            cloudMetadata ? metadataCreatorProjectKeys(cloudMetadata) : [],
             cloudMetadata?.revision ?? 0,
           );
         }
@@ -371,6 +399,7 @@ export function AccountSyncProvider(props: { children: ReactNode }) {
         updateCloudSyncPointers(
           safeCloud.updatedAt,
           snapshotPuzzleKeys(cloudSnapshot),
+          snapshotCreatorProjectKeys(cloudSnapshot),
           cloudMetadata.revision,
         );
         notifyStorageRefreshNeeded();
@@ -452,7 +481,7 @@ export function AccountSyncProvider(props: { children: ReactNode }) {
 
       if (!nextUser) {
         initializedUserIdRef.current = null;
-        updateCloudSyncPointers(0, [], 0);
+        updateCloudSyncPointers(0, [], [], 0);
         setSyncStatus("idle");
         setSyncError("");
         setReady(true);
@@ -570,6 +599,7 @@ export function AccountSyncProvider(props: { children: ReactNode }) {
   return <AccountSyncContext.Provider value={value}>{children}</AccountSyncContext.Provider>;
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAccountSync() {
   const context = useContext(AccountSyncContext);
   if (!context) throw new Error("useAccountSync must be used within AccountSyncProvider");

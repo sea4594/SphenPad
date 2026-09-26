@@ -42,6 +42,10 @@ import { readPuzzleOriginState, withPuzzleReturnState } from "./puzzleNavState";
 import { highlightPalettePages, linePalette, sortHighlightColors } from "./toolPalettes";
 import { onStorageRefreshNeeded } from "../core/syncSignal";
 
+import { puzzleConstraintLabels, puzzleSolution } from "../sudokupad/app/definitionSelectors";
+import { freshCreatorPlaytestData } from "../sudokupad/creator/playtest";
+import { creatorSudokuPadUrl } from "../sudokupad/creator/interchange";
+
 const AUTO_IN_PROGRESS_MILLIS = 30_000;
 const TRANSPARENT_HIGHLIGHT_COLOR = "rgba(0,0,0,0)";
 const VIEWPORT_REFRESH_DELAYS = [120, 320, 620] as const;
@@ -62,73 +66,9 @@ function statusLabel(status: PuzzlePlayStatus): string {
   return "Complete";
 }
 
-function hasBorderClues(clues: { top?: string[]; bottom?: string[]; left?: string[]; right?: string[] } | undefined): boolean {
-  if (!clues) return false;
-  const sides = [clues.top, clues.bottom, clues.left, clues.right];
-  return sides.some((side) => Array.isArray(side) && side.some((v) => String(v ?? "").trim().length > 0));
-}
 
 function extractConstraintBullets(def: StoredPuzzle["def"]): string[] {
-  const out = new Set<string>();
-  const cosmetics = def.cosmetics;
-
-  if (cosmetics.cages?.length) out.add("Killer cages");
-  if (cosmetics.arrows?.length) out.add("Arrow constraints");
-  if (cosmetics.dots?.length) {
-    const hasBlack = cosmetics.dots.some((d) => d.kind === "black");
-    const hasWhite = cosmetics.dots.some((d) => d.kind === "white");
-    if (hasBlack && hasWhite) out.add("Black and white dots");
-    else if (hasBlack) out.add("Black dots");
-    else if (hasWhite) out.add("White dots");
-  }
-
-  if (cosmetics.thermolines?.length) out.add("Thermo lines");
-  if (cosmetics.whispers?.length || cosmetics.germanwhispers?.length) out.add("Whisper lines");
-  if (cosmetics.palindromes?.length) out.add("Palindrome lines");
-  if (cosmetics.renbanlines?.length) out.add("Renban lines");
-  if (cosmetics.entropics?.length) out.add("Entropic lines");
-  if (cosmetics.modularlines?.length) out.add("Modular lines");
-
-  if (hasBorderClues(cosmetics.skyscraper)) out.add("Skyscraper clues");
-  if (hasBorderClues(cosmetics.sandwich)) out.add("Sandwich clues");
-  if (hasBorderClues(cosmetics.xsum)) out.add("X-sum clues");
-  if (cosmetics.littlekillers?.length) out.add("Little killer clues");
-
-  if (cosmetics.irregularRegions?.length) out.add("Irregular regions");
-  if (cosmetics.disjointGroups?.length) out.add("Disjoint groups");
-
-  if (cosmetics.antiKnight) out.add("Anti-knight");
-  if (cosmetics.antiKing) out.add("Anti-king");
-  if (cosmetics.antiRook) out.add("Anti-rook");
-
-  if ((cosmetics.fogLights?.length ?? 0) > 0 || (cosmetics.fogTriggerEffects?.length ?? 0) > 0) {
-    out.add("Fog of war");
-  }
-
-  const rules = (def.meta?.rules ?? "").toLowerCase();
-  const keywordMap: Array<[RegExp, string]> = [
-    [/\bthermo\b/, "Thermo lines"],
-    [/\bwhisper\b/, "Whisper lines"],
-    [/\brenban\b/, "Renban lines"],
-    [/\bpalindrome\b/, "Palindrome lines"],
-    [/\barrow\b/, "Arrow constraints"],
-    [/\bkiller\b/, "Killer cages"],
-    [/\bsandwich\b/, "Sandwich clues"],
-    [/\bx\s*-?\s*sum\b/, "X-sum clues"],
-    [/\bskyscraper\b/, "Skyscraper clues"],
-    [/\blittle\s*killer\b/, "Little killer clues"],
-    [/\banti\s*-?\s*knight\b/, "Anti-knight"],
-    [/\banti\s*-?\s*king\b/, "Anti-king"],
-    [/\banti\s*-?\s*rook\b/, "Anti-rook"],
-    [/\bfog\b/, "Fog of war"],
-    [/\bentropic\b|\bentropy\b/, "Entropic lines"],
-  ];
-  for (const [pattern, label] of keywordMap) {
-    if (pattern.test(rules)) out.add(label);
-  }
-
-  if (!out.size) return ["Normal Sudoku rules only"];
-  return Array.from(out);
+  return puzzleConstraintLabels(def);
 }
 
 function rcKey(rc: CellRC) {
@@ -498,6 +438,31 @@ function getVideoViewportMode(layoutKind: ViewportLayoutKind): VideoViewportMode
   return "desktop";
 }
 
+function getPortraitVideoLayout(gridLayout: HTMLElement, desiredVideoHeight: number) {
+  const controlsHeight = gridLayout.querySelector<HTMLElement>(".kbdPanel")?.getBoundingClientRect().height ?? 0;
+  const videoWidth = gridLayout.querySelector<HTMLElement>(".puzzleGridVideoPlayer")?.getBoundingClientRect().width ?? 0;
+  const boardSurface = gridLayout.querySelector<HTMLElement>(".boardSurface");
+  const boardSvg = boardSurface?.querySelector<SVGSVGElement>(".sphenpad-sudokupad-renderer");
+  const viewBox = boardSvg?.viewBox?.baseVal;
+  const boardWidth = boardSurface?.clientWidth ?? 0;
+  const gridHeight = gridLayout.getBoundingClientRect().height;
+  const puzzleHeightAtMaximumSize = boardWidth > 0 && viewBox && viewBox.width > 0 && viewBox.height > 0
+    ? boardWidth * (viewBox.height / viewBox.width)
+    : 0;
+  const minimumVideoHeight = Math.max(
+    56,
+    videoWidth * (9 / 16) * 0.25,
+    gridHeight - controlsHeight - 10 - puzzleHeightAtMaximumSize
+  );
+  const availableVideoHeight = gridHeight - controlsHeight - 138;
+  const maximumVideoHeight = Math.max(minimumVideoHeight, Math.min(videoWidth * (9 / 16), availableVideoHeight));
+  const videoHeight = Math.min(maximumVideoHeight, Math.max(minimumVideoHeight, desiredVideoHeight));
+  return {
+    videoHeight,
+    boardHeight: Math.max(128, gridHeight - controlsHeight - 10 - videoHeight),
+  };
+}
+
 export function PuzzlePage(props: { editor?: boolean }) {
   const editor = props.editor ?? false;
   const { puzzleId } = useParams();
@@ -506,12 +471,7 @@ export function PuzzlePage(props: { editor?: boolean }) {
   const location = useLocation();
   const { hideTimer } = useTheme();
   const puzzleOriginState = readPuzzleOriginState(location.state);
-  
-  if (!puzzleOriginState) {
-    console.log(`[PuzzlePage] No origin state found - puzzle opened without prior navigation context`);
-  } else {
-    console.log(`[PuzzlePage] Opened puzzle with origin state`, puzzleOriginState);
-  }
+  const requestedCreatorPlaytest = new URLSearchParams(location.search).get("creatorPlaytest") === "1";
 
   const [data, setData] = useState<PersistedPuzzle | null>(null);
   const [pauseMenuOpen, setPauseMenuOpen] = useState(false);
@@ -532,6 +492,7 @@ export function PuzzlePage(props: { editor?: boolean }) {
   const [viewportLayoutKind, setViewportLayoutKind] = useState<ViewportLayoutKind>(() => getViewportLayoutKind());
   const [videoViewportMode, setVideoViewportMode] = useState<VideoViewportMode>(() => getVideoViewportMode(getViewportLayoutKind()));
   const [portraitVideoHeight, setPortraitVideoHeight] = useState<number | null>(null);
+  const [portraitBoardHeight, setPortraitBoardHeight] = useState<number | null>(null);
   const [sideVideoWidth, setSideVideoWidth] = useState<number | null>(null);
   const tickRef = useRef<number | null>(null);
   const holdDelayRef = useRef<number | null>(null);
@@ -558,8 +519,10 @@ export function PuzzlePage(props: { editor?: boolean }) {
     const target = event.target;
     if (!(target instanceof Element)) return;
 
-    // Keep selection while interacting with true cell hits on the canvas.
-    if (target.closest("canvas")) return;
+    // Keep selection while interacting with the rendered puzzle. The player is
+    // SVG-based now; treating only <canvas> as the board clears SudokuPad's
+    // multi-selection state before the board interaction handler can update it.
+    if (target.closest(".sphenpad-native-board, .sphenpad-sudokupad-renderer, .sphenpad-board-interaction")) return;
     if (target.closest("button, input, textarea, select, a, label, [role='button']")) return;
 
     setSelection([]);
@@ -584,23 +547,9 @@ export function PuzzlePage(props: { editor?: boolean }) {
     const drag = videoResizeRef.current;
     const gridLayout = gridLayoutRef.current;
     if (!drag || drag.pointerId !== event.pointerId || !gridLayout) return;
-
-    const controlsHeight = gridLayout.querySelector<HTMLElement>(".kbdPanel")?.getBoundingClientRect().height ?? 0;
-    const videoWidth = gridLayout.querySelector<HTMLElement>(".puzzleGridVideoPlayer")?.getBoundingClientRect().width ?? 0;
-    const boardSurface = gridLayout.querySelector<HTMLElement>(".boardSurface");
-    const boardCanvas = boardSurface?.querySelector<HTMLCanvasElement>("canvas");
-    const puzzleHeightAtMaximumSize = boardSurface && boardCanvas && boardCanvas.clientWidth > 0
-      ? boardSurface.clientWidth * (boardCanvas.clientHeight / boardCanvas.clientWidth)
-      : 0;
-    const minimumVideoHeight = Math.max(
-      56,
-      videoWidth * (9 / 16) * 0.25,
-      gridLayout.getBoundingClientRect().height - controlsHeight - 10 - puzzleHeightAtMaximumSize
-    );
-    const availableVideoHeight = gridLayout.getBoundingClientRect().height - controlsHeight - 138;
-    const maximumVideoHeight = Math.max(minimumVideoHeight, Math.min(videoWidth * (9 / 16), availableVideoHeight));
-    const nextHeight = Math.min(maximumVideoHeight, Math.max(minimumVideoHeight, drag.startHeight + event.clientY - drag.startY));
-    setPortraitVideoHeight(nextHeight);
+    const next = getPortraitVideoLayout(gridLayout, drag.startHeight + event.clientY - drag.startY);
+    setPortraitVideoHeight(next.videoHeight);
+    setPortraitBoardHeight(next.boardHeight);
     event.preventDefault();
     event.stopPropagation();
   }
@@ -720,19 +669,23 @@ export function PuzzlePage(props: { editor?: boolean }) {
         return;
       }
       const normalizedBase = normalizePersistedDefinition({ ...local, progress: normalizeProgress(local.progress) });
-      const normalized = editor
-        ? { ...normalizedBase, progress: { ...normalizedBase.progress, paused: false } }
-        : normalizedBase;
+      const creatorPlaytest = requestedCreatorPlaytest && Boolean(normalizedBase.def.meta.creatorPuzzle);
+      const normalized = creatorPlaytest
+        ? freshCreatorPlaytestData(normalizedBase)
+        : editor
+          ? { ...normalizedBase, progress: { ...normalizedBase.progress, paused: false } }
+          : normalizedBase;
       setData(normalized);
-      setPauseMenuOpen(editor ? false : Boolean(normalized.progress.paused));
-      await upsertPuzzle(key, normalized);
+      setPauseMenuOpen(editor || creatorPlaytest ? false : Boolean(normalized.progress.paused));
+      if (!creatorPlaytest) await upsertPuzzle(key, normalized);
     })();
-  }, [key, nav, editor]);
+  }, [key, nav, editor, requestedCreatorPlaytest]);
 
   useEffect(() => {
     const cancelledRef = { current: false };
 
     const reloadFromStorage = async () => {
+      if (requestedCreatorPlaytest) return;
       const local = await getPuzzle(key);
       if (cancelledRef.current || !local) return;
       const normalizedBase = normalizePersistedDefinition({ ...local, progress: normalizeProgress(local.progress) });
@@ -756,11 +709,11 @@ export function PuzzlePage(props: { editor?: boolean }) {
       cancelledRef.current = true;
       unsubscribe();
     };
-  }, [key, editor]);
+  }, [key, editor, requestedCreatorPlaytest]);
 
   useEffect(() => {
-    if (editor) return;
-    if (!data) return;
+    if (editor || requestedCreatorPlaytest) return;
+    if (!data || data.def.meta.creatorPuzzle) return;
     if (!hasIncompleteMeta(data)) return;
     const source = (data.def.sourceId ?? key ?? "").trim();
     if (!source) return;
@@ -804,7 +757,7 @@ export function PuzzlePage(props: { editor?: boolean }) {
         metadataRefreshInFlightRef.current.delete(refreshKey);
       }
     })();
-  }, [data, key, pauseMenuOpen, editor]);
+  }, [data, key, pauseMenuOpen, editor, requestedCreatorPlaytest]);
 
   useEffect(() => {
     const viewport = window.visualViewport;
@@ -870,14 +823,38 @@ export function PuzzlePage(props: { editor?: boolean }) {
   }, [videoPlayerOpen, videoViewportMode]);
 
   useEffect(() => {
+    let rafId: number | null = null;
+    const timeoutIds: number[] = [];
+    const clearScheduled = () => {
+      if (rafId !== null) window.cancelAnimationFrame(rafId);
+      rafId = null;
+      for (const id of timeoutIds.splice(0)) window.clearTimeout(id);
+    };
+
     if (videoViewportMode !== "mobile-portrait" || !videoPlayerOpen) {
-      setPortraitVideoHeight(null);
+      rafId = window.requestAnimationFrame(() => {
+        setPortraitVideoHeight(null);
+        setPortraitBoardHeight(null);
+      });
+      return clearScheduled;
     }
+
+    const syncInitialPortraitVideoLayout = () => {
+      const gridLayout = gridLayoutRef.current;
+      const video = gridLayout?.querySelector<HTMLElement>(".puzzleGridVideoPlayer");
+      if (!gridLayout || !video) return;
+      const next = getPortraitVideoLayout(gridLayout, video.getBoundingClientRect().height);
+      setPortraitVideoHeight(next.videoHeight);
+      setPortraitBoardHeight(next.boardHeight);
+    };
+    rafId = window.requestAnimationFrame(syncInitialPortraitVideoLayout);
+    for (const delay of [60, 160, 320]) timeoutIds.push(window.setTimeout(syncInitialPortraitVideoLayout, delay));
+    return clearScheduled;
   }, [videoPlayerOpen, videoViewportMode]);
 
   useEffect(() => {
-    if (editor) return;
-    if (!data) return;
+    if (editor || requestedCreatorPlaytest) return;
+    if (!data || data.def.meta.creatorPuzzle) return;
     const currentRevision = data.def.importRevision ?? 0;
     if (currentRevision >= SUDOKUPAD_IMPORT_REVISION) return;
 
@@ -927,7 +904,7 @@ export function PuzzlePage(props: { editor?: boolean }) {
         definitionRefreshInFlightRef.current.delete(refreshKey);
       }
     })();
-  }, [data, key, editor]);
+  }, [data, key, editor, requestedCreatorPlaytest]);
 
   async function refreshFolders() {
     const [nextFolders, nextPuzzleRows] = await Promise.all([listFolders(), listPuzzles()]);
@@ -943,8 +920,8 @@ export function PuzzlePage(props: { editor?: boolean }) {
   // look it up in the archive manifest and silently restore the fields.
   const archiveMetaRecoveryInFlightRef = useRef(new Set<string>());
   useEffect(() => {
-    if (editor) return;
-    if (!data) return;
+    if (editor || requestedCreatorPlaytest) return;
+    if (!data || data.def.meta.creatorPuzzle) return;
     const meta = data.def.meta ?? {};
     // Skip if archive meta already present.
     if (meta.archiveConstraints !== undefined || meta.archiveYouTubeUrl !== undefined) return;
@@ -992,11 +969,11 @@ export function PuzzlePage(props: { editor?: boolean }) {
         archiveMetaRecoveryInFlightRef.current.delete(puzzleKey);
       }
     })();
-  }, [data, key, editor]);
+  }, [data, key, editor, requestedCreatorPlaytest]);
 
   async function persist(next: PersistedPuzzle) {
     setData(next);
-    await upsertPuzzle(key, next);
+    if (!requestedCreatorPlaytest) await upsertPuzzle(key, next);
   }
 
   useEffect(() => {
@@ -1017,14 +994,14 @@ export function PuzzlePage(props: { editor?: boolean }) {
         next.updatedAt = Date.now();
         return next;
       });
-      if (promotedNext) void upsertPuzzle(key, promotedNext);
+      if (promotedNext && !requestedCreatorPlaytest) void upsertPuzzle(key, promotedNext);
     }, 250);
 
     return () => {
       if (tickRef.current) window.clearInterval(tickRef.current);
       tickRef.current = null;
     };
-  }, [data, editor]);
+  }, [data, editor, requestedCreatorPlaytest]);
 
   const meta = data?.def.meta;
   const youtubeVideoId = useMemo(() => parseYouTubeVideoId(meta?.archiveYouTubeUrl), [meta?.archiveYouTubeUrl]);
@@ -1097,7 +1074,7 @@ export function PuzzlePage(props: { editor?: boolean }) {
     for (const p of patches) nextProgress = applyPatch(nextProgress, p);
 
     // Editing after completion reopens the completion flow on re-solve, keeping timer paused until restart.
-    const solvedNow = isSolved(nextProgress, data.def.cosmetics.solution);
+    const solvedNow = isSolved(nextProgress, puzzleSolution(data.def));
     if (recordHistory && data.progress.status === "complete" && !solvedNow) {
       nextProgress = {
         ...nextProgress,
@@ -1284,7 +1261,7 @@ export function PuzzlePage(props: { editor?: boolean }) {
         updatedAt: Date.now(),
       };
 
-      await upsertPuzzle(key, nextData);
+      if (!requestedCreatorPlaytest) await upsertPuzzle(key, nextData);
       setData(nextData);
       setBoardReloadNonce((current) => current + 1);
       setCompletionOpen(false);
@@ -1465,7 +1442,7 @@ export function PuzzlePage(props: { editor?: boolean }) {
   function onCheckAnswers() {
     if (!data) return;
     const { cells } = data.progress;
-    const solution = data.def.cosmetics.solution;
+    const solution = puzzleSolution(data.def);
     const rows = cells.length;
     const cols = cells[0]?.length ?? 0;
     let allCorrect = true;
@@ -1496,7 +1473,9 @@ export function PuzzlePage(props: { editor?: boolean }) {
     if (!data) return;
     const source = (data.def.sourceId ?? key).trim();
     if (!source) return;
-    const url = /^https?:\/\//i.test(source) ? source : `https://sudokupad.app/${source}`;
+    const url = data.def.meta.creatorPuzzle
+      ? creatorSudokuPadUrl(data.def)
+      : /^https?:\/\//i.test(source) ? source : `https://sudokupad.app/${source}`;
     if (!navigator?.clipboard?.writeText) return;
     try {
       await navigator.clipboard.writeText(url);
@@ -1849,7 +1828,7 @@ export function PuzzlePage(props: { editor?: boolean }) {
 
   useEffect(() => {
     if (!data) return;
-    const solved = isSolved(data.progress, data.def.cosmetics.solution);
+    const solved = isSolved(data.progress, puzzleSolution(data.def));
     if (!solved || data.progress.status === "complete") return;
     queueMicrotask(() => {
       applyPatches([
@@ -2172,32 +2151,29 @@ export function PuzzlePage(props: { editor?: boolean }) {
           <button
             className="btn"
             onClick={() => {
+              if (requestedCreatorPlaytest && data.def.meta.creatorPuzzle) {
+                nav(`/creator/${encodeURIComponent(key)}`, { replace: true, state: location.state });
+                return;
+              }
               if (editor) {
                 startTransition(() => nav("/creator"));
                 return;
               }
-              console.log(`[PuzzlePage] User exiting puzzle, key=${key}`);
               if (!puzzleOriginState) {
-                console.log(`[PuzzlePage] No origin state available - returning to main menu`);
                 startTransition(() => nav("/"));
                 return;
               }
-              console.log(
-                "[PuzzlePage] Returning to origin:",
-                `page=${puzzleOriginState.page}`,
-                `path=${puzzleOriginState.path}`,
-                `scrollY=${puzzleOriginState.scrollY}`,
-                puzzleOriginState.context ? `context=${JSON.stringify(puzzleOriginState.context)}` : ""
-              );
               nav(puzzleOriginState.path, {
                 replace: true,
                 state: withPuzzleReturnState(undefined, puzzleOriginState),
               });
             }}
           >
-            {editor ? "← Creator" : "← Menu"}
+            {requestedCreatorPlaytest && data.def.meta.creatorPuzzle ? "← Creator" : editor ? "← Creator" : "← Menu"}
           </button>
           <div className="puzzleTopbarRight">
+            {!editor && data.def.meta.creatorPuzzle && !requestedCreatorPlaytest ? <button className="btn" onClick={() => nav(`/creator/${encodeURIComponent(key)}`)} title="Edit this creator puzzle" type="button">Edit</button> : null}
+            {requestedCreatorPlaytest && data.def.meta.creatorPuzzle ? <div className="creatorPlaytestBadge">Playtest</div> : null}
             {!editor && !hideTimer ? <div className="puzzleTimer">{timeStr}</div> : null}
             {!editor ? <button className="btn" onClick={onCheckAnswers} title="Check answers" disabled={data.progress.status === "complete" || data.progress.paused}>
               <IconCheck />
@@ -2289,6 +2265,8 @@ export function PuzzlePage(props: { editor?: boolean }) {
                 onLineTapEdge={onLineTapEdge}
                 onLineGridTouch={clearLineToolSelection}
                 onDoubleCell={onDoubleSelectCell}
+                requestedHeight={portraitBoardHeight ?? undefined}
+                scalePuzzleStrokes={videoLayoutOn}
               />
             </div>
           </div>

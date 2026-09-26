@@ -1,0 +1,155 @@
+{
+  "target": "SudokuPad 0.612.0 captured HAR",
+  "scope": {
+    "requested": 1000,
+    "archiveSize": 4051,
+    "seed": 106120,
+    "selection": "21 mandatory Phase 9E timeout source IDs + uniform sample without replacement from remaining 4,030 archive puzzles",
+    "mandatoryPhase9EHeavy": 21,
+    "randomSample": 979
+  },
+  "frozenFirstPass": {
+    "passed": 932,
+    "timeouts": 68,
+    "structuralMismatches": 0,
+    "rasterMismatches": 0
+  },
+  "timeoutResolution": {
+    "firstPassTimeouts": 68,
+    "resolvedOnSecondPass": 27,
+    "heavyPassesAt45s": 20,
+    "actualCompatibilityMismatchesFound": 3,
+    "remainingPerformanceUnresolved": 18
+  },
+  "groupedFix": {
+    "count": 3,
+    "rootCause": "metadata.bgimage SVG image incorrectly participated in late content-bound expansion; stock background visuals do not expand serialized puzzle bounds",
+    "validation": {
+      "passed": 3,
+      "total": 3
+    }
+  },
+  "finalDefinitiveComparisons": {
+    "passed": 982,
+    "compatibilityFailures": 0,
+    "performanceUnresolved": 18,
+    "attemptedCorpus": 1000
+  },
+  "performanceUnresolved": {
+    "stockRenderTimeouts": [
+      {
+        "name": "archive:100ywt1d63",
+        "archiveIndex": 38,
+        "timeoutStage": "stock-render"
+      },
+      {
+        "name": "archive:27v1lv24c3",
+        "archiveIndex": 109,
+        "timeoutStage": "stock-render"
+      },
+      {
+        "name": "archive:7d9f9mb2y3",
+        "archiveIndex": 439,
+        "timeoutStage": "stock-render"
+      },
+      {
+        "name": "archive:7llvcaivec",
+        "archiveIndex": 452,
+        "timeoutStage": "stock-render"
+      },
+      {
+        "name": "archive:esjz6meusc",
+        "archiveIndex": 1055,
+        "timeoutStage": "stock-render"
+      },
+      {
+        "name": "archive:gbwivexeh7",
+        "archiveIndex": 1190,
+        "timeoutStage": "stock-render"
+      },
+      {
+        "name": "archive:james-sinclair/stickiest-notes",
+        "archiveIndex": 1364,
+        "timeoutStage": "stock-render"
+      },
+      {
+        "name": "archive:jgdFdqhmn2",
+        "archiveIndex": 1384,
+        "timeoutStage": "stock-render"
+      },
+      {
+        "name": "archive:l01qpi8oc3",
+        "archiveIndex": 1449,
+        "timeoutStage": "stock-render"
+      },
+      {
+        "name": "archive:lhid2td2zu",
+        "archiveIndex": 1459,
+        "timeoutStage": "stock-render"
+      },
+      {
+        "name": "archive:lipt9yn6r4",
+        "archiveIndex": 1460,
+        "timeoutStage": "stock-render"
+      },
+      {
+        "name": "archive:p8ushghwpc",
+        "archiveIndex": 1650,
+        "timeoutStage": "stock-render"
+      },
+      {
+        "name": "archive:sudoku/Pm8N43nTMG",
+        "archiveIndex": 2804,
+        "timeoutStage": "stock-render"
+      }
+    ],
+    "candidateBudgetCases": [
+      {
+        "name": "b193jegg4x",
+        "archiveIndex": 791,
+        "candidateOnlyPassed": true,
+        "timeoutStage": null,
+        "seconds": 25.4
+      },
+      {
+        "name": "sudoku/jMQR24JRBN",
+        "archiveIndex": 3271,
+        "candidateOnlyPassed": true,
+        "timeoutStage": null,
+        "seconds": 30.9
+      },
+      {
+        "name": "jw1onozqhg",
+        "archiveIndex": 1400,
+        "candidateOnlyPassed": false,
+        "timeoutStage": "candidate-raster",
+        "seconds": 34.7
+      },
+      {
+        "name": "eb90s76a4e",
+        "archiveIndex": 1028,
+        "candidateOnlyPassed": false,
+        "timeoutStage": "candidate-raster",
+        "seconds": 35.4
+      },
+      {
+        "name": "sudoku/jfrf3mHRbN",
+        "archiveIndex": 3286,
+        "candidateOnlyPassed": false,
+        "timeoutStage": "candidate-raster",
+        "seconds": 35.4
+      }
+    ],
+    "notes": "Candidate-only diagnostics show 2/5 complete fully; the other 3 complete candidate rendering but exceed the diagnostic budget during candidate rasterization. The 13 stock-render cases never complete the captured stock reference within the bounded diagnostic window."
+  },
+  "regression": {
+    "passed": 3,
+    "total": null,
+    "fixtures": [
+      "captured-real",
+      "labels-compact-marks",
+      "dark-grid-settings"
+    ]
+  },
+  "acceptance": "Requested 1,000-case Phase 10B sample sweep completed. 982 have definitive passing stock-vs-SphenPad browser comparisons; 18 are explicitly performance-unresolved and are not counted as passes."
+}

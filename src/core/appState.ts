@@ -7,6 +7,7 @@ import {
 } from "./localDataState";
 import type { PersistedPuzzle } from "./model";
 import { exportStorageSnapshot, importStorageSnapshot, readStorageCounts, type PuzzleFolder } from "./storage";
+import { mergeCreatorProjectStorageRows, type CreatorProjectStorageRow } from "../sudokupad/creator/projectStorage";
 
 const APP_SNAPSHOT_IMPORTED_EVENT = "sphenpad:app-snapshot-imported";
 
@@ -21,11 +22,13 @@ export type LocalAppSnapshot = {
   localStorage: Partial<Record<SyncedLocalStorageKey, string>>;
   folders: PuzzleFolder[];
   puzzles: PuzzleSnapshotRow[];
+  creatorProjects: CreatorProjectStorageRow[];
 };
 
 export type LocalAppSnapshotMetadata = {
   updatedAt: number;
   puzzleCount: number;
+  creatorProjectCount: number;
   folderCount: number;
   localStorageCount: number;
   hasData: boolean;
@@ -51,11 +54,12 @@ export async function exportLocalAppSnapshotMetadata(): Promise<LocalAppSnapshot
   const [counts, localStorage] = await Promise.all([readStorageCounts(), Promise.resolve(readSyncedLocalStorage())]);
   const localStorageCount = Object.keys(localStorage).length;
   const updatedAt = readLocalDataUpdatedAt();
-  const hasData = updatedAt > 0 || counts.puzzleCount > 0 || counts.folderCount > 0 || localStorageCount > 0;
+  const hasData = updatedAt > 0 || counts.puzzleCount > 0 || counts.creatorProjectCount > 0 || counts.folderCount > 0 || localStorageCount > 0;
 
   return {
     updatedAt,
     puzzleCount: counts.puzzleCount,
+    creatorProjectCount: counts.creatorProjectCount,
     folderCount: counts.folderCount,
     localStorageCount,
     hasData,
@@ -68,6 +72,7 @@ export async function exportLocalAppSnapshot(): Promise<LocalAppSnapshot> {
     readLocalDataUpdatedAt(),
     ...storageSnapshot.puzzles.map((row) => row.data.updatedAt || 0),
     ...storageSnapshot.folders.map((folder) => folder.updatedAt || 0),
+    ...storageSnapshot.creatorProjects.map((row) => Math.max(row.updatedAt || 0, row.lastOpenedAt || 0)),
   );
 
   return {
@@ -76,12 +81,13 @@ export async function exportLocalAppSnapshot(): Promise<LocalAppSnapshot> {
     localStorage: readSyncedLocalStorage(),
     folders: storageSnapshot.folders,
     puzzles: storageSnapshot.puzzles,
+    creatorProjects: storageSnapshot.creatorProjects,
   };
 }
 
 export async function importLocalAppSnapshot(snapshot: LocalAppSnapshot, notify = false) {
   applySyncedLocalStorage(snapshot.localStorage, snapshot.updatedAt, false);
-  await importStorageSnapshot({ puzzles: snapshot.puzzles, folders: snapshot.folders }, false, snapshot.updatedAt);
+  await importStorageSnapshot({ puzzles: snapshot.puzzles, folders: snapshot.folders, creatorProjects: snapshot.creatorProjects ?? [] }, false, snapshot.updatedAt);
   markLocalDataChanged(snapshot.updatedAt, notify);
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event(APP_SNAPSHOT_IMPORTED_EVENT));
@@ -95,7 +101,7 @@ export function onLocalAppSnapshotImported(listener: () => void) {
 }
 
 export function hasLocalAppSnapshotData(snapshot: LocalAppSnapshot): boolean {
-  return snapshot.puzzles.length > 0 || snapshot.folders.length > 0 || Object.keys(snapshot.localStorage).length > 0;
+  return snapshot.puzzles.length > 0 || (snapshot.creatorProjects?.length ?? 0) > 0 || snapshot.folders.length > 0 || Object.keys(snapshot.localStorage).length > 0;
 }
 
 /**
@@ -172,12 +178,16 @@ export function mergeSnapshots(local: LocalAppSnapshot, cloud: LocalAppSnapshot)
     });
   }
 
+  const creatorProjects = mergeCreatorProjectStorageRows(local.creatorProjects ?? [], cloud.creatorProjects ?? []);
+  const deletedCreatorProjectKeys = new Set(creatorProjects.filter((row) => row.deletedAt).map((row) => row.key));
+  const mergedPuzzles = Array.from(puzzleMap.values()).filter((row) => !deletedCreatorProjectKeys.has(row.key));
   const useLocalSettings = local.updatedAt >= cloud.updatedAt;
   return {
     version: 1,
     updatedAt: Math.max(local.updatedAt, cloud.updatedAt),
     localStorage: useLocalSettings ? local.localStorage : cloud.localStorage,
     folders: Array.from(folderMap.values()),
-    puzzles: Array.from(puzzleMap.values()),
+    puzzles: mergedPuzzles,
+    creatorProjects,
   };
 }

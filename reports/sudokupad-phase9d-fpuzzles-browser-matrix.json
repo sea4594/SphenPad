@@ -1,0 +1,1343 @@
+{
+  "target": "SudokuPad 0.612.0 captured HAR",
+  "referenceHar": "/mnt/data/sudokupad.app.har",
+  "referenceHarSha256": "12d6ffd3ec204ba14cb6d5aab3da98444be49438d5aab8b664fe1fde34d2ecca",
+  "referenceScriptSha256": "3c53d973ffa62d541e300be9fddb53f19c2a4cc32eb98769a54904240343c9fe",
+  "chromium": "/usr/bin/chromium",
+  "chromiumVersion": "Chromium 144.0.7559.96 built on Debian GNU/Linux 13 (trixie)",
+  "pixelRatioThreshold": 0.002,
+  "phase": "9D",
+  "scope": "F-Puzzles browser conversion matrix",
+  "recognizedKeys": [
+    "size",
+    "disabledlogic",
+    "truecandidatesoptions",
+    "grid",
+    "author",
+    "title",
+    "ruleset",
+    "solution",
+    "antiknight",
+    "antiking",
+    "nonconsecutive",
+    "littlekillersum",
+    "arrow",
+    "killercage",
+    "cage",
+    "fogofwar",
+    "foglight",
+    "diagonal+",
+    "diagonal-",
+    "ratio",
+    "difference",
+    "xv",
+    "thermometer",
+    "palindrome",
+    "sandwichsum",
+    "even",
+    "odd",
+    "extraregion",
+    "clone",
+    "quadruple",
+    "betweenline",
+    "lockout",
+    "minimum",
+    "maximum",
+    "line",
+    "rectangle",
+    "circle",
+    "text",
+    "disjointgroups",
+    "negative",
+    "triggereffect"
+  ],
+  "recognizedKeyCount": 41,
+  "fixtures": 57,
+  "passed": 57,
+  "failed": 0,
+  "notes": [
+    "Phase 4 had already established 288/288 archived F-Puzzles converter parity; Phase 9D adds browser-render conformance.",
+    "All 41 recognized converter keys are browser-covered, with additional fixtures for visually distinct subbranches.",
+    "Unknown-key compatibility diagnostics are asserted.",
+    "Converted-input historical/experimental background behavior and explicit/legacy puzzle-font setting plumbing are covered.",
+    "Exact optional font binary/glyph verification remains Phase 10 because the 13 font binaries were not present in the supplied HAR."
+  ],
+  "results": [
+    {
+      "name": "fpuz-antiking",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          288,
+          288
+        ],
+        "candidateSize": [
+          288,
+          288
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 1,
+        "meanChannelDelta": 9.645061728395061e-05
+      },
+      "candidateAssertions": [],
+      "note": "Recognized global rule: antiking"
+    },
+    {
+      "name": "fpuz-antiknight",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          288,
+          288
+        ],
+        "candidateSize": [
+          288,
+          288
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 1,
+        "meanChannelDelta": 9.645061728395061e-05
+      },
+      "candidateAssertions": [],
+      "note": "Recognized global rule: antiknight"
+    },
+    {
+      "name": "fpuz-arrow",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          288,
+          288
+        ],
+        "candidateSize": [
+          288,
+          288
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 1,
+        "meanChannelDelta": 0.00043402777777777775
+      },
+      "candidateAssertions": [],
+      "note": "Arrow with ordinary circular bulb"
+    },
+    {
+      "name": "fpuz-arrow-customstyle",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          288,
+          288
+        ],
+        "candidateSize": [
+          288,
+          288
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 1,
+        "meanChannelDelta": 0.0005184220679012346
+      },
+      "candidateAssertions": [],
+      "note": "Arrow metadata customstyle branch"
+    },
+    {
+      "name": "fpuz-arrow-multicell-bulb",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          288,
+          288
+        ],
+        "candidateSize": [
+          288,
+          288
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 1,
+        "meanChannelDelta": 0.04994936342592592
+      },
+      "candidateAssertions": [],
+      "note": "Arrow multi-cell/non-axis bulb branch"
+    },
+    {
+      "name": "fpuz-author",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          288,
+          288
+        ],
+        "candidateSize": [
+          288,
+          288
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 1,
+        "meanChannelDelta": 9.645061728395061e-05
+      },
+      "candidateAssertions": [],
+      "note": "Recognized metadata key: author"
+    },
+    {
+      "name": "fpuz-betweenline",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          288,
+          288
+        ],
+        "candidateSize": [
+          288,
+          288
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 1,
+        "meanChannelDelta": 0.001338252314814815
+      },
+      "candidateAssertions": [],
+      "note": "Between-line endpoint and retracted line geometry"
+    },
+    {
+      "name": "fpuz-cage",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          288,
+          288
+        ],
+        "candidateSize": [
+          288,
+          288
+        ],
+        "differentPixelRatio": 2.4112654320987653e-05,
+        "maxChannelDelta": 14,
+        "meanChannelDelta": 0.0003415959362139918
+      },
+      "candidateAssertions": [],
+      "note": "Generic cage conversion"
+    },
+    {
+      "name": "fpuz-cage-box-indexer",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          288,
+          288
+        ],
+        "candidateSize": [
+          288,
+          288
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 1,
+        "meanChannelDelta": 0.0017722800925925927
+      },
+      "candidateAssertions": [],
+      "note": "Generic cage Box Indexer style inference"
+    },
+    {
+      "name": "fpuz-cage-column-indexer",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          288,
+          288
+        ],
+        "candidateSize": [
+          288,
+          288
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 1,
+        "meanChannelDelta": 0.0017722800925925927
+      },
+      "candidateAssertions": [],
+      "note": "Generic cage Column Indexer style inference"
+    },
+    {
+      "name": "fpuz-cage-foglight",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          288,
+          288
+        ],
+        "candidateSize": [
+          288,
+          288
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 1,
+        "meanChannelDelta": 0.0009283371913580247
+      },
+      "candidateAssertions": [],
+      "note": "Generic cage FOGLIGHT branch"
+    },
+    {
+      "name": "fpuz-cage-fow",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          288,
+          288
+        ],
+        "candidateSize": [
+          288,
+          288
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 1,
+        "meanChannelDelta": 0.0006028163580246913
+      },
+      "candidateAssertions": [],
+      "note": "Generic cage FOW fog-lamp branch"
+    },
+    {
+      "name": "fpuz-cage-metadata",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          288,
+          288
+        ],
+        "candidateSize": [
+          288,
+          288
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 1,
+        "meanChannelDelta": 9.645061728395061e-05
+      },
+      "candidateAssertions": [],
+      "note": "Metadata encoded in a transparent/empty cage"
+    },
+    {
+      "name": "fpuz-cage-row-indexer",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          288,
+          288
+        ],
+        "candidateSize": [
+          288,
+          288
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 1,
+        "meanChannelDelta": 0.0017722800925925927
+      },
+      "candidateAssertions": [],
+      "note": "Generic cage Row Indexer style inference"
+    },
+    {
+      "name": "fpuz-circle",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          288,
+          288
+        ],
+        "candidateSize": [
+          288,
+          288
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 1,
+        "meanChannelDelta": 0.0008359053497942387
+      },
+      "candidateAssertions": [],
+      "note": "Circle cosmetic"
+    },
+    {
+      "name": "fpuz-clone",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          288,
+          288
+        ],
+        "candidateSize": [
+          288,
+          288
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 1,
+        "meanChannelDelta": 7.233796296296296e-05
+      },
+      "candidateAssertions": [],
+      "note": "Clone underlays"
+    },
+    {
+      "name": "fpuz-diagonal-minus",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          288,
+          288
+        ],
+        "candidateSize": [
+          288,
+          288
+        ],
+        "differentPixelRatio": 7.233796296296296e-05,
+        "maxChannelDelta": 10,
+        "meanChannelDelta": 0.009496367026748971
+      },
+      "candidateAssertions": [],
+      "note": "Negative Sudoku-X diagonal"
+    },
+    {
+      "name": "fpuz-diagonal-plus",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          288,
+          288
+        ],
+        "candidateSize": [
+          288,
+          288
+        ],
+        "differentPixelRatio": 7.233796296296296e-05,
+        "maxChannelDelta": 10,
+        "meanChannelDelta": 0.012028195730452674
+      },
+      "candidateAssertions": [],
+      "note": "Positive Sudoku-X diagonal"
+    },
+    {
+      "name": "fpuz-difference",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          288,
+          288
+        ],
+        "candidateSize": [
+          288,
+          288
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 1,
+        "meanChannelDelta": 0.00012056327160493826
+      },
+      "candidateAssertions": [],
+      "note": "Difference dots with and without explicit value"
+    },
+    {
+      "name": "fpuz-disabledlogic",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          288,
+          288
+        ],
+        "candidateSize": [
+          288,
+          288
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 1,
+        "meanChannelDelta": 9.645061728395061e-05
+      },
+      "candidateAssertions": [],
+      "note": "Recognized nonvisual key: disabledlogic"
+    },
+    {
+      "name": "fpuz-disjointgroups",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          288,
+          288
+        ],
+        "candidateSize": [
+          288,
+          288
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 1,
+        "meanChannelDelta": 9.645061728395061e-05
+      },
+      "candidateAssertions": [],
+      "note": "Disjoint-group cage generation/global rule"
+    },
+    {
+      "name": "fpuz-even",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          288,
+          288
+        ],
+        "candidateSize": [
+          288,
+          288
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 1,
+        "meanChannelDelta": 9.645061728395061e-05
+      },
+      "candidateAssertions": [],
+      "note": "Even-cell square"
+    },
+    {
+      "name": "fpuz-experimental-tmmb",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          288,
+          288
+        ],
+        "candidateSize": [
+          288,
+          288
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 1,
+        "meanChannelDelta": 0.0005907600308641976
+      },
+      "candidateAssertions": [],
+      "note": "Converted F-Puzzles input gets experimental TmMBJj8jbr background and stock thermo hiding"
+    },
+    {
+      "name": "fpuz-extraregion",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          288,
+          288
+        ],
+        "candidateSize": [
+          288,
+          288
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 1,
+        "meanChannelDelta": 0.002857349537037037
+      },
+      "candidateAssertions": [],
+      "note": "Extra-region cage"
+    },
+    {
+      "name": "fpuz-foglight",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          288,
+          288
+        ],
+        "candidateSize": [
+          288,
+          288
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 1,
+        "meanChannelDelta": 0.00025318287037037036
+      },
+      "candidateAssertions": [],
+      "note": "Direct foglight cells"
+    },
+    {
+      "name": "fpuz-fogofwar",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          288,
+          288
+        ],
+        "candidateSize": [
+          288,
+          288
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 1,
+        "meanChannelDelta": 0.0006028163580246913
+      },
+      "candidateAssertions": [],
+      "note": "Direct fog-of-war lamp conversion"
+    },
+    {
+      "name": "fpuz-font-explicit",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          288,
+          304
+        ],
+        "candidateSize": [
+          288,
+          304
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 1,
+        "meanChannelDelta": 9.137426900584795e-05
+      },
+      "candidateAssertions": [
+        {
+          "type": "root-class",
+          "className": "puzzlefont-baublemonogram",
+          "ok": true,
+          "found": 1
+        }
+      ],
+      "note": "Converted F-Puzzles input carries explicit puzzlefont setting; binary font bytes are Phase 10"
+    },
+    {
+      "name": "fpuz-font-legacy-dark",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          288,
+          288
+        ],
+        "candidateSize": [
+          288,
+          288
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 1,
+        "meanChannelDelta": 0.012345679012345678
+      },
+      "candidateAssertions": [
+        {
+          "type": "root-class",
+          "className": "puzzlefont-sevensegment",
+          "ok": true,
+          "found": 1
+        }
+      ],
+      "note": "Converted F-Puzzles input maps legacy digitfont=12 to sevensegment and combines with dark mode"
+    },
+    {
+      "name": "fpuz-grid",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          288,
+          288
+        ],
+        "candidateSize": [
+          288,
+          288
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 1,
+        "meanChannelDelta": 0.0015391911008230453
+      },
+      "candidateAssertions": [],
+      "note": "Grid givens, center/corner marks and both color encodings"
+    },
+    {
+      "name": "fpuz-grid-null-region",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          288,
+          288
+        ],
+        "candidateSize": [
+          288,
+          288
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 1,
+        "meanChannelDelta": 7.233796296296296e-05
+      },
+      "candidateAssertions": [],
+      "note": "Grid null-region hidden-cage branch"
+    },
+    {
+      "name": "fpuz-historical-monopoly",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          288,
+          288
+        ],
+        "candidateSize": [
+          288,
+          288
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 1,
+        "meanChannelDelta": 9.645061728395061e-05
+      },
+      "candidateAssertions": [],
+      "note": "Converted F-Puzzles input still receives stock hard-coded MONOPOLYSUDOKU background"
+    },
+    {
+      "name": "fpuz-killercage",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          288,
+          288
+        ],
+        "candidateSize": [
+          288,
+          288
+        ],
+        "differentPixelRatio": 2.4112654320987653e-05,
+        "maxChannelDelta": 18,
+        "meanChannelDelta": 0.0006148726851851852
+      },
+      "candidateAssertions": [],
+      "note": "Killer cage conversion"
+    },
+    {
+      "name": "fpuz-line",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          288,
+          288
+        ],
+        "candidateSize": [
+          288,
+          288
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 1,
+        "meanChannelDelta": 0.0015432098765432098
+      },
+      "candidateAssertions": [],
+      "note": "Generic line conversion"
+    },
+    {
+      "name": "fpuz-littlekillersum",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          320,
+          288
+        ],
+        "candidateSize": [
+          320,
+          288
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 1,
+        "meanChannelDelta": 8.680555555555556e-05
+      },
+      "candidateAssertions": [],
+      "note": "Little-killer arrow and outside sum"
+    },
+    {
+      "name": "fpuz-lockout",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          288,
+          288
+        ],
+        "candidateSize": [
+          288,
+          288
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 1,
+        "meanChannelDelta": 9.645061728395061e-05
+      },
+      "candidateAssertions": [],
+      "note": "Recognized stock no-op key: lockout"
+    },
+    {
+      "name": "fpuz-maximum",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          288,
+          288
+        ],
+        "candidateSize": [
+          288,
+          288
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 1,
+        "meanChannelDelta": 0.0042920524691358024
+      },
+      "candidateAssertions": [],
+      "note": "Maximum arrows including adjacent-part suppression"
+    },
+    {
+      "name": "fpuz-minimum",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          288,
+          288
+        ],
+        "candidateSize": [
+          288,
+          288
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 1,
+        "meanChannelDelta": 0.004147376543209877
+      },
+      "candidateAssertions": [],
+      "note": "Minimum arrows including adjacent-part suppression"
+    },
+    {
+      "name": "fpuz-negative",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          288,
+          288
+        ],
+        "candidateSize": [
+          288,
+          288
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 1,
+        "meanChannelDelta": 9.645061728395061e-05
+      },
+      "candidateAssertions": [],
+      "note": "Negative constraint -> anti* global rule"
+    },
+    {
+      "name": "fpuz-negative-foglight",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          288,
+          288
+        ],
+        "candidateSize": [
+          288,
+          288
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 0,
+        "meanChannelDelta": 0.0
+      },
+      "candidateAssertions": [],
+      "note": "Negative foglight special branch"
+    },
+    {
+      "name": "fpuz-nonconsecutive",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          288,
+          288
+        ],
+        "candidateSize": [
+          288,
+          288
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 1,
+        "meanChannelDelta": 9.645061728395061e-05
+      },
+      "candidateAssertions": [],
+      "note": "Recognized global rule: nonconsecutive"
+    },
+    {
+      "name": "fpuz-odd",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          288,
+          288
+        ],
+        "candidateSize": [
+          288,
+          288
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 1,
+        "meanChannelDelta": 0.0005304783950617284
+      },
+      "candidateAssertions": [],
+      "note": "Odd-cell circle"
+    },
+    {
+      "name": "fpuz-palindrome",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          288,
+          288
+        ],
+        "candidateSize": [
+          288,
+          288
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 1,
+        "meanChannelDelta": 0.00010850694444444444
+      },
+      "candidateAssertions": [],
+      "note": "Palindrome line conversion"
+    },
+    {
+      "name": "fpuz-quadruple",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          288,
+          288
+        ],
+        "candidateSize": [
+          288,
+          288
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 1,
+        "meanChannelDelta": 9.645061728395061e-05
+      },
+      "candidateAssertions": [],
+      "note": "Quadruple multiline overlay"
+    },
+    {
+      "name": "fpuz-ratio",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          288,
+          288
+        ],
+        "candidateSize": [
+          288,
+          288
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 1,
+        "meanChannelDelta": 0.00016878858024691357
+      },
+      "candidateAssertions": [],
+      "note": "Ratio dots with and without explicit value"
+    },
+    {
+      "name": "fpuz-rectangle",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          288,
+          288
+        ],
+        "candidateSize": [
+          288,
+          288
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 1,
+        "meanChannelDelta": 0.001161426183127572
+      },
+      "candidateAssertions": [],
+      "note": "Rectangle cosmetic"
+    },
+    {
+      "name": "fpuz-ruleset",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          288,
+          288
+        ],
+        "candidateSize": [
+          288,
+          288
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 1,
+        "meanChannelDelta": 9.645061728395061e-05
+      },
+      "candidateAssertions": [],
+      "note": "Recognized metadata key: ruleset"
+    },
+    {
+      "name": "fpuz-sandwichsum",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          320,
+          288
+        ],
+        "candidateSize": [
+          320,
+          288
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 1,
+        "meanChannelDelta": 8.680555555555556e-05
+      },
+      "candidateAssertions": [],
+      "note": "Outside sandwich sum"
+    },
+    {
+      "name": "fpuz-size",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          288,
+          288
+        ],
+        "candidateSize": [
+          288,
+          288
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 1,
+        "meanChannelDelta": 9.645061728395061e-05
+      },
+      "candidateAssertions": [],
+      "note": "Recognized key: size / default region shape"
+    },
+    {
+      "name": "fpuz-solution",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          288,
+          288
+        ],
+        "candidateSize": [
+          288,
+          288
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 1,
+        "meanChannelDelta": 9.645061728395061e-05
+      },
+      "candidateAssertions": [],
+      "note": "Recognized key: explicit solution"
+    },
+    {
+      "name": "fpuz-text",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          288,
+          288
+        ],
+        "candidateSize": [
+          288,
+          288
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 1,
+        "meanChannelDelta": 0.0001808449074074074
+      },
+      "candidateAssertions": [],
+      "note": "Text cosmetic with NBSP conversion"
+    },
+    {
+      "name": "fpuz-text-white",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          288,
+          288
+        ],
+        "candidateSize": [
+          288,
+          288
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 1,
+        "meanChannelDelta": 0.00016878858024691357
+      },
+      "candidateAssertions": [],
+      "note": "White text gets stock black text stroke"
+    },
+    {
+      "name": "fpuz-thermometer",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          288,
+          288
+        ],
+        "candidateSize": [
+          288,
+          288
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 1,
+        "meanChannelDelta": 0.0005907600308641976
+      },
+      "candidateAssertions": [],
+      "note": "Thermometer bulb/line conversion"
+    },
+    {
+      "name": "fpuz-title",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          288,
+          288
+        ],
+        "candidateSize": [
+          288,
+          288
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 1,
+        "meanChannelDelta": 9.645061728395061e-05
+      },
+      "candidateAssertions": [],
+      "note": "Recognized metadata key: title"
+    },
+    {
+      "name": "fpuz-triggereffect",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          288,
+          288
+        ],
+        "candidateSize": [
+          288,
+          288
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 0,
+        "meanChannelDelta": 0.0
+      },
+      "candidateAssertions": [],
+      "note": "Triggered fog effect conversion"
+    },
+    {
+      "name": "fpuz-truecandidatesoptions",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          288,
+          288
+        ],
+        "candidateSize": [
+          288,
+          288
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 1,
+        "meanChannelDelta": 9.645061728395061e-05
+      },
+      "candidateAssertions": [],
+      "note": "Recognized nonvisual key: truecandidatesoptions"
+    },
+    {
+      "name": "fpuz-unknown-key",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          288,
+          288
+        ],
+        "candidateSize": [
+          288,
+          288
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 1,
+        "meanChannelDelta": 9.645061728395061e-05
+      },
+      "candidateAssertions": [
+        {
+          "type": "compatibility-diagnostic",
+          "code": "unknown-fpuzzles-key",
+          "path": "phase9UnknownConstraint",
+          "ok": true,
+          "found": 1
+        }
+      ],
+      "note": "Unknown F-Puzzles key is diagnosed and ignored for rendering"
+    },
+    {
+      "name": "fpuz-xv",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          288,
+          288
+        ],
+        "candidateSize": [
+          288,
+          288
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 1,
+        "meanChannelDelta": 9.645061728395061e-05
+      },
+      "candidateAssertions": [],
+      "note": "XV overlay conversion"
+    }
+  ]
+}

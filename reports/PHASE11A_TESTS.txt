@@ -1,0 +1,25 @@
+SphenPad Phase 11A verification
+Date: 2026-09-24
+
+PASS — targeted TypeScript check
+  tsc --noEmit --target ES2022 --module ESNext --moduleResolution Bundler --lib ES2022,DOM --skipLibCheck \
+    src/sudokupad/creator/project.ts \
+    src/sudokupad/creator/nativeAuthoring.ts \
+    src/sudokupad/creator/sudokumakerParity.ts
+
+PASS — isolated creator test compile + execution
+  Covers:
+  - CreatorProject v1 creation from existing creator PuzzleDefinition
+  - givens/solution/regions/constraint visual round-trip
+  - authored JSON v4 serialization/import
+  - legacy authored JSON v3 migration/import
+  - malformed/unsupported project rejection
+  - 47 unique SudokuMaker first-class tool IDs
+  - DifferentValues and CountingCircles inventory coverage
+  - worker API parity target: getCellsSeenByCells/getComponents/validateConstraints/validateGrid
+  Result: creator project + SudokuMaker parity tests passed
+
+PASS — package.json JSON validation
+
+NOT RUN — full npm build/lint in this container
+  The clean checkpoint contains no node_modules. `npm ci` was attempted twice but the container npm transport timed out; offline install then confirmed one required tarball was not cached (zod-validation-error 4.0.2). No product/test failure was observed. Run `npm ci`, then `npm run test-creator-project`, `npm run build`, and `npm run lint` in the normal project environment.

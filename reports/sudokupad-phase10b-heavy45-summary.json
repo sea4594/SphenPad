@@ -1,0 +1,677 @@
+{
+  "counts": {
+    "passed": 20,
+    "timeout": 18,
+    "structural": 3
+  },
+  "rows": [
+    {
+      "name": "archive:06vt5y9nwu",
+      "archiveIndex": 7,
+      "heavyPhase9E": true,
+      "kind": "passed",
+      "error": null,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          608,
+          608
+        ],
+        "candidateSize": [
+          608,
+          608
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 0,
+        "meanChannelDelta": 0.0
+      }
+    },
+    {
+      "name": "archive:100ywt1d63",
+      "archiveIndex": 38,
+      "heavyPhase9E": false,
+      "kind": "timeout",
+      "error": "TimeoutError()",
+      "structuralDifference": null,
+      "raster": null
+    },
+    {
+      "name": "archive:27v1lv24c3",
+      "archiveIndex": 109,
+      "heavyPhase9E": false,
+      "kind": "timeout",
+      "error": "TimeoutError()",
+      "structuralDifference": null,
+      "raster": null
+    },
+    {
+      "name": "archive:4b16rwzym1",
+      "archiveIndex": 261,
+      "heavyPhase9E": false,
+      "kind": "passed",
+      "error": null,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          1120,
+          1120
+        ],
+        "candidateSize": [
+          1120,
+          1120
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 0,
+        "meanChannelDelta": 0.0
+      }
+    },
+    {
+      "name": "archive:7d9f9mb2y3",
+      "archiveIndex": 439,
+      "heavyPhase9E": true,
+      "kind": "timeout",
+      "error": "TimeoutError()",
+      "structuralDifference": null,
+      "raster": null
+    },
+    {
+      "name": "archive:7llvcaivec",
+      "archiveIndex": 452,
+      "heavyPhase9E": false,
+      "kind": "timeout",
+      "error": "TimeoutError()",
+      "structuralDifference": null,
+      "raster": null
+    },
+    {
+      "name": "archive:869hsb49kn",
+      "archiveIndex": 491,
+      "heavyPhase9E": false,
+      "kind": "passed",
+      "error": null,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          608,
+          608
+        ],
+        "candidateSize": [
+          608,
+          608
+        ],
+        "differentPixelRatio": 1.0820637119113573e-05,
+        "maxChannelDelta": 18,
+        "meanChannelDelta": 0.00015509579870729456
+      }
+    },
+    {
+      "name": "archive:9snrpdy9fe",
+      "archiveIndex": 588,
+      "heavyPhase9E": true,
+      "kind": "passed",
+      "error": null,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          672,
+          640
+        ],
+        "candidateSize": [
+          672,
+          640
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 0,
+        "meanChannelDelta": 0.0
+      }
+    },
+    {
+      "name": "archive:MONOPOLYSUDOKU",
+      "archiveIndex": 683,
+      "heavyPhase9E": true,
+      "kind": "passed",
+      "error": null,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          704,
+          704
+        ],
+        "candidateSize": [
+          704,
+          704
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 0,
+        "meanChannelDelta": 0.0
+      }
+    },
+    {
+      "name": "archive:ays2k7hm6t",
+      "archiveIndex": 788,
+      "heavyPhase9E": false,
+      "kind": "passed",
+      "error": null,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          608,
+          608
+        ],
+        "candidateSize": [
+          608,
+          608
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 0,
+        "meanChannelDelta": 0.0
+      }
+    },
+    {
+      "name": "archive:b193jegg4x",
+      "archiveIndex": 791,
+      "heavyPhase9E": true,
+      "kind": "timeout",
+      "error": "TimeoutError()",
+      "structuralDifference": null,
+      "raster": null
+    },
+    {
+      "name": "archive:eb90s76a4e",
+      "archiveIndex": 1028,
+      "heavyPhase9E": true,
+      "kind": "timeout",
+      "error": "TimeoutError()",
+      "structuralDifference": null,
+      "raster": null
+    },
+    {
+      "name": "archive:esjz6meusc",
+      "archiveIndex": 1055,
+      "heavyPhase9E": true,
+      "kind": "timeout",
+      "error": "TimeoutError()",
+      "structuralDifference": null,
+      "raster": null
+    },
+    {
+      "name": "archive:f6xcgzdav3",
+      "archiveIndex": 1078,
+      "heavyPhase9E": false,
+      "kind": "passed",
+      "error": null,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          608,
+          608
+        ],
+        "candidateSize": [
+          608,
+          608
+        ],
+        "differentPixelRatio": 0.00014066828254847647,
+        "maxChannelDelta": 11,
+        "meanChannelDelta": 0.0012714248614958449
+      }
+    },
+    {
+      "name": "archive:gbwivexeh7",
+      "archiveIndex": 1190,
+      "heavyPhase9E": true,
+      "kind": "timeout",
+      "error": "TimeoutError()",
+      "structuralDifference": null,
+      "raster": null
+    },
+    {
+      "name": "archive:i2r7za43kv",
+      "archiveIndex": 1278,
+      "heavyPhase9E": true,
+      "kind": "passed",
+      "error": null,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          736,
+          736
+        ],
+        "candidateSize": [
+          736,
+          736
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 0,
+        "meanChannelDelta": 0.0
+      }
+    },
+    {
+      "name": "archive:ik85shpid7",
+      "archiveIndex": 1305,
+      "heavyPhase9E": true,
+      "kind": "passed",
+      "error": null,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          608,
+          608
+        ],
+        "candidateSize": [
+          608,
+          608
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 0,
+        "meanChannelDelta": 0.0
+      }
+    },
+    {
+      "name": "archive:iutvqv1ht8",
+      "archiveIndex": 1319,
+      "heavyPhase9E": false,
+      "kind": "structural",
+      "error": null,
+      "structuralDifference": "node 0: stock=('svg', {'viewBox': '-240 -16 1056 608'}, '') candidate=('svg', {'viewBox': '-256 -32 1088 640'}, '')",
+      "raster": {
+        "sameSize": false,
+        "stockSize": [
+          1056,
+          608
+        ],
+        "candidateSize": [
+          1088,
+          640
+        ],
+        "differentPixelRatio": 1.0,
+        "maxChannelDelta": 255,
+        "meanChannelDelta": 255.0
+      }
+    },
+    {
+      "name": "archive:james-sinclair/stickiest-notes",
+      "archiveIndex": 1364,
+      "heavyPhase9E": false,
+      "kind": "timeout",
+      "error": "TimeoutError()",
+      "structuralDifference": null,
+      "raster": null
+    },
+    {
+      "name": "archive:jgdFdqhmn2",
+      "archiveIndex": 1384,
+      "heavyPhase9E": false,
+      "kind": "timeout",
+      "error": "TimeoutError()",
+      "structuralDifference": null,
+      "raster": null
+    },
+    {
+      "name": "archive:jw1onozqhg",
+      "archiveIndex": 1400,
+      "heavyPhase9E": true,
+      "kind": "timeout",
+      "error": "TimeoutError()",
+      "structuralDifference": null,
+      "raster": null
+    },
+    {
+      "name": "archive:l00604nlbr",
+      "archiveIndex": 1448,
+      "heavyPhase9E": false,
+      "kind": "passed",
+      "error": null,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          608,
+          608
+        ],
+        "candidateSize": [
+          608,
+          608
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 0,
+        "meanChannelDelta": 0.0
+      }
+    },
+    {
+      "name": "archive:l01qpi8oc3",
+      "archiveIndex": 1449,
+      "heavyPhase9E": false,
+      "kind": "timeout",
+      "error": "TimeoutError()",
+      "structuralDifference": null,
+      "raster": null
+    },
+    {
+      "name": "archive:lhid2td2zu",
+      "archiveIndex": 1459,
+      "heavyPhase9E": false,
+      "kind": "timeout",
+      "error": "TimeoutError()",
+      "structuralDifference": null,
+      "raster": null
+    },
+    {
+      "name": "archive:lipt9yn6r4",
+      "archiveIndex": 1460,
+      "heavyPhase9E": true,
+      "kind": "timeout",
+      "error": "TimeoutError()",
+      "structuralDifference": null,
+      "raster": null
+    },
+    {
+      "name": "archive:ntqufgkvcx",
+      "archiveIndex": 1582,
+      "heavyPhase9E": true,
+      "kind": "structural",
+      "error": null,
+      "structuralDifference": "node 0: stock=('svg', {'viewBox': '-16 -16 608 608'}, '') candidate=('svg', {'viewBox': '-32 -32 640 640'}, '')",
+      "raster": {
+        "sameSize": false,
+        "stockSize": [
+          608,
+          608
+        ],
+        "candidateSize": [
+          640,
+          640
+        ],
+        "differentPixelRatio": 1.0,
+        "maxChannelDelta": 255,
+        "meanChannelDelta": 255.0
+      }
+    },
+    {
+      "name": "archive:o4u3kz1764",
+      "archiveIndex": 1600,
+      "heavyPhase9E": false,
+      "kind": "passed",
+      "error": null,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          608,
+          608
+        ],
+        "candidateSize": [
+          608,
+          608
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 0,
+        "meanChannelDelta": 0.0
+      }
+    },
+    {
+      "name": "archive:p676oglsv8",
+      "archiveIndex": 1643,
+      "heavyPhase9E": true,
+      "kind": "passed",
+      "error": null,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          736,
+          736
+        ],
+        "candidateSize": [
+          736,
+          736
+        ],
+        "differentPixelRatio": 1.476843100189036e-05,
+        "maxChannelDelta": 18,
+        "meanChannelDelta": 0.00026583175803402646
+      }
+    },
+    {
+      "name": "archive:p8ushghwpc",
+      "archiveIndex": 1650,
+      "heavyPhase9E": true,
+      "kind": "timeout",
+      "error": "TimeoutError()",
+      "structuralDifference": null,
+      "raster": null
+    },
+    {
+      "name": "archive:rpdtjt36r7",
+      "archiveIndex": 1809,
+      "heavyPhase9E": false,
+      "kind": "structural",
+      "error": null,
+      "structuralDifference": "node 0: stock=('svg', {'viewBox': '-144 -144 864 864'}, '') candidate=('svg', {'viewBox': '-160 -160 896 896'}, '')",
+      "raster": {
+        "sameSize": false,
+        "stockSize": [
+          864,
+          864
+        ],
+        "candidateSize": [
+          896,
+          896
+        ],
+        "differentPixelRatio": 1.0,
+        "maxChannelDelta": 255,
+        "meanChannelDelta": 255.0
+      }
+    },
+    {
+      "name": "archive:sudoku/944Mg3fnJH",
+      "archiveIndex": 2204,
+      "heavyPhase9E": true,
+      "kind": "passed",
+      "error": null,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          704,
+          704
+        ],
+        "candidateSize": [
+          704,
+          704
+        ],
+        "differentPixelRatio": 4.035382231404959e-06,
+        "maxChannelDelta": 14,
+        "meanChannelDelta": 5.2459969008264464e-05
+      }
+    },
+    {
+      "name": "archive:sudoku/Nmg943btqh",
+      "archiveIndex": 2759,
+      "heavyPhase9E": true,
+      "kind": "passed",
+      "error": null,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          608,
+          608
+        ],
+        "candidateSize": [
+          608,
+          608
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 0,
+        "meanChannelDelta": 0.0
+      }
+    },
+    {
+      "name": "archive:sudoku/Pm8N43nTMG",
+      "archiveIndex": 2804,
+      "heavyPhase9E": false,
+      "kind": "timeout",
+      "error": "TimeoutError()",
+      "structuralDifference": null,
+      "raster": null
+    },
+    {
+      "name": "archive:sudoku/jMQR24JRBN",
+      "archiveIndex": 3271,
+      "heavyPhase9E": false,
+      "kind": "timeout",
+      "error": "TimeoutError()",
+      "structuralDifference": null,
+      "raster": null
+    },
+    {
+      "name": "archive:sudoku/jfrf3mHRbN",
+      "archiveIndex": 3286,
+      "heavyPhase9E": true,
+      "kind": "timeout",
+      "error": "TimeoutError()",
+      "structuralDifference": null,
+      "raster": null
+    },
+    {
+      "name": "archive:sudoku/pM7jd2QbmD",
+      "archiveIndex": 3428,
+      "heavyPhase9E": true,
+      "kind": "passed",
+      "error": null,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          608,
+          608
+        ],
+        "candidateSize": [
+          608,
+          608
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 0,
+        "meanChannelDelta": 0.0
+      }
+    },
+    {
+      "name": "archive:sudoku/tgQJNqqB6r",
+      "archiveIndex": 3590,
+      "heavyPhase9E": true,
+      "kind": "passed",
+      "error": null,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          608,
+          608
+        ],
+        "candidateSize": [
+          608,
+          608
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 2,
+        "meanChannelDelta": 9.468057479224377e-05
+      }
+    },
+    {
+      "name": "archive:t4vu4ndtl3",
+      "archiveIndex": 3617,
+      "heavyPhase9E": true,
+      "kind": "passed",
+      "error": null,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          608,
+          608
+        ],
+        "candidateSize": [
+          608,
+          608
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 0,
+        "meanChannelDelta": 0.0
+      }
+    },
+    {
+      "name": "archive:xag582l3t0",
+      "archiveIndex": 3903,
+      "heavyPhase9E": false,
+      "kind": "passed",
+      "error": null,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          608,
+          608
+        ],
+        "candidateSize": [
+          608,
+          608
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 0,
+        "meanChannelDelta": 0.0
+      }
+    },
+    {
+      "name": "archive:ybaev4x39i",
+      "archiveIndex": 3948,
+      "heavyPhase9E": false,
+      "kind": "passed",
+      "error": null,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          608,
+          624
+        ],
+        "candidateSize": [
+          608,
+          624
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 0,
+        "meanChannelDelta": 0.0
+      }
+    },
+    {
+      "name": "archive:zsmtekox43",
+      "archiveIndex": 4039,
+      "heavyPhase9E": false,
+      "kind": "passed",
+      "error": null,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          608,
+          608
+        ],
+        "candidateSize": [
+          608,
+          608
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 0,
+        "meanChannelDelta": 0.0
+      }
+    }
+  ]
+}

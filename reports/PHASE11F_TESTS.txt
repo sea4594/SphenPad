@@ -1,0 +1,39 @@
+Phase 11F verification — 2026-09-25
+
+PASS — strict TypeScript check for the new cell/group/edge/corner/cage model + creator checker:
+  tsc --noEmit --target ES2022 --module ESNext --moduleResolution bundler --strict --skipLibCheck \
+    src/sudokupad/creator/groupConstraints.ts src/sudokupad/creator/checker.ts
+
+PASS — syntax/transpile check for the modified editor and 11F modules using the installed global TypeScript compiler API:
+  src/ui/PuzzleEditorPage.tsx
+  src/sudokupad/creator/groupConstraints.ts
+  src/sudokupad/creator/checker.ts
+
+PASS — isolated creator regression tests compiled with global TypeScript and run with Node:
+  scripts/test-creator-project.ts
+  scripts/test-creator-project-storage.ts
+  scripts/test-creator-grid-structure.ts
+  scripts/test-creator-object-editing.ts
+  scripts/test-creator-line-constraints.ts
+  scripts/test-creator-group-constraints.ts
+
+Phase 11F group tests cover:
+- Even and Odd cells
+- Minimum / Maximum semantics and overlap rejection
+- custom Difference and Ratio values
+- negative Difference and Ratio rules
+- Difference/Ratio cross-family negative overrides
+- X/V marks plus negative X/V
+- Killer Cage uniqueness, positive sums, and blank-clue behavior
+- Clone equality groups
+- Quadruple digit multisets, including repeated digits
+- Look-and-Say count/digit pair semantics and malformed clue detection
+- Different Values and Extra Region aliasing
+- Counting Circles
+- edge/corner structural diagnostics
+- stable visual tagging and replacing cells from selection
+- CreatorProject round-trip of 11F-specific properties
+- legacy generic record normalization
+
+DEPENDENCY-BACKED APP GATE NOT AVAILABLE IN THIS EXECUTION ENVIRONMENT:
+The checkpoint has no installed node_modules, and prior clean `npm ci` attempts in this environment cannot complete from the available npm cache/network. An editor-level TypeScript invocation therefore reports missing React/Dexie/Twemoji modules and cascading missing-type diagnostics. It is not reported as a passing full app build/lint gate. No dependency versions or package-lock.json dependency contents were changed for 11F.

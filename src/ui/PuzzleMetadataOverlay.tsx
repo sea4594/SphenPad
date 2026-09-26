@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { PersistedPuzzle, PuzzleDefinition } from "../core/model";
 import { makeInitialProgress } from "../core/scl";
+import { puzzleSolution } from "../sudokupad/app/definitionSelectors";
 
 type Props = {
   data: PersistedPuzzle;
@@ -19,6 +20,16 @@ function resizePuzzle(data: PersistedPuzzle, rows: number, cols: number): Persis
     cols,
     size: Math.max(rows, cols),
     givens: [],
+    ...(data.def.scene ? {
+      scene: {
+        ...data.def.scene,
+        rows,
+        cols,
+        cells: Array.from({ length: rows }, (_, r) => Array.from({ length: cols }, (_, c) => data.def.scene?.cells[r]?.[c] ?? { row: r, col: c })),
+        regions: data.def.scene.regions.map((region) => ({ ...region, cells: region.cells.filter(([r,c]) => r < rows && c < cols) })).filter((region) => region.cells.length),
+        cages: data.def.scene.cages.map((cage) => ({ ...cage, cells: cage.cells.filter(([r,c]) => r < rows && c < cols) })).filter((cage) => cage.cells.length),
+      },
+    } : {}),
   };
   const fresh = makeInitialProgress(def);
   for (let row = 0; row < rows; row++) {
@@ -40,7 +51,7 @@ export function PuzzleMetadataOverlay({ data, onClose, onSave }: Props) {
   const [collection, setCollection] = useState(meta.collection ?? "");
   const [constraints, setConstraints] = useState((meta.constraints ?? meta.archiveConstraints ?? []).join("\n"));
   const [rules, setRules] = useState(meta.rules ?? "");
-  const [solution, setSolution] = useState(data.def.cosmetics.solution ?? "");
+  const [solution, setSolution] = useState(puzzleSolution(data.def) ?? "");
   const [postSolveMessage, setPostSolveMessage] = useState(meta.postSolveMessage ?? "");
   const [rows, setRows] = useState(String(data.def.rows));
   const [cols, setCols] = useState(String(data.def.cols));
@@ -70,8 +81,9 @@ export function PuzzleMetadataOverlay({ data, onClose, onSave }: Props) {
       ...resized,
       def: {
         ...resized.def,
-        meta: { ...resized.def.meta, title: title.trim(), author: author.trim(), collection: collection.trim(), constraints: constraintList, rules, postSolveMessage },
-        cosmetics: { ...resized.def.cosmetics, solution: solution.trim() || undefined },
+        meta: { ...resized.def.meta, title: title.trim(), author: author.trim(), collection: collection.trim(), constraints: constraintList, rules, postSolveMessage, solutionOverride: solution.trim() || undefined },
+        ...(resized.def.logic ? { logic: { ...resized.def.logic, solution: solution.trim() || undefined } } : {}),
+        ...(resized.def.scene ? { scene: { ...resized.def.scene, metadata: { ...resized.def.scene.metadata, title: title.trim(), author: author.trim(), rules, msgcorrect: postSolveMessage, solution: solution.trim() || undefined } } } : {}),
       },
       updatedAt: Date.now(),
     });

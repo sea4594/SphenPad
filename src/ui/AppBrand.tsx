@@ -1,11 +1,13 @@
 import { startTransition } from "react";
 import { useNavigate } from "react-router-dom";
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function getActiveMainPage(): HTMLElement | null {
   const visibleLayer = document.querySelector<HTMLElement>('[data-main-page-visible="true"]');
   return visibleLayer?.querySelector<HTMLElement>(".page") ?? null;
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function scrollActiveMainPageToTop(behavior: ScrollBehavior = "smooth"): boolean {
   const page = getActiveMainPage();
   if (!page || page.scrollTop <= 2) return false;

@@ -47,11 +47,15 @@ export function SettingsOverlay(props: { onClose: () => void }) {
     color,
     hideTimer,
     outlineDigits,
+    compactMarks,
+    labelRowsCols,
     conflictChecker,
     selectionColor,
     setTheme,
     setHideTimer,
     setOutlineDigits,
+    setCompactMarks,
+    setLabelRowsCols,
     setConflictChecker,
     setSelectionColor,
   } = useTheme();
@@ -150,6 +154,28 @@ export function SettingsOverlay(props: { onClose: () => void }) {
                 className={"switch" + (outlineDigits ? " is-on" : "")}
                 onClick={() => setOutlineDigits(!outlineDigits)}
                 aria-label="Toggle digit outline"
+              >
+                <span className="switchThumb" />
+              </button>
+            </div>
+
+            <div className="settingsRow" style={{ marginTop: 4 }}>
+              <div className="muted">Compact marks</div>
+              <button
+                className={"switch" + (compactMarks ? " is-on" : "")}
+                onClick={() => setCompactMarks(!compactMarks)}
+                aria-label="Toggle compact candidate marks"
+              >
+                <span className="switchThumb" />
+              </button>
+            </div>
+
+            <div className="settingsRow" style={{ marginTop: 4 }}>
+              <div className="muted">Row/column labels</div>
+              <button
+                className={"switch" + (labelRowsCols ? " is-on" : "")}
+                onClick={() => setLabelRowsCols(!labelRowsCols)}
+                aria-label="Toggle row and column labels"
               >
                 <span className="switchThumb" />
               </button>

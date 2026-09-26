@@ -1,0 +1,152 @@
+{
+  "target": "SudokuPad 0.612.0",
+  "origin": "https://sudokupad.app",
+  "checkedAt": "2026-09-24T17:29:43.781Z",
+  "passed": 13,
+  "total": 13,
+  "fonts": [
+    {
+      "id": "baublemonogram",
+      "file": "Bauble_Monogram.ttf",
+      "url": "https://sudokupad.app/assets/fonts/Bauble_Monogram.ttf",
+      "status": 200,
+      "contentType": "text/html; charset=UTF-8",
+      "bytes": 26924,
+      "sha256": "75f5f003907debec11c2ffa733e94300123f402a5e335b807e7b031f52d38975",
+      "sfntValid": true,
+      "ok": true
+    },
+    {
+      "id": "bonnet",
+      "file": "Bonnet__.ttf",
+      "url": "https://sudokupad.app/assets/fonts/Bonnet__.ttf",
+      "status": 200,
+      "contentType": "text/html; charset=UTF-8",
+      "bytes": 81428,
+      "sha256": "dc3cd1f1670851d2452861215d7b1c513bd7d500e273c8af2977ba37832d478c",
+      "sfntValid": true,
+      "ok": true
+    },
+    {
+      "id": "cartoonblocks",
+      "file": "CartoonBlocksChristmas-Regular.ttf",
+      "url": "https://sudokupad.app/assets/fonts/CartoonBlocksChristmas-Regular.ttf",
+      "status": 200,
+      "contentType": "text/html; charset=UTF-8",
+      "bytes": 684744,
+      "sha256": "651b6eb0077100d948e59b42a5218bd5681c9b1f32cb4b379cf0e6b523901864",
+      "sfntValid": true,
+      "ok": true
+    },
+    {
+      "id": "dickensianchristmas",
+      "file": "DickensianChristmas.ttf",
+      "url": "https://sudokupad.app/assets/fonts/DickensianChristmas.ttf",
+      "status": 200,
+      "contentType": "text/html; charset=UTF-8",
+      "bytes": 466032,
+      "sha256": "349757af56ea4a2134439bd2065a33abaa195646b011baacedbd144d23a701c3",
+      "sfntValid": true,
+      "ok": true
+    },
+    {
+      "id": "firstsnow",
+      "file": "Firstsnow-nRYmg.ttf",
+      "url": "https://sudokupad.app/assets/fonts/Firstsnow-nRYmg.ttf",
+      "status": 200,
+      "contentType": "text/html; charset=UTF-8",
+      "bytes": 44480,
+      "sha256": "eb78760952d2d18a57fbf8d03e172111587ae5eb2fe4badfe61dbdd39209b66c",
+      "sfntValid": true,
+      "ok": true
+    },
+    {
+      "id": "christmastinsel",
+      "file": "PWChristmasTinsel.ttf",
+      "url": "https://sudokupad.app/assets/fonts/PWChristmasTinsel.ttf",
+      "status": 200,
+      "contentType": "text/html; charset=UTF-8",
+      "bytes": 101936,
+      "sha256": "f217e979b56c0a45fa73d2ea5cb36b7b6b69b4288fc491cf0988cd5d30b8404f",
+      "sfntValid": true,
+      "ok": true
+    },
+    {
+      "id": "christmasfont",
+      "file": "PWChristmasfont.ttf",
+      "url": "https://sudokupad.app/assets/fonts/PWChristmasfont.ttf",
+      "status": 200,
+      "contentType": "text/html; charset=UTF-8",
+      "bytes": 67172,
+      "sha256": "9fe75f431a5a0fed14bbeb431124814d4823e800401e7ec27c2c366ea5cd0749",
+      "sfntValid": true,
+      "ok": true
+    },
+    {
+      "id": "happychristmas",
+      "file": "PWHappyChristmas.ttf",
+      "url": "https://sudokupad.app/assets/fonts/PWHappyChristmas.ttf",
+      "status": 200,
+      "contentType": "text/html; charset=UTF-8",
+      "bytes": 70528,
+      "sha256": "4042d346e38798aa689ee33d8b7dd870f87291652210bc65266b9bedabe6063b",
+      "sfntValid": true,
+      "ok": true
+    },
+    {
+      "id": "rudolph",
+      "file": "Rudolph.otf",
+      "url": "https://sudokupad.app/assets/fonts/Rudolph.otf",
+      "status": 200,
+      "contentType": "text/html; charset=UTF-8",
+      "bytes": 930340,
+      "sha256": "e6a5af3c38e32c61b604fa0d17037513d662af75d42d852204d748a86ae13e3e",
+      "sfntValid": true,
+      "ok": true
+    },
+    {
+      "id": "snowballs",
+      "file": "Snowballs.ttf",
+      "url": "https://sudokupad.app/assets/fonts/Snowballs.ttf",
+      "status": 200,
+      "contentType": "text/html; charset=UTF-8",
+      "bytes": 207096,
+      "sha256": "b4fa7db8c954f3f8d04d2d926aa8d42855b1564565d0a449ca43ed0870a1e949",
+      "sfntValid": true,
+      "ok": true
+    },
+    {
+      "id": "stnichols",
+      "file": "stnicholas.ttf",
+      "url": "https://sudokupad.app/assets/fonts/stnicholas.ttf",
+      "status": 200,
+      "contentType": "text/html; charset=UTF-8",
+      "bytes": 40548,
+      "sha256": "ef633dd52927bad5eb7d77e925a7ac37fa67bf286eaef98509ce6046ddafca28",
+      "sfntValid": true,
+      "ok": true
+    },
+    {
+      "id": "xtree",
+      "file": "XTREE.TTF",
+      "url": "https://sudokupad.app/assets/fonts/XTREE.TTF",
+      "status": 200,
+      "contentType": "text/html; charset=UTF-8",
+      "bytes": 191152,
+      "sha256": "9994a69649ba333b558cc3a4ab51506a7a75f1874da2c18ccd86ae5d1967289f",
+      "sfntValid": true,
+      "ok": true
+    },
+    {
+      "id": "sevensegment",
+      "file": "SevenSegment.ttf",
+      "url": "https://sudokupad.app/assets/fonts/SevenSegment.ttf",
+      "status": 200,
+      "contentType": "text/html; charset=UTF-8",
+      "bytes": 29076,
+      "sha256": "3d1907073d083ffcb1c8ba0f180e011ae14a6c24ddf89bf39489fb11da1e4dae",
+      "sfntValid": true,
+      "ok": true
+    }
+  ]
+}

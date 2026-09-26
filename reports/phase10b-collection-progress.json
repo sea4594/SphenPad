@@ -1,0 +1,87 @@
+{
+  "completedShards": 9,
+  "totalShards": 40,
+  "shards": [
+    {
+      "shard": 0,
+      "status": "nonzero",
+      "returncode": 1,
+      "seconds": 60.99,
+      "report": "reports/phase10b-shards/collect-000.json",
+      "passed": 23,
+      "total": null
+    },
+    {
+      "shard": 1,
+      "status": "nonzero",
+      "returncode": 1,
+      "seconds": 54.03,
+      "report": "reports/phase10b-shards/collect-001.json",
+      "passed": 24,
+      "total": null
+    },
+    {
+      "shard": 2,
+      "status": "nonzero",
+      "returncode": 1,
+      "seconds": 66.02,
+      "report": "reports/phase10b-shards/collect-002.json",
+      "passed": 24,
+      "total": null
+    },
+    {
+      "shard": 3,
+      "status": "done",
+      "returncode": 0,
+      "seconds": 68.25,
+      "report": "reports/phase10b-shards/collect-003.json",
+      "passed": 25,
+      "total": null
+    },
+    {
+      "shard": 4,
+      "status": "nonzero",
+      "returncode": 1,
+      "seconds": 82.96,
+      "report": "reports/phase10b-shards/collect-004.json",
+      "passed": 23,
+      "total": null
+    },
+    {
+      "shard": 5,
+      "status": "nonzero",
+      "returncode": 1,
+      "seconds": 93.5,
+      "report": "reports/phase10b-shards/collect-005.json",
+      "passed": 23,
+      "total": null
+    },
+    {
+      "shard": 6,
+      "status": "nonzero",
+      "returncode": 1,
+      "seconds": 90.52,
+      "report": "reports/phase10b-shards/collect-006.json",
+      "passed": 23,
+      "total": null
+    },
+    {
+      "shard": 7,
+      "status": "nonzero",
+      "returncode": 1,
+      "seconds": 97.11,
+      "report": "reports/phase10b-shards/collect-007.json",
+      "passed": 22,
+      "total": null
+    },
+    {
+      "shard": 8,
+      "status": "nonzero",
+      "returncode": 1,
+      "seconds": 92.42,
+      "report": "reports/phase10b-shards/collect-008.json",
+      "passed": 22,
+      "total": null
+    }
+  ]
+}

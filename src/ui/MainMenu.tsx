@@ -9,6 +9,7 @@ import {
   removePuzzleFromFolder,
   type PuzzleFolder,
   upsertPuzzle,
+  setCreatorProjectPublished,
 } from "../core/storage";
 import { setSyncedLocalStorageItem } from "../core/localDataState";
 import { onStorageRefreshNeeded } from "../core/syncSignal";
@@ -29,6 +30,9 @@ import {
   readPuzzleReturnState,
   withPuzzleOriginState,
 } from "./puzzleNavState";
+
+import { puzzleConstraintLabels, puzzleSolution } from "../sudokupad/app/definitionSelectors";
+import { creatorSudokuPadUrl } from "../sudokupad/creator/interchange";
 
 type SortOrder = "recent" | "az" | "date";
 type SortDirection = "asc" | "desc";
@@ -338,73 +342,9 @@ function buildFolderPath(folder: PuzzleFolder, folderById: Map<string, PuzzleFol
   return names.join(" / ");
 }
 
-function hasBorderClues(clues: { top?: string[]; bottom?: string[]; left?: string[]; right?: string[] } | undefined): boolean {
-  if (!clues) return false;
-  const sides = [clues.top, clues.bottom, clues.left, clues.right];
-  return sides.some((side) => Array.isArray(side) && side.some((v) => String(v ?? "").trim().length > 0));
-}
 
 function extractConstraintBullets(def: StoredPuzzle["def"]): string[] {
-  const out = new Set<string>();
-  const cosmetics = def.cosmetics;
-
-  if (cosmetics.cages?.length) out.add("Killer cages");
-  if (cosmetics.arrows?.length) out.add("Arrow constraints");
-  if (cosmetics.dots?.length) {
-    const hasBlack = cosmetics.dots.some((d) => d.kind === "black");
-    const hasWhite = cosmetics.dots.some((d) => d.kind === "white");
-    if (hasBlack && hasWhite) out.add("Black and white dots");
-    else if (hasBlack) out.add("Black dots");
-    else if (hasWhite) out.add("White dots");
-  }
-
-  if (cosmetics.thermolines?.length) out.add("Thermo lines");
-  if (cosmetics.whispers?.length || cosmetics.germanwhispers?.length) out.add("Whisper lines");
-  if (cosmetics.palindromes?.length) out.add("Palindrome lines");
-  if (cosmetics.renbanlines?.length) out.add("Renban lines");
-  if (cosmetics.entropics?.length) out.add("Entropic lines");
-  if (cosmetics.modularlines?.length) out.add("Modular lines");
-
-  if (hasBorderClues(cosmetics.skyscraper)) out.add("Skyscraper clues");
-  if (hasBorderClues(cosmetics.sandwich)) out.add("Sandwich clues");
-  if (hasBorderClues(cosmetics.xsum)) out.add("X-sum clues");
-  if (cosmetics.littlekillers?.length) out.add("Little killer clues");
-
-  if (cosmetics.irregularRegions?.length) out.add("Irregular regions");
-  if (cosmetics.disjointGroups?.length) out.add("Disjoint groups");
-
-  if (cosmetics.antiKnight) out.add("Anti-knight");
-  if (cosmetics.antiKing) out.add("Anti-king");
-  if (cosmetics.antiRook) out.add("Anti-rook");
-
-  if ((cosmetics.fogLights?.length ?? 0) > 0 || (cosmetics.fogTriggerEffects?.length ?? 0) > 0) {
-    out.add("Fog of war");
-  }
-
-  const rules = (def.meta?.rules ?? "").toLowerCase();
-  const keywordMap: Array<[RegExp, string]> = [
-    [/\bthermo\b/, "Thermo lines"],
-    [/\bwhisper\b/, "Whisper lines"],
-    [/\brenban\b/, "Renban lines"],
-    [/\bpalindrome\b/, "Palindrome lines"],
-    [/\barrow\b/, "Arrow constraints"],
-    [/\bkiller\b/, "Killer cages"],
-    [/\bsandwich\b/, "Sandwich clues"],
-    [/\bx\s*-?\s*sum\b/, "X-sum clues"],
-    [/\bskyscraper\b/, "Skyscraper clues"],
-    [/\blittle\s*killer\b/, "Little killer clues"],
-    [/\banti\s*-?\s*knight\b/, "Anti-knight"],
-    [/\banti\s*-?\s*king\b/, "Anti-king"],
-    [/\banti\s*-?\s*rook\b/, "Anti-rook"],
-    [/\bfog\b/, "Fog of war"],
-    [/\bentropic\b|\bentropy\b/, "Entropic lines"],
-  ];
-  for (const [pattern, label] of keywordMap) {
-    if (pattern.test(rules)) out.add(label);
-  }
-
-  if (!out.size) return ["Normal Sudoku rules only"];
-  return Array.from(out);
+  return puzzleConstraintLabels(def);
 }
 
 export function MainMenu(props: { active?: boolean }) {
@@ -718,7 +658,6 @@ export function MainMenu(props: { active?: boolean }) {
     const queryLower = clean(deferredQuery).toLowerCase();
 
     return rows.filter((row) => {
-      if (row.def.meta.creatorPuzzle) return false;
       const rowAuthors = puzzleAuthors(row);
       const rowCollection = puzzleCollection(row);
       const rowConstraints = constraintBulletsByPuzzle.get(row.key) ?? [];
@@ -927,7 +866,8 @@ export function MainMenu(props: { active?: boolean }) {
     if (!deleteCandidate || deleteBusy) return;
     setDeleteBusy(true);
     try {
-      await deletePuzzle(deleteCandidate.key);
+      if (deleteCandidate.def.meta.creatorPuzzle) await setCreatorProjectPublished(deleteCandidate.key, false);
+      else await deletePuzzle(deleteCandidate.key);
       await refreshPuzzles();
       await refreshFolders();
       setDeleteCandidate(null);
@@ -939,16 +879,12 @@ export function MainMenu(props: { active?: boolean }) {
     }
   }
 
+  function openCreatorProject(key: string) {
+    startTransition(() => nav(`/creator/${encodeURIComponent(key)}`));
+  }
+
   function openPuzzle(key: string) {
     const scrollY = readCurrentScrollPosition();
-    console.log(
-      "[MainMenu] Capturing origin state for puzzle:",
-      `key=${key}`,
-      `foldersOpen=${foldersOpen}`,
-      `activeFolderId=${activeFolderId}`,
-      `scrollY=${scrollY}`
-    );
-    
     nav(`/p/${encodeURIComponent(key)}`, {
       state: withPuzzleOriginState(location.state, {
         version: 1,
@@ -980,6 +916,7 @@ export function MainMenu(props: { active?: boolean }) {
   }
 
   function sudokuPadUrlFor(row: StoredPuzzle): string | null {
+    if (row.def.meta.creatorPuzzle) return creatorSudokuPadUrl(row.def);
     const source = (row.def?.sourceId ?? row.key).trim();
     if (!source) return null;
     if (/^https?:\/\//i.test(source)) return source;
@@ -1001,7 +938,7 @@ export function MainMenu(props: { active?: boolean }) {
     const now = Date.now();
     const solvedProgress =
       status === "complete"
-        ? fillProgressWithSolutionDigits(row.progress, row.def.cosmetics.solution)
+        ? fillProgressWithSolutionDigits(row.progress, puzzleSolution(row.def))
         : row.progress;
     const nextProgress = {
       ...solvedProgress,
@@ -1093,12 +1030,13 @@ export function MainMenu(props: { active?: boolean }) {
   async function onDeletePuzzleWithConfirm(row: StoredPuzzle) {
     if (deleteBusy) return;
     const title = row.def?.meta?.title || "(untitled)";
-    const shouldDelete = window.confirm(`Delete puzzle?\n\n${title}`);
+    const shouldDelete = window.confirm(`${row.def.meta.creatorPuzzle ? "Remove from My Puzzles" : "Delete puzzle"}?\n\n${title}`);
     if (!shouldDelete) return;
 
     setDeleteBusy(true);
     try {
-      await deletePuzzle(row.key);
+      if (row.def.meta.creatorPuzzle) await setCreatorProjectPublished(row.key, false);
+      else await deletePuzzle(row.key);
       await refreshPuzzles();
       await refreshFolders();
       setDeleteCandidate(null);
@@ -1150,8 +1088,12 @@ export function MainMenu(props: { active?: boolean }) {
 
   async function onMainPuzzleAction(
     row: StoredPuzzle,
-    action: "add_to_folder" | "open_in_sudokupad" | "status_not_started" | "status_in_progress" | "status_complete" | "delete",
+    action: "edit_creator" | "add_to_folder" | "open_in_sudokupad" | "status_not_started" | "status_in_progress" | "status_complete" | "delete",
   ) {
+    if (action === "edit_creator") {
+      openCreatorProject(row.key);
+      return;
+    }
     if (action === "add_to_folder") {
       onOpenAddToFolder(row);
       return;
@@ -1178,8 +1120,12 @@ export function MainMenu(props: { active?: boolean }) {
   async function onFolderPuzzleAction(
     folderId: string,
     row: StoredPuzzle,
-    action: "remove_from_folder" | "open_in_sudokupad" | "status_not_started" | "status_in_progress" | "status_complete" | "delete",
+    action: "edit_creator" | "remove_from_folder" | "open_in_sudokupad" | "status_not_started" | "status_in_progress" | "status_complete" | "delete",
   ) {
+    if (action === "edit_creator") {
+      openCreatorProject(row.key);
+      return;
+    }
     if (action === "remove_from_folder") {
       await onRemovePuzzleFromFolder(folderId, row.key);
       return;
@@ -1488,6 +1434,7 @@ export function MainMenu(props: { active?: boolean }) {
                     <div className="menuPuzzleSummary">
                       <div className="menuPuzzleTitleWrap">
                         <div className="menuPuzzleTitle">{row.def?.meta?.title || "(untitled)"}</div>
+                        {row.def.meta.creatorPuzzle ? <div className="creatorOwnedBadge">Creator · editable</div> : null}
                         {row.def?.meta?.author ? (
                           <div className="muted menuPuzzleAuthor">
                             {row.def.meta.author}
@@ -1529,6 +1476,7 @@ export function MainMenu(props: { active?: boolean }) {
                           ariaLabel={`Options for ${row.def?.meta?.title || "puzzle"}`}
                           title="Puzzle options"
                           items={[
+                            ...(row.def.meta.creatorPuzzle ? [{ label: "Edit in Creator", onSelect: () => void onMainPuzzleAction(row, "edit_creator" as const) }] : []),
                             { label: "Add to folder", onSelect: () => void onMainPuzzleAction(row, "add_to_folder") },
                             { label: "Open in SudokuPad", onSelect: () => void onMainPuzzleAction(row, "open_in_sudokupad") },
                             {
@@ -1710,6 +1658,7 @@ export function MainMenu(props: { active?: boolean }) {
                           <div className="menuPuzzleSummary">
                             <div className="menuPuzzleTitleWrap">
                               <div className="menuPuzzleTitle">{row.def?.meta?.title || "(untitled)"}</div>
+                              {row.def.meta.creatorPuzzle ? <div className="creatorOwnedBadge">Creator · editable</div> : null}
                               {row.def?.meta?.author ? (
                                 <div className="muted menuPuzzleAuthor">
                                   {row.def.meta.author}
@@ -1752,6 +1701,7 @@ export function MainMenu(props: { active?: boolean }) {
                                 title="Puzzle actions"
                                 disabled={menuBusy}
                                 items={[
+                                  ...(row.def.meta.creatorPuzzle ? [{ label: "Edit in Creator", onSelect: () => void onFolderPuzzleAction(activeFolder.id, row, "edit_creator" as const) }] : []),
                                   { label: "Remove from folder", onSelect: () => void onFolderPuzzleAction(activeFolder.id, row, "remove_from_folder"), disabled: menuBusy },
                                   { label: "Open in SudokuPad", onSelect: () => void onFolderPuzzleAction(activeFolder.id, row, "open_in_sudokupad") },
                                   {

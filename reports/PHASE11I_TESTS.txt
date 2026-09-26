@@ -1,0 +1,33 @@
+Phase 11I verification
+======================
+
+PASS — focused creator regression suites (compiled with the globally available TypeScript compiler and run with Node because project node_modules/tsx are absent):
+- scripts/test-creator-project.ts (11A)
+- scripts/test-creator-project-storage.ts (11B)
+- scripts/test-creator-grid-structure.ts (11C)
+- scripts/test-creator-object-editing.ts (11D)
+- scripts/test-creator-line-constraints.ts (11E)
+- scripts/test-creator-group-constraints.ts (11F)
+- scripts/test-creator-global-constraints.ts (11G)
+- scripts/test-creator-worker-solver.ts (11H)
+- scripts/test-creator-interchange.ts (11I)
+
+11I coverage includes:
+- CreatorProject exact editable import
+- SphenPad authored JSON editable import
+- SudokuPad source JSON import/export
+- SCL compression/export and decode round trip
+- direct https://sudokupad.app/scl... URL generation
+- stripping creator-only SphenPad tags from SudokuPad exports
+- SCL semantic inference/loss-report behavior
+- raw F-Puzzles JSON import
+- encoded fpuz import
+- reconstruction of representative F-Puzzles semantic constraints
+- explicit unsupported F-Puzzles key loss reporting
+- explicit custom-backend export loss reporting
+
+PASS — strict TypeScript check of src/sudokupad/creator/interchange.ts.
+PASS — standalone TypeScript TSX syntax/transpile check of src/ui/PuzzleEditorPage.tsx.
+PASS — package.json parses after adding test-creator-interchange.
+
+NOT RUN — full `npm run build` / `npm run lint` dependency-backed gate. This clean handoff has no node_modules and the execution environment cannot complete the project dependency installation. No dependency versions were changed in Phase 11I.

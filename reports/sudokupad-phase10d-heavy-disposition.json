@@ -1,0 +1,180 @@
+{
+  "target": "SudokuPad 0.612.0 captured HAR",
+  "phase": "10D",
+  "cases": 18,
+  "candidateRenderPassed": 18,
+  "candidateRenderFailed": 0,
+  "stockReferencePerformanceCases": 13,
+  "candidateRenderRasterPasses": 2,
+  "candidateRasterPerformanceCases": 3,
+  "conformanceCountingPolicy": "These 18 are not retroactively counted as stock-vs-SphenPad conformance passes unless a stock comparison completed. Phase 10D establishes that all 18 do complete SphenPad browser rendering.",
+  "rows": [
+    {
+      "name": "archive:100ywt1d63",
+      "archiveIndex": 38,
+      "phase10bStage": "stock-render",
+      "releaseCandidateRenderPassed": true,
+      "releaseRasterChecked": false,
+      "disposition": "candidate-render-pass/reference-performance",
+      "note": "Captured stock exceeded the bounded comparison window in Phase 10B; SphenPad candidate-only browser import/render/SVG serialization passes in Phase 10D."
+    },
+    {
+      "name": "archive:27v1lv24c3",
+      "archiveIndex": 109,
+      "phase10bStage": "stock-render",
+      "releaseCandidateRenderPassed": true,
+      "releaseRasterChecked": false,
+      "disposition": "candidate-render-pass/reference-performance",
+      "note": "Captured stock exceeded the bounded comparison window in Phase 10B; SphenPad candidate-only browser import/render/SVG serialization passes in Phase 10D."
+    },
+    {
+      "name": "archive:7d9f9mb2y3",
+      "archiveIndex": 439,
+      "phase10bStage": "stock-render",
+      "releaseCandidateRenderPassed": true,
+      "releaseRasterChecked": false,
+      "disposition": "candidate-render-pass/reference-performance",
+      "note": "Captured stock exceeded the bounded comparison window in Phase 10B; SphenPad candidate-only browser import/render/SVG serialization passes in Phase 10D."
+    },
+    {
+      "name": "archive:7llvcaivec",
+      "archiveIndex": 452,
+      "phase10bStage": "stock-render",
+      "releaseCandidateRenderPassed": true,
+      "releaseRasterChecked": false,
+      "disposition": "candidate-render-pass/reference-performance",
+      "note": "Captured stock exceeded the bounded comparison window in Phase 10B; SphenPad candidate-only browser import/render/SVG serialization passes in Phase 10D."
+    },
+    {
+      "name": "archive:b193jegg4x",
+      "archiveIndex": 791,
+      "phase10bStage": "candidate-isolated-pass",
+      "releaseCandidateRenderPassed": true,
+      "releaseRasterChecked": true,
+      "releaseRasterPassed": true,
+      "disposition": "candidate-render+raster-pass",
+      "note": "Candidate-only render+raster completed exactly when isolated from the shared stock budget."
+    },
+    {
+      "name": "archive:eb90s76a4e",
+      "archiveIndex": 1028,
+      "phase10bStage": "candidate-raster",
+      "releaseCandidateRenderPassed": true,
+      "releaseRasterChecked": false,
+      "releaseRasterPassed": null,
+      "disposition": "candidate-render-pass/raster-performance",
+      "note": "SphenPad rendering completed; only PNG rasterization exceeded the diagnostic budget."
+    },
+    {
+      "name": "archive:esjz6meusc",
+      "archiveIndex": 1055,
+      "phase10bStage": "stock-render",
+      "releaseCandidateRenderPassed": true,
+      "releaseRasterChecked": false,
+      "disposition": "candidate-render-pass/reference-performance",
+      "note": "Captured stock exceeded the bounded comparison window in Phase 10B; SphenPad candidate-only browser import/render/SVG serialization passes in Phase 10D."
+    },
+    {
+      "name": "archive:gbwivexeh7",
+      "archiveIndex": 1190,
+      "phase10bStage": "stock-render",
+      "releaseCandidateRenderPassed": true,
+      "releaseRasterChecked": false,
+      "disposition": "candidate-render-pass/reference-performance",
+      "note": "Captured stock exceeded the bounded comparison window in Phase 10B; SphenPad candidate-only browser import/render/SVG serialization passes in Phase 10D."
+    },
+    {
+      "name": "archive:james-sinclair/stickiest-notes",
+      "archiveIndex": 1364,
+      "phase10bStage": "stock-render",
+      "releaseCandidateRenderPassed": true,
+      "releaseRasterChecked": false,
+      "disposition": "candidate-render-pass/reference-performance",
+      "note": "Captured stock exceeded the bounded comparison window in Phase 10B; SphenPad candidate-only browser import/render/SVG serialization passes in Phase 10D."
+    },
+    {
+      "name": "archive:jgdFdqhmn2",
+      "archiveIndex": 1384,
+      "phase10bStage": "stock-render",
+      "releaseCandidateRenderPassed": true,
+      "releaseRasterChecked": false,
+      "disposition": "candidate-render-pass/reference-performance",
+      "note": "Captured stock exceeded the bounded comparison window in Phase 10B; SphenPad candidate-only browser import/render/SVG serialization passes in Phase 10D."
+    },
+    {
+      "name": "archive:jw1onozqhg",
+      "archiveIndex": 1400,
+      "phase10bStage": "candidate-raster",
+      "releaseCandidateRenderPassed": true,
+      "releaseRasterChecked": false,
+      "releaseRasterPassed": null,
+      "disposition": "candidate-render-pass/raster-performance",
+      "note": "SphenPad rendering completed; only PNG rasterization exceeded the diagnostic budget."
+    },
+    {
+      "name": "archive:l01qpi8oc3",
+      "archiveIndex": 1449,
+      "phase10bStage": "stock-render",
+      "releaseCandidateRenderPassed": true,
+      "releaseRasterChecked": false,
+      "disposition": "candidate-render-pass/reference-performance",
+      "note": "Captured stock exceeded the bounded comparison window in Phase 10B; SphenPad candidate-only browser import/render/SVG serialization passes in Phase 10D."
+    },
+    {
+      "name": "archive:lhid2td2zu",
+      "archiveIndex": 1459,
+      "phase10bStage": "stock-render",
+      "releaseCandidateRenderPassed": true,
+      "releaseRasterChecked": false,
+      "disposition": "candidate-render-pass/reference-performance",
+      "note": "Captured stock exceeded the bounded comparison window in Phase 10B; SphenPad candidate-only browser import/render/SVG serialization passes in Phase 10D."
+    },
+    {
+      "name": "archive:lipt9yn6r4",
+      "archiveIndex": 1460,
+      "phase10bStage": "stock-render",
+      "releaseCandidateRenderPassed": true,
+      "releaseRasterChecked": false,
+      "disposition": "candidate-render-pass/reference-performance",
+      "note": "Captured stock exceeded the bounded comparison window in Phase 10B; SphenPad candidate-only browser import/render/SVG serialization passes in Phase 10D."
+    },
+    {
+      "name": "archive:p8ushghwpc",
+      "archiveIndex": 1650,
+      "phase10bStage": "stock-render",
+      "releaseCandidateRenderPassed": true,
+      "releaseRasterChecked": false,
+      "disposition": "candidate-render-pass/reference-performance",
+      "note": "Captured stock exceeded the bounded comparison window in Phase 10B; SphenPad candidate-only browser import/render/SVG serialization passes in Phase 10D."
+    },
+    {
+      "name": "archive:sudoku/Pm8N43nTMG",
+      "archiveIndex": 2804,
+      "phase10bStage": "stock-render",
+      "releaseCandidateRenderPassed": true,
+      "releaseRasterChecked": false,
+      "disposition": "candidate-render-pass/reference-performance",
+      "note": "Captured stock exceeded the bounded comparison window in Phase 10B; SphenPad candidate-only browser import/render/SVG serialization passes in Phase 10D."
+    },
+    {
+      "name": "archive:sudoku/jMQR24JRBN",
+      "archiveIndex": 3271,
+      "phase10bStage": "candidate-isolated-pass",
+      "releaseCandidateRenderPassed": true,
+      "releaseRasterChecked": true,
+      "releaseRasterPassed": true,
+      "disposition": "candidate-render+raster-pass",
+      "note": "Candidate-only render+raster completed exactly when isolated from the shared stock budget."
+    },
+    {
+      "name": "archive:sudoku/jfrf3mHRbN",
+      "archiveIndex": 3286,
+      "phase10bStage": "candidate-raster",
+      "releaseCandidateRenderPassed": true,
+      "releaseRasterChecked": false,
+      "releaseRasterPassed": null,
+      "disposition": "candidate-render-pass/raster-performance",
+      "note": "SphenPad rendering completed; only PNG rasterization exceeded the diagnostic budget."
+    }
+  ]
+}

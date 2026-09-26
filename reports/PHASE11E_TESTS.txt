@@ -1,0 +1,32 @@
+Phase 11E verification — 2026-09-25
+
+PASS — strict TypeScript check for the new line/path model + checker:
+  tsc --noEmit --target ES2022 --module ESNext --moduleResolution bundler --strict --skipLibCheck \
+    src/sudokupad/creator/lineConstraints.ts src/sudokupad/creator/checker.ts
+
+PASS — isolated creator regression tests compiled with global TypeScript and run with Node:
+  scripts/test-creator-project.ts
+  scripts/test-creator-project-storage.ts
+  scripts/test-creator-grid-structure.ts
+  scripts/test-creator-object-editing.ts
+  scripts/test-creator-line-constraints.ts
+
+Phase 11E line tests cover:
+- strict and slow thermometers
+- German/Dutch/custom whisper minimum differences
+- renban and palindrome
+- between line
+- region-sum line and repeated-region option persistence
+- sequence line, including zero difference
+- entropy/grouped lines and Entropic/3-Modular/Parity presets
+- group parsing/rejection of overlapping groups
+- lockout line
+- arrows and multi-cell bulbs
+- double arrows
+- path replacement/reversal
+- CreatorProject round-trip of line properties
+- legacy generic line-record normalization
+- malformed imported grouped-line diagnostics
+
+DEPENDENCY-BACKED APP GATE NOT AVAILABLE IN THIS EXECUTION ENVIRONMENT:
+A clean `npm ci --ignore-scripts --prefer-offline --no-audit --no-fund` was attempted and did not complete before the execution timeout. The partial node_modules directory was removed. Therefore the full Vite build and ESLint gate are not reported as passing in this checkpoint. No dependency versions or package-lock.json contents were changed.

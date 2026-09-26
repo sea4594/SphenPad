@@ -22,6 +22,8 @@ import {
   withPuzzleOriginState,
 } from "./puzzleNavState";
 
+import { puzzleConstraintLabels } from "../sudokupad/app/definitionSelectors";
+
 type ArchiveEntry = {
   id: string;
   title: string;
@@ -71,70 +73,9 @@ function statusLabel(status: PuzzlePlayStatus): string {
   return "Complete";
 }
 
-function hasBorderClues(clues: { top?: string[]; bottom?: string[]; left?: string[]; right?: string[] } | undefined): boolean {
-  if (!clues) return false;
-  const sides = [clues.top, clues.bottom, clues.left, clues.right];
-  return sides.some((side) => Array.isArray(side) && side.some((value) => String(value ?? "").trim().length > 0));
-}
 
 function extractConstraintBullets(def: StoredPuzzle["def"]): string[] {
-  const out = new Set<string>();
-  const cosmetics = def.cosmetics;
-
-  if (cosmetics.cages?.length) out.add("Killer cages");
-  if (cosmetics.arrows?.length) out.add("Arrow constraints");
-  if (cosmetics.dots?.length) {
-    const hasBlack = cosmetics.dots.some((dot) => dot.kind === "black");
-    const hasWhite = cosmetics.dots.some((dot) => dot.kind === "white");
-    if (hasBlack && hasWhite) out.add("Black and white dots");
-    else if (hasBlack) out.add("Black dots");
-    else if (hasWhite) out.add("White dots");
-  }
-
-  if (cosmetics.thermolines?.length) out.add("Thermo lines");
-  if (cosmetics.whispers?.length || cosmetics.germanwhispers?.length) out.add("Whisper lines");
-  if (cosmetics.palindromes?.length) out.add("Palindrome lines");
-  if (cosmetics.renbanlines?.length) out.add("Renban lines");
-  if (cosmetics.entropics?.length) out.add("Entropic lines");
-  if (cosmetics.modularlines?.length) out.add("Modular lines");
-
-  if (hasBorderClues(cosmetics.skyscraper)) out.add("Skyscraper clues");
-  if (hasBorderClues(cosmetics.sandwich)) out.add("Sandwich clues");
-  if (hasBorderClues(cosmetics.xsum)) out.add("X-sum clues");
-  if (cosmetics.littlekillers?.length) out.add("Little killer clues");
-
-  if (cosmetics.irregularRegions?.length) out.add("Irregular regions");
-  if (cosmetics.disjointGroups?.length) out.add("Disjoint groups");
-
-  if (cosmetics.antiKnight) out.add("Anti-knight");
-  if (cosmetics.antiKing) out.add("Anti-king");
-  if (cosmetics.antiRook) out.add("Anti-rook");
-
-  if ((cosmetics.fogLights?.length ?? 0) > 0 || (cosmetics.fogTriggerEffects?.length ?? 0) > 0) out.add("Fog of war");
-
-  const rules = (def.meta?.rules ?? "").toLowerCase();
-  const keywordMap: Array<[RegExp, string]> = [
-    [/\bthermo\b/, "Thermo lines"],
-    [/\bwhisper\b/, "Whisper lines"],
-    [/\brenban\b/, "Renban lines"],
-    [/\bpalindrome\b/, "Palindrome lines"],
-    [/\barrow\b/, "Arrow constraints"],
-    [/\bkiller\b/, "Killer cages"],
-    [/\bsandwich\b/, "Sandwich clues"],
-    [/\bx\s*-?\s*sum\b/, "X-sum clues"],
-    [/\bskyscraper\b/, "Skyscraper clues"],
-    [/\blittle\s*killer\b/, "Little killer clues"],
-    [/\banti\s*-?\s*knight\b/, "Anti-knight"],
-    [/\banti\s*-?\s*king\b/, "Anti-king"],
-    [/\banti\s*-?\s*rook\b/, "Anti-rook"],
-    [/\bfog\b/, "Fog of war"],
-    [/\bentropic\b|\bentropy\b/, "Entropic lines"],
-  ];
-  for (const [pattern, label] of keywordMap) {
-    if (pattern.test(rules)) out.add(label);
-  }
-
-  return out.size ? Array.from(out) : ["Normal Sudoku rules only"];
+  return puzzleConstraintLabels(def);
 }
 
 type SearchField =
@@ -1083,13 +1024,6 @@ export function CtCArchivePage(props: { active?: boolean }) {
       });
 
       const scrollY = readCurrentScrollPosition();
-      console.log(
-        "[CtCArchivePage] Capturing origin state for puzzle:",
-        `key=${key}`,
-        `visibleRowsCount=${visibleRowsCount}`,
-        `scrollY=${scrollY}`
-      );
-      
       nav(`/p/${encodeURIComponent(key)}`, {
         state: withPuzzleOriginState(location.state, {
           version: 1,

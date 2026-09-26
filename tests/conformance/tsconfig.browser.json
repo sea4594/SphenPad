@@ -1,0 +1,41 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
+    ],
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "outDir": ".build",
+    "rootDir": "../../src",
+    "types": []
+  },
+  "include": [
+    "../../src/core/model.ts",
+    "../../src/sudokupad/version.ts",
+    "../../src/sudokupad/types/**/*.ts",
+    "../../src/sudokupad/diagnostics/**/*.ts",
+    "../../src/sudokupad/codecs/**/*.ts",
+    "../../src/sudokupad/fpuzzles/**/*.ts",
+    "../../src/sudokupad/normalize/**/*.ts",
+    "../../src/sudokupad/loader/**/*.ts",
+    "../../src/sudokupad/fog/**/*.ts",
+    "../../src/sudokupad/assets/**/*.ts",
+    "../../src/sudokupad/render/**/*.ts",
+    "../../src/sudokupad/utils/**/*.ts",
+    "../../src/sudokupad/app/progressScene.ts",
+    "../../src/sudokupad/app/conflicts.ts",
+    "../../src/sudokupad/app/boardClasses.ts",
+    "twemoji.d.ts"
+  ],
+  "exclude": [
+    "../../src/sudokupad/creator/**",
+    "../../src/sudokupad/migration/**",
+    "../../src/sudokupad/semantics/**"
+  ]
+}

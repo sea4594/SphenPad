@@ -1,0 +1,246 @@
+Phase 10A networked closure — 2026-09-24T18:22:27Z
+Node: v26.9.0
+npm: 11.19.1
+
+[1/8] Clean dependency install
+
+added 275 packages, and audited 276 packages in 3s
+
+51 packages are looking for funding
+  run `npm fund` for details
+
+18 vulnerabilities (2 low, 3 moderate, 11 high, 2 critical)
+
+To address all issues, run:
+  npm audit fix
+
+Run `npm audit` for details.
+npm warn install-scripts 4 packages have install scripts not yet covered by allowScripts:
+npm warn install-scripts   @firebase/util@1.14.0 (postinstall: node ./postinstall.js)
+npm warn install-scripts   esbuild@0.27.3 (postinstall: node install.js)
+npm warn install-scripts   fsevents@2.3.3 (install: (install scripts present))
+npm warn install-scripts   protobufjs@7.5.4 (postinstall: node scripts/postinstall)
+npm warn install-scripts
+npm warn install-scripts Run `npm install-scripts ls` to review, or `npm install-scripts approve <pkg>` to allow.
+[2/8] Proxy/unit asset tests
+
+> sphenpad@0.0.0 test-sudokupad-proxy
+> node scripts/test-sudokupad-proxy.mjs
+
+SudokuPad proxy tests: PASS
+
+> sphenpad@0.0.0 test-sudokupad-assets
+> node --experimental-strip-types scripts/test-sudokupad-asset-resolver.mjs && node --experimental-strip-types scripts/test-sudokupad-font-loader.mjs
+
+SudokuPad asset resolver tests: PASS
+SudokuPad font loader tests: PASS
+[3/8] Exact upstream SudokuPad font-byte verification
+
+> sphenpad@0.0.0 verify-sudokupad-upstream-fonts
+> node scripts/verify-sudokupad-upstream-fonts.mjs
+
+PASS baublemonogram: 200, 26924 bytes, 75f5f003907debec11c2ffa733e94300123f402a5e335b807e7b031f52d38975
+PASS firstsnow: 200, 44480 bytes, eb78760952d2d18a57fbf8d03e172111587ae5eb2fe4badfe61dbdd39209b66c
+PASS christmastinsel: 200, 101936 bytes, f217e979b56c0a45fa73d2ea5cb36b7b6b69b4288fc491cf0988cd5d30b8404f
+PASS happychristmas: 200, 70528 bytes, 4042d346e38798aa689ee33d8b7dd870f87291652210bc65266b9bedabe6063b
+PASS bonnet: 200, 81428 bytes, dc3cd1f1670851d2452861215d7b1c513bd7d500e273c8af2977ba37832d478c
+PASS stnichols: 200, 40548 bytes, ef633dd52927bad5eb7d77e925a7ac37fa67bf286eaef98509ce6046ddafca28
+PASS sevensegment: 200, 29076 bytes, 3d1907073d083ffcb1c8ba0f180e011ae14a6c24ddf89bf39489fb11da1e4dae
+PASS christmasfont: 200, 67172 bytes, 9fe75f431a5a0fed14bbeb431124814d4823e800401e7ec27c2c366ea5cd0749
+PASS xtree: 200, 191152 bytes, 9994a69649ba333b558cc3a4ab51506a7a75f1874da2c18ccd86ae5d1967289f
+PASS snowballs: 200, 207096 bytes, b4fa7db8c954f3f8d04d2d926aa8d42855b1564565d0a449ca43ed0870a1e949
+PASS cartoonblocks: 200, 684744 bytes, 651b6eb0077100d948e59b42a5218bd5681c9b1f32cb4b379cf0e6b523901864
+PASS dickensianchristmas: 200, 466032 bytes, 349757af56ea4a2134439bd2065a33abaa195646b011baacedbd144d23a701c3
+PASS rudolph: 200, 930340 bytes, e6a5af3c38e32c61b604fa0d17037513d662af75d42d852204d748a86ae13e3e
+[4/8] Real archive external-background verification
+
+> sphenpad@0.0.0 verify-sudokupad-external-assets
+> node scripts/verify-sudokupad-external-assets.mjs
+
+OK   0787piuafi.json          4261 bytes image/png https://i.imgur.com/bZpmslF.png
+RETRY 28k5j6fvfe.json fetch failed (1/3) https://i.postimg.cc/tCcCxHbT/bear8.png
+RETRY 28k5j6fvfe.json fetch failed (2/3) https://i.postimg.cc/tCcCxHbT/bear8.png
+WARN 28k5j6fvfe.json live host unavailable after 3 attempts; accepting previously verified baseline from 2026-09-24T17:29:43Z (236163 bytes image/png) https://i.postimg.cc/tCcCxHbT/bear8.png
+OK   5060viuw2v.json        201174 bytes image/png https://i.imgur.com/mU44Fxx.png
+RETRY 7qo4oi3fi3.json fetch failed (1/3) https://i.ibb.co/bgGSdVyP/25.png
+RETRY 7qo4oi3fi3.json fetch failed (2/3) https://i.ibb.co/bgGSdVyP/25.png
+WARN 7qo4oi3fi3.json live host unavailable after 3 attempts; accepting previously verified baseline from 2026-09-24T17:29:43Z (14319 bytes image/png) https://i.ibb.co/bgGSdVyP/25.png
+OK   9mne4c61lf.json         29595 bytes image/png https://i.imgur.com/3Zxa3z9.png
+OK   azp64ejj1v.json         20326 bytes image/png https://i.imgur.com/boaEOmI.png
+OK   iutvqv1ht8.json        466933 bytes image/png https://i.imgur.com/xRoRPiG.png
+OK   rpdtjt36r7.json         50480 bytes image/png https://i.imgur.com/35ySpwy.png
+RETRY wq1p4nwud6.json timeout (1/3) https://i.ibb.co/wFzSh37N/sudoku-background.png
+RETRY wq1p4nwud6.json timeout (2/3) https://i.ibb.co/wFzSh37N/sudoku-background.png
+WARN wq1p4nwud6.json live host unavailable after 3 attempts; accepting previously verified baseline from 2026-09-24T17:29:43Z (47932 bytes image/png) https://i.ibb.co/wFzSh37N/sudoku-background.png
+External asset verification used 3 previously verified baseline fallback(s) due to live network unavailability.
+[5/8] TypeScript/Vite production build
+
+> sphenpad@0.0.0 build
+> tsc -b && vite build
+
+vite v7.3.1 building client environment for production...
+transforming...
+✓ 156 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                     1.12 kB │ gzip:   0.51 kB
+dist/assets/index-BtH8qZm6.css     72.18 kB │ gzip:  13.11 kB
+dist/assets/index-C-TzD4RI.js   1,051.38 kB │ gzip: 320.51 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 2.42s
+[6/8] Built artifact integrity
+
+> sphenpad@0.0.0 verify-production-build
+> node scripts/verify-production-build.mjs
+
+Production smoke: PASS (2 built asset references checked)
+[7/8] Built-app browser smoke
+
+> sphenpad@0.0.0 verify-production-browser
+> node scripts/verify-production-browser.mjs
+
+PASS production browser smoke: /Applications/Google Chrome.app/Contents/MacOS/Google Chrome
+[8/8] Lint
+
+> sphenpad@0.0.0 lint
+> eslint .
+
+
+/Users/sea/Downloads/phase10a-finish-4/src/app/accountSync.tsx
+  486:6   warning  React Hook useEffect has a missing dependency: 'initializeUserState'. Either include it or remove the dependency array                         react-hooks/exhaustive-deps
+  493:6   warning  React Hook useEffect has a missing dependency: 'scheduleSync'. Either include it or remove the dependency array                                react-hooks/exhaustive-deps
+  506:6   warning  React Hook useEffect has missing dependencies: 'reconcileCloudUpdates' and 'scheduleSync'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+  538:6   warning  React Hook useEffect has a missing dependency: 'reconcileCloudUpdates'. Either include it or remove the dependency array                       react-hooks/exhaustive-deps
+  573:17  error    Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components                 react-refresh/only-export-components
+
+/Users/sea/Downloads/phase10a-finish-4/src/app/theme.tsx
+  101:9  warning  The 'setMode' function makes the dependencies of useMemo Hook (at line 158) change on every render. Move it inside the useMemo callback. Alternatively, wrap the definition of 'setMode' in its own useCallback() Hook    react-hooks/exhaustive-deps
+  105:9  warning  The 'setColor' function makes the dependencies of useMemo Hook (at line 158) change on every render. Move it inside the useMemo callback. Alternatively, wrap the definition of 'setColor' in its own useCallback() Hook  react-hooks/exhaustive-deps
+
+/Users/sea/Downloads/phase10a-finish-4/src/sudokupad/app/progressScene.ts
+  129:66  error  Unnecessary escape character: \:  no-useless-escape
+
+/Users/sea/Downloads/phase10a-finish-4/src/sudokupad/fpuzzles/import.ts
+  270:11  error  'solution' is never reassigned. Use 'const' instead  prefer-const
+
+/Users/sea/Downloads/phase10a-finish-4/src/sudokupad/migration/puzzleDefinition.ts
+  27:20  error  '_scene' is assigned a value but never used       @typescript-eslint/no-unused-vars
+  27:35  error  '_logic' is assigned a value but never used       @typescript-eslint/no-unused-vars
+  27:55  error  '_sourceData' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  31:25  error  '_sourceData' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/sea/Downloads/phase10a-finish-4/src/sudokupad/normalize/features.ts
+   4:28  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  42:46  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  52:58  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/sea/Downloads/phase10a-finish-4/src/sudokupad/render/SvgRenderer.ts
+  78:11  error  'key' is never reassigned. Use 'const' instead  prefer-const
+
+/Users/sea/Downloads/phase10a-finish-4/src/sudokupad/render/contentBounds.ts
+  4:18  error  An interface declaring no members is equivalent to its supertype  @typescript-eslint/no-empty-object-type
+
+/Users/sea/Downloads/phase10a-finish-4/src/ui/AppBrand.tsx
+  4:17  error  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+  9:17  error  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+/Users/sea/Downloads/phase10a-finish-4/src/ui/LinkifiedText.tsx
+  77:5  error  Error: This value cannot be modified
+
+Modifying a variable defined outside a component or hook is not allowed. Consider using an effect.
+
+/Users/sea/Downloads/phase10a-finish-4/src/ui/LinkifiedText.tsx:77:5
+  75 |
+  76 |   while (cursor < text.length) {
+> 77 |     MARKDOWN_LINK_PATTERN.lastIndex = cursor;
+     |     ^^^^^^^^^^^^^^^^^^^^^ value cannot be modified
+  78 |     URL_PATTERN.lastIndex = cursor;
+  79 |
+  80 |     const markdownMatch = MARKDOWN_LINK_PATTERN.exec(text);                                     react-hooks/immutability
+  78:5  error  Error: This value cannot be modified
+
+Modifying a variable defined outside a component or hook is not allowed. Consider using an effect.
+
+/Users/sea/Downloads/phase10a-finish-4/src/ui/LinkifiedText.tsx:78:5
+  76 |   while (cursor < text.length) {
+  77 |     MARKDOWN_LINK_PATTERN.lastIndex = cursor;
+> 78 |     URL_PATTERN.lastIndex = cursor;
+     |     ^^^^^^^^^^^ value cannot be modified
+  79 |
+  80 |     const markdownMatch = MARKDOWN_LINK_PATTERN.exec(text);
+  81 |     const urlMatch = URL_PATTERN.exec(text);  react-hooks/immutability
+
+/Users/sea/Downloads/phase10a-finish-4/src/ui/PopupMenuButton.tsx
+   96:6  warning  React Hook useEffect has a missing dependency: 'positionMenu'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 react-hooks/exhaustive-deps
+  100:5  error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/Users/sea/Downloads/phase10a-finish-4/src/ui/PopupMenuButton.tsx:100:5
+   98 |   useEffect(() => {
+   99 |     if (!open) return;
+> 100 |     positionMenu();
+      |     ^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  101 |     const raf = window.requestAnimationFrame(() => positionMenu());
+  102 |     return () => window.cancelAnimationFrame(raf);
+  103 |   }, [open, activeSubmenuItems]);  react-hooks/set-state-in-effect
+  103:6  warning  React Hook useEffect has a missing dependency: 'positionMenu'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 react-hooks/exhaustive-deps
+
+/Users/sea/Downloads/phase10a-finish-4/src/ui/PuzzleEditorPage.tsx
+  518:9   error  'visual' is never reassigned. Use 'const' instead  prefer-const
+  518:58  error  Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+
+/Users/sea/Downloads/phase10a-finish-4/src/ui/SelectControl.tsx
+  46:17  error    '_searchable' is assigned a value but never used                                                                                                                                                                                             @typescript-eslint/no-unused-vars
+  47:24  error    '_searchPlaceholder' is assigned a value but never used                                                                                                                                                                                      @typescript-eslint/no-unused-vars
+  53:9   warning  The 'selectedValues' conditional could make the dependencies of useMemo Hook (at line 55) change on every render. Move it inside the useMemo callback. Alternatively, wrap the initialization of 'selectedValues' in its own useMemo() Hook  react-hooks/exhaustive-deps
+
+/Users/sea/Downloads/phase10a-finish-4/src/ui/YouTubePlayer.tsx
+  94:24  error  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+/Users/sea/Downloads/phase10a-finish-4/src/ui/YouTubePlayer.tsx:94:24
+  92 |   }, [onProgress]);
+  93 |
+> 94 |   const roundedStart = sessionStartRef.current;
+     |                        ^^^^^^^^^^^^^^^^^^^^^^^ Cannot access ref value during render
+  95 |   const fallbackSrc = useMemo(
+  96 |     () => `https://www.youtube.com/embed/${videoId}?autoplay=0&playsinline=1&rel=0&modestbranding=1&start=${roundedStart}`,
+  97 |     [roundedStart, videoId]  react-hooks/refs
+  94:24  error  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+/Users/sea/Downloads/phase10a-finish-4/src/ui/YouTubePlayer.tsx:94:24
+  92 |   }, [onProgress]);
+  93 |
+> 94 |   const roundedStart = sessionStartRef.current;
+     |                        ^^^^^^^^^^^^^^^^^^^^^^^ Cannot access ref value during render
+  95 |   const fallbackSrc = useMemo(
+  96 |     () => `https://www.youtube.com/embed/${videoId}?autoplay=0&playsinline=1&rel=0&modestbranding=1&start=${roundedStart}`,
+  97 |     [roundedStart, videoId]  react-hooks/refs
+  94:24  error  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+/Users/sea/Downloads/phase10a-finish-4/src/ui/YouTubePlayer.tsx:94:24
+  92 |   }, [onProgress]);
+  93 |
+> 94 |   const roundedStart = sessionStartRef.current;
+     |                        ^^^^^^^^^^^^^^^^^^^^^^^ Cannot access ref value during render
+  95 |   const fallbackSrc = useMemo(
+  96 |     () => `https://www.youtube.com/embed/${videoId}?autoplay=0&playsinline=1&rel=0&modestbranding=1&start=${roundedStart}`,
+  97 |     [roundedStart, videoId]  react-hooks/refs
+
+✖ 33 problems (24 errors, 9 warnings)
+  3 errors and 0 warnings potentially fixable with the `--fix` option.
+

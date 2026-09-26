@@ -1,0 +1,110 @@
+{
+  "target": "SudokuPad 0.612.0",
+  "note": "Exact filenames/paths captured from feature-puzzlefont.js. sha256 values were verified against the pinned SudokuPad 0.612.0 upstream assets during Phase 10A networked closure.",
+  "fonts": [
+    {
+      "id": "baublemonogram",
+      "file": "Bauble_Monogram.ttf",
+      "path": "/assets/fonts/Bauble_Monogram.ttf",
+      "sha256": "75f5f003907debec11c2ffa733e94300123f402a5e335b807e7b031f52d38975",
+      "redistribution": "review-required",
+      "licenseNote": "Public listings describe this binary as free for personal use; do not bundle for a public/commercial deployment without permission/license review."
+    },
+    {
+      "id": "bonnet",
+      "file": "Bonnet__.ttf",
+      "path": "/assets/fonts/Bonnet__.ttf",
+      "sha256": "dc3cd1f1670851d2452861215d7b1c513bd7d500e273c8af2977ba37832d478c",
+      "redistribution": "review-required",
+      "licenseNote": "Public listings disagree/are unclear; treat redistribution rights as unknown until the original license is located."
+    },
+    {
+      "id": "cartoonblocks",
+      "file": "CartoonBlocksChristmas-Regular.ttf",
+      "path": "/assets/fonts/CartoonBlocksChristmas-Regular.ttf",
+      "sha256": "651b6eb0077100d948e59b42a5218bd5681c9b1f32cb4b379cf0e6b523901864",
+      "redistribution": "review-required",
+      "licenseNote": "Free for personal use; commercial/public deployment requires license review. Some distributions permit redistribution only with the original readme/license intact."
+    },
+    {
+      "id": "dickensianchristmas",
+      "file": "DickensianChristmas.ttf",
+      "path": "/assets/fonts/DickensianChristmas.ttf",
+      "sha256": "349757af56ea4a2134439bd2065a33abaa195646b011baacedbd144d23a701c3",
+      "redistribution": "review-required",
+      "licenseNote": "Free for personal use; author requests a commercial-use payment/license."
+    },
+    {
+      "id": "firstsnow",
+      "file": "Firstsnow-nRYmg.ttf",
+      "path": "/assets/fonts/Firstsnow-nRYmg.ttf",
+      "sha256": "eb78760952d2d18a57fbf8d03e172111587ae5eb2fe4badfe61dbdd39209b66c",
+      "redistribution": "review-required",
+      "licenseNote": "Public listings describe this binary as free for personal use only; commercial/public bundling requires license review."
+    },
+    {
+      "id": "christmastinsel",
+      "file": "PWChristmasTinsel.ttf",
+      "path": "/assets/fonts/PWChristmasTinsel.ttf",
+      "sha256": "f217e979b56c0a45fa73d2ea5cb36b7b6b69b4288fc491cf0988cd5d30b8404f",
+      "redistribution": "review-required",
+      "licenseNote": "Free for personal use; author requests donation/license for commercial use."
+    },
+    {
+      "id": "christmasfont",
+      "file": "PWChristmasfont.ttf",
+      "path": "/assets/fonts/PWChristmasfont.ttf",
+      "sha256": "9fe75f431a5a0fed14bbeb431124814d4823e800401e7ec27c2c366ea5cd0749",
+      "redistribution": "review-required",
+      "licenseNote": "Personal-use/donationware style license; commercial/public bundling requires review."
+    },
+    {
+      "id": "happychristmas",
+      "file": "PWHappyChristmas.ttf",
+      "path": "/assets/fonts/PWHappyChristmas.ttf",
+      "sha256": "4042d346e38798aa689ee33d8b7dd870f87291652210bc65266b9bedabe6063b",
+      "redistribution": "likely-permitted-review-source",
+      "licenseNote": "Public DaFont listing marks this font 100% Free, but preserve the original license/readme when bundling."
+    },
+    {
+      "id": "rudolph",
+      "file": "Rudolph.otf",
+      "path": "/assets/fonts/Rudolph.otf",
+      "sha256": "e6a5af3c38e32c61b604fa0d17037513d662af75d42d852204d748a86ae13e3e",
+      "redistribution": "review-required",
+      "licenseNote": "The StereoType Rudolph binary matching the captured filename is publicly listed as free for personal use only; web/app use requires license review."
+    },
+    {
+      "id": "snowballs",
+      "file": "Snowballs.ttf",
+      "path": "/assets/fonts/Snowballs.ttf",
+      "sha256": "b4fa7db8c954f3f8d04d2d926aa8d42855b1564565d0a449ca43ed0870a1e949",
+      "redistribution": "review-required",
+      "licenseNote": "Free for personal use only; commercial license available from the author."
+    },
+    {
+      "id": "stnichols",
+      "file": "stnicholas.ttf",
+      "path": "/assets/fonts/stnicholas.ttf",
+      "sha256": "ef633dd52927bad5eb7d77e925a7ac37fa67bf286eaef98509ce6046ddafca28",
+      "redistribution": "review-required",
+      "licenseNote": "Public listings identify this as demo/personal-use material; do not bundle without confirming web redistribution rights."
+    },
+    {
+      "id": "xtree",
+      "file": "XTREE.TTF",
+      "path": "/assets/fonts/XTREE.TTF",
+      "sha256": "9994a69649ba333b558cc3a4ab51506a7a75f1874da2c18ccd86ae5d1967289f",
+      "redistribution": "likely-permitted-review-source",
+      "licenseNote": "Public listings mark Christmas Tree / XTREE.TTF as public domain/GPL/OFL; preserve authoritative license text with the binary."
+    },
+    {
+      "id": "sevensegment",
+      "file": "SevenSegment.ttf",
+      "path": "/assets/fonts/SevenSegment.ttf",
+      "sha256": "3d1907073d083ffcb1c8ba0f180e011ae14a6c24ddf89bf39489fb11da1e4dae",
+      "redistribution": "review-required",
+      "licenseNote": "Captured filename is SevenSegment.ttf; public Seven Segment listings commonly require a commercial/web license. Confirm the exact binary/source before bundling."
+    }
+  ]
+}

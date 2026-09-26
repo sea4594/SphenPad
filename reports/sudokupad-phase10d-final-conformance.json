@@ -1,0 +1,216 @@
+{
+  "target": "SudokuPad 0.612.0 captured HAR",
+  "referenceHarSha256": "12d6ffd3ec204ba14cb6d5aab3da98444be49438d5aab8b664fe1fde34d2ecca",
+  "referenceScriptSha256": "3c53d973ffa62d541e300be9fddb53f19c2a4cc32eb98769a54904240343c9fe",
+  "chromiumVersion": "Chromium 144.0.7559.96 built on Debian GNU/Linux 13 (trixie)",
+  "fixtures": 8,
+  "passed": 8,
+  "failed": 0,
+  "results": [
+    {
+      "name": "captured-real",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          608,
+          608
+        ],
+        "candidateSize": [
+          608,
+          608
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 0,
+        "meanChannelDelta": 0.0
+      },
+      "rasterRetry": null,
+      "pixelRatioThresholdUsed": 0.002,
+      "candidateAssertions": [],
+      "note": "Exact puzzle captured in the HAR"
+    },
+    {
+      "name": "progress-triggered-fog",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          288,
+          288
+        ],
+        "candidateSize": [
+          288,
+          288
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 0,
+        "meanChannelDelta": 0.0
+      },
+      "rasterRetry": null,
+      "pixelRatioThresholdUsed": 0.002,
+      "candidateAssertions": [],
+      "note": "Triggered fog link responds to player progress"
+    },
+    {
+      "name": "fpuz-arrow",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          288,
+          288
+        ],
+        "candidateSize": [
+          288,
+          288
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 0,
+        "meanChannelDelta": 0.0
+      },
+      "rasterRetry": null,
+      "pixelRatioThresholdUsed": 0.002,
+      "candidateAssertions": [],
+      "note": "Arrow with ordinary circular bulb"
+    },
+    {
+      "name": "fpuz-historical-monopoly",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          288,
+          288
+        ],
+        "candidateSize": [
+          288,
+          288
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 0,
+        "meanChannelDelta": 0.0
+      },
+      "rasterRetry": null,
+      "pixelRatioThresholdUsed": 0.002,
+      "candidateAssertions": [],
+      "note": "Converted F-Puzzles input still receives stock hard-coded MONOPOLYSUDOKU background"
+    },
+    {
+      "name": "labels-compact-marks",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          288,
+          304
+        ],
+        "candidateSize": [
+          288,
+          304
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 0,
+        "meanChannelDelta": 0.0
+      },
+      "rasterRetry": null,
+      "pixelRatioThresholdUsed": 0.002,
+      "candidateAssertions": [],
+      "note": "FeatureRowColLabels + FeatureCompactMarks"
+    },
+    {
+      "name": "progress-deep-fog-hidden-given",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          288,
+          288
+        ],
+        "candidateSize": [
+          288,
+          288
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 0,
+        "meanChannelDelta": 0.0
+      },
+      "rasterRetry": null,
+      "pixelRatioThresholdUsed": 0.002,
+      "candidateAssertions": [],
+      "note": "Re-entering a hidden given reveals that cell and renders player value in the unmasked value layer"
+    },
+    {
+      "name": "progress-sphenpad-double-line",
+      "passed": true,
+      "structuralEqual": null,
+      "structuralDifference": null,
+      "raster": null,
+      "rasterRetry": null,
+      "pixelRatioThresholdUsed": 0.002,
+      "candidateAssertions": [
+        {
+          "selector": "#cell-pen path.sphenpad-user-line",
+          "count": 2,
+          "ok": true,
+          "found": 2
+        },
+        {
+          "selector": "#cell-pen path.sphenpad-user-line[stroke=\"#57d38c\"]",
+          "count": 1,
+          "ok": true,
+          "found": 1
+        },
+        {
+          "selector": "#cell-pen path.sphenpad-user-line[stroke=\"#ff8fc3\"]",
+          "count": 1,
+          "ok": true,
+          "found": 1
+        }
+      ],
+      "note": "Preserve SphenPad double-line behavior"
+    },
+    {
+      "name": "fpuz-font-explicit",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          288,
+          304
+        ],
+        "candidateSize": [
+          288,
+          304
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 0,
+        "meanChannelDelta": 0.0
+      },
+      "rasterRetry": null,
+      "pixelRatioThresholdUsed": 0.002,
+      "candidateAssertions": [
+        {
+          "type": "root-class",
+          "className": "puzzlefont-baublemonogram",
+          "ok": true,
+          "found": 1
+        }
+      ],
+      "note": "Converted F-Puzzles input carries explicit puzzlefont setting; binary font bytes are Phase 10"
+    }
+  ]
+}

@@ -1,0 +1,103 @@
+{
+  "target": "SudokuPad 0.612.0 captured HAR",
+  "referenceHar": "/mnt/data/sudokupad.app.har",
+  "referenceHarSha256": "12d6ffd3ec204ba14cb6d5aab3da98444be49438d5aab8b664fe1fde34d2ecca",
+  "referenceScriptSha256": "3c53d973ffa62d541e300be9fddb53f19c2a4cc32eb98769a54904240343c9fe",
+  "chromium": "/usr/bin/chromium",
+  "chromiumVersion": "Chromium 144.0.7559.96 built on Debian GNU/Linux 13 (trixie)",
+  "suite": "archive",
+  "fixtures": 4,
+  "passed": 0,
+  "failed": 4,
+  "pixelRatioThreshold": 0.002,
+  "results": [
+    {
+      "name": "archive:fi311m5b4u",
+      "passed": false,
+      "structuralEqual": false,
+      "structuralDifference": "node 19: stock=('image', {'alt': '\ud83d\udc00', 'class': 'twemoji', 'height': '37.801', 'href': 'twemoji:asset', 'width': '38.946', 'x': '12.661', 'y': '536.197'}, '') candidate=('image', {'alt': '\ud83d\udc00', 'class': 'twemoji', 'height': '37', 'href': 'twemoji:asset', 'width': '39', 'x': '12.656', 'y': '536.987'}, '')",
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          656,
+          768
+        ],
+        "candidateSize": [
+          656,
+          768
+        ],
+        "differentPixelRatio": 0.0008435753302845528,
+        "maxChannelDelta": 141,
+        "meanChannelDelta": 0.019899776634485094
+      },
+      "candidateAssertions": [],
+      "note": "Deterministic archive sample"
+    },
+    {
+      "name": "archive:james-sinclair/schrodingers-carry-on",
+      "passed": false,
+      "structuralEqual": false,
+      "structuralDifference": "node 42: stock=('path', {'class': 'cell-grid', 'd': 'M0 0 L384 0 M0 64 L384 64 M0 128 L384 128 M0 192 L384 192 M0 256 L384 256 M0 320 L384 320 M0 384 L384 384 M0 448 L384 448 M0 0 L0 448 M64 0 L64 448 M128 0 L128 448 M192 0 L192 448 M256 0 L256 448 M320 0 L320 448 M384 0 L384 448'}, '') candidate=('path', {'d': 'M0 0 L384 0 M0 64 L384 64 M0 128 L384 128 M0 192 L384 192 M0 256 L384 256 M0 320 L384 320 M0 384 L384 384 M0 0 L0 384 M64 0 L64 384 M128 0 L128 384 M192 0 L192 384 M256 0 L256 384 M320 0 L320 384 M384 0 L384 384', 'fill': 'none', 'stroke': '#000000', 'stroke-linecap': 'butt', 'stroke-linejoin': 'bevel', 'stroke-width': '1', 'vector-effect': 'non-scaling-stroke'}, '')",
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          512,
+          608
+        ],
+        "candidateSize": [
+          512,
+          608
+        ],
+        "differentPixelRatio": 0.0034500925164473685,
+        "maxChannelDelta": 110,
+        "meanChannelDelta": 0.16142620956688597
+      },
+      "candidateAssertions": [],
+      "note": "Deterministic archive sample"
+    },
+    {
+      "name": "archive:k4zgmts5h9",
+      "passed": false,
+      "structuralEqual": false,
+      "structuralDifference": "node 100: stock=('image', {'alt': '\ud83e\uddc1', 'class': 'twemoji', 'height': '37.074', 'href': 'twemoji:asset', 'width': '38.076', 'x': '474.74', 'y': '466.574'}, '') candidate=('image', {'alt': '\ud83e\uddc1', 'class': 'twemoji', 'height': '37', 'href': 'twemoji:asset', 'width': '38', 'x': '474.731', 'y': '466.631'}, '')",
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          672,
+          672
+        ],
+        "candidateSize": [
+          672,
+          672
+        ],
+        "differentPixelRatio": 0.0006311118197278912,
+        "maxChannelDelta": 39,
+        "meanChannelDelta": 0.004090047477324263
+      },
+      "candidateAssertions": [],
+      "note": "Deterministic archive sample"
+    },
+    {
+      "name": "archive:ksj8nzm463",
+      "passed": false,
+      "structuralEqual": false,
+      "structuralDifference": "node 14: stock=('image', {'alt': '\ud83d\udc02', 'class': 'twemoji', 'height': '34.029', 'href': 'twemoji:asset', 'width': '35.126', 'x': '78.531', 'y': '79.848'}, '') candidate=('image', {'alt': '\ud83d\udc02', 'class': 'twemoji', 'height': '33', 'href': 'twemoji:asset', 'width': '35', 'x': '78.531', 'y': '80.191'}, '')",
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          736,
+          736
+        ],
+        "candidateSize": [
+          736,
+          736
+        ],
+        "differentPixelRatio": 0.009497947188090737,
+        "maxChannelDelta": 72,
+        "meanChannelDelta": 0.10036687244013863
+      },
+      "candidateAssertions": [],
+      "note": "Deterministic archive sample"
+    }
+  ]
+}

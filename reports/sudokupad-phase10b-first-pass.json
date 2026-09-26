@@ -1,0 +1,876 @@
+{
+  "target": "SudokuPad 0.612.0 captured HAR",
+  "selection": {
+    "seed": 106120,
+    "total": 1000,
+    "archiveSize": 4051,
+    "heavyPhase9E": 21,
+    "randomSample": 979,
+    "selection": "21 mandatory Phase 9E timeout source IDs + uniform sample without replacement from remaining 4,030 archive puzzles"
+  },
+  "firstPass": {
+    "passed": 932,
+    "timeout": 68
+  },
+  "heavyFirstPass": {
+    "total": 21,
+    "passed": 0,
+    "failed": 21
+  },
+  "failures": [
+    {
+      "name": "archive:06vt5y9nwu",
+      "archiveIndex": 7,
+      "heavyPhase9E": true,
+      "kind": "timeout",
+      "error": "TimeoutError()",
+      "structuralDifference": null,
+      "raster": null
+    },
+    {
+      "name": "archive:100ywt1d63",
+      "archiveIndex": 38,
+      "heavyPhase9E": false,
+      "kind": "timeout",
+      "error": "TimeoutError()",
+      "structuralDifference": null,
+      "raster": null
+    },
+    {
+      "name": "archive:27v1lv24c3",
+      "archiveIndex": 109,
+      "heavyPhase9E": false,
+      "kind": "timeout",
+      "error": "TimeoutError()",
+      "structuralDifference": null,
+      "raster": null
+    },
+    {
+      "name": "archive:4b16rwzym1",
+      "archiveIndex": 261,
+      "heavyPhase9E": false,
+      "kind": "timeout",
+      "error": "TimeoutError()",
+      "structuralDifference": null,
+      "raster": null
+    },
+    {
+      "name": "archive:7d9f9mb2y3",
+      "archiveIndex": 439,
+      "heavyPhase9E": true,
+      "kind": "timeout",
+      "error": "TimeoutError()",
+      "structuralDifference": null,
+      "raster": null
+    },
+    {
+      "name": "archive:7llvcaivec",
+      "archiveIndex": 452,
+      "heavyPhase9E": false,
+      "kind": "timeout",
+      "error": "TimeoutError()",
+      "structuralDifference": null,
+      "raster": null
+    },
+    {
+      "name": "archive:868i586sml",
+      "archiveIndex": 490,
+      "heavyPhase9E": false,
+      "kind": "timeout",
+      "error": "TimeoutError()",
+      "structuralDifference": null,
+      "raster": null
+    },
+    {
+      "name": "archive:869hsb49kn",
+      "archiveIndex": 491,
+      "heavyPhase9E": false,
+      "kind": "timeout",
+      "error": "TimeoutError()",
+      "structuralDifference": null,
+      "raster": null
+    },
+    {
+      "name": "archive:9snrpdy9fe",
+      "archiveIndex": 588,
+      "heavyPhase9E": true,
+      "kind": "timeout",
+      "error": "TimeoutError()",
+      "structuralDifference": null,
+      "raster": null
+    },
+    {
+      "name": "archive:Dt3rqrQPGR",
+      "archiveIndex": 619,
+      "heavyPhase9E": false,
+      "kind": "timeout",
+      "error": "TimeoutError()",
+      "structuralDifference": null,
+      "raster": null
+    },
+    {
+      "name": "archive:L9jqGq4Qtq",
+      "archiveIndex": 667,
+      "heavyPhase9E": false,
+      "kind": "timeout",
+      "error": "TimeoutError()",
+      "structuralDifference": null,
+      "raster": null
+    },
+    {
+      "name": "archive:Lf4B9t2p29",
+      "archiveIndex": 674,
+      "heavyPhase9E": false,
+      "kind": "timeout",
+      "error": "TimeoutError()",
+      "structuralDifference": null,
+      "raster": null
+    },
+    {
+      "name": "archive:MONOPOLYSUDOKU",
+      "archiveIndex": 683,
+      "heavyPhase9E": true,
+      "kind": "timeout",
+      "error": "TimeoutError()",
+      "structuralDifference": null,
+      "raster": null
+    },
+    {
+      "name": "archive:ays2k7hm6t",
+      "archiveIndex": 788,
+      "heavyPhase9E": false,
+      "kind": "timeout",
+      "error": "TimeoutError()",
+      "structuralDifference": null,
+      "raster": null
+    },
+    {
+      "name": "archive:b193jegg4x",
+      "archiveIndex": 791,
+      "heavyPhase9E": true,
+      "kind": "timeout",
+      "error": "TimeoutError()",
+      "structuralDifference": null,
+      "raster": null
+    },
+    {
+      "name": "archive:bmh85ce33k",
+      "archiveIndex": 866,
+      "heavyPhase9E": false,
+      "kind": "timeout",
+      "error": "TimeoutError()",
+      "structuralDifference": null,
+      "raster": null
+    },
+    {
+      "name": "archive:c2yc4u9yl1",
+      "archiveIndex": 897,
+      "heavyPhase9E": false,
+      "kind": "timeout",
+      "error": "TimeoutError()",
+      "structuralDifference": null,
+      "raster": null
+    },
+    {
+      "name": "archive:cdifwlxo10",
+      "archiveIndex": 911,
+      "heavyPhase9E": false,
+      "kind": "timeout",
+      "error": "TimeoutError()",
+      "structuralDifference": null,
+      "raster": null
+    },
+    {
+      "name": "archive:dqu2xb1itj",
+      "archiveIndex": 996,
+      "heavyPhase9E": false,
+      "kind": "timeout",
+      "error": "TimeoutError()",
+      "structuralDifference": null,
+      "raster": null
+    },
+    {
+      "name": "archive:eb90s76a4e",
+      "archiveIndex": 1028,
+      "heavyPhase9E": true,
+      "kind": "timeout",
+      "error": "TimeoutError()",
+      "structuralDifference": null,
+      "raster": null
+    },
+    {
+      "name": "archive:esjz6meusc",
+      "archiveIndex": 1055,
+      "heavyPhase9E": true,
+      "kind": "timeout",
+      "error": "TimeoutError()",
+      "structuralDifference": null,
+      "raster": null
+    },
+    {
+      "name": "archive:f6xcgzdav3",
+      "archiveIndex": 1078,
+      "heavyPhase9E": false,
+      "kind": "timeout",
+      "error": "TimeoutError()",
+      "structuralDifference": null,
+      "raster": null
+    },
+    {
+      "name": "archive:gbwivexeh7",
+      "archiveIndex": 1190,
+      "heavyPhase9E": true,
+      "kind": "timeout",
+      "error": "TimeoutError()",
+      "structuralDifference": null,
+      "raster": null
+    },
+    {
+      "name": "archive:i2r7za43kv",
+      "archiveIndex": 1278,
+      "heavyPhase9E": true,
+      "kind": "timeout",
+      "error": "TimeoutError()",
+      "structuralDifference": null,
+      "raster": null
+    },
+    {
+      "name": "archive:ik85shpid7",
+      "archiveIndex": 1305,
+      "heavyPhase9E": true,
+      "kind": "timeout",
+      "error": "TimeoutError()",
+      "structuralDifference": null,
+      "raster": null
+    },
+    {
+      "name": "archive:iutvqv1ht8",
+      "archiveIndex": 1319,
+      "heavyPhase9E": false,
+      "kind": "timeout",
+      "error": "TimeoutError()",
+      "structuralDifference": null,
+      "raster": null
+    },
+    {
+      "name": "archive:james-sinclair/stickiest-notes",
+      "archiveIndex": 1364,
+      "heavyPhase9E": false,
+      "kind": "timeout",
+      "error": "TimeoutError()",
+      "structuralDifference": null,
+      "raster": null
+    },
+    {
+      "name": "archive:jgdFdqhmn2",
+      "archiveIndex": 1384,
+      "heavyPhase9E": false,
+      "kind": "timeout",
+      "error": "TimeoutError()",
+      "structuralDifference": null,
+      "raster": null
+    },
+    {
+      "name": "archive:jl4sby2gl2",
+      "archiveIndex": 1391,
+      "heavyPhase9E": false,
+      "kind": "timeout",
+      "error": "TimeoutError()",
+      "structuralDifference": null,
+      "raster": null
+    },
+    {
+      "name": "archive:jw1onozqhg",
+      "archiveIndex": 1400,
+      "heavyPhase9E": true,
+      "kind": "timeout",
+      "error": "TimeoutError()",
+      "structuralDifference": null,
+      "raster": null
+    },
+    {
+      "name": "archive:l00604nlbr",
+      "archiveIndex": 1448,
+      "heavyPhase9E": false,
+      "kind": "timeout",
+      "error": "TimeoutError()",
+      "structuralDifference": null,
+      "raster": null
+    },
+    {
+      "name": "archive:l01qpi8oc3",
+      "archiveIndex": 1449,
+      "heavyPhase9E": false,
+      "kind": "timeout",
+      "error": "TimeoutError()",
+      "structuralDifference": null,
+      "raster": null
+    },
+    {
+      "name": "archive:lhid2td2zu",
+      "archiveIndex": 1459,
+      "heavyPhase9E": false,
+      "kind": "timeout",
+      "error": "TimeoutError()",
+      "structuralDifference": null,
+      "raster": null
+    },
+    {
+      "name": "archive:lipt9yn6r4",
+      "archiveIndex": 1460,
+      "heavyPhase9E": true,
+      "kind": "timeout",
+      "error": "TimeoutError()",
+      "structuralDifference": null,
+      "raster": null
+    },
+    {
+      "name": "archive:lldn0vubxi",
+      "archiveIndex": 1465,
+      "heavyPhase9E": false,
+      "kind": "timeout",
+      "error": "TimeoutError()",
+      "structuralDifference": null,
+      "raster": null
+    },
+    {
+      "name": "archive:mvqojfwq9a",
+      "archiveIndex": 1522,
+      "heavyPhase9E": false,
+      "kind": "timeout",
+      "error": "TimeoutError()",
+      "structuralDifference": null,
+      "raster": null
+    },
+    {
+      "name": "archive:mwz7l2lvoi",
+      "archiveIndex": 1525,
+      "heavyPhase9E": false,
+      "kind": "timeout",
+      "error": "TimeoutError()",
+      "structuralDifference": null,
+      "raster": null
+    },
+    {
+      "name": "archive:ntqufgkvcx",
+      "archiveIndex": 1582,
+      "heavyPhase9E": true,
+      "kind": "timeout",
+      "error": "TimeoutError()",
+      "structuralDifference": null,
+      "raster": null
+    },
+    {
+      "name": "archive:o4u3kz1764",
+      "archiveIndex": 1600,
+      "heavyPhase9E": false,
+      "kind": "timeout",
+      "error": "TimeoutError()",
+      "structuralDifference": null,
+      "raster": null
+    },
+    {
+      "name": "archive:p676oglsv8",
+      "archiveIndex": 1643,
+      "heavyPhase9E": true,
+      "kind": "timeout",
+      "error": "TimeoutError()",
+      "structuralDifference": null,
+      "raster": null
+    },
+    {
+      "name": "archive:p6s6me7gcf",
+      "archiveIndex": 1647,
+      "heavyPhase9E": false,
+      "kind": "timeout",
+      "error": "TimeoutError()",
+      "structuralDifference": null,
+      "raster": null
+    },
+    {
+      "name": "archive:p8ushghwpc",
+      "archiveIndex": 1650,
+      "heavyPhase9E": true,
+      "kind": "timeout",
+      "error": "TimeoutError()",
+      "structuralDifference": null,
+      "raster": null
+    },
+    {
+      "name": "archive:rpdtjt36r7",
+      "archiveIndex": 1809,
+      "heavyPhase9E": false,
+      "kind": "timeout",
+      "error": "TimeoutError()",
+      "structuralDifference": null,
+      "raster": null
+    },
+    {
+      "name": "archive:sudoku/7Qt3HNR2Pj",
+      "archiveIndex": 2117,
+      "heavyPhase9E": false,
+      "kind": "timeout",
+      "error": "TimeoutError()",
+      "structuralDifference": null,
+      "raster": null
+    },
+    {
+      "name": "archive:sudoku/944Mg3fnJH",
+      "archiveIndex": 2204,
+      "heavyPhase9E": true,
+      "kind": "timeout",
+      "error": "TimeoutError()",
+      "structuralDifference": null,
+      "raster": null
+    },
+    {
+      "name": "archive:sudoku/D7fqF9rbgg",
+      "archiveIndex": 2314,
+      "heavyPhase9E": false,
+      "kind": "timeout",
+      "error": "TimeoutError()",
+      "structuralDifference": null,
+      "raster": null
+    },
+    {
+      "name": "archive:sudoku/DrDLbHmj6h",
+      "archiveIndex": 2355,
+      "heavyPhase9E": false,
+      "kind": "timeout",
+      "error": "TimeoutError()",
+      "structuralDifference": null,
+      "raster": null
+    },
+    {
+      "name": "archive:sudoku/LNj2JRDpq6",
+      "archiveIndex": 2622,
+      "heavyPhase9E": false,
+      "kind": "timeout",
+      "error": "TimeoutError()",
+      "structuralDifference": null,
+      "raster": null
+    },
+    {
+      "name": "archive:sudoku/LTMQhdn3b7",
+      "archiveIndex": 2632,
+      "heavyPhase9E": false,
+      "kind": "timeout",
+      "error": "TimeoutError()",
+      "structuralDifference": null,
+      "raster": null
+    },
+    {
+      "name": "archive:sudoku/LTdPqqtpFq",
+      "archiveIndex": 2633,
+      "heavyPhase9E": false,
+      "kind": "timeout",
+      "error": "TimeoutError()",
+      "structuralDifference": null,
+      "raster": null
+    },
+    {
+      "name": "archive:sudoku/MHHnf7PDDQ",
+      "archiveIndex": 2669,
+      "heavyPhase9E": false,
+      "kind": "timeout",
+      "error": "TimeoutError()",
+      "structuralDifference": null,
+      "raster": null
+    },
+    {
+      "name": "archive:sudoku/NGbgngNgnd",
+      "archiveIndex": 2733,
+      "heavyPhase9E": false,
+      "kind": "timeout",
+      "error": "TimeoutError()",
+      "structuralDifference": null,
+      "raster": null
+    },
+    {
+      "name": "archive:sudoku/Nmg943btqh",
+      "archiveIndex": 2759,
+      "heavyPhase9E": true,
+      "kind": "timeout",
+      "error": "TimeoutError()",
+      "structuralDifference": null,
+      "raster": null
+    },
+    {
+      "name": "archive:sudoku/Pm8N43nTMG",
+      "archiveIndex": 2804,
+      "heavyPhase9E": false,
+      "kind": "timeout",
+      "error": "TimeoutError()",
+      "structuralDifference": null,
+      "raster": null
+    },
+    {
+      "name": "archive:sudoku/g8nbdG8674",
+      "archiveIndex": 3139,
+      "heavyPhase9E": false,
+      "kind": "timeout",
+      "error": "TimeoutError()",
+      "structuralDifference": null,
+      "raster": null
+    },
+    {
+      "name": "archive:sudoku/jMQR24JRBN",
+      "archiveIndex": 3271,
+      "heavyPhase9E": false,
+      "kind": "timeout",
+      "error": "TimeoutError()",
+      "structuralDifference": null,
+      "raster": null
+    },
+    {
+      "name": "archive:sudoku/jfrf3mHRbN",
+      "archiveIndex": 3286,
+      "heavyPhase9E": true,
+      "kind": "timeout",
+      "error": "TimeoutError()",
+      "structuralDifference": null,
+      "raster": null
+    },
+    {
+      "name": "archive:sudoku/m2TTpBPtg2",
+      "archiveIndex": 3302,
+      "heavyPhase9E": false,
+      "kind": "timeout",
+      "error": "TimeoutError()",
+      "structuralDifference": null,
+      "raster": null
+    },
+    {
+      "name": "archive:sudoku/m3GGq4Ht96",
+      "archiveIndex": 3305,
+      "heavyPhase9E": false,
+      "kind": "timeout",
+      "error": "TimeoutError()",
+      "structuralDifference": null,
+      "raster": null
+    },
+    {
+      "name": "archive:sudoku/m6JLP2B72M",
+      "archiveIndex": 3310,
+      "heavyPhase9E": false,
+      "kind": "timeout",
+      "error": "TimeoutError()",
+      "structuralDifference": null,
+      "raster": null
+    },
+    {
+      "name": "archive:sudoku/pM7jd2QbmD",
+      "archiveIndex": 3428,
+      "heavyPhase9E": true,
+      "kind": "timeout",
+      "error": "TimeoutError()",
+      "structuralDifference": null,
+      "raster": null
+    },
+    {
+      "name": "archive:sudoku/rFJd9mN82f",
+      "archiveIndex": 3512,
+      "heavyPhase9E": false,
+      "kind": "timeout",
+      "error": "TimeoutError()",
+      "structuralDifference": null,
+      "raster": null
+    },
+    {
+      "name": "archive:sudoku/rJDLMnH7LB",
+      "archiveIndex": 3514,
+      "heavyPhase9E": false,
+      "kind": "timeout",
+      "error": "TimeoutError()",
+      "structuralDifference": null,
+      "raster": null
+    },
+    {
+      "name": "archive:sudoku/tgQJNqqB6r",
+      "archiveIndex": 3590,
+      "heavyPhase9E": true,
+      "kind": "timeout",
+      "error": "TimeoutError()",
+      "structuralDifference": null,
+      "raster": null
+    },
+    {
+      "name": "archive:t4vu4ndtl3",
+      "archiveIndex": 3617,
+      "heavyPhase9E": true,
+      "kind": "timeout",
+      "error": "TimeoutError()",
+      "structuralDifference": null,
+      "raster": null
+    },
+    {
+      "name": "archive:xag582l3t0",
+      "archiveIndex": 3903,
+      "heavyPhase9E": false,
+      "kind": "timeout",
+      "error": "TimeoutError()",
+      "structuralDifference": null,
+      "raster": null
+    },
+    {
+      "name": "archive:ybaev4x39i",
+      "archiveIndex": 3948,
+      "heavyPhase9E": false,
+      "kind": "timeout",
+      "error": "TimeoutError()",
+      "structuralDifference": null,
+      "raster": null
+    },
+    {
+      "name": "archive:zsmtekox43",
+      "archiveIndex": 4039,
+      "heavyPhase9E": false,
+      "kind": "timeout",
+      "error": "TimeoutError()",
+      "structuralDifference": null,
+      "raster": null
+    }
+  ],
+  "shards": [
+    {
+      "file": "reports/phase10b-shards/collect-000.json",
+      "fixtures": 25,
+      "passed": 23,
+      "failed": 2
+    },
+    {
+      "file": "reports/phase10b-shards/collect-001.json",
+      "fixtures": 25,
+      "passed": 24,
+      "failed": 1
+    },
+    {
+      "file": "reports/phase10b-shards/collect-002.json",
+      "fixtures": 25,
+      "passed": 24,
+      "failed": 1
+    },
+    {
+      "file": "reports/phase10b-shards/collect-003.json",
+      "fixtures": 25,
+      "passed": 25,
+      "failed": 0
+    },
+    {
+      "file": "reports/phase10b-shards/collect-004.json",
+      "fixtures": 25,
+      "passed": 23,
+      "failed": 2
+    },
+    {
+      "file": "reports/phase10b-shards/collect-005.json",
+      "fixtures": 25,
+      "passed": 23,
+      "failed": 2
+    },
+    {
+      "file": "reports/phase10b-shards/collect-006.json",
+      "fixtures": 25,
+      "passed": 23,
+      "failed": 2
+    },
+    {
+      "file": "reports/phase10b-shards/collect-007.json",
+      "fixtures": 25,
+      "passed": 22,
+      "failed": 3
+    },
+    {
+      "file": "reports/phase10b-shards/collect-008.json",
+      "fixtures": 25,
+      "passed": 22,
+      "failed": 3
+    },
+    {
+      "file": "reports/phase10b-shards/collect-009.json",
+      "fixtures": 25,
+      "passed": 22,
+      "failed": 3
+    },
+    {
+      "file": "reports/phase10b-shards/collect-010.json",
+      "fixtures": 25,
+      "passed": 22,
+      "failed": 3
+    },
+    {
+      "file": "reports/phase10b-shards/collect-011.json",
+      "fixtures": 25,
+      "passed": 24,
+      "failed": 1
+    },
+    {
+      "file": "reports/phase10b-shards/collect-012.json",
+      "fixtures": 25,
+      "passed": 25,
+      "failed": 0
+    },
+    {
+      "file": "reports/phase10b-shards/collect-013.json",
+      "fixtures": 25,
+      "passed": 22,
+      "failed": 3
+    },
+    {
+      "file": "reports/phase10b-shards/collect-014.json",
+      "fixtures": 25,
+      "passed": 21,
+      "failed": 4
+    },
+    {
+      "file": "reports/phase10b-shards/collect-015.json",
+      "fixtures": 25,
+      "passed": 18,
+      "failed": 7
+    },
+    {
+      "file": "reports/phase10b-shards/collect-016.json",
+      "fixtures": 25,
+      "passed": 23,
+      "failed": 2
+    },
+    {
+      "file": "reports/phase10b-shards/collect-017.json",
+      "fixtures": 25,
+      "passed": 22,
+      "failed": 3
+    },
+    {
+      "file": "reports/phase10b-shards/collect-018.json",
+      "fixtures": 25,
+      "passed": 24,
+      "failed": 1
+    },
+    {
+      "file": "reports/phase10b-shards/collect-019.json",
+      "fixtures": 25,
+      "passed": 25,
+      "failed": 0
+    },
+    {
+      "file": "reports/phase10b-shards/collect-020.json",
+      "fixtures": 25,
+      "passed": 25,
+      "failed": 0
+    },
+    {
+      "file": "reports/phase10b-shards/collect-021.json",
+      "fixtures": 25,
+      "passed": 24,
+      "failed": 1
+    },
+    {
+      "file": "reports/phase10b-shards/collect-022.json",
+      "fixtures": 25,
+      "passed": 24,
+      "failed": 1
+    },
+    {
+      "file": "reports/phase10b-shards/collect-023.json",
+      "fixtures": 25,
+      "passed": 23,
+      "failed": 2
+    },
+    {
+      "file": "reports/phase10b-shards/collect-024.json",
+      "fixtures": 25,
+      "passed": 25,
+      "failed": 0
+    },
+    {
+      "file": "reports/phase10b-shards/collect-025.json",
+      "fixtures": 25,
+      "passed": 24,
+      "failed": 1
+    },
+    {
+      "file": "reports/phase10b-shards/collect-026.json",
+      "fixtures": 25,
+      "passed": 22,
+      "failed": 3
+    },
+    {
+      "file": "reports/phase10b-shards/collect-027.json",
+      "fixtures": 25,
+      "passed": 22,
+      "failed": 3
+    },
+    {
+      "file": "reports/phase10b-shards/collect-028.json",
+      "fixtures": 25,
+      "passed": 25,
+      "failed": 0
+    },
+    {
+      "file": "reports/phase10b-shards/collect-029.json",
+      "fixtures": 25,
+      "passed": 25,
+      "failed": 0
+    },
+    {
+      "file": "reports/phase10b-shards/collect-030.json",
+      "fixtures": 25,
+      "passed": 25,
+      "failed": 0
+    },
+    {
+      "file": "reports/phase10b-shards/collect-031.json",
+      "fixtures": 25,
+      "passed": 24,
+      "failed": 1
+    },
+    {
+      "file": "reports/phase10b-shards/collect-032.json",
+      "fixtures": 25,
+      "passed": 20,
+      "failed": 5
+    },
+    {
+      "file": "reports/phase10b-shards/collect-033.json",
+      "fixtures": 25,
+      "passed": 24,
+      "failed": 1
+    },
+    {
+      "file": "reports/phase10b-shards/collect-034.json",
+      "fixtures": 25,
+      "passed": 23,
+      "failed": 2
+    },
+    {
+      "file": "reports/phase10b-shards/collect-035.json",
+      "fixtures": 25,
+      "passed": 23,
+      "failed": 2
+    },
+    {
+      "file": "reports/phase10b-shards/collect-036.json",
+      "fixtures": 25,
+      "passed": 25,
+      "failed": 0
+    },
+    {
+      "file": "reports/phase10b-shards/collect-037.json",
+      "fixtures": 25,
+      "passed": 25,
+      "failed": 0
+    },
+    {
+      "file": "reports/phase10b-shards/collect-038.json",
+      "fixtures": 25,
+      "passed": 24,
+      "failed": 1
+    },
+    {
+      "file": "reports/phase10b-shards/collect-039.json",
+      "fixtures": 25,
+      "passed": 23,
+      "failed": 2
+    }
+  ]
+}

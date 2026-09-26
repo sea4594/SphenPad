@@ -1,0 +1,246 @@
+{
+  "target": "SudokuPad 0.612.0 captured HAR",
+  "referenceHar": "/mnt/data/sudokupad.app.har",
+  "referenceHarSha256": "12d6ffd3ec204ba14cb6d5aab3da98444be49438d5aab8b664fe1fde34d2ecca",
+  "referenceScriptSha256": "3c53d973ffa62d541e300be9fddb53f19c2a4cc32eb98769a54904240343c9fe",
+  "chromium": "/usr/bin/chromium",
+  "chromiumVersion": "Chromium 144.0.7559.96 built on Debian GNU/Linux 13 (trixie)",
+  "suite": "synthetic",
+  "fixtures": 11,
+  "passed": 11,
+  "failed": 0,
+  "pixelRatioThreshold": 0.002,
+  "results": [
+    {
+      "name": "captured-real",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          608,
+          608
+        ],
+        "candidateSize": [
+          608,
+          608
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 1,
+        "meanChannelDelta": 0.00045266331948291784
+      },
+      "note": "Exact puzzle captured in the HAR"
+    },
+    {
+      "name": "primitives-outside",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          288,
+          336
+        ],
+        "candidateSize": [
+          288,
+          336
+        ],
+        "differentPixelRatio": 0.0003823578042328042,
+        "maxChannelDelta": 18,
+        "meanChannelDelta": 0.008597883597883597
+      },
+      "note": "Lines, raw path, arrows, rounded/rotated graphics, multiline/outside text, marks, killer cage"
+    },
+    {
+      "name": "recognized-features",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          288,
+          288
+        ],
+        "candidateSize": [
+          288,
+          288
+        ],
+        "differentPixelRatio": 7.233796296296296e-05,
+        "maxChannelDelta": 10,
+        "meanChannelDelta": 0.009733474794238682
+      },
+      "note": "Kropki/XV/palindrome/Sudoku-X recognition"
+    },
+    {
+      "name": "labels-compact-marks",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          288,
+          304
+        ],
+        "candidateSize": [
+          288,
+          304
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 1,
+        "meanChannelDelta": 9.137426900584795e-05
+      },
+      "note": "FeatureRowColLabels + FeatureCompactMarks"
+    },
+    {
+      "name": "dark-grid-settings",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          288,
+          288
+        ],
+        "candidateSize": [
+          288,
+          288
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 1,
+        "meanChannelDelta": 0.01265914351851852
+      },
+      "note": "CSS-heavy visual settings"
+    },
+    {
+      "name": "arrows-above-lines",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          288,
+          288
+        ],
+        "candidateSize": [
+          288,
+          288
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 1,
+        "meanChannelDelta": 0.0013221772119341563
+      },
+      "note": "Same-layer insertion order"
+    },
+    {
+      "name": "barbie-route",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          288,
+          288
+        ],
+        "candidateSize": [
+          288,
+          288
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 1,
+        "meanChannelDelta": 0.008411297582304527
+      },
+      "note": "feature-customcolors /barbie/ rendering"
+    },
+    {
+      "name": "fog-static",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          288,
+          288
+        ],
+        "candidateSize": [
+          288,
+          288
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 1,
+        "meanChannelDelta": 0.00010850694444444444
+      },
+      "note": "Final/static fog mask geometry"
+    },
+    {
+      "name": "emoji",
+      "passed": true,
+      "structuralEqual": null,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          288,
+          288
+        ],
+        "candidateSize": [
+          288,
+          288
+        ],
+        "differentPixelRatio": 0.001591435185185185,
+        "maxChannelDelta": 53,
+        "meanChannelDelta": 0.016404642489711935
+      },
+      "note": "Twemoji replacement; coordinates are viewport/board-scale dependent in stock, so validate by raster"
+    },
+    {
+      "name": "external-background",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          320,
+          320
+        ],
+        "candidateSize": [
+          320,
+          320
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 2,
+        "meanChannelDelta": 0.01990234375
+      },
+      "note": "Metadata external asset loading"
+    },
+    {
+      "name": "sudorkle-final",
+      "passed": true,
+      "structuralEqual": true,
+      "structuralDifference": null,
+      "raster": {
+        "sameSize": true,
+        "stockSize": [
+          288,
+          288
+        ],
+        "candidateSize": [
+          288,
+          288
+        ],
+        "differentPixelRatio": 0.0,
+        "maxChannelDelta": 1,
+        "meanChannelDelta": 7.233796296296296e-05
+      },
+      "note": "Final post-flip Sudorkle state; animation markup ignored structurally"
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+<svg id="svgrenderer" class="boardsvg" xmlns="http://www.w3.org/2000/svg" version="1.1" draggable="false" style="vector-effect: non-scaling-stroke; width: 416px; height: 416px; margin: -16px 0px 0px -16px;" viewBox="-16 -16 416 416">
+							<g class="defs">
+								<defs>
+									<filter id="outlinefilter" class="viewboxsize" x="-16" y="-16" width="416" height="416" filterUnits="userSpaceOnUse" primitiveUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+										<feMorphology in="SourceGraphic" result="outline" operator="dilate" radius="0.65"></feMorphology>
+										<feColorMatrix values="1000 1000 1000 1000 0 1000 1000 1000 1000 0 1000 1000 1000 1000 0 0 0 0 0.7 0" in="outline" result="outline"></feColorMatrix>
+										<feBlend in="SourceGraphic" in2="outline" mode="normal"></feBlend>
+									</filter>
+									<filter id="outlinefilter_dark" class="viewboxsize" x="-16" y="-16" width="416" height="416" filterUnits="userSpaceOnUse" primitiveUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+										<feMorphology in="SourceGraphic" result="outline" operator="dilate" radius="0.65"></feMorphology>
+										<feColorMatrix values="-1000 -1000 -1000 1000 0 -1000 -1000 -1000 1000 0 -1000 -1000 -1000 1000 0 0 0 0 0.7 0" in="outline" result="outline"></feColorMatrix>
+										<feBlend in="SourceGraphic" in2="outline" mode="normal"></feBlend>
+									</filter>
+								</defs>
+							</g>
+							<g id="background"></g>
+							<g id="underlay"></g>
+							<g id="cell-colors"></g>
+							<g id="arrows"><path stroke="#34BBE6" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="8" d="M32 352 L96 352 L160 288 L160 224 L224 288 L288 352 L288 288 L352 288 L352 224 L352 160 L288 160 L288 224 L224 224 L224 160 L160 96 L160 32 L96 32 L32 96"></path><path stroke="#EB7532" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="8" d="M96 224 L160 160 L224 96 L224 32 L288 96"></path></g>
+							<g id="cages"></g>
+							<g id="cell-highlights"></g>
+							<g id="cell-grids"><path class="cell-grid" d="M0 0 L384 0 M0 64 L384 64 M0 128 L384 128 M0 192 L384 192 M0 256 L384 256 M0 320 L384 320 M0 384 L384 384 M0 0 L0 384 M64 0 L64 384 M128 0 L128 384 M192 0 L192 384 M256 0 L256 384 M320 0 L320 384 M384 0 L384 384"></path><path fill="none" stroke="rgba(0, 0, 0, 1)" stroke-width="3px" class="cage-box" shape-rendering="geometricprecision" vector-effect="non-scaling-stroke" d="M0 0 L96 0 L192 0 L192 128 L96 128 L0 128 Z"></path><path fill="none" stroke="rgba(0, 0, 0, 1)" stroke-width="3px" class="cage-box" shape-rendering="geometricprecision" vector-effect="non-scaling-stroke" d="M192 0 L288 0 L384 0 L384 128 L288 128 L192 128 Z"></path><path fill="none" stroke="rgba(0, 0, 0, 1)" stroke-width="3px" class="cage-box" shape-rendering="geometricprecision" vector-effect="non-scaling-stroke" d="M0 128 L96 128 L192 128 L192 256 L96 256 L0 256 Z"></path><path fill="none" stroke="rgba(0, 0, 0, 1)" stroke-width="3px" class="cage-box" shape-rendering="geometricprecision" vector-effect="non-scaling-stroke" d="M192 128 L288 128 L384 128 L384 256 L288 256 L192 256 Z"></path><path fill="none" stroke="rgba(0, 0, 0, 1)" stroke-width="3px" class="cage-box" shape-rendering="geometricprecision" vector-effect="non-scaling-stroke" d="M0 256 L96 256 L192 256 L192 384 L96 384 L0 384 Z"></path><path fill="none" stroke="rgba(0, 0, 0, 1)" stroke-width="3px" class="cage-box" shape-rendering="geometricprecision" vector-effect="non-scaling-stroke" d="M192 256 L288 256 L384 256 L384 384 L288 384 L192 384 Z"></path></g>
+							<g id="cell-errors"></g>
+							<g id="overlay"></g>
+							<g id="cell-givens"></g>
+							<g id="cell-pen"></g>
+							<g id="cell-pencilmarks"></g>
+							<g id="cell-candidates"></g>
+							<g id="cell-values"></g>
+						</svg>

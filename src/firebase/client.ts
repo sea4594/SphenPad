@@ -24,7 +24,7 @@ import type { Auth, User } from "firebase/auth";
 import type { Firestore } from "firebase/firestore";
 import type { LocalAppSnapshot } from "../core/appState";
 import type { PersistedPuzzle } from "../core/model";
-import type { PuzzleFolder } from "../core/storage";
+import type { CreatorProjectStorageRow, PuzzleFolder } from "../core/storage";
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -39,6 +39,7 @@ export type CloudAppSnapshot = LocalAppSnapshot;
 export type CloudStateMetadata = {
   updatedAt: number;
   puzzleKeys: string[];
+  creatorProjectKeys: string[];
   hasData: boolean;
   revision: number;
 };
@@ -110,6 +111,9 @@ function serializePuzzle(data: PersistedPuzzle) {
 function deserializePuzzle(payload: string) {
   return JSON.parse(payload, jsonReviver) as PersistedPuzzle;
 }
+
+function serializeCreatorProject(row: CreatorProjectStorageRow) { return JSON.stringify(row); }
+function deserializeCreatorProject(payload: string) { return JSON.parse(payload) as CreatorProjectStorageRow; }
 
 function puzzleKeyToDocId(key: string) {
   // Firestore document IDs cannot contain '/'.
@@ -225,12 +229,16 @@ export async function pullCloudStateMetadata(userId: string): Promise<CloudState
   const stateData = stateSnap.data() as {
     updatedAt?: unknown;
     puzzleKeys?: unknown;
+    creatorProjectKeys?: unknown;
     folders?: unknown;
     localStorage?: unknown;
   };
 
   const puzzleKeys = Array.isArray(stateData.puzzleKeys)
     ? stateData.puzzleKeys.filter((entry): entry is string => typeof entry === "string")
+    : [];
+  const creatorProjectKeys = Array.isArray(stateData.creatorProjectKeys)
+    ? stateData.creatorProjectKeys.filter((entry): entry is string => typeof entry === "string")
     : [];
   const folderCount = Array.isArray(stateData.folders) ? stateData.folders.length : 0;
   const localStorageCount =
@@ -245,7 +253,8 @@ export async function pullCloudStateMetadata(userId: string): Promise<CloudState
   return {
     updatedAt,
     puzzleKeys,
-    hasData: updatedAt > 0 || puzzleKeys.length > 0 || folderCount > 0 || localStorageCount > 0,
+    creatorProjectKeys,
+    hasData: updatedAt > 0 || puzzleKeys.length > 0 || creatorProjectKeys.length > 0 || folderCount > 0 || localStorageCount > 0,
     revision,
   };
 }
@@ -254,9 +263,10 @@ export async function pullCloudState(userId: string): Promise<CloudAppSnapshot |
   if (!firebaseEnabled || !db) return null;
 
   const stateRef = doc(db, "users", userId, "app", "state");
-  const [stateSnap, puzzleDocs] = await Promise.all([
+  const [stateSnap, puzzleDocs, creatorProjectDocs] = await Promise.all([
     getDoc(stateRef),
     getDocs(collection(db, "users", userId, "puzzles")),
+    getDocs(collection(db, "users", userId, "creatorProjects")),
   ]);
 
   if (!stateSnap.exists()) return null;
@@ -278,12 +288,25 @@ export async function pullCloudState(userId: string): Promise<CloudAppSnapshot |
     }
   }
 
+  const creatorProjects: CloudAppSnapshot["creatorProjects"] = [];
+  for (const entry of creatorProjectDocs.docs) {
+    const payload = entry.data().payload;
+    if (typeof payload !== "string" || !payload.length) continue;
+    try {
+      const row = deserializeCreatorProject(payload);
+      if (row && typeof row.key === "string" && row.project) creatorProjects.push(row);
+    } catch {
+      // Skip malformed creator projects without aborting the rest of the account restore.
+    }
+  }
+
   return {
     version: 1,
     updatedAt: typeof stateData.updatedAt === "number" ? stateData.updatedAt : 0,
     localStorage: parseLocalStorageRecord(stateData.localStorage),
     folders: parseFolders(stateData.folders),
     puzzles,
+    creatorProjects,
   };
 }
 
@@ -298,13 +321,15 @@ export async function pushCloudState(
   const stateRef = doc(db, "users", userId, "app", "state");
   const sanitizedFolders = snapshot.folders.map(sanitizeFolderForCloud);
   let cloudStatePuzzleKeys: string[] = [];
+  let cloudStateCreatorProjectKeys: string[] = [];
   let shouldDerivePuzzleKeysFromDocs = false;
+  let shouldDeriveCreatorProjectKeysFromDocs = false;
   let nextRevision = 1;
 
   await runTransaction(db, async (transaction) => {
     const existingState = await transaction.get(stateRef);
     const existingStateData = existingState.exists()
-      ? (existingState.data() as { puzzleKeys?: unknown; revision?: unknown })
+      ? (existingState.data() as { puzzleKeys?: unknown; creatorProjectKeys?: unknown; revision?: unknown })
       : null;
     const currentRevision = typeof existingStateData?.revision === "number" ? existingStateData.revision : 0;
 
@@ -317,6 +342,11 @@ export async function pushCloudState(
     } else if (existingState.exists()) {
       shouldDerivePuzzleKeysFromDocs = true;
     }
+    if (Array.isArray(existingStateData?.creatorProjectKeys)) {
+      cloudStateCreatorProjectKeys = existingStateData.creatorProjectKeys.filter((entry): entry is string => typeof entry === "string");
+    } else if (existingState.exists()) {
+      shouldDeriveCreatorProjectKeysFromDocs = true;
+    }
 
     nextRevision = currentRevision + 1;
     transaction.set(stateRef, {
@@ -326,12 +356,17 @@ export async function pushCloudState(
       localStorage: snapshot.localStorage,
       folders: sanitizedFolders,
       puzzleKeys: snapshot.puzzles.map((row) => row.key),
+      creatorProjectKeys: snapshot.creatorProjects.map((row) => row.key),
     });
   });
 
   if (shouldDerivePuzzleKeysFromDocs) {
     const existingPuzzleDocs = await getDocs(collection(db, "users", userId, "puzzles"));
     cloudStatePuzzleKeys = existingPuzzleDocs.docs.map((entry) => puzzleDocIdToKey(entry.id));
+  }
+  if (shouldDeriveCreatorProjectKeysFromDocs) {
+    const existingCreatorProjectDocs = await getDocs(collection(db, "users", userId, "creatorProjects"));
+    cloudStateCreatorProjectKeys = existingCreatorProjectDocs.docs.map((entry) => puzzleDocIdToKey(entry.id));
   }
 
   const effectivePreviousPuzzleKeys = Array.from(new Set([...previousPuzzleKeys, ...cloudStatePuzzleKeys]));
@@ -357,6 +392,23 @@ export async function pushCloudState(
       const puzzleRef = doc(db, "users", userId, "puzzles", docId);
       batch.delete(puzzleRef);
     }
+    await batch.commit();
+  }
+
+  const nextCreatorProjectDocIds = new Set(snapshot.creatorProjects.map((row) => puzzleKeyToDocId(row.key)));
+  const previousCreatorProjectDocIds = new Set(cloudStateCreatorProjectKeys.map(puzzleKeyToDocId));
+  for (const batchRows of chunk(snapshot.creatorProjects, MAX_BATCH_SIZE)) {
+    const batch = writeBatch(db);
+    for (const row of batchRows) {
+      const projectRef = doc(db, "users", userId, "creatorProjects", puzzleKeyToDocId(row.key));
+      batch.set(projectRef, { updatedAt: Math.max(row.updatedAt, row.lastOpenedAt), payload: serializeCreatorProject(row) });
+    }
+    await batch.commit();
+  }
+  const deleteCreatorProjectDocIds = Array.from(previousCreatorProjectDocIds).filter((docId) => !nextCreatorProjectDocIds.has(docId));
+  for (const batchDeleteDocIds of chunk(deleteCreatorProjectDocIds, MAX_BATCH_SIZE)) {
+    const batch = writeBatch(db);
+    for (const docId of batchDeleteDocIds) batch.delete(doc(db, "users", userId, "creatorProjects", docId));
     await batch.commit();
   }
 

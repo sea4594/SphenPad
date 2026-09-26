@@ -1,0 +1,194 @@
+{
+  "target": "SudokuPad 0.612.0 captured HAR",
+  "firstPass": {
+    "uniquePuzzles": 540,
+    "passed": 508,
+    "renderMismatches": 11,
+    "timeouts": 21
+  },
+  "renderMismatchCases": [
+    {
+      "index": 18,
+      "name": "archive:2b6nrvt81y"
+    },
+    {
+      "index": 33,
+      "name": "archive:3pev731294"
+    },
+    {
+      "index": 35,
+      "name": "archive:3xnydynuih"
+    },
+    {
+      "index": 158,
+      "name": "archive:f2DNr9b4tb"
+    },
+    {
+      "index": 164,
+      "name": "archive:fi311m5b4u"
+    },
+    {
+      "index": 201,
+      "name": "archive:james-sinclair/schrodingers-carry-on"
+    },
+    {
+      "index": 209,
+      "name": "archive:k4zgmts5h9"
+    },
+    {
+      "index": 213,
+      "name": "archive:ksj8nzm463"
+    },
+    {
+      "index": 282,
+      "name": "archive:sudoku/2hm49qMB8N"
+    },
+    {
+      "index": 302,
+      "name": "archive:sudoku/68G9P3HpjT"
+    },
+    {
+      "index": 311,
+      "name": "archive:sudoku/7Bm24jbQjm"
+    }
+  ],
+  "timeoutCases": [
+    {
+      "index": 1,
+      "name": "archive:06vt5y9nwu"
+    },
+    {
+      "index": 65,
+      "name": "archive:7d9f9mb2y3"
+    },
+    {
+      "index": 87,
+      "name": "archive:9snrpdy9fe"
+    },
+    {
+      "index": 101,
+      "name": "archive:MONOPOLYSUDOKU"
+    },
+    {
+      "index": 117,
+      "name": "archive:b193jegg4x"
+    },
+    {
+      "index": 152,
+      "name": "archive:eb90s76a4e"
+    },
+    {
+      "index": 156,
+      "name": "archive:esjz6meusc"
+    },
+    {
+      "index": 176,
+      "name": "archive:gbwivexeh7"
+    },
+    {
+      "index": 189,
+      "name": "archive:i2r7za43kv"
+    },
+    {
+      "index": 193,
+      "name": "archive:ik85shpid7"
+    },
+    {
+      "index": 207,
+      "name": "archive:jw1onozqhg"
+    },
+    {
+      "index": 216,
+      "name": "archive:lipt9yn6r4"
+    },
+    {
+      "index": 234,
+      "name": "archive:ntqufgkvcx"
+    },
+    {
+      "index": 243,
+      "name": "archive:p676oglsv8"
+    },
+    {
+      "index": 244,
+      "name": "archive:p8ushghwpc"
+    },
+    {
+      "index": 326,
+      "name": "archive:sudoku/944Mg3fnJH"
+    },
+    {
+      "index": 408,
+      "name": "archive:sudoku/Nmg943btqh"
+    },
+    {
+      "index": 486,
+      "name": "archive:sudoku/jfrf3mHRbN"
+    },
+    {
+      "index": 507,
+      "name": "archive:sudoku/pM7jd2QbmD"
+    },
+    {
+      "index": 531,
+      "name": "archive:sudoku/tgQJNqqB6r"
+    },
+    {
+      "index": 535,
+      "name": "archive:t4vu4ndtl3"
+    }
+  ],
+  "groupedFindings": [
+    {
+      "family": "native cage renderer-facing colors",
+      "cases": 1,
+      "action": "preserve cage borderColor/textColor in renderCage path"
+    },
+    {
+      "family": "late font/content bounds and stock viewBox layout",
+      "cases": 2,
+      "action": "final post-font asset/viewBox measurement"
+    },
+    {
+      "family": "authored lowercase values/marks",
+      "cases": 1,
+      "action": "normalize authored values/marks to stock lowercase representation"
+    },
+    {
+      "family": "cell-grids insertion order",
+      "cases": 1,
+      "action": "create backing grid before authored parts targeting cell-grids"
+    },
+    {
+      "family": "Twemoji stock feature initialization and scale-dependent bounds",
+      "cases": 5,
+      "action": "initialize captured stock emoji feature for archive cases; compare scale-dependent Twemoji bounds non-structurally"
+    },
+    {
+      "family": "raster-only Chromium jitter",
+      "cases": 1,
+      "action": "single bounded reraster retry only for structurally identical near-threshold cases"
+    }
+  ],
+  "originalMismatchRegression": {
+    "cases": 11,
+    "resolved": 11,
+    "allPassed": true
+  },
+  "postFixSpreadRegression": {
+    "uniquePuzzles": 100,
+    "firstRunPassed": 99,
+    "flakyCase": "archive:blobz/nurikabe-sight-lines",
+    "flakyHardenedPass": true,
+    "finalAccepted": 100
+  },
+  "phase9eAcceptance": {
+    "successfulUniqueRealPuzzleComparisons": 519,
+    "requiredMinimum": 500,
+    "passed": true
+  },
+  "deferredToPhase10": {
+    "longRunningTimeoutCases": 21,
+    "note": "Do not count as passes; rerun in dedicated long-running shards during the full 4,051-puzzle production sweep."
+  }
+}
