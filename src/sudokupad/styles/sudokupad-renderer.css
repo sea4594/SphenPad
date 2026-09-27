@@ -228,25 +228,6 @@
 .sphenpad-sudokupad-renderer.setting-barbie #cell-grids .cage-box { stroke: #ff3399; }
 .sphenpad-sudokupad-renderer.setting-barbie #cell-givens .cell-given { fill: #ff3399; color: #ff3399; }
 
-/* SphenPad player pencilmarks keep the legacy value-based 3x3 placement. Authored
-   SudokuPad corner marks retain their source-compatible insertion-order layout. */
-.sphenpad-sudokupad-renderer .cell-pencilmark.playerPencilmark[data-val="1"] { transform: translate(-15px,-15px); }
-.sphenpad-sudokupad-renderer .cell-pencilmark.playerPencilmark[data-val="2"] { transform: translate(0,-15px); }
-.sphenpad-sudokupad-renderer .cell-pencilmark.playerPencilmark[data-val="3"] { transform: translate(15px,-15px); }
-.sphenpad-sudokupad-renderer .cell-pencilmark.playerPencilmark[data-val="4"] { transform: translate(-15px,0); }
-.sphenpad-sudokupad-renderer .cell-pencilmark.playerPencilmark[data-val="5"] { transform: translate(0,0); }
-.sphenpad-sudokupad-renderer .cell-pencilmark.playerPencilmark[data-val="6"] { transform: translate(15px,0); }
-.sphenpad-sudokupad-renderer .cell-pencilmark.playerPencilmark[data-val="7"] { transform: translate(-15px,15px); }
-.sphenpad-sudokupad-renderer .cell-pencilmark.playerPencilmark[data-val="8"] { transform: translate(0,15px); }
-.sphenpad-sudokupad-renderer .cell-pencilmark.playerPencilmark[data-val="9"] { transform: translate(15px,15px); }
-.sphenpad-sudokupad-renderer.setting-largedigits .cell-pencilmark.playerPencilmark[data-val="1"] { transform: translate(-20px,-20px); }
-.sphenpad-sudokupad-renderer.setting-largedigits .cell-pencilmark.playerPencilmark[data-val="2"] { transform: translate(0,-20px); }
-.sphenpad-sudokupad-renderer.setting-largedigits .cell-pencilmark.playerPencilmark[data-val="3"] { transform: translate(20px,-20px); }
-.sphenpad-sudokupad-renderer.setting-largedigits .cell-pencilmark.playerPencilmark[data-val="4"] { transform: translate(-20px,0); }
-.sphenpad-sudokupad-renderer.setting-largedigits .cell-pencilmark.playerPencilmark[data-val="5"] { transform: translate(0,0); }
-.sphenpad-sudokupad-renderer.setting-largedigits .cell-pencilmark.playerPencilmark[data-val="6"] { transform: translate(20px,0); }
-.sphenpad-sudokupad-renderer.setting-largedigits .cell-pencilmark.playerPencilmark[data-val="7"] { transform: translate(-20px,20px); }
-.sphenpad-sudokupad-renderer.setting-largedigits .cell-pencilmark.playerPencilmark[data-val="8"] { transform: translate(0,20px); }
-.sphenpad-sudokupad-renderer.setting-largedigits .cell-pencilmark.playerPencilmark[data-val="9"] { transform: translate(20px,20px); }
+/* Player corner marks use the normal SphenPad insertion-order corner-mark positions. */
 .sphenpad-sudokupad-renderer .cell-pencilmark.mark-error,
 .sphenpad-sudokupad-renderer .cell-candidate .mark-error { fill: var(--puzzle-pencilmarkerror) !important; }

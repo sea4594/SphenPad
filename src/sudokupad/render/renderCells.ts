@@ -97,7 +97,7 @@ export function renderSceneCells(
     pencilmarks.slice(0, 10).forEach((mark, index) => {
       const elem = renderer.renderText({
         target: "cell-pencilmarks",
-        className: `cell-pencilmark pm-${index}${cell.playerPencilmarks ? " playerPencilmark" : ""}${(cell.pencilmarkErrors ?? []).includes(String(mark)) ? " mark-error" : ""}`,
+        className: `cell-pencilmark pm-${index}${(cell.pencilmarkErrors ?? []).includes(String(mark)) ? " mark-error" : ""}`,
         center,
         width: 1,
         height: 1,

@@ -241,7 +241,6 @@ export function PuzzleEditorPage() {
   const [viewportLayoutKind, setViewportLayoutKind] = useState<ViewportLayoutKind>(() => typeof window === "undefined" ? "desktop" : getViewportLayoutKind());
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [lastSavedAt, setLastSavedAt] = useState(0);
   const [workerValidation, setWorkerValidation] = useState<CreatorGridValidation | null>(null);
   const [workerConstraintErrors, setWorkerConstraintErrors] = useState<Array<{ id: string; message: string }>>([]);
   const [logicalResult, setLogicalResult] = useState<CreatorLogicalResult | null>(null);
@@ -263,7 +262,6 @@ export function PuzzleEditorPage() {
       editRevisionRef.current = 0;
       setDirty(false);
       setSaving(false);
-      setLastSavedAt(stored.savedAt);
       const returned = readCreatorPlaytestRouteState(location.state);
       const restored = returned?.projectKey === key ? returned.editorState : null;
       setSelection(restored?.selection?.filter((cell) => isInBounds(cell, def.rows, def.cols)) ?? [{ r: 0, c: 0 }]);
@@ -362,8 +360,7 @@ export function PuzzleEditorPage() {
     const snapshot = data.def;
     const timer = window.setTimeout(() => {
       setSaving(true);
-      void persistCreatorDefinition(key, snapshot).then((row) => {
-        setLastSavedAt(row.savedAt);
+      void persistCreatorDefinition(key, snapshot).then(() => {
         if (editRevisionRef.current === revision) {
           setDirty(false);
           setMessage((current) => current.startsWith("Autosave failed") ? "" : current);
@@ -454,15 +451,13 @@ export function PuzzleEditorPage() {
     setSelection(seen); setMessage(`${seen.length} cell${seen.length === 1 ? "" : "s"} seen by every selected cell.`);
   }
 
-  async function persistNow(manual = false) {
+  async function persistNow() {
     if (!data) return false;
     const revision = editRevisionRef.current;
     setSaving(true);
     try {
-      const row = await persistCreatorDefinition(key, data.def);
-      setLastSavedAt(row.savedAt);
+      await persistCreatorDefinition(key, data.def);
       if (editRevisionRef.current === revision) setDirty(false);
-      if (manual) setMessage("Saved.");
       return true;
     } catch {
       setMessage("Save failed. Your edits remain open in the creator.");
@@ -473,7 +468,7 @@ export function PuzzleEditorPage() {
   }
 
   async function exitCreator() {
-    if (dirty && !(await persistNow(false))) return;
+    if (dirty && !(await persistNow())) return;
     startTransition(() => navigate("/creator"));
   }
 
@@ -622,7 +617,7 @@ export function PuzzleEditorPage() {
     for (const key of ["color", "backgroundColor", "borderColor", "textColor", "fontSize", "thickness", "opacity", "width", "height", "angle", "rounded", "target"] as const) if (sample[key] !== undefined) patch[key] = sample[key];
     const defaults = { ...(data.def.meta.creatorToolDefaults ?? {}), [selectedObject.elementId]: { constraintValue: selectedObject.constraint?.value == null ? constraintValue : String(selectedObject.constraint.value), patch } };
     save({ ...data.def, meta: { ...data.def.meta, creatorToolDefaults: defaults } });
-    setMessage(`Defaults saved for ${selectedObject.name}.`);
+    setMessage(`Defaults updated for ${selectedObject.name}.`);
   }
 
   function applyToolDefaults(next: PuzzleDefinition, objectId: string | undefined, elementId: string) {
@@ -906,7 +901,7 @@ export function PuzzleEditorPage() {
 
   async function sharePuzzle() {
     if (!data) return;
-    if (dirty && !(await persistNow(false))) return;
+    if (dirty && !(await persistNow())) return;
     const url = new URL(`#/p/${encodeURIComponent(data.def.id)}`, window.location.href).href;
     try {
       if (navigator.share) await navigator.share({ title: data.def.meta.title || "SphenPad puzzle", text: data.def.meta.rules || "", url });
@@ -922,13 +917,12 @@ export function PuzzleEditorPage() {
 
   async function saveToMyPuzzles() {
     if (!data) return;
-    if (dirty && !(await persistNow(false))) return;
+    if (dirty && !(await persistNow())) return;
     try {
       const row = await setCreatorProjectPublished(key, true);
       const def = definitionFromCreatorProject(row.project, { id: key, sourceId: key });
       setData((current) => current ? { ...current, def, updatedAt: row.updatedAt } : current);
-      setLastSavedAt(row.savedAt);
-      setMessage("Saved to My Puzzles.");
+      setMessage("Added to My Puzzles.");
     } catch {
       setMessage("Could not save this project to My Puzzles.");
     }
@@ -936,13 +930,13 @@ export function PuzzleEditorPage() {
 
   async function openMyPuzzles() {
     if (!data) return;
-    if (dirty && !(await persistNow(false))) return;
+    if (dirty && !(await persistNow())) return;
     startTransition(() => navigate("/"));
   }
 
   async function openPlaytest() {
     if (!data) return;
-    if (dirty && !(await persistNow(false))) return;
+    if (dirty && !(await persistNow())) return;
     const routeState = makeCreatorPlaytestRouteState(key, {
       selection,
       multiSelect,
@@ -1476,8 +1470,7 @@ export function PuzzleEditorPage() {
           <button className={creatorTab === "elements" ? "btn primary" : "btn"} onClick={() => { setCreatorTab("elements"); setAuthoringOpen(false); }} type="button">Elements</button>
           <button className={creatorTab === "tools" ? "btn primary" : "btn"} onClick={() => { setCreatorTab("tools"); setAuthoringOpen(false); }} type="button">Tools</button>
         </nav>
-        <div className={"creatorSaveState" + (dirty ? " dirty" : "")}>{saving ? "Saving…" : dirty ? "Unsaved changes" : "Saved"}</div>
-        <button className="btn creatorManualSave" onClick={() => void persistNow(true)} disabled={!dirty || saving} type="button">Save</button>
+        <button className="btn creatorManualSave" onClick={() => void persistNow()} disabled={!dirty || saving} type="button">Save</button>
       </header>
       {creatorTab === "file" ? <main className="page creatorFilePage">
         <div className="creatorFileContent">
@@ -1492,7 +1485,6 @@ export function PuzzleEditorPage() {
             <div className="creatorFileSection"><h3>Import &amp; export</h3><div className="creatorFileActions"><button className="btn" onClick={exportCreatorProjectFile} type="button">CreatorProject JSON</button><button className="btn" onClick={exportAuthoredFile} type="button">SphenPad JSON</button><button className="btn" onClick={exportSclFile} type="button">SCL file</button><button className="btn" onClick={exportSudokuPadJsonFile} type="button">SudokuPad JSON</button><button className="btn" onClick={() => void copyScl()} type="button">Copy SCL</button><button className="btn primary" onClick={() => void copySudokuPadLink()} type="button">Copy SudokuPad link</button></div><div className="creatorFileActions"><label className="btn creatorImportButton">Import file<input type="file" accept="application/json,.json,.txt,.scl,text/plain" onChange={(event) => void importPuzzle(event.target.files?.[0])} /></label><button className="btn" onClick={() => void importClipboard()} type="button">Import clipboard</button></div><div className="creatorHelp">Imports accept CreatorProject/SphenPad JSON, native SudokuPad JSON, SCL/CTC payloads or SudokuPad links, and F-Puzzles JSON/fpuz payloads. The current project identity is retained.</div>{interchangeReport ? <div className={interchangeReport.issues.some((item) => item.severity === "loss") ? "creatorValidation invalid" : "creatorValidation valid"}><div><strong>{interchangeReport.format}</strong> · {interchangeReport.preserved.length ? `Preserved: ${interchangeReport.preserved.join(", ")}.` : "No preservation summary."}</div>{interchangeReport.issues.map((item, index) => <div key={`${item.code}-${index}`}>{item.severity.toUpperCase()}: {item.message}{item.path ? ` (${item.path})` : ""}</div>)}</div> : null}</div>
             <div className="creatorFileActions"><button className="btn primary" onClick={() => void openPlaytest()} type="button">Playtest</button>{data.def.meta.creatorPublished ? <button className="btn" onClick={() => void openMyPuzzles()} type="button">Open My Puzzles</button> : <button className="btn" onClick={() => void saveToMyPuzzles()} type="button">Save to My Puzzles</button>}<button className="btn" onClick={() => void sharePuzzle()} type="button">Share SphenPad</button></div>
             <div className="creatorHelp">Creator projects stay in the Puzzle Creator until you explicitly save them to My Puzzles. Playtest uses an isolated fresh session, and normal solve progress remains separate from the authored project.</div>
-            <div className="creatorHelp">{lastSavedAt ? `Last saved ${new Date(lastSavedAt).toLocaleTimeString()}.` : "Not saved yet."}</div>
           </div>
         </div>
       </main> : <>
@@ -1619,7 +1611,7 @@ export function PuzzleEditorPage() {
               <div className="creatorObjectActions"><button className="btn" onClick={() => reorderObject(selectedObject.id, -1)} type="button">Backward</button><button className="btn" onClick={() => reorderObject(selectedObject.id, 1)} type="button">Forward</button><button className="btn" onClick={() => { if (data) save(moveCreatorObjectsToEdge(data.def, [selectedObject.id], "back")); }} type="button">To back</button><button className="btn" onClick={() => { if (data) save(moveCreatorObjectsToEdge(data.def, [selectedObject.id], "front")); }} type="button">To front</button><button className="btn" disabled={selectedObject.kind === "background" || SINGLETON_GLOBAL_IDS.has(selectedObject.elementId)} onClick={() => duplicateObject(selectedObject.id)} type="button">Duplicate</button><button className="btn" disabled={selectedObject.kind === "background"} onClick={() => void copyObjectById(selectedObject.id)} type="button">Copy</button><button className="btn" disabled={selectedObject.kind === "background"} onClick={saveToolDefaultsForSelected} type="button">Save as defaults</button><button className="btn danger" onClick={() => deleteObject(selectedObject.id)} type="button">Delete</button></div>
             </div> : null}
           </div>
-          <div className="creatorStatus">{message || `${saving ? "Saving…" : dirty ? "Unsaved changes" : "Saved"} · ${selectionKey(selection) || "no selection"}`}</div>
+          <div className="creatorStatus">{message || (selectionKey(selection) || "no selection")}</div>
         </aside>
       </section> : null}
           {showSolverControls ? <div className="card controlStack mobileControlPanel creatorControls">

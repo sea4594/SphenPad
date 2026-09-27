@@ -158,7 +158,7 @@ export function sceneWithPuzzleProgress(scene: SudokuPadScene, progress: PuzzleP
       // renderer still applies normal given > value visual precedence.
       value: progressCell.value ?? sourceCell.value,
       ...(progressCell.notes?.center?.size ? { candidates: sortSymbols(progressCell.notes.center) } : {}),
-      ...(progressCell.notes?.corner?.size ? { pencilmarks: sortSymbols(progressCell.notes.corner), playerPencilmarks: true } : {}),
+      ...(progressCell.notes?.corner?.size ? { pencilmarks: sortSymbols(progressCell.notes.corner) } : {}),
       ...(conflictMarks.get(`${r}:${c}`)?.size ? {
         candidateErrors: sortSymbols([...(progressCell.notes?.center ?? [])].filter((mark) => conflictMarks.get(`${r}:${c}`)?.has(mark))),
         pencilmarkErrors: sortSymbols([...(progressCell.notes?.corner ?? [])].filter((mark) => conflictMarks.get(`${r}:${c}`)?.has(mark))),

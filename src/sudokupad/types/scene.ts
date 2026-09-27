@@ -43,8 +43,6 @@ export interface SudokuPadSceneCell {
   /** Mutable display state is supplied by the board/progress adapter in Phase 6. */
   candidates?: string[];
   pencilmarks?: string[];
-  /** Player-authored marks use SphenPad's legacy value-based placement. */
-  playerPencilmarks?: boolean;
   candidateErrors?: string[];
   pencilmarkErrors?: string[];
   colours?: string[];

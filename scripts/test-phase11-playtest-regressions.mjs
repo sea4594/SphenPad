@@ -58,9 +58,9 @@ expect(!gridCanvas.includes('theme.mode === "dark"'), "app light/dark theme must
 expect(gridCanvas.includes("darkMode: false"), "puzzle canvas must remain on the canonical pre-Phase-1 light rendering regardless of app theme");
 expect(appCss.includes('.sphenpad-native-board.preview > .sphenpad-sudokupad-renderer') && appCss.includes('width: 100% !important;'), "preview-only exact scaling rule missing");
 
-expect(progressScene.includes("computePuzzleConflictMarks") && progressScene.includes("playerPencilmarks: true"), "player pencilmark conflict/legacy-placement metadata must be attached by the progress adapter");
+expect(progressScene.includes("computePuzzleConflictMarks") && !progressScene.includes("playerPencilmarks: true"), "player pencilmark conflicts must remain attached without the removed value-based placement override");
 expect(conflicts.includes("computePuzzleConflictMarks") && conflicts.includes("markConflictsAt"), "pencilmark conflict checking must use active Sudoku conflict rules");
-expect(renderCells.includes("mark-error") && rendererCss.includes(".cell-pencilmark.playerPencilmark[data-val=\"5\"]") && rendererCss.includes("--puzzle-pencilmarkerror"), "conflicting pencilmarks must render red and player corner marks must use legacy value-based positions");
+expect(renderCells.includes("mark-error") && !rendererCss.includes(".cell-pencilmark.playerPencilmark[data-val=\"5\"]") && rendererCss.includes(".pm-0") && rendererCss.includes("--puzzle-pencilmarkerror"), "conflicting pencilmarks must render red and player corner marks must use the normal insertion-order positions");
 expect(theme.includes("SelectionOutlineThickness") && settingsOverlay.includes("Selection outline thickness") && settingsOverlay.includes("Extra thin") && settingsOverlay.includes("Extra thick"), "selection outline thickness setting is missing or mislabeled");
 expect(creatorPage.includes("const otherRows = rows.filter") && creatorPage.includes("All projects are shown above."), "creator project list must not display recent projects a second time");
 expect(appCss.includes(".creatorDimensionsPreview") && appCss.includes("contain: layout paint") && appCss.includes(".creatorDimensionFields { position: relative; z-index: 1; }"), "custom creator grid preview must stay confined behind dimension controls");
