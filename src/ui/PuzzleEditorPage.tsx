@@ -1,9 +1,11 @@
 import { startTransition, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { getCreatorProject, saveCreatorProject, setCreatorProjectPublished } from "../core/storage";
-import type { CellRC, PersistedPuzzle, PuzzleDefinition, PuzzleProgress } from "../core/model";
+import type { CellRC, LineStroke, PersistedPuzzle, PuzzleDefinition, PuzzleProgress } from "../core/model";
 import { makeInitialProgress } from "../core/scl";
 import { GridCanvas } from "./GridCanvas";
+import type { BoardLineKind, BoardLineSegment } from "./BoardInteractionLayer";
+import { getViewportLayoutKind, type ViewportLayoutKind } from "../app/viewportLayout";
 import { Keyboard } from "./Keyboard";
 import { IconRedo, IconSelectMode, IconToolBig, IconToolCenter, IconToolCorner, IconToolHighlight, IconToolLine, IconUndo } from "./icons";
 import { PopupMenuButton } from "./PopupMenuButton";
@@ -60,13 +62,14 @@ type CatalogElement = {
 };
 
 const NOOP = () => {};
+const VIEWPORT_REFRESH_DELAYS = [120, 320, 620] as const;
+const CREATOR_SOLVER_CONTROL_ELEMENT_IDS = new Set(["given-digits", "regions"]);
 const CHECKABLE_ELEMENT_IDS = new Set(["antiking", "antiknight", ...CREATOR_GROUP_ELEMENT_IDS, ...CREATOR_LINE_ELEMENT_IDS, ...CREATOR_GLOBAL_ELEMENT_IDS]);
 const VISUAL_EDITOR_IDS = new Set([...CREATOR_GLOBAL_ELEMENT_IDS, ...CREATOR_GROUP_ELEMENT_IDS, ...CREATOR_LINE_ELEMENT_IDS, "cosmetic-lines", "cosmetic-cages", "cosmetic-symbols", "cosmetic-text", "cosmetic-shapes", "cosmetic-images", "cosmetic-backgrounds"]);
 const SINGLETON_GLOBAL_IDS = new Set(["negative-diagonal", "positive-diagonal", "disjoint-groups", "nonconsecutive", "global-entropy", "global-modulo-3"]);
 
 const CORE_CATALOG: CatalogElement[] = [
   { id: "given-digits", icon: "1", name: "Given digits", description: "Prefill cells with puzzle givens.", elementKind: "given", core: true },
-  { id: "solution-digits", icon: "S", name: "Solution digits", description: "Enter the completed solution cell-by-cell.", core: true },
   { id: "regions", icon: "R", name: "Regions", description: "Assign cells to standard or irregular Sudoku regions.", elementKind: "region", core: true },
 ];
 
@@ -132,6 +135,9 @@ const CATALOG: CatalogElement[] = [
 function sameCell(a: CellRC, b: CellRC) {
   return a.r === b.r && a.c === b.c;
 }
+
+function rcKey(cell: CellRC) { return `${cell.r}:${cell.c}`; }
+function lineSegKey(a: CellRC, b: CellRC) { const ak = rcKey(a), bk = rcKey(b); return ak < bk ? `${ak}|${bk}` : `${bk}|${ak}`; }
 
 function selectionKey(selection: CellRC[]) {
   return selection.map((cell) => `${cell.r}:${cell.c}`).sort().join(",");
@@ -230,6 +236,9 @@ export function PuzzleEditorPage() {
   const [editorHighlightPage, setEditorHighlightPage] = useState<0 | 1>(0);
   const [editorLineColor, setEditorLineColor] = useState("#ff08ff");
   const [editorLineDouble, setEditorLineDouble] = useState(false);
+  const [creatorScratchProgress, setCreatorScratchProgress] = useState<PuzzleProgress | null>(null);
+  const [creatorControlView, setCreatorControlView] = useState<"element" | "solver">("solver");
+  const [viewportLayoutKind, setViewportLayoutKind] = useState<ViewportLayoutKind>(() => typeof window === "undefined" ? "desktop" : getViewportLayoutKind());
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
   const [lastSavedAt, setLastSavedAt] = useState(0);
@@ -250,6 +259,7 @@ export function PuzzleEditorPage() {
       }
       const def = ensureCreatorObjectIds(normalizeCreatorLineConstraints(definitionFromCreatorProject(stored.project, { id: key, sourceId: key })));
       setData({ def, progress: makeInitialProgress(def), undo: [], redo: [], createdAt: stored.createdAt, updatedAt: stored.updatedAt });
+      setCreatorScratchProgress(makeInitialProgress(def));
       editRevisionRef.current = 0;
       setDirty(false);
       setSaving(false);
@@ -259,7 +269,9 @@ export function PuzzleEditorPage() {
       setSelection(restored?.selection?.filter((cell) => isInBounds(cell, def.rows, def.cols)) ?? [{ r: 0, c: 0 }]);
       setMultiSelect(restored?.multiSelect ?? false);
       setCreatorTab(restored?.creatorTab ?? "elements");
-      setActiveCatalogElement(restored?.activeCatalogElement ?? null);
+      const restoredElement = restored?.activeCatalogElement === "solution-digits" ? null : restored?.activeCatalogElement ?? null;
+      setActiveCatalogElement(restoredElement);
+      setCreatorControlView(restoredElement ? "element" : "solver");
       setSelectedObjectId(restored?.selectedObjectId ?? null);
       setSelectedObjectIds(restored?.selectedObjectIds ?? (restored?.selectedObjectId ? [restored.selectedObjectId] : []));
       setSelectedPathPointIndex(null);
@@ -286,6 +298,42 @@ export function PuzzleEditorPage() {
       setInterchangeReport(null);
     })();
   }, [key, location.state]);
+
+  useEffect(() => {
+    const viewport = window.visualViewport;
+    const orientation = window.screen.orientation;
+    let rafId: number | null = null;
+    const timeoutIds: number[] = [];
+    const refresh = () => {
+      const next = getViewportLayoutKind();
+      setViewportLayoutKind((current) => current === next ? current : next);
+    };
+    const clearScheduled = () => {
+      if (rafId !== null) window.cancelAnimationFrame(rafId);
+      rafId = null;
+      for (const id of timeoutIds.splice(0)) window.clearTimeout(id);
+    };
+    const schedule = () => {
+      clearScheduled();
+      refresh();
+      rafId = window.requestAnimationFrame(refresh);
+      for (const delay of VIEWPORT_REFRESH_DELAYS) timeoutIds.push(window.setTimeout(refresh, delay));
+    };
+    schedule();
+    window.addEventListener("resize", schedule);
+    window.addEventListener("orientationchange", schedule);
+    orientation?.addEventListener("change", schedule);
+    viewport?.addEventListener("resize", schedule);
+    viewport?.addEventListener("scroll", schedule);
+    return () => {
+      clearScheduled();
+      window.removeEventListener("resize", schedule);
+      window.removeEventListener("orientationchange", schedule);
+      orientation?.removeEventListener("change", schedule);
+      viewport?.removeEventListener("resize", schedule);
+      viewport?.removeEventListener("scroll", schedule);
+    };
+  }, []);
 
   const progress = useMemo(() => {
     if (!data) return null;
@@ -639,6 +687,120 @@ export function PuzzleEditorPage() {
     setTestProgress({ ...testProgress, cells });
   }
 
+  function updateCreatorScratch(mutator: (progress: PuzzleProgress) => PuzzleProgress) {
+    if (!data) return;
+    setCreatorScratchProgress((current) => mutator(current ?? makeInitialProgress(data.def)));
+  }
+
+  function applyCreatorDigit(value: string) {
+    if (!data || !selection.length) return;
+    if (activeCatalogElement !== null || editorTool === "value") {
+      setCellValue(value);
+      return;
+    }
+    if (editorTool !== "center" && editorTool !== "corner") return;
+    const noteKind = editorTool;
+    updateCreatorScratch((current) => {
+      const cells = current.cells.map((row) => row.map((cell) => ({ ...cell, notes: { corner: new Set(cell.notes.corner), center: new Set(cell.notes.center), candidates: new Set(cell.notes.candidates) } })));
+      const allHave = Boolean(value) && selection.every((rc) => cells[rc.r]?.[rc.c]?.notes[noteKind].has(value));
+      for (const rc of selection) {
+        const cell = cells[rc.r]?.[rc.c];
+        if (!cell) continue;
+        const next = new Set(cell.notes[noteKind]);
+        if (!value) next.clear();
+        else if (allHave) next.delete(value);
+        else next.add(value);
+        cell.notes[noteKind] = next;
+      }
+      return { ...current, cells };
+    });
+  }
+
+  function applyCreatorHighlight(color: string) {
+    if (!data || activeCatalogElement !== null || !selection.length) return;
+    updateCreatorScratch((current) => {
+      const cells = current.cells.map((row) => row.map((cell) => ({ ...cell, notes: { ...cell.notes }, highlights: [...(cell.highlights ?? [])] })));
+      const allHave = selection.every((rc) => cells[rc.r]?.[rc.c]?.highlights.includes(color));
+      for (const rc of selection) {
+        const cell = cells[rc.r]?.[rc.c];
+        if (!cell) continue;
+        const next = new Set(cell.highlights ?? []);
+        if (allHave) next.delete(color); else next.add(color);
+        cell.highlights = Array.from(next);
+      }
+      return { ...current, cells };
+    });
+  }
+
+  function handleCreatorBackspace() {
+    if (!data || !selection.length) return;
+    if (activeCatalogElement === "given-digits" || activeCatalogElement === "regions") {
+      setCellValue("");
+      return;
+    }
+    if (activeCatalogElement !== null) return;
+    if (editorTool === "value") { setCellValue(""); return; }
+    const selected = new Set(selection.map(rcKey));
+    updateCreatorScratch((current) => {
+      if (editorTool === "center" || editorTool === "corner") {
+        const noteKind = editorTool;
+        const cells = current.cells.map((row) => row.map((cell) => ({ ...cell, notes: { corner: new Set(cell.notes.corner), center: new Set(cell.notes.center), candidates: new Set(cell.notes.candidates) } })));
+        for (const rc of selection) if (cells[rc.r]?.[rc.c]) cells[rc.r][rc.c].notes[noteKind] = new Set<string>();
+        return { ...current, cells };
+      }
+      if (editorTool === "highlight") {
+        const cells = current.cells.map((row) => row.map((cell) => ({ ...cell, highlights: [...(cell.highlights ?? [])] })));
+        for (const rc of selection) if (cells[rc.r]?.[rc.c]) cells[rc.r][rc.c].highlights = [];
+        return { ...current, cells };
+      }
+      const lines = current.lines.map((stroke) => ({ ...stroke, segments: stroke.segments.filter((segment) => !selected.has(rcKey(segment.a)) && !selected.has(rcKey(segment.b))) })).filter((stroke) => stroke.segments.length);
+      const lineCenterMarks = current.lineCenterMarks.filter((mark) => !selected.has(rcKey(mark.rc)));
+      const lineEdgeMarks = current.lineEdgeMarks.filter((mark) => !selected.has(rcKey(mark.a)) && !selected.has(rcKey(mark.b)));
+      return { ...current, lines, lineCenterMarks, lineEdgeMarks };
+    });
+  }
+
+  function onCreatorLineStroke(segmentsInput: BoardLineSegment[], kind: BoardLineKind, action: "draw" | "erase") {
+    if (activeCatalogElement !== null || !segmentsInput.length) return;
+    updateCreatorScratch((current) => {
+      const keys = new Set(segmentsInput.map((segment) => lineSegKey(segment.a, segment.b)));
+      if (action === "erase") {
+        const lines = current.lines.map((stroke) => ({ ...stroke, segments: (stroke.kind === kind ? stroke.segments.filter((segment) => !keys.has(lineSegKey(segment.a, segment.b))) : stroke.segments) })).filter((stroke) => stroke.segments.length);
+        return { ...current, lines };
+      }
+      const existing = new Set(current.lines.filter((stroke) => stroke.kind === kind && stroke.color === editorLineColor).flatMap((stroke) => stroke.segments.map((segment) => lineSegKey(segment.a, segment.b))));
+      const segments = segmentsInput.filter((segment) => !existing.has(lineSegKey(segment.a, segment.b)));
+      if (!segments.length) return current;
+      const stroke: LineStroke = { kind, color: editorLineColor, segments };
+      return { ...current, lines: [...current.lines, stroke] };
+    });
+  }
+
+  function onCreatorLineTapCell(rc: CellRC) {
+    if (activeCatalogElement !== null) return;
+    updateCreatorScratch((current) => {
+      const index = current.lineCenterMarks.findIndex((mark) => sameCell(mark.rc, rc));
+      if (index < 0) return { ...current, lineCenterMarks: [...current.lineCenterMarks, { rc, kind: "circle", color: editorLineColor }] };
+      const mark = current.lineCenterMarks[index];
+      if (mark.kind === "circle") {
+        const lineCenterMarks = [...current.lineCenterMarks];
+        lineCenterMarks[index] = { ...mark, kind: "x" };
+        return { ...current, lineCenterMarks };
+      }
+      return { ...current, lineCenterMarks: current.lineCenterMarks.filter((_, i) => i !== index) };
+    });
+  }
+
+  function onCreatorLineTapEdge(a: CellRC, b: CellRC) {
+    if (activeCatalogElement !== null) return;
+    updateCreatorScratch((current) => {
+      const key = lineSegKey(a, b);
+      const index = current.lineEdgeMarks.findIndex((mark) => lineSegKey(mark.a, mark.b) === key);
+      if (index >= 0) return { ...current, lineEdgeMarks: current.lineEdgeMarks.filter((_, i) => i !== index) };
+      return { ...current, lineEdgeMarks: [...current.lineEdgeMarks, { a, b, color: editorLineColor }] };
+    });
+  }
+
   function setActiveTool(tool: PuzzleProgress["activeTool"]) {
     if (testPlay) {
       setTestProgress((current) => {
@@ -683,8 +845,31 @@ export function PuzzleEditorPage() {
     else if (element.id === "xv") setConstraintValue("X");
     else setConstraintValue("");
     const editable = Boolean(element.elementKind || VISUAL_EDITOR_IDS.has(element.id));
-    setAuthoringOpen(editable);
+    setAuthoringOpen(true);
+    setCreatorControlView("element");
     setAddingElement(editable && !selectedConstraintId);
+    if (element.elementKind) setElementKind(element.elementKind);
+  }
+
+  function activateCatalogElement(element: CatalogElement) {
+    if (!data) return;
+    if (activeCatalogElement === element.id) { startSolutionEditing(); return; }
+    if (element.core) {
+      startCoreEditing(element.id as "given-digits" | "regions");
+      return;
+    }
+    setActiveCatalogElement(element.id);
+    setSelectedObjectId(null);
+    setSelectedObjectIds([]);
+    setAddingElement(false);
+    setAuthoringOpen(true);
+    setCreatorControlView("element");
+    const stored = data.def.meta.creatorToolDefaults?.[element.id]?.constraintValue;
+    if (stored !== undefined) setConstraintValue(stored);
+    else if (element.id === "difference-kropki") setConstraintValue("1");
+    else if (element.id === "ratio-kropki") setConstraintValue("2");
+    else if (element.id === "xv") setConstraintValue("X");
+    else setConstraintValue("");
     if (element.elementKind) setElementKind(element.elementKind);
   }
 
@@ -795,11 +980,12 @@ export function PuzzleEditorPage() {
       next = setCreatorRegionConfiguration(next, "regular", { rows: boxRows, cols: boxCols });
     } else next = setCreatorRegionConfiguration(next, draftRegionMode);
     save(next);
+    setCreatorScratchProgress(makeInitialProgress(next));
     setSelection((current) => current.filter((cell) => isInBounds(cell, rows, cols)).slice(0, 1));
     setMessage("Grid structure applied.");
   }
 
-  function startCoreEditing(elementId: "given-digits" | "solution-digits" | "regions") {
+  function startCoreEditing(elementId: "given-digits" | "regions") {
     if (!data) return;
     if (elementId === "regions" && creatorRegionMode(data.def) !== "irregular") {
       save(setCreatorRegionConfiguration(data.def, "irregular"));
@@ -810,6 +996,18 @@ export function PuzzleEditorPage() {
     setActiveCatalogElement(elementId);
     setAuthoringOpen(false);
     setAddingElement(false);
+    setCreatorControlView("solver");
+    setEditorTool("value");
+  }
+
+  function startSolutionEditing() {
+    setCreatorTab("elements");
+    setActiveCatalogElement(null);
+    setSelectedObjectId(null);
+    setSelectedObjectIds([]);
+    setAuthoringOpen(false);
+    setAddingElement(false);
+    setCreatorControlView("solver");
     setEditorTool("value");
   }
 
@@ -832,7 +1030,7 @@ export function PuzzleEditorPage() {
 
   function setCellValue(value: string) {
     if (!data || !selection.length) return;
-    if (activeCatalogElement === "solution-digits") {
+    if (activeCatalogElement === null) {
       const range = creatorDigitRange(data.def);
       const entries = getCreatorSolutionEntries(data.def);
       const currentValue = selection.length === 1 ? entries.find((entry) => sameCell(entry.rc, selection[0]))?.value ?? "" : "";
@@ -876,7 +1074,7 @@ export function PuzzleEditorPage() {
       save(syncDefinitionGivens({ ...data.def, givens }));
       return;
     }
-    setMessage("Select Given digits or another editable element first.");
+    setMessage("Select Given digits/Regions, or deselect the active element to edit the solution.");
   }
 
   function pasteGrid(text: string, source: "givens" | "solution") {
@@ -1163,7 +1361,7 @@ export function PuzzleEditorPage() {
     if (!data) return;
     try {
       const result = await importCreatorInterchange(text, { id: data.def.id, sourceId: data.def.sourceId });
-      save({ ...result.def, meta: { ...result.def.meta, creatorPublished: data.def.meta.creatorPublished === true } }); setInterchangeReport(result.report); setSelection([{ r: 0, c: 0 }]); setSelectedObjectId(null); setMessage(`Imported ${result.report.format}.`);
+      save({ ...result.def, meta: { ...result.def.meta, creatorPublished: data.def.meta.creatorPublished === true } }); setCreatorScratchProgress(makeInitialProgress(result.def)); setInterchangeReport(result.report); setSelection([{ r: 0, c: 0 }]); setSelectedObjectId(null); setMessage(`Imported ${result.report.format}.`);
     } catch (error) { setMessage(error instanceof Error ? `Import failed: ${error.message}` : "Import failed."); }
   }
   async function importPuzzle(file: File | undefined) { if (file) await applyInterchangeImport(await file.text()); }
@@ -1185,6 +1383,7 @@ export function PuzzleEditorPage() {
       if (creatorTab === "elements" && !typing && mod && event.key.toLowerCase() === "v") { event.preventDefault(); void pasteSelectedObjects(); return; }
       if (creatorTab === "elements" && !typing && mod && event.key.toLowerCase() === "a" && activeCatalogElement) { event.preventDefault(); selectAllCatalogObjects(); return; }
       if (creatorTab === "elements" && !typing && (event.key === "Delete" || event.key === "Backspace") && selectedObjectIds.length) { event.preventDefault(); deleteSelectedObjects(); return; }
+      if (creatorTab === "elements" && !typing && activeCatalogElement === null && (event.key === "Delete" || event.key === "Backspace")) { event.preventDefault(); handleCreatorBackspace(); return; }
       if (!typing && event.key === "Escape") { setObjectContextMenu(null); setAddingElement(false); setSelectedObjectIds([]); setSelectedObjectId(null); return; }
       if (!typing && (event.key === "+" || event.key === "=")) { event.preventDefault(); setCanvasZoom((value) => Math.min(2.5, Math.round((value + 0.1) * 10) / 10)); return; }
       if (!typing && event.key === "-") { event.preventDefault(); setCanvasZoom((value) => Math.max(0.5, Math.round((value - 0.1) * 10) / 10)); }
@@ -1198,7 +1397,7 @@ export function PuzzleEditorPage() {
   const workerComponents = getComponents(data.def);
   const solverSettings = { maxSolutions: data.def.meta.creatorSolverSettings?.maxSolutions ?? 2, maxNodes: data.def.meta.creatorSolverSettings?.maxNodes ?? 250000, logicalStepLimit: data.def.meta.creatorSolverSettings?.logicalStepLimit ?? data.def.rows * data.def.cols * 2 };
   const activeCatalogIds = new Set([
-    "given-digits", "solution-digits", "regions",
+    "given-digits", "regions",
     ...(data.def.meta.creatorElements ?? []),
     ...(data.def.logic?.antiKing ? ["antiking"] : []),
     ...(data.def.logic?.antiKnight ? ["antiknight"] : []),
@@ -1225,16 +1424,27 @@ export function PuzzleEditorPage() {
   const objectSample = selectedObject?.sample ?? selectedObject?.constraint ?? {};
   const displayElementName = (element: CatalogElement) => data.def.meta.creatorElementNames?.[element.id] ?? element.name;
   const solutionByCell = new Map(getCreatorSolutionEntries(data.def).map((entry) => [`${entry.rc.r}:${entry.rc.c}`, entry.value]));
+  const scratchProgress = creatorScratchProgress ?? makeInitialProgress(data.def);
+  const neutralProgress: PuzzleProgress = {
+    ...progress,
+    cells: progress.cells.map((row, rowIndex) => row.map((cell, colIndex) => ({
+      ...cell,
+      given: undefined,
+      value: solutionByCell.get(`${rowIndex}:${colIndex}`) || undefined,
+      notes: scratchProgress.cells[rowIndex]?.[colIndex]?.notes ?? cell.notes,
+      highlights: scratchProgress.cells[rowIndex]?.[colIndex]?.highlights ?? cell.highlights,
+    }))),
+    lines: scratchProgress.lines,
+    lineCenterMarks: scratchProgress.lineCenterMarks,
+    lineEdgeMarks: scratchProgress.lineEdgeMarks,
+  };
   const displayedProgress = testPlay ? testProgress ?? makeInitialProgress(data.def) : activeCatalogElement === "regions"
     ? {
       ...progress,
       cells: progress.cells.map((row, rowIndex) => row.map((cell, colIndex) => ({ ...cell, given: undefined, value: regionNumberAt(data.def, { r: rowIndex, c: colIndex }) || undefined }))),
     }
-    : activeCatalogElement === "solution-digits"
-      ? {
-        ...progress,
-        cells: progress.cells.map((row, rowIndex) => row.map((cell, colIndex) => ({ ...cell, given: undefined, value: solutionByCell.get(`${rowIndex}:${colIndex}`) || undefined }))),
-      }
+    : activeCatalogElement === null
+      ? neutralProgress
       : progress;
   let controlProgress: PuzzleProgress = testPlay
     ? displayedProgress
@@ -1252,9 +1462,13 @@ export function PuzzleEditorPage() {
     const invalid = new Set(workerValidation.invalidCells.map((cell) => `${cell.r}:${cell.c}`));
     controlProgress = { ...controlProgress, cells: controlProgress.cells.map((row, r) => row.map((cell, c) => invalid.has(`${r}:${c}`) ? { ...cell, highlights: [...new Set([...(cell.highlights ?? []), "rgba(255, 70, 70, 0.36)"])] } : cell)) };
   }
+  const creatorLayoutClass = viewportLayoutKind === "tablet-portrait" ? " layoutTabletPortrait" : viewportLayoutKind === "tablet-landscape" ? " layoutTabletLandscape" : "";
+  const selectedElementUsesSolverControls = activeCatalogElement === null || CREATOR_SOLVER_CONTROL_ELEMENT_IDS.has(activeCatalogElement);
+  const showElementControls = creatorTab === "elements" && activeCatalogElement !== null && !testPlay && creatorControlView === "element";
+  const showSolverControls = testPlay || creatorTab !== "elements" || activeCatalogElement === null || creatorControlView === "solver";
 
   return (
-    <div className="shell creatorEditorShell">
+    <div className={`shell puzzleShell creatorEditorShell${creatorLayoutClass}`} data-layout-mode={viewportLayoutKind}>
       <header className="topbar puzzleTopbar creatorEditorTopbar">
         <button className="btn creatorExitButton" onClick={() => void exitCreator()} type="button">Exit</button>
         <nav className="creatorTopTabs" aria-label="Puzzle creator">
@@ -1272,7 +1486,7 @@ export function PuzzleEditorPage() {
             <div className="creatorFileSection"><h3>Puzzle details</h3><label>Title<input className="url" value={data.def.meta.title ?? ""} onChange={(event) => save({ ...data.def, meta: { ...data.def.meta, title: event.target.value } })} /></label><label>Author<input className="url" value={data.def.meta.author ?? ""} onChange={(event) => save({ ...data.def, meta: { ...data.def.meta, author: event.target.value } })} /></label><label>Rules<textarea className="url creatorRulesInput" value={data.def.meta.rules ?? ""} onChange={(event) => save({ ...data.def, meta: { ...data.def.meta, rules: event.target.value } })} /></label><label>Completion message<textarea className="url creatorRulesInput" value={data.def.meta.postSolveMessage ?? ""} onChange={(event) => save({ ...data.def, meta: { ...data.def.meta, postSolveMessage: event.target.value } })} /></label></div>
             <div className="creatorFileSection"><h3>Grid structure</h3><div className="creatorStructureGrid"><label>Rows<input className="url" type="number" min="1" max="30" value={draftRows} onChange={(event) => setDraftRows(Number(event.target.value))} /></label><label>Columns<input className="url" type="number" min="1" max="30" value={draftCols} onChange={(event) => setDraftCols(Number(event.target.value))} /></label><label>Lowest digit<input className="url" type="number" min="1" max="64" value={draftDigitMin} onChange={(event) => setDraftDigitMin(Number(event.target.value))} /></label><label>Highest digit<input className="url" type="number" min="1" max="64" value={draftDigitMax} onChange={(event) => setDraftDigitMax(Number(event.target.value))} /></label><label>Digit count<input className="url" type="number" min="1" max="64" value={Math.max(1, draftDigitMax - draftDigitMin + 1)} onChange={(event) => setDraftDigitMax(Math.min(64, draftDigitMin + Math.max(1, Number(event.target.value)) - 1))} /></label><label>Region layout<select className="url" value={draftRegionMode} onChange={(event) => setDraftRegionMode(event.target.value as CreatorRegionMode)}><option value="regular">Regular boxes</option><option value="irregular">Irregular regions</option><option value="none">No regions</option></select></label>{draftRegionMode === "regular" ? <><label>Box rows<input className="url" type="number" min="1" max="30" value={draftBoxRows} onChange={(event) => setDraftBoxRows(Number(event.target.value))} /></label><label>Box columns<input className="url" type="number" min="1" max="30" value={draftBoxCols} onChange={(event) => setDraftBoxCols(Number(event.target.value))} /></label></> : null}</div><label className="creatorToggle"><input type="checkbox" checked={creatorSudokuRulesEnabled(data.def)} onChange={(event) => save(setCreatorSudokuRules(data.def, event.target.checked))} />Standard row/column Sudoku rules</label><div className="creatorFileActions"><button className="btn primary" onClick={applyGridStructure} type="button">Apply structure</button>{draftRegionMode === "irregular" ? <button className="btn" onClick={() => startCoreEditing("regions")} type="button">Edit regions on board</button> : null}<button className="btn" onClick={() => clearEntries("regions")} type="button">Clear regions</button></div><div className="creatorHelp">Resizing keeps in-bounds givens, solution cells, and regions. Constraints that reference removed cells are discarded.</div></div>
             <div className="creatorFileSection"><h3>Givens</h3><label>Grid<textarea className="url creatorGridInput" value={givensText} onChange={(event) => setGivensText(event.target.value)} /></label><div className="creatorFileActions"><button className="btn primary" onClick={() => pasteGrid(givensText, "givens")} type="button">Apply givens</button><button className="btn" onClick={() => startCoreEditing("given-digits")} type="button">Edit on board</button><button className="btn" onClick={() => clearEntries("givens")} type="button">Clear givens</button></div></div>
-            <div className="creatorFileSection"><h3>Solution</h3><label>Grid<textarea className="url creatorGridInput" value={solutionText} onChange={(event) => setSolutionText(event.target.value)} /></label><div className="creatorFileActions"><button className="btn primary" onClick={() => pasteGrid(solutionText, "solution")} type="button">Apply solution</button><button className="btn" onClick={() => startCoreEditing("solution-digits")} type="button">Edit on board</button><button className="btn" onClick={() => clearEntries("solution")} type="button">Clear solution</button><button className="btn danger" onClick={() => clearEntries("both")} type="button">Clear both</button></div><div className="creatorHelp">For values above 9, separate cells with spaces or commas. A compact one-character grid remains supported for ordinary Sudoku.</div></div>
+            <div className="creatorFileSection"><h3>Solution</h3><label>Grid<textarea className="url creatorGridInput" value={solutionText} onChange={(event) => setSolutionText(event.target.value)} /></label><div className="creatorFileActions"><button className="btn primary" onClick={() => pasteGrid(solutionText, "solution")} type="button">Apply solution</button><button className="btn" onClick={startSolutionEditing} type="button">Edit on board</button><button className="btn" onClick={() => clearEntries("solution")} type="button">Clear solution</button><button className="btn danger" onClick={() => clearEntries("both")} type="button">Clear both</button></div><div className="creatorHelp">For values above 9, separate cells with spaces or commas. A compact one-character grid remains supported for ordinary Sudoku.</div></div>
             <div className="creatorFileSection"><h3>Structure validation</h3><div className={validation.length ? "creatorValidation invalid" : "creatorValidation valid"}>{validation.length ? validation.map((item) => <div key={item}>{item}</div>) : "Puzzle structure looks valid."}</div></div>
             <div className="creatorFileSection"><h3>Worker validation &amp; solver</h3><div className="creatorFileActions"><button className="btn" onClick={() => runWorkerValidation("givens")} type="button">Validate givens</button><button className="btn" onClick={() => runWorkerValidation("solution")} type="button">Validate solution</button><button className="btn" onClick={runLogicalSolver} type="button">Logical solve</button><button className="btn" onClick={runSolutionSearch} type="button">Find solutions</button>{solutionSearch?.solutions[0] ? <button className="btn primary" onClick={useFoundSolution} type="button">Use found solution</button> : null}</div><div className="creatorPropertyGrid"><label>Max solutions<input type="number" min={1} max={20} value={solverSettings.maxSolutions} onChange={(event) => updateSolverSetting("maxSolutions", Number(event.target.value))} /></label><label>Max search nodes<input type="number" min={100} max={5000000} step={1000} value={solverSettings.maxNodes} onChange={(event) => updateSolverSetting("maxNodes", Number(event.target.value))} /></label><label>Logical step limit<input type="number" min={1} max={100000} value={solverSettings.logicalStepLimit} onChange={(event) => updateSolverSetting("logicalStepLimit", Number(event.target.value))} /></label></div>{workerConstraintErrors.length ? <div className="creatorValidation invalid">{workerConstraintErrors.map((item) => <div key={item.id}>{item.id}: {item.message}</div>)}</div> : null}{workerValidation ? <div className={workerValidation.diagnostics.length ? "creatorValidation invalid" : "creatorValidation valid"}>{workerValidation.diagnostics.length ? workerValidation.diagnostics.slice(0, 12).map((item, index) => <div key={`${item.code}-${index}`}>{item.message} {item.cells.length ? `(${item.cells.map(cellLabel).join(", ")})` : ""}</div>) : "Grid values satisfy the enabled worker constraints."}{workerValidation.thrownErrors.map((item, index) => <div key={`worker-error-${index}`}>{item}</div>)}</div> : null}{logicalResult ? <div className="creatorHelp">Logical solver: {logicalResult.status}; {logicalResult.steps.length} step{logicalResult.steps.length === 1 ? "" : "s"}.{logicalResult.message ? ` ${logicalResult.message}` : ""}</div> : null}{solutionSearch ? <div className="creatorHelp">Solution search: {solutionSearch.status}; {solutionSearch.solutions.length} solution{solutionSearch.solutions.length === 1 ? "" : "s"} returned after {solutionSearch.nodes.toLocaleString()} nodes.{solutionSearch.message ? ` ${solutionSearch.message}` : ""}</div> : null}<details className="creatorHelp"><summary>Worker components ({workerComponents.length})</summary>{workerComponents.slice(0, 100).map((component) => <div key={`${component.type}:${component.constraintId ?? component.name}:${component.cells.map(cellLabel).join("|")}`}>{component.name} — {component.type} — {component.cells.map(cellLabel).join(", ") || "no cells"}</div>)}{workerComponents.length > 100 ? <div>…and {workerComponents.length - 100} more.</div> : null}</details><div className="creatorHelp">Custom JavaScript is preserved but not executed locally.</div></div>
             <div className="creatorFileSection"><h3>Import &amp; export</h3><div className="creatorFileActions"><button className="btn" onClick={exportCreatorProjectFile} type="button">CreatorProject JSON</button><button className="btn" onClick={exportAuthoredFile} type="button">SphenPad JSON</button><button className="btn" onClick={exportSclFile} type="button">SCL file</button><button className="btn" onClick={exportSudokuPadJsonFile} type="button">SudokuPad JSON</button><button className="btn" onClick={() => void copyScl()} type="button">Copy SCL</button><button className="btn primary" onClick={() => void copySudokuPadLink()} type="button">Copy SudokuPad link</button></div><div className="creatorFileActions"><label className="btn creatorImportButton">Import file<input type="file" accept="application/json,.json,.txt,.scl,text/plain" onChange={(event) => void importPuzzle(event.target.files?.[0])} /></label><button className="btn" onClick={() => void importClipboard()} type="button">Import clipboard</button></div><div className="creatorHelp">Imports accept CreatorProject/SphenPad JSON, native SudokuPad JSON, SCL/CTC payloads or SudokuPad links, and F-Puzzles JSON/fpuz payloads. The current project identity is retained.</div>{interchangeReport ? <div className={interchangeReport.issues.some((item) => item.severity === "loss") ? "creatorValidation invalid" : "creatorValidation valid"}><div><strong>{interchangeReport.format}</strong> · {interchangeReport.preserved.length ? `Preserved: ${interchangeReport.preserved.join(", ")}.` : "No preservation summary."}</div>{interchangeReport.issues.map((item, index) => <div key={`${item.code}-${index}`}>{item.severity.toUpperCase()}: {item.message}{item.path ? ` (${item.path})` : ""}</div>)}</div> : null}</div>
@@ -1283,17 +1497,31 @@ export function PuzzleEditorPage() {
         </div>
       </main> : <>
       <main className={"page puzzlePage creatorPuzzlePage" + (creatorTab === "elements" ? " creatorElementsPage" : "")}>
-        <div className={"creatorElementsPageLayout" + (creatorTab === "elements" && authoringOpen && !testPlay ? " authoring-open" : "")}>
+        <div className="creatorElementsPageLayout">
           {creatorTab === "elements" ? <div className="creatorActiveElements">
-            <div className="creatorActiveElementStrip">{activeCatalog.map((element) => <div className={activeCatalogElement === element.id ? "creatorActiveElementEntry active" : "creatorActiveElementEntry"} key={element.id}><button className="creatorActiveElement" onClick={() => { if (element.core) { startCoreEditing(element.id as "given-digits" | "solution-digits" | "regions"); return; } const next = element.id; setActiveCatalogElement(next); setSelectedObjectId(null); setSelectedObjectIds([]); setAddingElement(false); setAuthoringOpen(true); const stored = data.def.meta.creatorToolDefaults?.[element.id]?.constraintValue; if (stored !== undefined) setConstraintValue(stored); else if (element.id === "difference-kropki") setConstraintValue("1"); else if (element.id === "ratio-kropki") setConstraintValue("2"); else if (element.id === "xv") setConstraintValue("X"); else setConstraintValue(""); if (element.elementKind) setElementKind(element.elementKind); }} type="button" aria-pressed={activeCatalogElement === element.id} title={displayElementName(element)}><span>{element.icon}</span>{displayElementName(element)}</button>{!element.core ? <PopupMenuButton className="btn creatorElementMoreButton" ariaLabel={`More actions for ${displayElementName(element)}`} title={`More actions for ${displayElementName(element)}`} items={[{ label: "Rename", onSelect: () => renameCatalogElement(element) }, { label: "Delete", onSelect: () => removeCatalogElement(element), tone: "danger" }]} /> : null}</div>)}</div>
+            <div className="creatorActiveElementStrip">{activeCatalog.map((element) => <div className={activeCatalogElement === element.id ? "creatorActiveElementEntry active" : "creatorActiveElementEntry"} key={element.id}><button className="creatorActiveElement" onClick={() => activateCatalogElement(element)} type="button" aria-pressed={activeCatalogElement === element.id} title={displayElementName(element)}><span>{element.icon}</span>{displayElementName(element)}</button>{!element.core ? <PopupMenuButton className="btn creatorElementMoreButton" ariaLabel={`More actions for ${displayElementName(element)}`} title={`More actions for ${displayElementName(element)}`} items={[{ label: "Rename", onSelect: () => renameCatalogElement(element) }, { label: "Delete", onSelect: () => removeCatalogElement(element), tone: "danger" }]} /> : null}</div>)}</div>
             <button className="btn primary creatorAddElement" onClick={() => setCatalogOpen(true)} type="button" title="Add element">+</button>
           </div> : null}
           {creatorTab === "tools" ? <div className="creatorToolStrip"><button className="btn" onClick={() => runWorkerValidation("givens")} type="button">Check validity</button><button className="btn" onClick={runLogicalSolver} type="button">Logical solve</button><button className="btn" onClick={runSolutionSearch} type="button">Find solutions</button><button className="btn" onClick={selectCellsSeen} disabled={!selection.length} type="button">Select cells seen</button><button className="btn" onClick={() => { setCreatorTab("file"); setMessage(`${workerComponents.length} registered worker components; expand Worker components to inspect them.`); }} type="button">Inspect components</button>{solutionSearch?.solutions[0] ? <button className="btn primary" onClick={useFoundSolution} type="button">Use solution</button> : null}</div> : null}
-      {creatorTab === "elements" && authoringOpen && !testPlay ? <section className="creatorInlineAuthoringPanel" aria-label="Puzzle element settings">
+
+        <div className="gridLayout creatorGridLayout">
+          <section className="boardColumn creatorBoardColumn">
+            <div className="creatorCanvasToolbar" aria-label="Board view controls"><button className="btn" onClick={() => setCanvasZoom((value) => Math.max(0.5, Math.round((value - 0.1) * 10) / 10))} type="button">−</button><button className="btn" onClick={() => { setCanvasZoom(1); setCanvasPan({ x: 0, y: 0 }); }} type="button">{Math.round(canvasZoom * 100)}%</button><button className="btn" onClick={() => setCanvasZoom((value) => Math.min(2.5, Math.round((value + 0.1) * 10) / 10))} type="button">+</button><button className="btn" onClick={() => setCanvasPan((value) => ({ ...value, y: value.y + 24 }))} type="button">↑</button><button className="btn" onClick={() => setCanvasPan((value) => ({ ...value, x: value.x + 24 }))} type="button">←</button><button className="btn" onClick={() => setCanvasPan((value) => ({ ...value, x: value.x - 24 }))} type="button">→</button><button className="btn" onClick={() => setCanvasPan((value) => ({ ...value, y: value.y - 24 }))} type="button">↓</button></div>
+            <div className="card boardCard creatorCanvasViewport" onWheel={(event) => { if (!(event.ctrlKey || event.metaKey)) return; event.preventDefault(); setCanvasZoom((value) => Math.max(0.5, Math.min(2.5, value + (event.deltaY < 0 ? 0.1 : -0.1)))); }}>
+              <div className="creatorCanvasTransform" style={{ transform: `translate(${canvasPan.x}px, ${canvasPan.y}px) scale(${canvasZoom})` }}><GridCanvas def={data.def} progress={controlProgress} onSelection={testPlay ? (next) => setTestProgress((current) => current ? { ...current, selection: next } : current) : setSelection} onLineStroke={testPlay ? NOOP : onCreatorLineStroke} onLineTapCell={testPlay ? NOOP : onCreatorLineTapCell} onLineTapEdge={testPlay ? NOOP : onCreatorLineTapEdge} onLineGridTouch={() => { if (!testPlay && activeCatalogElement === null && editorTool === "line") setSelection([]); }} onDoubleCell={NOOP} /></div>
+            </div>
+          </section>
+          <div className="kbdPanel">
+          {showElementControls ? <section className="creatorInlineAuthoringPanel" aria-label="Puzzle element settings">
         <aside className="creatorInspector card">
           <div className="creatorOverlayHeader">
             <div className="creatorInspectorHeading">{selectedCatalog ? displayElementName(selectedCatalog) : "Elements"}</div>
-            <div className="creatorOverlayActions"><button className="btn" onClick={() => { setAuthoringOpen(false); setAddingElement(false); }} type="button">Close</button></div>
+            <div className="creatorOverlayActions">{selectedElementUsesSolverControls ? <button className="btn" onClick={() => setCreatorControlView("solver")} type="button">Solver controls</button> : null}<button className="btn" onClick={startSolutionEditing} type="button">Deselect</button></div>
+          </div>
+          <div className="creatorInspectorQuickControls" aria-label="Creator editing controls">
+            <button className="btn panelBtn" onClick={undoDefinition} disabled={!history.length} title="Undo" type="button"><IconUndo /></button>
+            <button className="btn panelBtn" onClick={redoDefinition} disabled={!future.length} title="Redo" type="button"><IconRedo /></button>
+            <button className={"btn panelBtn" + (controlProgress.multiSelect ? " primary" : "")} onClick={toggleSelectionMode} title={controlProgress.multiSelect ? "Multi-touch selection enabled" : "Single-touch selection enabled"} type="button"><IconSelectMode multi={controlProgress.multiSelect} /></button>
           </div>
           <div className="creatorInspectorBody">
             {selectedCatalog ? <div className="creatorSelectedElement"><div><strong>{selectedCatalog.icon} {displayElementName(selectedCatalog)}</strong><span>{selectedCatalog.description}</span></div>{CHECKABLE_ELEMENT_IDS.has(selectedCatalog.id) ? <label className="creatorToggle"><input type="checkbox" checked={data.def.meta.creatorConstraintChecks?.[selectedCatalog.id] !== false} onChange={(event) => setConstraintChecking(selectedCatalog, event.target.checked)} />Constraint checking</label> : null}</div> : <div className="muted">Select an active element above the puzzle to edit it.</div>}
@@ -1394,15 +1622,7 @@ export function PuzzleEditorPage() {
           <div className="creatorStatus">{message || `${saving ? "Saving…" : dirty ? "Unsaved changes" : "Saved"} · ${selectionKey(selection) || "no selection"}`}</div>
         </aside>
       </section> : null}
-        <div className="gridLayout creatorGridLayout">
-          <section className="boardColumn creatorBoardColumn">
-            <div className="creatorCanvasToolbar" aria-label="Board view controls"><button className="btn" onClick={() => setCanvasZoom((value) => Math.max(0.5, Math.round((value - 0.1) * 10) / 10))} type="button">−</button><button className="btn" onClick={() => { setCanvasZoom(1); setCanvasPan({ x: 0, y: 0 }); }} type="button">{Math.round(canvasZoom * 100)}%</button><button className="btn" onClick={() => setCanvasZoom((value) => Math.min(2.5, Math.round((value + 0.1) * 10) / 10))} type="button">+</button><button className="btn" onClick={() => setCanvasPan((value) => ({ ...value, y: value.y + 24 }))} type="button">↑</button><button className="btn" onClick={() => setCanvasPan((value) => ({ ...value, x: value.x + 24 }))} type="button">←</button><button className="btn" onClick={() => setCanvasPan((value) => ({ ...value, x: value.x - 24 }))} type="button">→</button><button className="btn" onClick={() => setCanvasPan((value) => ({ ...value, y: value.y - 24 }))} type="button">↓</button></div>
-            <div className="card boardCard creatorCanvasViewport" onWheel={(event) => { if (!(event.ctrlKey || event.metaKey)) return; event.preventDefault(); setCanvasZoom((value) => Math.max(0.5, Math.min(2.5, value + (event.deltaY < 0 ? 0.1 : -0.1)))); }}>
-              <div className="creatorCanvasTransform" style={{ transform: `translate(${canvasPan.x}px, ${canvasPan.y}px) scale(${canvasZoom})` }}><GridCanvas def={data.def} progress={controlProgress} onSelection={testPlay ? (next) => setTestProgress((current) => current ? { ...current, selection: next } : current) : setSelection} onLineStroke={NOOP} onLineTapCell={NOOP} onLineTapEdge={NOOP} onDoubleCell={NOOP} /></div>
-            </div>
-          </section>
-          <div className="kbdPanel">
-          <div className="card controlStack mobileControlPanel creatorControls">
+          {showSolverControls ? <div className="card controlStack mobileControlPanel creatorControls">
             <button className="btn panelBtn panelUndo" onClick={testPlay ? undoTest : undoDefinition} disabled={testPlay ? !testHistory.length : !history.length} title="Undo (N)" type="button"><IconUndo /></button>
             <button className="btn panelBtn panelRedo" onClick={testPlay ? redoTest : redoDefinition} disabled={testPlay ? !testFuture.length : !future.length} title="Redo (M)" type="button"><IconRedo /></button>
             <button className={"btn panelBtn panelSelectToggle" + (controlProgress.multiSelect ? " primary" : "")} onClick={toggleSelectionMode} title={controlProgress.multiSelect ? "Multi-touch selection enabled" : "Single-touch selection enabled"} type="button"><IconSelectMode multi={controlProgress.multiSelect} /></button>
@@ -1412,11 +1632,11 @@ export function PuzzleEditorPage() {
             <button title="Highlight (V)" className={"btn panelBtn panelTool4" + (controlProgress.activeTool === "highlight" ? " primary" : "")} onClick={() => setActiveTool("highlight")} type="button"><IconToolHighlight /></button>
             <button title="Line (B)" className={"btn panelBtn panelTool5" + (controlProgress.activeTool === "line" ? " primary" : "")} onClick={() => setActiveTool("line")} type="button"><IconToolLine /></button>
             <div className="panelMainGrid">
-              {(controlProgress.activeTool === "value" || controlProgress.activeTool === "center" || controlProgress.activeTool === "corner") ? <Keyboard compact kind="numbers" progress={controlProgress} onDigit={testPlay ? applyTestDigit : setCellValue} onBackspace={() => testPlay ? applyTestDigit("") : setCellValue("")} onToggleAlphabet={() => testPlay ? setTestProgress((current) => current ? { ...current, alphabetMode: !current.alphabetMode } : current) : setEditorAlphabetMode((value) => !value)} onCycleAlphabetPage={() => testPlay ? setTestProgress((current) => current ? { ...current, alphabetPage: ((current.alphabetPage + 1) % 3) as 0 | 1 | 2 } : current) : setEditorAlphabetPage((value) => ((value + 1) % 3) as 0 | 1 | 2)} /> : null}
-              {controlProgress.activeTool === "highlight" ? <Keyboard compact kind="highlight" progress={controlProgress} onColor={testPlay ? applyTestHighlight : NOOP} onWhite={() => testPlay ? applyTestHighlight("rgba(0,0,0,0)") : NOOP()} onBackspace={() => testPlay ? applyTestHighlight("rgba(0,0,0,0)") : setCellValue("")} onFlipPalette={() => testPlay ? setTestProgress((current) => current ? { ...current, highlightPalettePage: (current.highlightPalettePage === 0 ? 1 : 0) as 0 | 1 } : current) : setEditorHighlightPage((value) => value === 0 ? 1 : 0)} /> : null}
-              {controlProgress.activeTool === "line" ? <Keyboard compact kind="line" progress={controlProgress} onBackspace={() => testPlay ? undefined : setCellValue("")} onColor={(color) => testPlay ? setTestProgress((current) => current ? { ...current, linePaletteColor: color } : current) : setEditorLineColor(color)} onToggleDoubleLine={() => testPlay ? setTestProgress((current) => current ? { ...current, lineDoubleMode: !current.lineDoubleMode } : current) : setEditorLineDouble((value) => !value)} /> : null}
+              {(controlProgress.activeTool === "value" || controlProgress.activeTool === "center" || controlProgress.activeTool === "corner") ? <Keyboard compact kind="numbers" progress={controlProgress} onDigit={testPlay ? applyTestDigit : applyCreatorDigit} onBackspace={() => testPlay ? applyTestDigit("") : handleCreatorBackspace()} onToggleAlphabet={() => testPlay ? setTestProgress((current) => current ? { ...current, alphabetMode: !current.alphabetMode } : current) : setEditorAlphabetMode((value) => !value)} onCycleAlphabetPage={() => testPlay ? setTestProgress((current) => current ? { ...current, alphabetPage: ((current.alphabetPage + 1) % 3) as 0 | 1 | 2 } : current) : setEditorAlphabetPage((value) => ((value + 1) % 3) as 0 | 1 | 2)} /> : null}
+              {controlProgress.activeTool === "highlight" ? <Keyboard compact kind="highlight" progress={controlProgress} onColor={testPlay ? applyTestHighlight : applyCreatorHighlight} onWhite={() => testPlay ? applyTestHighlight("rgba(0,0,0,0)") : handleCreatorBackspace()} onBackspace={() => testPlay ? applyTestHighlight("rgba(0,0,0,0)") : handleCreatorBackspace()} onFlipPalette={() => testPlay ? setTestProgress((current) => current ? { ...current, highlightPalettePage: (current.highlightPalettePage === 0 ? 1 : 0) as 0 | 1 } : current) : setEditorHighlightPage((value) => value === 0 ? 1 : 0)} /> : null}
+              {controlProgress.activeTool === "line" ? <Keyboard compact kind="line" progress={controlProgress} onBackspace={() => testPlay ? undefined : handleCreatorBackspace()} onColor={(color) => testPlay ? setTestProgress((current) => current ? { ...current, linePaletteColor: color } : current) : setEditorLineColor(color)} onToggleDoubleLine={() => testPlay ? setTestProgress((current) => current ? { ...current, lineDoubleMode: !current.lineDoubleMode } : current) : setEditorLineDouble((value) => !value)} /> : null}
             </div>
-          </div>
+          </div> : null}
           </div>
         </div>
         </div>

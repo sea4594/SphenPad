@@ -31,11 +31,11 @@ const selectionColorOptions: Array<{ value: SelectionColor; label: string }> = [
 ];
 
 const selectionThicknessOptions: Array<{ value: SelectionOutlineThickness; label: string }> = [
+  { value: "extra-thin", label: "Extra thin" },
   { value: "thin", label: "Thin" },
-  { value: "normal", label: "Current" },
   { value: "medium", label: "Medium" },
   { value: "thick", label: "Thick" },
-  { value: "extra", label: "Extra thick" },
+  { value: "extra-thick", label: "Extra thick" },
 ];
 
 export function SettingsOverlay(props: { onClose: () => void }) {
@@ -218,7 +218,7 @@ export function SettingsOverlay(props: { onClose: () => void }) {
             </div>
 
             <div className="settingsRow" style={{ marginTop: 4, alignItems: "center", gap: 10 }}>
-              <div className="muted">Selection outline</div>
+              <div className="muted">Selection outline thickness</div>
               <select
                 className="settingsThemeNativeSelect"
                 aria-label="Select selection outline thickness"

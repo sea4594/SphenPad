@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
-const [interaction, puzzlePage, gridCanvas, renderer, fog, layers, rendererCss, appCss, emojiAssets, progressScene, conflicts, renderCells, creatorPage, creatorEditor, youtubePlayer, theme, settingsOverlay] = await Promise.all([
+const [interaction, puzzlePage, gridCanvas, renderer, fog, layers, rendererCss, appCss, emojiAssets, progressScene, conflicts, renderCells, creatorPage, creatorEditor, youtubePlayer, theme, settingsOverlay, viewportLayout] = await Promise.all([
   read("src/ui/BoardInteractionLayer.tsx"),
   read("src/ui/PuzzlePage.tsx"),
   read("src/ui/GridCanvas.tsx"),
@@ -19,13 +19,14 @@ const [interaction, puzzlePage, gridCanvas, renderer, fog, layers, rendererCss, 
   read("src/ui/YouTubePlayer.tsx"),
   read("src/app/theme.tsx"),
   read("src/ui/SettingsOverlay.tsx"),
+  read("src/app/viewportLayout.ts"),
 ]);
 
 function expect(condition, message) {
   if (!condition) throw new Error(message);
 }
 
-expect(interaction.includes("getCellOutline(progress.selection"), "selection must render as a merged perimeter");
+expect(interaction.includes("getCellOutline(visualSelection") && interaction.includes("selectionPreview ?? progress.selection"), "selection must render as a merged perimeter using the immediate drag preview");
 expect(!interaction.includes("<rect key={key}"), "selection must not draw one border rectangle per cell");
 expect(interaction.includes("const next = progress.multiSelect ? new Set(current) : new Set<string>();"), "SudokuPad multi-select add/remove state machine missing");
 expect(interaction.includes('!progress.multiSelect && !drag.moved && drag.startedSelected && drag.startedSelectionSize === 1'), "single selected-cell toggle rule missing");
@@ -41,7 +42,7 @@ expect(!fog.includes('setAttribute("mask", "url(#fog-mask-fog)")'), "fog masks m
 expect(layers.includes('sudokuPadScopedSvgId(svg, "outlinefilter")'), "outline filter IDs must be scoped per board");
 expect(rendererCss.includes("filter: var(--sphenpad-outline-filter);"), "outline filter CSS must reference the board-scoped filter variable");
 expect(interaction.includes("GRID_STROKE_WIDTH_PX / 2 + selectionStrokeWidth / 2") && interaction.includes("vectorEffect=\"non-scaling-stroke\""), "selection stroke must sit fully inside the grid border at screen-pixel thickness");
-expect(interaction.includes("SELECTION_STROKE_WIDTHS") && interaction.includes("normal: 3.3 * 1.15") && interaction.includes("extra: 7.5") && interaction.includes("strokeWidth={selectionStrokeWidth}"), "selection outline thickness choices must preserve current default and extend to about double thickness");
+expect(interaction.includes('"extra-thin": 3.3') && interaction.includes('"extra-thick": 11.25') && interaction.includes("strokeWidth={selectionStrokeWidth}"), "selection outline thickness choices must span extra-thin through the enlarged extra-thick value");
 expect(interaction.includes('strokeLinejoin="miter"') && interaction.includes('strokeLinecap="butt"'), "selection perimeter exterior corners must be square rather than rounded");
 expect(interaction.includes("rgba(46,120,255,.7)"), "selection perimeter must use SudokuPad-style transparency");
 expect(interaction.includes("const LINE_NODE_RADIUS = 0.5") && interaction.includes("function centerLineHopsFromPointer") && interaction.includes("samplesPerCell ?? 24") && interaction.includes("function edgeLineHopsFromPointer"), "pre-Phase-1 circular-node sampled drag tracking is missing");
@@ -60,11 +61,14 @@ expect(appCss.includes('.sphenpad-native-board.preview > .sphenpad-sudokupad-ren
 expect(progressScene.includes("computePuzzleConflictMarks") && progressScene.includes("playerPencilmarks: true"), "player pencilmark conflict/legacy-placement metadata must be attached by the progress adapter");
 expect(conflicts.includes("computePuzzleConflictMarks") && conflicts.includes("markConflictsAt"), "pencilmark conflict checking must use active Sudoku conflict rules");
 expect(renderCells.includes("mark-error") && rendererCss.includes(".cell-pencilmark.playerPencilmark[data-val=\"5\"]") && rendererCss.includes("--puzzle-pencilmarkerror"), "conflicting pencilmarks must render red and player corner marks must use legacy value-based positions");
-expect(theme.includes("SelectionOutlineThickness") && settingsOverlay.includes("Selection outline") && settingsOverlay.includes("Extra thick"), "selection outline thickness setting is missing");
+expect(theme.includes("SelectionOutlineThickness") && settingsOverlay.includes("Selection outline thickness") && settingsOverlay.includes("Extra thin") && settingsOverlay.includes("Extra thick"), "selection outline thickness setting is missing or mislabeled");
 expect(creatorPage.includes("const otherRows = rows.filter") && creatorPage.includes("All projects are shown above."), "creator project list must not display recent projects a second time");
 expect(appCss.includes(".creatorDimensionsPreview") && appCss.includes("contain: layout paint") && appCss.includes(".creatorDimensionFields { position: relative; z-index: 1; }"), "custom creator grid preview must stay confined behind dimension controls");
-expect(creatorEditor.includes("creatorInlineAuthoringPanel") && !creatorEditor.includes('overlayBackdrop creatorOverlayBackdrop'), "constraint/object settings must be an inline panel above the creator grid, not a blocking modal");
-expect(appCss.includes(".creatorElementsPageLayout.authoring-open") && appCss.includes(".creatorInlineAuthoringPanel"), "creator grid must reserve space for the inline element settings panel");
+expect(creatorEditor.includes("creatorInlineAuthoringPanel") && creatorEditor.indexOf("creatorInlineAuthoringPanel") > creatorEditor.indexOf('<div className="kbdPanel">') && !creatorEditor.includes('overlayBackdrop creatorOverlayBackdrop'), "constraint/object settings must live in the controls pane without blocking the board");
+expect(appCss.includes("Creator control pane parity") && appCss.includes(".creatorInlineAuthoringPanel .creatorInspectorBody") && appCss.includes("overflow-y: auto"), "creator settings pane must scroll inside the solver-sized controls area");
+expect(interaction.includes("selectionPreview") && interaction.includes("requestAnimationFrame") && interaction.includes("dragTransformRef"), "selection drag rendering must stay local/frame-batched and cache the SVG transform to avoid pointer lag");
+expect(!creatorEditor.includes('{ id: "solution-digits"') && creatorEditor.includes("activeCatalogElement === null") && creatorEditor.includes("applyCreatorDigit") && creatorEditor.includes("handleCreatorBackspace"), "creator neutral mode must replace the removed Solution digits catalog element");
+expect(creatorEditor.includes("layoutTabletPortrait") && creatorEditor.includes("layoutTabletLandscape") && viewportLayout.includes('(orientation: portrait)') && viewportLayout.includes('(orientation: landscape)'), "creator/tablet layout must use explicit orientation-aware solver layout classes");
 expect(youtubePlayer.includes("youtube-nocookie.com/embed") && youtubePlayer.includes("window.setTimeout(fallBack, 8000)") && youtubePlayer.includes("host.replaceChildren(mount)"), "video player must recover from black/stalled YouTube API embeds");
 
 console.log("Phase 11 playtest rendering/selection regression checks passed");

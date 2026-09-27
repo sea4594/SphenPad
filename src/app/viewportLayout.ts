@@ -33,7 +33,17 @@ function likelyTouchViewport(): boolean {
 export function getViewportLayoutKind(): ViewportLayoutKind {
   if (typeof window === "undefined") return "desktop";
   const { width, height, shortSide, longSide } = readViewportSize();
-  const portrait = height >= width;
+  // visualViewport can become shorter than it is wide when browser chrome or an
+  // on-screen keyboard is visible, which used to make a portrait tablet flip
+  // into the landscape layout. Prefer the layout viewport's CSS orientation and
+  // only fall back to dimensions when orientation media queries are unavailable.
+  const portraitQuery = window.matchMedia?.("(orientation: portrait)");
+  const landscapeQuery = window.matchMedia?.("(orientation: landscape)");
+  const portrait = portraitQuery?.matches === true
+    ? true
+    : landscapeQuery?.matches === true
+      ? false
+      : height >= width;
   const touchLike = likelyTouchViewport();
 
   if (shortSide <= PHONE_MAX_SHORT_SIDE) {

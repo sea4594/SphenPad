@@ -39,11 +39,11 @@ const DOUBLE_TAP_WINDOW_MS = 400;
 const LONG_PRESS_DELAY_MS = 750;
 const LINE_NODE_RADIUS = 0.5;
 const SELECTION_STROKE_WIDTHS: Record<SelectionOutlineThickness, number> = {
-  thin: 3.3,
-  normal: 3.3 * 1.15,
-  medium: 4.75,
-  thick: 5.9,
-  extra: 7.5,
+  "extra-thin": 3.3,
+  thin: 5.2875,
+  medium: 7.275,
+  thick: 9.2625,
+  "extra-thick": 11.25,
 };
 const GRID_STROKE_WIDTH_PX = 1;
 
@@ -102,10 +102,14 @@ export function BoardInteractionLayer(props: BoardInteractionLayerProps) {
   const { svg, rows, cols, progress, interactive = true } = props;
   const overlayRef = useRef<SVGSVGElement | null>(null);
   const dragRef = useRef<DragState | null>(null);
+  const dragTransformRef = useRef<DOMMatrix | null>(null);
   const tapRef = useRef<TapState | null>(null);
+  const selectionPreviewRafRef = useRef<number | null>(null);
+  const pendingSelectionPreviewRef = useRef<CellRC[] | null>(null);
   const longPressRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [viewBox, setViewBox] = useState<ViewBox>(() => parseViewBox(svg));
   const [preview, setPreview] = useState<{ segments: BoardLineSegment[]; kind: BoardLineKind; action: "draw" | "erase" } | null>(null);
+  const [selectionPreview, setSelectionPreview] = useState<CellRC[] | null>(null);
   const selectionStrokeWidth = SELECTION_STROKE_WIDTHS[props.selectionOutlineThickness];
   const [selectionOutlineOffset, setSelectionOutlineOffset] = useState((GRID_STROKE_WIDTH_PX / 2 + selectionStrokeWidth / 2) / SUDOKUPAD_CELL_SIZE);
 
@@ -142,7 +146,39 @@ export function BoardInteractionLayer(props: BoardInteractionLayerProps) {
     };
   }, [viewBox.width, viewBox.height, selectionStrokeWidth]);
 
-  useEffect(() => () => { if (longPressRef.current) clearInterval(longPressRef.current); }, []);
+  useEffect(() => () => {
+    if (longPressRef.current) clearInterval(longPressRef.current);
+    if (selectionPreviewRafRef.current !== null) window.cancelAnimationFrame(selectionPreviewRafRef.current);
+  }, []);
+
+  function publishSelection(selection: CellRC[]) {
+    props.onSelection(selection);
+  }
+
+  function previewSelection(selection: CellRC[], immediate = false) {
+    pendingSelectionPreviewRef.current = selection;
+    if (immediate) {
+      if (selectionPreviewRafRef.current !== null) window.cancelAnimationFrame(selectionPreviewRafRef.current);
+      selectionPreviewRafRef.current = null;
+      pendingSelectionPreviewRef.current = null;
+      setSelectionPreview(selection);
+      return;
+    }
+    if (selectionPreviewRafRef.current !== null) return;
+    selectionPreviewRafRef.current = window.requestAnimationFrame(() => {
+      selectionPreviewRafRef.current = null;
+      const pending = pendingSelectionPreviewRef.current;
+      pendingSelectionPreviewRef.current = null;
+      if (pending) setSelectionPreview(pending);
+    });
+  }
+
+  function captureDragTransform() {
+    const ctm = overlayRef.current?.getScreenCTM();
+    if (!ctm) { dragTransformRef.current = null; return; }
+    try { dragTransformRef.current = ctm.inverse(); }
+    catch { dragTransformRef.current = null; }
+  }
 
   const inCellBounds = (r: number, c: number) => r >= 0 && c >= 0 && r < rows && c < cols;
   const inCornerBounds = (r: number, c: number) => r >= 0 && c >= 0 && r <= rows && c <= cols;
@@ -171,6 +207,13 @@ export function BoardInteractionLayer(props: BoardInteractionLayerProps) {
     // Let the browser invert the SVG's real screen transform. This correctly
     // accounts for preserveAspectRatio letterboxing, creator zoom/pan, CSS
     // transforms, and any viewBox padding around outside clues.
+    const inverse = dragTransformRef.current;
+    if (inverse) {
+      try {
+        const point = new DOMPoint(clientX, clientY).matrixTransform(inverse);
+        return { x: point.x, y: point.y };
+      } catch { /* fall through to a fresh transform */ }
+    }
     const ctm = overlay.getScreenCTM();
     if (ctm) {
       try {
@@ -373,6 +416,7 @@ export function BoardInteractionLayer(props: BoardInteractionLayerProps) {
   function onPointerDown(event: React.PointerEvent<SVGSVGElement>) {
     if (!interactive) return;
     clearLongPress();
+    captureDragTransform();
     const cell = cellAt(event.clientX, event.clientY);
     if (!cell) { props.onNonCellPointerDown?.(); return; }
     event.currentTarget.setPointerCapture(event.pointerId);
@@ -410,7 +454,9 @@ export function BoardInteractionLayer(props: BoardInteractionLayerProps) {
       visited: new Set([key]), selectionDragActive: false,
     };
     dragRef.current = drag;
-    props.onSelection([...next].map(rcFromKey));
+    const nextSelection = [...next].map(rcFromKey);
+    previewSelection(nextSelection, true);
+    publishSelection(nextSelection);
     startLongPress(drag, cell);
   }
 
@@ -480,7 +526,8 @@ export function BoardInteractionLayer(props: BoardInteractionLayerProps) {
     }
     drag.visited = visited;
     drag.selectionSet = next;
-    props.onSelection([...next].map(rcFromKey));
+    const nextSelection = [...next].map(rcFromKey);
+    previewSelection(nextSelection);
   }
 
   function onPointerUp(event: React.PointerEvent<SVGSVGElement>) {
@@ -500,7 +547,7 @@ export function BoardInteractionLayer(props: BoardInteractionLayerProps) {
       setPreview(null);
     } else if (!drag.longPressTriggered && !progress.multiSelect && !drag.moved && drag.startedSelected && drag.startedSelectionSize === 1) {
       const cell = cellAt(event.clientX, event.clientY);
-      if (cell && drag.startedCellKey === keyOf(cell)) props.onSelection([]);
+      if (cell && drag.startedCellKey === keyOf(cell)) { drag.selectionSet = new Set(); previewSelection([], true); publishSelection([]); }
     }
     const cell = cellAt(event.clientX, event.clientY);
     if (drag.longPressTriggered) tapRef.current = null;
@@ -512,17 +559,35 @@ export function BoardInteractionLayer(props: BoardInteractionLayerProps) {
         props.onDoubleCell(cell);
       } else tapRef.current = { cellKey: keyOf(cell), timestamp: now, pointerType: event.pointerType };
     } else if (drag.moved) tapRef.current = null;
+    if (progress.activeTool !== "line" && drag.selectionSet) publishSelection([...drag.selectionSet].map(rcFromKey));
     dragRef.current = null;
+    dragTransformRef.current = null;
+    if (selectionPreviewRafRef.current !== null) window.cancelAnimationFrame(selectionPreviewRafRef.current);
+    selectionPreviewRafRef.current = null;
+    pendingSelectionPreviewRef.current = null;
+    setSelectionPreview(null);
   }
 
-  function cancel() { clearLongPress(); dragRef.current = null; setPreview(null); }
+  function cancel() {
+    clearLongPress();
+    const drag = dragRef.current;
+    if (drag?.selectionSet) publishSelection([...drag.selectionSet].map(rcFromKey));
+    dragRef.current = null;
+    dragTransformRef.current = null;
+    if (selectionPreviewRafRef.current !== null) window.cancelAnimationFrame(selectionPreviewRafRef.current);
+    selectionPreviewRafRef.current = null;
+    pendingSelectionPreviewRef.current = null;
+    setSelectionPreview(null);
+    setPreview(null);
+  }
 
+  const visualSelection = selectionPreview ?? progress.selection;
   const selectionPath = useMemo(() => {
-    if (!progress.selection.length) return "";
-    return getCellOutline(progress.selection.map(({ r, c }) => ({ row: r, col: c })), selectionOutlineOffset)
+    if (!visualSelection.length) return "";
+    return getCellOutline(visualSelection.map(({ r, c }) => ({ row: r, col: c })), selectionOutlineOffset)
       .map(([command, row, col]) => command === "Z" ? "Z" : `${command}${col * SUDOKUPAD_CELL_SIZE} ${row * SUDOKUPAD_CELL_SIZE}`)
       .join(" ");
-  }, [progress.selection, selectionOutlineOffset]);
+  }, [visualSelection, selectionOutlineOffset]);
   const stroke = selectionStroke(props.selectionColor);
 
   return (

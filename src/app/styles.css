@@ -996,15 +996,17 @@ input.url {
   overflow: hidden;
 }
 .creatorElementsPageLayout.authoring-open {
-  grid-template-rows: auto minmax(140px, min(32dvh, 330px)) minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
 }
 .creatorInlineAuthoringPanel {
+  width: 100%;
+  height: 100%;
   min-width: 0;
   min-height: 0;
-  padding: 8px 12px;
+  padding: 0;
   overflow: hidden;
-  border-bottom: 1px solid var(--ui-border);
-  background: var(--bg);
+  border: 0;
+  background: transparent;
 }
 .creatorInlineAuthoringPanel .creatorInspector {
   width: 100%;
@@ -1315,7 +1317,7 @@ input.url {
   .creatorEditorActions .btn { min-height: 34px; padding: 5px 8px; }
   .creatorEditorShell { height: 100%; min-height: 0; overflow: hidden; }
   .creatorPuzzlePage { height: 100%; }
-  .creatorElementsPageLayout.authoring-open { grid-template-rows: auto minmax(150px, min(38dvh, 320px)) minmax(0, 1fr); }
+  .creatorElementsPageLayout.authoring-open { grid-template-rows: auto minmax(0, 1fr); }
   .creatorInlineAuthoringPanel { padding: 6px 10px; }
   .creatorOverlayHeader { align-items: flex-start; }
   .creatorOverlayActions { margin-top: 10px; }
@@ -3877,12 +3879,88 @@ input.url {
 .creatorPathPoint.active { border-color: var(--accent); background: var(--panel); }
 .creatorPathPointLabel { justify-content: flex-start; }
 .creatorPathPoint[draggable="true"] { cursor: grab; }
-.creatorBoardColumn { min-width: 0; min-height: 0; height: 100%; grid-template-rows: auto minmax(0, 1fr); align-content: stretch; }
-.creatorCanvasToolbar { justify-content: center; margin-bottom: 6px; }
+.creatorBoardColumn { position: relative; min-width: 0; min-height: 0; height: 100%; grid-template-rows: minmax(0, 1fr); align-content: stretch; }
+.creatorCanvasToolbar { position: absolute; top: 6px; right: 6px; z-index: 8; justify-content: flex-end; width: min(calc(100% - 12px), 390px); margin: 0; padding: 4px; border-radius: 6px; background: color-mix(in srgb, var(--panel) 86%, transparent); box-shadow: 0 1px 4px rgba(0,0,0,.18); }
 .creatorCanvasToolbar .btn { min-width: 34px; padding: 5px 8px; }
 .creatorCanvasViewport { overflow: hidden; touch-action: none; min-height: 0; height: 100%; width: 100%; }
 .creatorCanvasTransform { transform-origin: center center; transition: transform 100ms ease-out; }
 @media (max-width: 620px) {
   .creatorPathPoint { grid-template-columns: minmax(90px, 1fr) repeat(3, auto); }
   .creatorPathPoint .btn:nth-child(n+5) { display: none; }
+}
+
+
+/* Creator control pane parity: keep the board visible and use the same viewport
+   split as the solver. Constraint-specific settings occupy the solver control
+   pane instead of creating a third row above the puzzle. */
+.creatorEditorShell .creatorGridLayout {
+  min-height: 0;
+}
+.creatorEditorShell .creatorGridLayout .kbdPanel {
+  min-height: 0;
+  overflow: hidden;
+}
+.creatorEditorShell .creatorInlineAuthoringPanel {
+  min-height: 0;
+  height: 100%;
+}
+.creatorEditorShell .creatorInlineAuthoringPanel .creatorInspector {
+  height: 100%;
+  min-height: 0;
+  max-height: 100%;
+  align-self: stretch;
+}
+.creatorInspectorQuickControls {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--ui-border);
+}
+.creatorInspectorQuickControls .panelBtn {
+  width: 100%;
+  min-width: 0;
+  min-height: 38px;
+}
+.creatorEditorShell .creatorInlineAuthoringPanel .creatorInspectorBody {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.creatorEditorShell .creatorInlineAuthoringPanel .creatorStatus {
+  flex: 0 0 auto;
+}
+.creatorEditorShell .creatorCanvasViewport {
+  grid-row: 1;
+}
+.creatorEditorShell.layoutTabletLandscape .creatorGridLayout .kbdPanel {
+  grid-template-rows: minmax(0, 1fr);
+}
+.creatorEditorShell.layoutTabletLandscape .creatorInlineAuthoringPanel,
+.creatorEditorShell.layoutTabletLandscape .creatorControls {
+  height: 100%;
+  max-height: none;
+}
+.creatorEditorShell.layoutTabletPortrait .creatorGridLayout .kbdPanel {
+  grid-template-rows: minmax(0, 1fr);
+}
+.creatorEditorShell.layoutTabletPortrait .creatorInlineAuthoringPanel,
+.creatorEditorShell.layoutTabletPortrait .creatorControls {
+  height: 100%;
+  max-height: 100%;
+}
+@media (max-width: 760px), ((hover: none) and (pointer: coarse)) {
+  .creatorCanvasToolbar {
+    top: 4px;
+    right: 4px;
+    width: auto;
+    max-width: calc(100% - 8px);
+    gap: 3px;
+    padding: 3px;
+  }
+  .creatorCanvasToolbar .btn {
+    min-width: 30px;
+    min-height: 30px;
+    padding: 3px 6px;
+  }
 }

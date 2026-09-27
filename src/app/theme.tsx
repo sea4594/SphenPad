@@ -4,7 +4,7 @@ import { onSyncedLocalDataApplied, setSyncedLocalStorageItem } from "../core/loc
 export type ThemeMode = "light" | "dark";
 export type ThemeColor = "bw" | "ocean" | "forest" | "clay" | "berry";
 export type SelectionColor = "blue" | "green" | "yellow" | "orange" | "red" | "purple" | "pink";
-export type SelectionOutlineThickness = "thin" | "normal" | "medium" | "thick" | "extra";
+export type SelectionOutlineThickness = "extra-thin" | "thin" | "medium" | "thick" | "extra-thick";
 
 type ThemeContextValue = {
   mode: ThemeMode;
@@ -31,6 +31,18 @@ type ThemeContextValue = {
 const STORAGE_KEY = "sphenpad-theme-v1";
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
+
+function normalizeSelectionOutlineThickness(value: unknown, version: unknown): SelectionOutlineThickness {
+  if (version === 2 && ["extra-thin", "thin", "medium", "thick", "extra-thick"].includes(String(value))) {
+    return value as SelectionOutlineThickness;
+  }
+  // Migrate the original five-value scale without making existing users suddenly
+  // jump to a much heavier outline after the range expansion.
+  if (value === "thin" || value === "normal") return "extra-thin";
+  if (value === "medium") return "thin";
+  if (value === "thick" || value === "extra") return "medium";
+  return "extra-thin";
+}
 
 function normalizeThemeSelection(mode: ThemeMode, color: ThemeColor): { mode: ThemeMode; color: ThemeColor } {
   if (color === "bw" || color === "ocean") return { mode, color };
@@ -60,7 +72,7 @@ function readInitialTheme(): {
         labelRowsCols: false,
         conflictChecker: true,
         selectionColor: "blue",
-        selectionOutlineThickness: "normal",
+        selectionOutlineThickness: "extra-thin",
       };
     }
     const parsed = JSON.parse(raw) as {
@@ -72,7 +84,8 @@ function readInitialTheme(): {
       labelRowsCols?: boolean;
       conflictChecker?: boolean;
       selectionColor?: SelectionColor;
-      selectionOutlineThickness?: SelectionOutlineThickness;
+      selectionOutlineThickness?: SelectionOutlineThickness | "normal" | "extra";
+      selectionOutlineThicknessVersion?: number;
     };
     const mode: ThemeMode = parsed.mode === "light" || parsed.mode === "dark" ? parsed.mode : "light";
     const mappedColor = parsed.color === "sunset" || parsed.color === "sepia" ? "clay" : parsed.color;
@@ -88,9 +101,7 @@ function readInitialTheme(): {
     const selectionColor: SelectionColor = ["blue", "green", "yellow", "orange", "red", "purple", "pink"].includes(parsed.selectionColor ?? "")
       ? (parsed.selectionColor as SelectionColor)
       : "blue";
-    const selectionOutlineThickness: SelectionOutlineThickness = ["thin", "normal", "medium", "thick", "extra"].includes(parsed.selectionOutlineThickness ?? "")
-      ? (parsed.selectionOutlineThickness as SelectionOutlineThickness)
-      : "normal";
+    const selectionOutlineThickness = normalizeSelectionOutlineThickness(parsed.selectionOutlineThickness, parsed.selectionOutlineThicknessVersion);
     return { mode: normalizedTheme.mode, color: normalizedTheme.color, hideTimer, outlineDigits, compactMarks, labelRowsCols, conflictChecker, selectionColor, selectionOutlineThickness };
   } catch {
     return {
@@ -102,7 +113,7 @@ function readInitialTheme(): {
       labelRowsCols: false,
       conflictChecker: true,
       selectionColor: "blue",
-      selectionOutlineThickness: "normal",
+      selectionOutlineThickness: "extra-thin",
     };
   }
 }
@@ -166,7 +177,7 @@ export function ThemeProvider(props: { children: ReactNode }) {
     document.documentElement.style.backgroundColor = bg;
     document.body.style.backgroundColor = bg;
 
-    setSyncedLocalStorageItem(STORAGE_KEY, JSON.stringify({ mode, color, hideTimer, outlineDigits, compactMarks, labelRowsCols, conflictChecker, selectionColor, selectionOutlineThickness }));
+    setSyncedLocalStorageItem(STORAGE_KEY, JSON.stringify({ mode, color, hideTimer, outlineDigits, compactMarks, labelRowsCols, conflictChecker, selectionColor, selectionOutlineThickness, selectionOutlineThicknessVersion: 2 }));
   }, [mode, color, hideTimer, outlineDigits, compactMarks, labelRowsCols, conflictChecker, selectionColor, selectionOutlineThickness]);
 
   const value = useMemo(
