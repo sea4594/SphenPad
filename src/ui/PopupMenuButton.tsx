@@ -22,8 +22,9 @@ export function PopupMenuButton(props: {
   items: PopupMenuItem[];
   disabled?: boolean;
   className?: string;
+  triggerLabel?: string;
 }) {
-  const { ariaLabel, title, items, disabled, className } = props;
+  const { ariaLabel, title, items, disabled, className, triggerLabel } = props;
   const [open, setOpen] = useState(false);
   const [activeSubmenuLabel, setActiveSubmenuLabel] = useState<string | null>(null);
   const [activeSubmenuItems, setActiveSubmenuItems] = useState<PopupMenuLeafItem[] | null>(null);
@@ -135,7 +136,7 @@ export function PopupMenuButton(props: {
         disabled={disabled}
         type="button"
       >
-        <span aria-hidden>...</span>
+        <span aria-hidden>{triggerLabel ?? "..."}</span>
       </button>
 
       {open ? (

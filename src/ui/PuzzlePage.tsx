@@ -499,6 +499,8 @@ export function PuzzlePage(props: { editor?: boolean }) {
   const holdIntervalRef = useRef<number | null>(null);
   const activeHoldRef = useRef<"undo" | "redo" | null>(null);
   const activeHoldKeyRef = useRef<"n" | "m" | null>(null);
+  const selectModeHoldTimerRef = useRef<number | null>(null);
+  const selectModeHoldTriggeredRef = useRef(false);
   const undoRef = useRef<() => void>(() => {});
   const redoRef = useRef<() => void>(() => {});
   const metadataRefreshInFlightRef = useRef(new Set<string>());
@@ -1225,6 +1227,34 @@ export function PuzzlePage(props: { editor?: boolean }) {
   function toggleSelectionMode() {
     if (!data) return;
     setSelectionMode(!data.progress.multiSelect);
+  }
+
+  function selectAllCells() {
+    if (!data || data.progress.activeTool === "line") return;
+    const rows = data.progress.cells.length;
+    const cols = data.progress.cells[0]?.length ?? 0;
+    if (!rows || !cols) return;
+    setSelection(Array.from({ length: rows * cols }, (_, index) => ({ r: Math.floor(index / cols), c: index % cols })));
+  }
+
+  function startSelectModeHold() {
+    if (selectModeHoldTimerRef.current !== null) window.clearTimeout(selectModeHoldTimerRef.current);
+    selectModeHoldTriggeredRef.current = false;
+    selectModeHoldTimerRef.current = window.setTimeout(() => {
+      selectModeHoldTimerRef.current = null;
+      selectModeHoldTriggeredRef.current = true;
+      selectAllCells();
+    }, 500);
+  }
+
+  function stopSelectModeHold() {
+    if (selectModeHoldTimerRef.current !== null) { window.clearTimeout(selectModeHoldTimerRef.current); selectModeHoldTimerRef.current = null; }
+    if (selectModeHoldTriggeredRef.current) window.setTimeout(() => { selectModeHoldTriggeredRef.current = false; }, 250);
+  }
+
+  function clickSelectMode() {
+    if (selectModeHoldTriggeredRef.current) { selectModeHoldTriggeredRef.current = false; return; }
+    toggleSelectionMode();
   }
 
   async function restartPuzzleFromCache(resetTimer: boolean) {
@@ -2301,8 +2331,13 @@ export function PuzzlePage(props: { editor?: boolean }) {
               </button>
               <button
                 className={"btn panelBtn panelSelectToggle" + (data.progress.multiSelect ? " primary" : "")}
-                onClick={toggleSelectionMode}
-                title={data.progress.multiSelect ? "Multi-touch selection enabled" : "Single-touch selection enabled"}
+                onPointerDown={startSelectModeHold}
+                onPointerUp={stopSelectModeHold}
+                onPointerLeave={stopSelectModeHold}
+                onPointerCancel={stopSelectModeHold}
+                onContextMenu={(event) => event.preventDefault()}
+                onClick={clickSelectMode}
+                title={`${data.progress.multiSelect ? "Multi-touch selection enabled" : "Single-touch selection enabled"}; hold to select all cells`}
               >
                 <IconSelectMode multi={data.progress.multiSelect} />
               </button>

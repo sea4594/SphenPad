@@ -21,6 +21,9 @@ export interface GridCanvasProps {
   strictScale?: boolean;
   requestedHeight?: number;
   scalePuzzleStrokes?: boolean;
+  conflictCheckerEnabled?: boolean;
+  additionalConflictCells?: CellRC[];
+  hideAuthoredEntries?: boolean;
 }
 
 /**
@@ -28,7 +31,7 @@ export interface GridCanvasProps {
  * Every puzzle renders through the native SudokuPad-compatible SVG scene.
  */
 export function GridCanvas(props: GridCanvasProps) {
-  const { def, progress, interactive = true, previewMode = false, strictScale = false, requestedHeight, scalePuzzleStrokes = false } = props;
+  const { def, progress, interactive = true, previewMode = false, strictScale = false, requestedHeight, scalePuzzleStrokes = false, conflictCheckerEnabled, additionalConflictCells = [], hideAuthoredEntries = false } = props;
   const renderProgress = useMemo(() => previewMode ? { ...progress, selection: [], multiSelect: false } : progress, [previewMode, progress]);
   const theme = useTheme();
   const surfaceRef = useRef<HTMLDivElement | null>(null);
@@ -38,9 +41,27 @@ export function GridCanvas(props: GridCanvasProps) {
   const explicitRender = def.sourceContext?.urlSettings.render ?? {};
   const scene = useMemo(() => {
     if (!def.scene) return null;
-    const withProgress = sceneWithPuzzleProgress(def.scene, renderProgress, def.logic, theme.conflictChecker);
+    const authoredScene = hideAuthoredEntries
+      ? {
+        ...def.scene,
+        cells: def.scene.cells.map((row) => row.map((cell) => ({
+          ...cell,
+          given: undefined,
+          value: undefined,
+          givenCentremarks: undefined,
+          givenCornermarks: undefined,
+        }))),
+      }
+      : def.scene;
+    const checkerEnabled = conflictCheckerEnabled ?? theme.conflictChecker;
+    const withProgress = sceneWithPuzzleProgress(authoredScene, renderProgress, def.logic, checkerEnabled);
+    const extraConflicts = checkerEnabled ? new Set(additionalConflictCells.map((cell) => `${cell.r}:${cell.c}`)) : new Set<string>();
+    const cells = extraConflicts.size
+      ? withProgress.cells.map((row, r) => row.map((cell, c) => extraConflicts.has(`${r}:${c}`) ? { ...cell, hasError: true } : cell))
+      : withProgress.cells;
     return {
       ...withProgress,
+      cells,
       renderSettings: {
         ...withProgress.renderSettings,
         // Puzzle rendering must not change with the surrounding SphenPad UI theme.
@@ -51,7 +72,7 @@ export function GridCanvas(props: GridCanvasProps) {
         labelRowsCols: explicitRender.labelRowsCols ?? theme.labelRowsCols,
       },
     };
-  }, [def.scene, def.logic, renderProgress, explicitRender.outlineDigits, explicitRender.compactMarks, explicitRender.labelRowsCols, theme.outlineDigits, theme.compactMarks, theme.labelRowsCols, theme.conflictChecker]);
+  }, [def.scene, def.logic, renderProgress, hideAuthoredEntries, conflictCheckerEnabled, additionalConflictCells, explicitRender.outlineDigits, explicitRender.compactMarks, explicitRender.labelRowsCols, theme.outlineDigits, theme.compactMarks, theme.labelRowsCols, theme.conflictChecker]);
 
   const activeFitSize = previewMode || !svg ? null : fitSize;
 
