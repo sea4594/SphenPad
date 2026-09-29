@@ -4099,3 +4099,48 @@ input.url {
 .creatorInteractionModes .danger.primary {
   border-color: var(--danger);
 }
+
+/* Phase 11 creator direct-tool settings and cosmetic drawing grid. */
+.creatorAppearanceSection {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--ui-border);
+  border-radius: 8px;
+  background: var(--panel-soft);
+}
+.creatorDrawingSettings { background: var(--panel); }
+.creatorColorControl {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr);
+  gap: 6px;
+  align-items: center;
+}
+.creatorColorControl input[type="color"] {
+  width: 38px;
+  min-width: 38px;
+  height: 34px;
+  padding: 2px;
+  border: 1px solid var(--ui-border);
+  border-radius: 6px;
+  background: var(--panel);
+}
+.sphenpad-creator-drawing-grid line {
+  stroke: color-mix(in srgb, var(--muted) 42%, transparent);
+  stroke-width: .55;
+  vector-effect: non-scaling-stroke;
+  stroke-dasharray: 2.5 3;
+}
+.sphenpad-creator-point-preview polyline {
+  stroke: var(--accent);
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.sphenpad-creator-point-preview circle {
+  fill: var(--panel);
+  stroke: var(--accent);
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}

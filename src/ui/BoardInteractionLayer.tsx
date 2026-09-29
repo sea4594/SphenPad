@@ -7,6 +7,9 @@ import type { SelectionColor, SelectionOutlineThickness } from "../app/theme";
 
 export type BoardLineKind = "center" | "edge";
 export type BoardLineSegment = { a: CellRC; b: CellRC; edgeTrack?: "top" | "bottom" | "left" | "right" };
+export type CreatorDirectMode = "cell" | "edge" | "corner" | "paint" | "point" | "free-line";
+export type CreatorSnapMode = "centers" | "edges" | "corners";
+export type CreatorBoardPoint = { r: number; c: number };
 
 type DragState = {
   last: CellRC;
@@ -30,6 +33,10 @@ type DragState = {
   visited?: Set<string>;
   selectionDragActive?: boolean;
   creatorPath?: boolean;
+  creatorDirectMode?: CreatorDirectMode;
+  creatorCells?: CellRC[];
+  creatorPoint?: CreatorBoardPoint;
+  creatorFreePoints?: CreatorBoardPoint[];
 };
 
 type TapState = { cellKey: string; timestamp: number; pointerType: string };
@@ -101,6 +108,15 @@ export interface BoardInteractionLayerProps {
   onCreatorPath?: (path: CellRC[]) => void;
   onCreatorObjectPointerDown?: (objectId: string, modifiers: { additive: boolean }) => boolean | void;
   creatorObjectOnly?: boolean;
+  creatorDirectMode?: CreatorDirectMode;
+  creatorSnapMode?: CreatorSnapMode;
+  creatorGridResolution?: number;
+  creatorShowGrid?: boolean;
+  onCreatorCells?: (cells: CellRC[]) => void;
+  onCreatorEdge?: (a: CellRC, b: CellRC) => void;
+  onCreatorCorner?: (corner: CreatorBoardPoint) => void;
+  onCreatorPoint?: (point: CreatorBoardPoint) => void;
+  onCreatorFreePath?: (points: CreatorBoardPoint[]) => void;
 }
 
 export function BoardInteractionLayer(props: BoardInteractionLayerProps) {
@@ -115,6 +131,7 @@ export function BoardInteractionLayer(props: BoardInteractionLayerProps) {
   const [viewBox, setViewBox] = useState<ViewBox>(() => parseViewBox(svg));
   const [preview, setPreview] = useState<{ segments: BoardLineSegment[]; kind: BoardLineKind; action: "draw" | "erase" } | null>(null);
   const [selectionPreview, setSelectionPreview] = useState<CellRC[] | null>(null);
+  const [creatorPointPreview, setCreatorPointPreview] = useState<CreatorBoardPoint[] | null>(null);
   const selectionStrokeWidth = SELECTION_STROKE_WIDTHS[props.selectionOutlineThickness];
   const [selectionOutlineOffset, setSelectionOutlineOffset] = useState((GRID_STROKE_WIDTH_PX / 2 + selectionStrokeWidth / 2) / SUDOKUPAD_CELL_SIZE);
 
@@ -314,6 +331,40 @@ export function BoardInteractionLayer(props: BoardInteractionLayerProps) {
     return { gx: point.x / SUDOKUPAD_CELL_SIZE, gy: point.y / SUDOKUPAD_CELL_SIZE };
   }
 
+  function creatorGridResolution(): number { return Math.max(1, Math.min(10, Math.round(props.creatorGridResolution ?? 1))); }
+
+  function creatorSnappedPoint(clientX: number, clientY: number): CreatorBoardPoint | null {
+    const point = pointerGridPoint(clientX, clientY);
+    if (!point) return null;
+    const resolution = creatorGridResolution();
+    const mode = props.creatorSnapMode ?? "centers";
+    const corner = (value: number) => Math.round(value * resolution) / resolution;
+    const center = (value: number) => (Math.round(value * resolution - 0.5) + 0.5) / resolution;
+    let c: number, r: number;
+    if (mode === "corners") { c = corner(point.gx); r = corner(point.gy); }
+    else if (mode === "edges") {
+      const vertical = { c: corner(point.gx), r: center(point.gy) };
+      const horizontal = { c: center(point.gx), r: corner(point.gy) };
+      const dv = Math.hypot(point.gx - vertical.c, point.gy - vertical.r);
+      const dh = Math.hypot(point.gx - horizontal.c, point.gy - horizontal.r);
+      ({ c, r } = dv <= dh ? vertical : horizontal);
+    } else { c = center(point.gx); r = center(point.gy); }
+    if (mode === "centers") {
+      const half = 0.5 / resolution;
+      c = Math.max(half, Math.min(cols - half, c));
+      r = Math.max(half, Math.min(rows - half, r));
+    } else { c = Math.max(0, Math.min(cols, c)); r = Math.max(0, Math.min(rows, r)); }
+    return { r, c };
+  }
+
+  function creatorCornerAt(clientX: number, clientY: number): CreatorBoardPoint | null {
+    const point = pointerGridPoint(clientX, clientY);
+    if (!point) return null;
+    const c = Math.round(point.gx), r = Math.round(point.gy);
+    if (r <= 0 || c <= 0 || r >= rows || c >= cols) return null;
+    return Math.hypot(point.gx - c, point.gy - r) <= 0.48 ? { r, c } : null;
+  }
+
   function centerLineHopsFromPointer(
     last: CellRC,
     fromClientX: number,
@@ -494,7 +545,7 @@ export function BoardInteractionLayer(props: BoardInteractionLayerProps) {
     if (!interactive) return;
     clearLongPress();
     captureDragTransform();
-    if (!props.creatorPathDrawing && props.onCreatorObjectPointerDown && event.button === 0) {
+    if (props.onCreatorObjectPointerDown && event.button === 0) {
       const objectId = creatorObjectAt(event.clientX, event.clientY);
       if (objectId && props.onCreatorObjectPointerDown(objectId, { additive: event.shiftKey || event.ctrlKey || event.metaKey }) !== false) {
         event.preventDefault();
@@ -502,6 +553,36 @@ export function BoardInteractionLayer(props: BoardInteractionLayerProps) {
         return;
       }
       if (props.creatorObjectOnly) { dragTransformRef.current = null; return; }
+    }
+    const directMode = props.creatorDirectMode;
+    if (directMode) {
+      event.currentTarget.setPointerCapture(event.pointerId);
+      const cell = cellAt(event.clientX, event.clientY);
+      if (directMode === "edge") {
+        const edge = pickEdge(event.clientX, event.clientY, 0.56);
+        if (!edge) { dragTransformRef.current = null; return; }
+        dragRef.current = { last: edge.a, path: [edge.a, edge.b], segments: [], moved: false, creatorDirectMode: directMode, creatorCells: [edge.a, edge.b], startClientX: event.clientX, startClientY: event.clientY, lastClientX: event.clientX, lastClientY: event.clientY };
+        return;
+      }
+      if (directMode === "corner") {
+        const corner = creatorCornerAt(event.clientX, event.clientY);
+        if (!corner) { dragTransformRef.current = null; return; }
+        dragRef.current = { last: cell ?? { r: Math.max(0, corner.r - 1), c: Math.max(0, corner.c - 1) }, path: [], segments: [], moved: false, creatorDirectMode: directMode, creatorPoint: corner, startClientX: event.clientX, startClientY: event.clientY, lastClientX: event.clientX, lastClientY: event.clientY };
+        setCreatorPointPreview([corner]);
+        return;
+      }
+      if (directMode === "point" || directMode === "free-line") {
+        const point = creatorSnappedPoint(event.clientX, event.clientY);
+        if (!point) { dragTransformRef.current = null; return; }
+        dragRef.current = { last: cell ?? { r: Math.max(0, Math.min(rows - 1, Math.floor(point.r))), c: Math.max(0, Math.min(cols - 1, Math.floor(point.c))) }, path: [], segments: [], moved: false, creatorDirectMode: directMode, creatorPoint: point, creatorFreePoints: [point], startClientX: event.clientX, startClientY: event.clientY, lastClientX: event.clientX, lastClientY: event.clientY };
+        setCreatorPointPreview([point]);
+        return;
+      }
+      if (!cell) { props.onNonCellPointerDown?.(); dragTransformRef.current = null; return; }
+      const cells = [cell];
+      dragRef.current = { last: cell, path: [cell], segments: [], moved: false, creatorDirectMode: directMode, creatorCells: cells, startClientX: event.clientX, startClientY: event.clientY, lastClientX: event.clientX, lastClientY: event.clientY, visited: new Set([keyOf(cell)]) };
+      setSelectionPreview(cells);
+      return;
     }
     const cell = cellAt(event.clientX, event.clientY);
     if (!cell) { props.onNonCellPointerDown?.(); return; }
@@ -559,6 +640,33 @@ export function BoardInteractionLayer(props: BoardInteractionLayerProps) {
   function onPointerMove(event: React.PointerEvent<SVGSVGElement>) {
     const drag = dragRef.current;
     if (!interactive || !drag) return;
+    if (drag.creatorDirectMode) {
+      const mode = drag.creatorDirectMode;
+      if (mode === "paint") {
+        const hops = centerLineHopsFromPointer(drag.last, drag.lastClientX, drag.lastClientY, event.clientX, event.clientY, { hotZoneRadius: LINE_NODE_RADIUS, samplesPerCell: 24, maxHops: 20 });
+        drag.lastClientX = event.clientX; drag.lastClientY = event.clientY;
+        const cells = drag.creatorCells ?? [];
+        const visited = drag.visited ?? new Set(cells.map(keyOf));
+        for (const hop of hops) { drag.last = hop; if (visited.has(keyOf(hop))) continue; visited.add(keyOf(hop)); cells.push(hop); drag.moved = true; }
+        drag.creatorCells = cells; drag.visited = visited; setSelectionPreview([...cells]);
+        return;
+      }
+      if (mode === "free-line") {
+        const point = creatorSnappedPoint(event.clientX, event.clientY);
+        drag.lastClientX = event.clientX; drag.lastClientY = event.clientY;
+        if (!point) return;
+        const points = drag.creatorFreePoints ?? [];
+        const previous = points.at(-1);
+        if (!previous || previous.r !== point.r || previous.c !== point.c) { points.push(point); drag.creatorFreePoints = points; drag.moved = true; setCreatorPointPreview([...points]); }
+        return;
+      }
+      if (mode === "point" || mode === "corner") {
+        const point = mode === "corner" ? creatorCornerAt(event.clientX, event.clientY) : creatorSnappedPoint(event.clientX, event.clientY);
+        if (point) { drag.creatorPoint = point; setCreatorPointPreview([point]); }
+        return;
+      }
+      return;
+    }
     if (drag.creatorPath) {
       const hops = centerLineHopsFromPointer(drag.last, drag.lastClientX, drag.lastClientY, event.clientX, event.clientY, { hotZoneRadius: LINE_NODE_RADIUS, samplesPerCell: 24, maxHops: 12 });
       drag.lastClientX = event.clientX; drag.lastClientY = event.clientY;
@@ -646,6 +754,17 @@ export function BoardInteractionLayer(props: BoardInteractionLayerProps) {
     const drag = dragRef.current;
     if (!interactive || !drag) return;
     clearLongPress();
+    if (drag.creatorDirectMode) {
+      const mode = drag.creatorDirectMode;
+      if (mode === "cell") { const cell = cellAt(event.clientX, event.clientY) ?? drag.creatorCells?.[0]; if (cell) props.onCreatorCells?.([cell]); }
+      else if (mode === "paint") { const cells = drag.creatorCells ?? []; if (cells.length) props.onCreatorCells?.(cells.map((cell) => ({ ...cell }))); }
+      else if (mode === "edge") { const cells = drag.creatorCells ?? []; if (cells.length === 2) props.onCreatorEdge?.(cells[0], cells[1]); }
+      else if (mode === "corner") { if (drag.creatorPoint) props.onCreatorCorner?.({ ...drag.creatorPoint }); }
+      else if (mode === "point") { if (drag.creatorPoint) props.onCreatorPoint?.({ ...drag.creatorPoint }); }
+      else if (mode === "free-line") { const points = drag.creatorFreePoints ?? []; if (points.length >= 2) props.onCreatorFreePath?.(points.map((point) => ({ ...point }))); }
+      dragRef.current = null; dragTransformRef.current = null; setCreatorPointPreview(null); setSelectionPreview(null);
+      return;
+    }
     if (drag.creatorPath) {
       if (drag.path.length >= 2) props.onCreatorPath?.(drag.path.map((cell) => ({ ...cell })));
       dragRef.current = null; dragTransformRef.current = null; setPreview(null);
@@ -695,6 +814,7 @@ export function BoardInteractionLayer(props: BoardInteractionLayerProps) {
     selectionPreviewRafRef.current = null;
     pendingSelectionPreviewRef.current = null;
     setSelectionPreview(null);
+    setCreatorPointPreview(null);
     setPreview(null);
   }
 
@@ -713,7 +833,7 @@ export function BoardInteractionLayer(props: BoardInteractionLayerProps) {
       className="sphenpad-board-interaction"
       viewBox={`${viewBox.x} ${viewBox.y} ${viewBox.width} ${viewBox.height}`}
       preserveAspectRatio="xMidYMid meet"
-      style={{ gridArea: "1 / 1", display: "block", width: `var(--sphenpad-board-fit-width, ${viewBox.width}px)`, height: `var(--sphenpad-board-fit-height, ${viewBox.height}px)`, maxWidth: "100%", maxHeight: "100%", margin: 0, touchAction: interactive ? "none" : "auto", pointerEvents: interactive ? "auto" : "none", cursor: props.creatorPathDrawing ? "crosshair" : props.creatorObjectOnly ? "not-allowed" : undefined, overflow: "visible" }}
+      style={{ gridArea: "1 / 1", display: "block", width: `var(--sphenpad-board-fit-width, ${viewBox.width}px)`, height: `var(--sphenpad-board-fit-height, ${viewBox.height}px)`, maxWidth: "100%", maxHeight: "100%", margin: 0, touchAction: interactive ? "none" : "auto", pointerEvents: interactive ? "auto" : "none", cursor: (props.creatorPathDrawing || props.creatorDirectMode) ? "crosshair" : props.creatorObjectOnly ? "not-allowed" : undefined, overflow: "visible" }}
       onPointerDown={interactive ? onPointerDown : undefined}
       onPointerMove={interactive ? onPointerMove : undefined}
       onPointerUp={interactive ? onPointerUp : undefined}
@@ -721,7 +841,15 @@ export function BoardInteractionLayer(props: BoardInteractionLayerProps) {
       onPointerLeave={interactive ? cancel : undefined}
       aria-hidden="true"
     >
+      {props.creatorShowGrid && props.creatorDirectMode && (props.creatorDirectMode === "point" || props.creatorDirectMode === "free-line") ? <g className="sphenpad-creator-drawing-grid" pointerEvents="none">
+        {Array.from({ length: cols * creatorGridResolution() + 1 }, (_, index) => index / creatorGridResolution()).map((c) => <line key={`v-${c}`} x1={c * SUDOKUPAD_CELL_SIZE} y1={0} x2={c * SUDOKUPAD_CELL_SIZE} y2={rows * SUDOKUPAD_CELL_SIZE} />)}
+        {Array.from({ length: rows * creatorGridResolution() + 1 }, (_, index) => index / creatorGridResolution()).map((r) => <line key={`h-${r}`} x1={0} y1={r * SUDOKUPAD_CELL_SIZE} x2={cols * SUDOKUPAD_CELL_SIZE} y2={r * SUDOKUPAD_CELL_SIZE} />)}
+      </g> : null}
       {selectionPath ? <path d={selectionPath} fill="none" stroke={stroke} strokeWidth={selectionStrokeWidth} vectorEffect="non-scaling-stroke" strokeLinejoin="miter" strokeMiterlimit={4} strokeLinecap="butt" /> : null}
+      {creatorPointPreview?.length ? <g className="sphenpad-creator-point-preview" pointerEvents="none">
+        {creatorPointPreview.length > 1 ? <polyline points={creatorPointPreview.map((point) => `${point.c * SUDOKUPAD_CELL_SIZE},${point.r * SUDOKUPAD_CELL_SIZE}`).join(" ")} fill="none" /> : null}
+        {creatorPointPreview.map((point, index) => <circle key={index} cx={point.c * SUDOKUPAD_CELL_SIZE} cy={point.r * SUDOKUPAD_CELL_SIZE} r={5} />)}
+      </g> : null}
       {preview?.segments.map((segment, index) => {
         const center = preview.kind === "center";
         const x1 = (segment.a.c + (center ? 0.5 : 0)) * 64;

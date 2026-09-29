@@ -51,7 +51,7 @@ export type PuzzleMeta = {
   creatorBoxSize?: { rows: number; cols: number };
   creatorSudokuRules?: boolean;
   creatorSolverSettings?: { maxSolutions?: number; maxNodes?: number; logicalStepLimit?: number };
-  creatorToolDefaults?: Record<string, { constraintValue?: string; patch?: Record<string, unknown> }>;
+  creatorToolDefaults?: Record<string, { constraintValue?: string; patch?: Record<string, unknown>; parts?: Record<string, Record<string, unknown>>; drawing?: { snap?: "centers" | "edges" | "corners"; resolution?: number; displayGrid?: boolean } }>;
   title?: string;
   author?: string;
   collection?: string;

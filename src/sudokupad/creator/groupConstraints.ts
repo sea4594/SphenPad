@@ -104,7 +104,7 @@ function updateVisualValue(def: PuzzleDefinition, id: string, constraint: Puzzle
     if (creatorPartConstraint(part as Record<string, unknown>) !== id) return part;
     if (constraint.type === "difference" || constraint.type === "ratio") {
       const ratio = constraint.type === "ratio", value = Math.trunc(numeric(ratio ? constraint.ratio ?? constraint.value : constraint.difference ?? constraint.value, ratio ? 2 : 1));
-      return { ...part, text: value === (ratio ? 2 : 1) ? "" : String(value), textColor: ratio ? "#ffffff" : "#000000", backgroundColor: ratio ? "#000000" : "#ffffff" };
+      return { ...part, text: value === (ratio ? 2 : 1) ? "" : String(value) };
     }
     if (constraint.type === "xv") return { ...part, text: numeric(constraint.sum ?? constraint.value, 10) === 5 ? "V" : "X" };
     if (constraint.type === "quadruple") return { ...part, text: formatDigitList(constraint.digits) };
@@ -129,13 +129,34 @@ export function updateCreatorGroupConstraint(def: PuzzleDefinition, constraintId
   return updated ? updateVisualValue(next, constraintId, updated) : next;
 }
 
+const GROUP_STYLE_KEYS = ["color", "backgroundColor", "borderColor", "borderSize", "textColor", "fontSize", "width", "height", "rounded", "angle", "opacity", "outlineC", "fontC"] as const;
+function preserveGroupStyles(def: PuzzleDefinition, constraintId: string, previous: Record<string, unknown>[][]): PuzzleDefinition {
+  if (!def.scene) return def;
+  const apply = <T extends SudokuPadSourceCage | SudokuPadSourceGraphic>(parts: T[], priorParts: Record<string, unknown>[]): T[] => {
+    let visualIndex = 0;
+    return parts.map((part) => {
+      if (creatorPartConstraint(part as Record<string, unknown>) !== constraintId) return part;
+      const prior = priorParts[visualIndex++] ?? {};
+      const style: Record<string, unknown> = {};
+      for (const key of GROUP_STYLE_KEYS) if (prior[key] !== undefined) style[key] = prior[key];
+      return { ...part, ...style } as T;
+    });
+  };
+  return { ...def, scene: { ...def.scene, cages: apply(def.scene.cages, previous[0] ?? []), underlays: apply(def.scene.underlays, previous[1] ?? []), overlays: apply(def.scene.overlays, previous[2] ?? []) } };
+}
+
 export function replaceCreatorGroupCells(def: PuzzleDefinition, constraintId: string, cells: CellRC[]): PuzzleDefinition {
   const existing = creatorConstraints(def).find((constraint) => constraint.id === constraintId);
   if (!existing) return def;
+  const previous = def.scene ? [
+    def.scene.cages.filter((part) => creatorPartConstraint(part as Record<string, unknown>) === constraintId).map((part) => clone(part) as Record<string, unknown>),
+    def.scene.underlays.filter((part) => creatorPartConstraint(part as Record<string, unknown>) === constraintId).map((part) => clone(part) as Record<string, unknown>),
+    def.scene.overlays.filter((part) => creatorPartConstraint(part as Record<string, unknown>) === constraintId).map((part) => clone(part) as Record<string, unknown>),
+  ] : [[], [], []];
   const nextConstraint = { ...clone(existing), cells: uniqueCells(cells) };
   let next = removeCreatorConstraint(def, constraintId);
   next = addCreatorConstraint(next, { ...nextConstraint, id: constraintId, type: nextConstraint.type }, visualsFor(nextConstraint));
-  return next;
+  return preserveGroupStyles(next, constraintId, previous);
 }
 
 export function normalizeCreatorGroupConstraints(def: PuzzleDefinition): PuzzleDefinition {

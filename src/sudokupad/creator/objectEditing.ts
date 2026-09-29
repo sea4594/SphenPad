@@ -45,6 +45,10 @@ export type CreatorObjectPatch = {
   angle?: number;
   rounded?: boolean;
   target?: string;
+  center?: [number, number];
+  wayPoints?: [number, number][];
+  headLength?: number;
+  cells?: [number, number][];
 };
 export type CreatorCosmeticVisuals = Partial<Record<CreatorVisualCollection, VisualPart[]>>;
 
@@ -96,7 +100,7 @@ function applyPartEnabled(part: Record<string, unknown>, enabled: boolean, colle
 }
 function patchPart(part: Record<string, unknown>, patch: CreatorObjectPatch) {
   const next = { ...part };
-  const keys: Array<keyof CreatorObjectPatch> = ["color", "backgroundColor", "borderColor", "textColor", "text", "fontSize", "thickness", "opacity", "width", "height", "angle", "rounded", "target"];
+  const keys: Array<keyof CreatorObjectPatch> = ["color", "backgroundColor", "borderColor", "textColor", "text", "fontSize", "thickness", "opacity", "width", "height", "angle", "rounded", "target", "center", "wayPoints", "headLength", "cells"];
   for (const key of keys) if (patch[key] !== undefined) next[key] = patch[key];
   if (patch.url !== undefined && ("imageUrl" in next || String(next[TAG_ELEMENT] ?? "") === "cosmetic-images")) next.imageUrl = patch.url;
   if (patch.borderColor !== undefined && Array.isArray(next.cells)) next.outlineC = patch.borderColor;
@@ -128,6 +132,15 @@ function visualPartsFor(def: PuzzleDefinition, targetId: string) {
     if (creatorPartConstraint(record) === targetId || objectId(record) === targetId) result.push({ collection, part: record });
   }
   return result;
+}
+
+export function creatorObjectVisualParts(def: PuzzleDefinition, targetId: string): Array<{ collection: CreatorVisualCollection; part: Record<string, unknown> }> {
+  return visualPartsFor(def, targetId);
+}
+
+export function updateCreatorObjectVisuals(def: PuzzleDefinition, targetId: string, collections: CreatorVisualCollection[], patch: CreatorObjectPatch): PuzzleDefinition {
+  const allowed = new Set(collections);
+  return sceneWithMappedObject(def, targetId, (part, collection) => allowed.has(collection) ? patchPart(part, patch) : part);
 }
 
 export function ensureCreatorObjectIds(def: PuzzleDefinition): PuzzleDefinition {

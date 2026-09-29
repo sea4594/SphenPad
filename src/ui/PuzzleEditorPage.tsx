@@ -4,7 +4,7 @@ import { getCreatorProject, saveCreatorProject, setCreatorProjectPublished } fro
 import type { CellRC, LineStroke, PersistedPuzzle, PuzzleDefinition, PuzzleProgress } from "../core/model";
 import { makeInitialProgress } from "../core/scl";
 import { GridCanvas } from "./GridCanvas";
-import type { BoardLineKind, BoardLineSegment } from "./BoardInteractionLayer";
+import type { BoardLineKind, BoardLineSegment, CreatorBoardPoint, CreatorDirectMode, CreatorSnapMode as CreatorDrawingSnapMode } from "./BoardInteractionLayer";
 import { getViewportLayoutKind, type ViewportLayoutKind } from "../app/viewportLayout";
 import { Keyboard } from "./Keyboard";
 import { highlightPalettePages, linePalette } from "./toolPalettes";
@@ -42,7 +42,7 @@ import {
   syncDefinitionGivens,
 } from "../sudokupad/creator/nativeAuthoring";
 import type { SudokuPadSourceCage, SudokuPadSourceGraphic, SudokuPadSourceLine } from "../sudokupad/types/source";
-import { addCreatorCosmetic, duplicateCreatorObject, ensureCreatorObjectIds, listCreatorObjects, moveCreatorObject, removeCreatorObject, setCreatorBackground, setCreatorObjectGraphicLayer, updateCreatorObject, type CreatorEditableObject } from "../sudokupad/creator/objectEditing";
+import { addCreatorCosmetic, creatorObjectVisualParts, duplicateCreatorObject, ensureCreatorObjectIds, listCreatorObjects, moveCreatorObject, removeCreatorObject, setCreatorBackground, setCreatorObjectGraphicLayer, updateCreatorObject, updateCreatorObjectVisuals, type CreatorEditableObject, type CreatorObjectPatch, type CreatorVisualCollection } from "../sudokupad/creator/objectEditing";
 import { addCreatorLineConstraint, CREATOR_LINE_ELEMENT_IDS, dutchWhisperDifference, formatCreatorDigitGroups, germanWhisperDifference, isCreatorLineConstraint, isCreatorLineElementId, normalizeCreatorLineConstraints, parseCreatorDigitGroups, replaceCreatorLinePath, reverseCreatorLinePath, updateCreatorLineConstraint } from "../sudokupad/creator/lineConstraints";
 import { addCreatorGroupConstraint, CREATOR_GROUP_ELEMENT_IDS, formatDigitList, formatIntegerList, isCreatorGroupConstraint, isCreatorGroupElementId, normalizeCreatorGroupConstraints, parseDigitList, parseIntegerList, replaceCreatorGroupCells, updateCreatorGroupConstraint } from "../sudokupad/creator/groupConstraints";
 import { addCreatorGlobalConstraint, CREATOR_GLOBAL_ELEMENT_IDS, creatorOutsideRayFromSelection, creatorSudokuRulesEnabled, isCreatorGlobalConstraint, isCreatorGlobalElementId, normalizeCreatorGlobalConstraints, replaceCreatorGlobalCells, setCreatorSudokuRules, syncCreatorFog, updateCreatorGlobalConstraint } from "../sudokupad/creator/globalConstraints";
@@ -70,6 +70,26 @@ const CREATOR_SOLVER_CONTROL_ELEMENT_IDS = new Set(["given-digits", "regions"]);
 const CHECKABLE_ELEMENT_IDS = new Set(["antiking", "antiknight", ...CREATOR_GROUP_ELEMENT_IDS, ...CREATOR_LINE_ELEMENT_IDS, ...CREATOR_GLOBAL_ELEMENT_IDS]);
 const VISUAL_EDITOR_IDS = new Set([...CREATOR_GLOBAL_ELEMENT_IDS, ...CREATOR_GROUP_ELEMENT_IDS, ...CREATOR_LINE_ELEMENT_IDS, "cosmetic-lines", "cosmetic-cages", "cosmetic-symbols", "cosmetic-text", "cosmetic-shapes", "cosmetic-images", "cosmetic-backgrounds"]);
 const SINGLETON_GLOBAL_IDS = new Set(["negative-diagonal", "positive-diagonal", "disjoint-groups", "nonconsecutive", "global-entropy", "global-modulo-3"]);
+const DIRECT_CELL_IDS = new Set(["even", "odd", "minimum", "maximum", "counting-circles"]);
+const DIRECT_EDGE_IDS = new Set(["difference-kropki", "ratio-kropki", "xv"]);
+const DIRECT_CORNER_IDS = new Set(["quadruples"]);
+const DIRECT_PAINT_IDS = new Set(["killer-cages", "look-and-say-cages", "different-values", "extra-region", "clones", "cosmetic-cages"]);
+const DIRECT_POINT_IDS = new Set(["cosmetic-symbols", "cosmetic-text", "cosmetic-shapes", "cosmetic-images"]);
+const DRAWING_GRID_IDS = new Set(["cosmetic-lines", ...DIRECT_POINT_IDS]);
+function creatorDirectModeForElement(elementId: string | null): CreatorDirectMode | undefined {
+  if (!elementId) return undefined;
+  if (DIRECT_CELL_IDS.has(elementId)) return "cell";
+  if (DIRECT_EDGE_IDS.has(elementId)) return "edge";
+  if (DIRECT_CORNER_IDS.has(elementId)) return "corner";
+  if (DIRECT_PAINT_IDS.has(elementId)) return "paint";
+  if (DIRECT_POINT_IDS.has(elementId)) return "point";
+  if (elementId === "cosmetic-lines") return "free-line";
+  return undefined;
+}
+function CreatorColorField(props: { label: string; value: string; placeholder?: string; onChange: (value: string) => void }) {
+  const normalized = /^#[0-9a-f]{6}$/i.test(props.value) ? props.value : "#555555";
+  return <label>{props.label}<span className="creatorColorControl"><input aria-label={`${props.label} picker`} type="color" value={normalized} onChange={(event) => props.onChange(event.target.value)} /><input className="url" value={props.value} onChange={(event) => props.onChange(event.target.value)} placeholder={props.placeholder ?? "#555555"} /></span></label>;
+}
 
 const CORE_CATALOG: CatalogElement[] = [
   { id: "given-digits", icon: "1", name: "Given digits", description: "Prefill cells with puzzle givens.", elementKind: "given", core: true },
@@ -209,6 +229,9 @@ export function PuzzleEditorPage() {
   const [constraintValue, setConstraintValue] = useState("");
   const [addingElement, setAddingElement] = useState(false);
   const [creatorDeleteMode, setCreatorDeleteMode] = useState(false);
+  const [creatorSnapMode, setCreatorSnapMode] = useState<CreatorDrawingSnapMode>("centers");
+  const [creatorGridResolution, setCreatorGridResolution] = useState(1);
+  const [creatorShowGrid, setCreatorShowGrid] = useState(false);
   const [authoringOpen, setAuthoringOpen] = useState(false);
   const [catalogOpen, setCatalogOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -530,10 +553,13 @@ export function PuzzleEditorPage() {
       if (activeCatalogElement && object.elementId === activeCatalogElement) deleteObject(objectId);
       return true;
     }
+    const directEditingCurrent = !addingElement && !modifiers.additive && selectedObjectIds.includes(objectId) && object.elementId === activeCatalogElement && Boolean(creatorDirectModeForElement(activeCatalogElement));
+    if (directEditingCurrent) return false;
     const element = CATALOG.find((entry) => entry.id === object.elementId);
     if (element) {
       setActiveCatalogElement(element.id);
       if (element.elementKind) setElementKind(element.elementKind);
+      loadCreatorDrawingSettings(element.id);
       setAuthoringOpen(true);
       setCreatorControlView("element");
     }
@@ -545,19 +571,94 @@ export function PuzzleEditorPage() {
   }
 
   function addCreatorPathFromBoard(path: CellRC[]) {
-    if (!data || !activeCatalogElement || path.length < 2) return;
-    let next = data.def, objectId: string | null = null;
-    if (isCreatorLineElementId(activeCatalogElement)) {
-      const created = addCreatorLineConstraint(data.def, activeCatalogElement, path);
-      next = applyToolDefaults(created.def, created.constraintId, activeCatalogElement); objectId = created.constraintId;
-    } else if (activeCatalogElement === "cosmetic-lines") {
-      const created = addCreatorCosmetic(data.def, activeCatalogElement, { lines: [{ wayPoints: path.map((cell): [number, number] => [cell.r + 0.5, cell.c + 0.5]), color: "#555555", thickness: 4 }] }, { name: "Cosmetic lines" });
-      next = applyToolDefaults(created.def, created.objectId, activeCatalogElement); objectId = created.objectId;
-    } else return;
-    save(next);
-    setSelectedObjectId(objectId); setSelectedObjectIds(objectId ? [objectId] : []);
-    setAddingElement(false); setCreatorDeleteMode(false); setConstraintValue("");
+    if (!data || !activeCatalogElement || path.length < 2 || !isCreatorLineElementId(activeCatalogElement)) return;
+    if (!addingElement && selectedObject?.id && selectedObject.elementId === activeCatalogElement && selectedLineConstraint) {
+      save(replaceCreatorLinePath(data.def, selectedObject.id, path));
+      setSelectedPathPointIndex(null);
+      setMessage(`${selectedObject.name} path updated.`);
+      return;
+    }
+    const created = addCreatorLineConstraint(data.def, activeCatalogElement, path);
+    save(applyToolDefaults(created.def, created.constraintId, activeCatalogElement));
+    setSelectedObjectId(created.constraintId); setSelectedObjectIds([created.constraintId]);
+    setCreatorDeleteMode(false);
     setMessage(`${CATALOG.find((entry) => entry.id === activeCatalogElement)?.name ?? "Line"} drawn.`);
+  }
+
+  function finishDirectObject(objectId: string, text: string) {
+    setSelectedObjectId(objectId); setSelectedObjectIds([objectId]); setSelectedPathPointIndex(null); setCreatorDeleteMode(false); setMessage(text);
+  }
+
+  function createOrEditGroupFromBoard(cells: CellRC[]) {
+    if (!data || !activeCatalogElement || !cells.length) return;
+    const elementId = activeCatalogElement;
+    if (isCreatorGroupElementId(elementId)) {
+      if (!addingElement && selectedObject?.id && selectedObject.elementId === elementId && selectedGroupConstraint) {
+        save(replaceCreatorGroupCells(data.def, selectedObject.id, cells));
+        finishDirectObject(selectedObject.id, `${selectedObject.name} cells updated.`);
+        return;
+      }
+      const created = addCreatorGroupConstraint(data.def, elementId, cells, constraintValue);
+      save(applyToolDefaults(created.def, created.constraintId, elementId));
+      finishDirectObject(created.constraintId, `${CATALOG.find((entry) => entry.id === elementId)?.name ?? "Element"} added.`);
+      return;
+    }
+    if (elementId === "cosmetic-cages") {
+      if (!addingElement && selectedObject?.kind === "cosmetic" && selectedObject.elementId === elementId) {
+        save(updateCreatorObjectVisuals(data.def, selectedObject.id, ["cages"], { cells: cells.map((cell) => [cell.r, cell.c]) }));
+        finishDirectObject(selectedObject.id, "Cosmetic cage cells updated.");
+        return;
+      }
+      const created = addCreatorCosmetic(data.def, elementId, { cages: [{ cells: cells.map((cell): [number, number] => [cell.r, cell.c]), value: constraintValue.trim(), style: "killer", outlineC: "#555555" }] }, { name: "Cosmetic cages" });
+      save(applyToolDefaults(created.def, created.objectId, elementId));
+      finishDirectObject(created.objectId, "Cosmetic cage added.");
+    }
+  }
+
+  function handleCreatorDirectCells(cells: CellRC[]) { createOrEditGroupFromBoard(cells); }
+  function handleCreatorDirectEdge(a: CellRC, b: CellRC) { createOrEditGroupFromBoard([a, b]); }
+  function handleCreatorDirectCorner(corner: CreatorBoardPoint) {
+    if (!data) return;
+    const cells = [
+      { r: corner.r - 1, c: corner.c - 1 }, { r: corner.r - 1, c: corner.c },
+      { r: corner.r, c: corner.c - 1 }, { r: corner.r, c: corner.c },
+    ].filter((cell) => isInBounds(cell, data.def.rows, data.def.cols));
+    if (cells.length === 4) createOrEditGroupFromBoard(cells);
+  }
+
+  function handleCreatorPoint(point: CreatorBoardPoint) {
+    if (!data || !activeCatalogElement || !DIRECT_POINT_IDS.has(activeCatalogElement)) return;
+    const elementId = activeCatalogElement;
+    const center: [number, number] = [point.r, point.c];
+    if (!addingElement && selectedObject?.kind === "cosmetic" && selectedObject.elementId === elementId) {
+      save(updateCreatorObjectVisuals(data.def, selectedObject.id, ["underlays", "overlays"], { center }));
+      finishDirectObject(selectedObject.id, `${selectedObject.name} moved.`);
+      return;
+    }
+    const visual: { underlays?: SudokuPadSourceGraphic[]; overlays?: SudokuPadSourceGraphic[] } = {};
+    if (elementId === "cosmetic-symbols") visual.overlays = [{ center, width: 0.4, height: 0.4, text: constraintValue.trim() || "★", fontSize: 24, textColor: "#555555" }];
+    else if (elementId === "cosmetic-text") visual.overlays = [{ center, width: 1.5, height: 0.6, text: constraintValue.trim() || "Text", fontSize: 22, textColor: "#444444", textAnchor: "middle" }];
+    else if (elementId === "cosmetic-shapes") visual.underlays = [{ center, width: 0.8, height: 0.8, rounded: false, backgroundColor: "rgba(120,120,120,0.12)", borderColor: "#777777", borderSize: 1.5 }];
+    else if (elementId === "cosmetic-images") {
+      const url = constraintValue.trim(); if (!url) { setMessage("Enter an image URL or data URL first."); return; }
+      visual.overlays = [{ center, width: 1, height: 1, imageUrl: url, opacity: 1, preserveAspectRatio: "none" }];
+    }
+    const created = addCreatorCosmetic(data.def, elementId, visual, { name: CATALOG.find((entry) => entry.id === elementId)?.name ?? "Cosmetic" });
+    save(applyToolDefaults(created.def, created.objectId, elementId));
+    finishDirectObject(created.objectId, `${CATALOG.find((entry) => entry.id === elementId)?.name ?? "Cosmetic"} added.`);
+  }
+
+  function handleCreatorFreePath(points: CreatorBoardPoint[]) {
+    if (!data || activeCatalogElement !== "cosmetic-lines" || points.length < 2) return;
+    const wayPoints = points.map((point): [number, number] => [point.r, point.c]);
+    if (!addingElement && selectedObject?.kind === "cosmetic" && selectedObject.elementId === "cosmetic-lines") {
+      save(updateCreatorObjectVisuals(data.def, selectedObject.id, ["lines"], { wayPoints }));
+      finishDirectObject(selectedObject.id, "Cosmetic line path updated.");
+      return;
+    }
+    const created = addCreatorCosmetic(data.def, "cosmetic-lines", { lines: [{ wayPoints, color: "#555555", thickness: 4 }] }, { name: "Cosmetic lines" });
+    save(applyToolDefaults(created.def, created.objectId, "cosmetic-lines"));
+    finishDirectObject(created.objectId, "Cosmetic line drawn.");
   }
 
   function selectAllCatalogObjects() {
@@ -672,16 +773,56 @@ export function PuzzleEditorPage() {
     if (!data || !selectedObject) return;
     const sample = selectedObject.sample ?? {};
     const patch: Record<string, unknown> = {};
-    for (const key of ["color", "backgroundColor", "borderColor", "textColor", "fontSize", "thickness", "opacity", "width", "height", "angle", "rounded", "target"] as const) if (sample[key] !== undefined) patch[key] = sample[key];
-    const defaults = { ...(data.def.meta.creatorToolDefaults ?? {}), [selectedObject.elementId]: { constraintValue: selectedObject.constraint?.value == null ? constraintValue : String(selectedObject.constraint.value), patch } };
-    save({ ...data.def, meta: { ...data.def.meta, creatorToolDefaults: defaults } });
+    const appearanceKeys = ["color", "backgroundColor", "borderColor", "textColor", "fontSize", "thickness", "opacity", "width", "height", "angle", "rounded", "target", "headLength"] as const;
+    for (const key of appearanceKeys) if (sample[key] !== undefined) patch[key] = sample[key];
+    const parts: Record<string, Record<string, unknown>> = {};
+    for (const { collection, part } of creatorObjectVisualParts(data.def, selectedObject.id)) {
+      if (parts[collection]) continue;
+      const partPatch: Record<string, unknown> = {};
+      for (const key of appearanceKeys) if (part[key] !== undefined) partPatch[key] = part[key];
+      if (Object.keys(partPatch).length) parts[collection] = partPatch;
+    }
+    const current = data.def.meta.creatorToolDefaults?.[selectedObject.elementId] ?? {};
+    const defaults = { ...(data.def.meta.creatorToolDefaults ?? {}), [selectedObject.elementId]: { ...current, constraintValue: selectedObject.constraint?.value == null ? constraintValue : String(selectedObject.constraint.value), patch, parts } };
+    save({ ...data.def, meta: { ...data.def.meta, creatorToolDefaults: defaults } }, { recordHistory: false });
     setMessage(`Defaults updated for ${selectedObject.name}.`);
   }
 
   function applyToolDefaults(next: PuzzleDefinition, objectId: string | undefined, elementId: string) {
     if (!objectId) return next;
-    const patch = next.meta.creatorToolDefaults?.[elementId]?.patch;
-    return patch ? updateCreatorObject(next, objectId, patch as Parameters<typeof updateCreatorObject>[2]) : next;
+    const defaults = next.meta.creatorToolDefaults?.[elementId];
+    let result = defaults?.patch ? updateCreatorObject(next, objectId, defaults.patch as CreatorObjectPatch) : next;
+    for (const [collection, patch] of Object.entries(defaults?.parts ?? {})) result = updateCreatorObjectVisuals(result, objectId, [collection as CreatorVisualCollection], patch as CreatorObjectPatch);
+    return result;
+  }
+
+  function updateToolAppearanceDefault(patch: CreatorObjectPatch, collection?: CreatorVisualCollection) {
+    if (!data || !activeCatalogElement) return;
+    const defaults = { ...(data.def.meta.creatorToolDefaults ?? {}) };
+    const current = { ...(defaults[activeCatalogElement] ?? {}) };
+    if (collection) current.parts = { ...(current.parts ?? {}), [collection]: { ...(current.parts?.[collection] ?? {}), ...patch } };
+    else current.patch = { ...(current.patch ?? {}), ...patch };
+    defaults[activeCatalogElement] = current;
+    save({ ...data.def, meta: { ...data.def.meta, creatorToolDefaults: defaults } }, { recordHistory: false });
+  }
+
+  function loadCreatorDrawingSettings(elementId: string) {
+    const drawing = data?.def.meta.creatorToolDefaults?.[elementId]?.drawing;
+    setCreatorSnapMode(drawing?.snap ?? (elementId === "cosmetic-lines" ? "corners" : "centers"));
+    setCreatorGridResolution(Math.max(1, Math.min(10, Math.round(drawing?.resolution ?? 1))));
+    setCreatorShowGrid(Boolean(drawing?.displayGrid));
+  }
+
+  function updateCreatorDrawingSettings(patch: { snap?: CreatorDrawingSnapMode; resolution?: number; displayGrid?: boolean }) {
+    if (!data || !activeCatalogElement) return;
+    const defaults = { ...(data.def.meta.creatorToolDefaults ?? {}) };
+    const current = { ...(defaults[activeCatalogElement] ?? {}) };
+    const drawing = { ...(current.drawing ?? {}), ...patch };
+    current.drawing = drawing; defaults[activeCatalogElement] = current;
+    if (patch.snap) setCreatorSnapMode(patch.snap);
+    if (patch.resolution !== undefined) setCreatorGridResolution(Math.max(1, Math.min(10, Math.round(patch.resolution))));
+    if (patch.displayGrid !== undefined) setCreatorShowGrid(patch.displayGrid);
+    save({ ...data.def, meta: { ...data.def.meta, creatorToolDefaults: defaults } }, { recordHistory: false });
   }
 
   function applyTestDigit(value: string) {
@@ -918,6 +1059,7 @@ export function PuzzleEditorPage() {
     save({ ...next, meta: { ...next.meta, creatorElements: Array.from(active) } });
     setCatalogOpen(false);
     setActiveCatalogElement(element.id);
+    loadCreatorDrawingSettings(element.id);
     setSelectedObjectId(selectedConstraintId);
     const storedDefault = data.def.meta.creatorToolDefaults?.[element.id]?.constraintValue;
     if (storedDefault !== undefined) setConstraintValue(storedDefault);
@@ -941,6 +1083,7 @@ export function PuzzleEditorPage() {
       return;
     }
     setActiveCatalogElement(element.id);
+    loadCreatorDrawingSettings(element.id);
     setSelectedObjectId(null);
     setSelectedObjectIds([]);
     setAddingElement(false);
@@ -1667,6 +1810,54 @@ export function PuzzleEditorPage() {
     { label: "Pan right", onSelect: () => setCanvasPan((value) => ({ ...value, x: value.x - 24 })) },
   ];
 
+  function appearancePartSample(elementId: string, collection: CreatorVisualCollection): Record<string, unknown> {
+    if (!data) return {};
+    const editing = !addingElement && selectedObject?.elementId === elementId ? selectedObject : null;
+    if (editing) return creatorObjectVisualParts(data.def, editing.id).find((entry) => entry.collection === collection)?.part ?? {};
+    const defaults = data.def.meta.creatorToolDefaults?.[elementId];
+    const latest = catalogObjects.at(-1);
+    const latestPart = latest ? creatorObjectVisualParts(data.def, latest.id).find((entry) => entry.collection === collection)?.part ?? {} : {};
+    return { ...latestPart, ...(defaults?.patch ?? {}), ...(defaults?.parts?.[collection] ?? {}) };
+  }
+
+  function changeAppearance(elementId: string, collection: CreatorVisualCollection, patch: CreatorObjectPatch) {
+    if (!data) return;
+    if (!addingElement && selectedObject?.elementId === elementId) {
+      save(updateCreatorObjectVisuals(data.def, selectedObject.id, [collection], patch));
+      return;
+    }
+    updateToolAppearanceDefault(patch, collection);
+  }
+
+  function renderDrawingSettings(elementId: string) {
+    if (!DRAWING_GRID_IDS.has(elementId)) return null;
+    return <div className="creatorAppearanceSection creatorDrawingSettings"><div className="creatorInspectorSubheading">Drawing grid</div><div className="creatorPropertyGrid"><label>Snap to<select className="url" value={creatorSnapMode} onChange={(event) => updateCreatorDrawingSettings({ snap: event.target.value as CreatorDrawingSnapMode })}><option value="centers">Centers</option><option value="edges">Edges</option><option value="corners">Corners</option></select></label><label>Grid resolution<input className="url" type="number" min="1" max="10" step="1" value={creatorGridResolution} onChange={(event) => updateCreatorDrawingSettings({ resolution: Number(event.target.value) })} /></label></div><label className="creatorToggle"><input type="checkbox" checked={creatorShowGrid} onChange={(event) => updateCreatorDrawingSettings({ displayGrid: event.target.checked })} />Display drawing grid</label><div className="creatorHelp">Resolution subdivides each Sudoku cell for cosmetic placement without changing the puzzle grid.</div></div>;
+  }
+
+  function renderAppearanceSettings(elementId: string) {
+    const supported = isCreatorLineElementId(elementId) || isCreatorGroupElementId(elementId) || ["cosmetic-lines", "cosmetic-cages", "cosmetic-symbols", "cosmetic-text", "cosmetic-shapes", "cosmetic-images"].includes(elementId);
+    if (!supported || elementId === "cosmetic-backgrounds") return null;
+    const lineLike = isCreatorLineElementId(elementId) || elementId === "cosmetic-lines";
+    const lineCollection: CreatorVisualCollection = elementId === "arrows" ? "arrows" : "lines";
+    const endpointCollection: CreatorVisualCollection | null = elementId === "arrows" ? "overlays" : ["thermometers", "slow-thermometers", "between-lines", "lockout-lines", "double-arrows"].includes(elementId) ? "underlays" : null;
+    if (lineLike) {
+      const line = appearancePartSample(elementId, lineCollection), endpoints = endpointCollection ? appearancePartSample(elementId, endpointCollection) : {};
+      return <div className="creatorAppearanceSection"><div className="creatorInspectorSubheading">Appearance</div><div className="creatorPropertyGrid"><CreatorColorField label="Line color" value={String(line.color ?? "#555555")} onChange={(value) => changeAppearance(elementId, lineCollection, { color: value })} /><label>Line weight<input className="url" type="number" min="0.5" step="0.5" value={Number(line.thickness ?? 6)} onChange={(event) => changeAppearance(elementId, lineCollection, { thickness: Math.max(0.5, Number(event.target.value) || 0.5) })} /></label><label>Opacity<input className="url" type="number" min="0" max="1" step="0.05" value={Number(line.opacity ?? 1)} onChange={(event) => changeAppearance(elementId, lineCollection, { opacity: Math.max(0, Math.min(1, Number(event.target.value))) })} /></label>{elementId === "arrows" ? <label>Arrowhead size<input className="url" type="number" min="0.05" max="1.5" step="0.05" value={Number(line.headLength ?? 0.3)} onChange={(event) => changeAppearance(elementId, lineCollection, { headLength: Math.max(0.05, Number(event.target.value) || 0.05) })} /></label> : null}</div>{endpointCollection ? <><div className="creatorInspectorSubheading">{elementId === "arrows" ? "Bulb" : elementId.includes("thermometer") ? "Bulb" : "Endpoints"}</div><div className="creatorPropertyGrid"><CreatorColorField label="Fill color" value={String(endpoints.backgroundColor ?? "#ffffff")} onChange={(value) => changeAppearance(elementId, endpointCollection, { backgroundColor: value })} /><CreatorColorField label="Outline color" value={String(endpoints.borderColor ?? "#555555")} onChange={(value) => changeAppearance(elementId, endpointCollection, { borderColor: value })} /><label>Outline weight<input className="url" type="number" min="0" step="0.25" value={Number(endpoints.borderSize ?? 1.5)} onChange={(event) => changeAppearance(elementId, endpointCollection, { thickness: Math.max(0, Number(event.target.value) || 0) })} /></label><label>Size<input className="url" type="number" min="0.1" max="2" step="0.05" value={Number(endpoints.width ?? 0.8)} onChange={(event) => { const size = Math.max(0.1, Number(event.target.value) || 0.1); changeAppearance(elementId, endpointCollection, { width: size, height: size }); }} /></label></div></> : null}{renderDrawingSettings(elementId)}</div>;
+    }
+    const cageLike = ["killer-cages", "look-and-say-cages", "different-values", "extra-region", "cosmetic-cages"].includes(elementId);
+    if (cageLike) {
+      const cage = appearancePartSample(elementId, "cages");
+      return <div className="creatorAppearanceSection"><div className="creatorInspectorSubheading">Appearance</div><div className="creatorPropertyGrid"><CreatorColorField label="Outline color" value={String(cage.outlineC ?? cage.borderColor ?? "#555555")} onChange={(value) => changeAppearance(elementId, "cages", { borderColor: value })} /><CreatorColorField label="Clue color" value={String(cage.fontC ?? cage.textColor ?? "#555555")} onChange={(value) => changeAppearance(elementId, "cages", { textColor: value })} /></div></div>;
+    }
+    const underlay = ["even", "odd", "counting-circles", "clones", "cosmetic-shapes"].includes(elementId);
+    const collection: CreatorVisualCollection = underlay ? "underlays" : "overlays";
+    const graphic = appearancePartSample(elementId, collection);
+    const textOnly = ["minimum", "maximum", "cosmetic-symbols", "cosmetic-text"].includes(elementId);
+    const image = elementId === "cosmetic-images";
+    const hasText = textOnly || ["difference-kropki", "ratio-kropki", "xv", "quadruples"].includes(elementId);
+    return <div className="creatorAppearanceSection"><div className="creatorInspectorSubheading">Appearance</div><div className="creatorPropertyGrid">{!textOnly && !image ? <><CreatorColorField label="Fill color" value={String(graphic.backgroundColor ?? "transparent")} placeholder="transparent" onChange={(value) => changeAppearance(elementId, collection, { backgroundColor: value })} /><CreatorColorField label="Outline color" value={String(graphic.borderColor ?? "#555555")} onChange={(value) => changeAppearance(elementId, collection, { borderColor: value })} /><label>Outline weight<input className="url" type="number" min="0" step="0.25" value={Number(graphic.borderSize ?? 0)} onChange={(event) => changeAppearance(elementId, collection, { thickness: Math.max(0, Number(event.target.value) || 0) })} /></label></> : null}{hasText ? <><CreatorColorField label="Text color" value={String(graphic.textColor ?? "#555555")} onChange={(value) => changeAppearance(elementId, collection, { textColor: value })} /><label>Font size<input className="url" type="number" min="1" step="1" value={Number(graphic.fontSize ?? 16)} onChange={(event) => changeAppearance(elementId, collection, { fontSize: Math.max(1, Number(event.target.value) || 1) })} /></label></> : null}<label>Width<input className="url" type="number" min="0.05" step="0.05" value={Number(graphic.width ?? 1)} onChange={(event) => changeAppearance(elementId, collection, { width: Math.max(0.05, Number(event.target.value) || 0.05) })} /></label><label>Height<input className="url" type="number" min="0.05" step="0.05" value={Number(graphic.height ?? 1)} onChange={(event) => changeAppearance(elementId, collection, { height: Math.max(0.05, Number(event.target.value) || 0.05) })} /></label>{(DIRECT_POINT_IDS.has(elementId) || image) ? <label>Angle<input className="url" type="number" step="1" value={Number(graphic.angle ?? 0)} onChange={(event) => changeAppearance(elementId, collection, { angle: Number(event.target.value) || 0 })} /></label> : null}{image ? <label>Opacity<input className="url" type="number" min="0" max="1" step="0.05" value={Number(graphic.opacity ?? 1)} onChange={(event) => changeAppearance(elementId, collection, { opacity: Math.max(0, Math.min(1, Number(event.target.value))) })} /></label> : null}</div>{elementId === "cosmetic-shapes" ? <label className="creatorToggle"><input type="checkbox" checked={Boolean(graphic.rounded)} onChange={(event) => changeAppearance(elementId, collection, { rounded: event.target.checked })} />Rounded shape</label> : null}{renderDrawingSettings(elementId)}</div>;
+  }
+
   return (
     <div className={`shell puzzleShell creatorEditorShell${creatorLayoutClass}`} data-layout-mode={viewportLayoutKind}>
       <header className="topbar puzzleTopbar creatorEditorTopbar">
@@ -1720,8 +1911,17 @@ export function PuzzleEditorPage() {
                 onLineTapEdge={testPlay ? NOOP : onCreatorLineTapEdge}
                 onLineGridTouch={() => { if (!testPlay && activeCatalogElement === null && editorTool === "line") setSelection([]); }}
                 onDoubleCell={NOOP}
-                creatorPathDrawing={!testPlay && creatorTab === "elements" && creatorControlView === "element" && addingElement && Boolean(activeCatalogElement && (isCreatorLineElementId(activeCatalogElement) || activeCatalogElement === "cosmetic-lines"))}
+                creatorPathDrawing={!testPlay && creatorTab === "elements" && creatorControlView === "element" && Boolean(activeCatalogElement && isCreatorLineElementId(activeCatalogElement)) && (addingElement || (!creatorDeleteMode && selectedObject?.elementId === activeCatalogElement))}
                 onCreatorPath={addCreatorPathFromBoard}
+                creatorDirectMode={!testPlay && creatorTab === "elements" && creatorControlView === "element" && activeCatalogElement && creatorDirectModeForElement(activeCatalogElement) && (addingElement || (!creatorDeleteMode && selectedObject?.elementId === activeCatalogElement)) ? creatorDirectModeForElement(activeCatalogElement) : undefined}
+                creatorSnapMode={creatorSnapMode}
+                creatorGridResolution={creatorGridResolution}
+                creatorShowGrid={creatorShowGrid}
+                onCreatorCells={handleCreatorDirectCells}
+                onCreatorEdge={handleCreatorDirectEdge}
+                onCreatorCorner={handleCreatorDirectCorner}
+                onCreatorPoint={handleCreatorPoint}
+                onCreatorFreePath={handleCreatorFreePath}
                 selectedCreatorObjectIds={!testPlay ? selectedObjectIds : []}
                 onCreatorObjectPointerDown={!testPlay && creatorTab === "elements" && !addingElement ? selectCreatorObjectFromBoard : undefined}
                 creatorObjectOnly={creatorDeleteMode}
@@ -1755,9 +1955,10 @@ export function PuzzleEditorPage() {
               {["sandwich-sums", "x-sums", "skyscrapers", "numbered-rooms"].includes(selectedCatalog.id) ? <div className="creatorHelp">Select one border cell to use the full inward row/column ray, or select an ordered ray explicitly.</div> : null}
               {selectedCatalog.id === "custom-constraint" ? <div className="creatorHelp">The definition and backend code can be edited after the object is created. Creator mode stores code but does not execute it.</div> : null}
               {selectedCatalog.id === "custom-fog-clearing" ? <div className="creatorHelp">The current selection becomes both the trigger and initial reveal set; edit the two sets separately after creation.</div> : null}
+              {renderAppearanceSettings(selectedCatalog.id)}
               {selectedCatalog.id !== "cosmetic-backgrounds" ? <div className="creatorSelection">Selected: {selection.length ? selection.map(cellLabel).join(", ") : "none"}</div> : null}
               <button className="btn primary" onClick={selectedCatalog.elementKind ? addElement : () => addVisualElement(selectedCatalog)} type="button">Add object</button>
-              {(isCreatorLineElementId(selectedCatalog.id) || selectedCatalog.id === "cosmetic-lines") ? <div className="creatorHelp">Draw this path directly on the grid by pressing and dragging through cells. You can also use an existing ordered cell selection with Add object.</div> : <div className="creatorHelp">Select or change cells on the board while this panel is open, then choose Add object. Appearance can be edited after creation.</div>}
+              {isCreatorLineElementId(selectedCatalog.id) ? <div className="creatorHelp">Draw directly by pressing and dragging through cells. Add mode stays active so you can draw several lines with the same settings.</div> : DIRECT_EDGE_IDS.has(selectedCatalog.id) ? <div className="creatorHelp">Click or tap the cell edge where the mark belongs.</div> : DIRECT_CORNER_IDS.has(selectedCatalog.id) ? <div className="creatorHelp">Click or tap the grid intersection where the clue belongs.</div> : DIRECT_CELL_IDS.has(selectedCatalog.id) ? <div className="creatorHelp">Click or tap a cell to place the mark.</div> : DIRECT_PAINT_IDS.has(selectedCatalog.id) ? <div className="creatorHelp">Press and drag across cells to paint the group.</div> : selectedCatalog.id === "cosmetic-lines" ? <div className="creatorHelp">Draw directly on the cosmetic drawing grid. Snap mode and resolution control where points land.</div> : DIRECT_POINT_IDS.has(selectedCatalog.id) ? <div className="creatorHelp">Click or tap the snapped drawing-grid point where the object belongs.</div> : <div className="creatorHelp">Select or change cells on the board, then choose Add object. Direct placement is added where the element has an unambiguous grid gesture.</div>}
             </div> : null}
             {catalogObjects.length ? <div className="creatorObjectList"><div className="creatorInspectorSubheading">Objects</div>{catalogObjects.map((object) => <div className={selectedObjectIds.includes(object.id) ? "creatorObjectRow active" : "creatorObjectRow"} key={object.id} onContextMenu={(event) => { event.preventDefault(); selectCreatorObject(object.id, selectedObjectIds.length > 1); setObjectContextMenu({ id: object.id, x: event.clientX, y: event.clientY }); }}><input aria-label={`Select ${object.name}`} type="checkbox" checked={selectedObjectIds.includes(object.id)} onChange={() => { selectCreatorObject(object.id, true); setAddingElement(false); }} /><button className="creatorObjectRowMain" onClick={(event) => { selectCreatorObject(object.id, event.metaKey || event.ctrlKey || event.shiftKey || multiSelect); setAddingElement(false); }} type="button"><div><strong>{object.name}</strong><span>{objectDetail(object)}</span></div><small>{object.enabled ? object.kind : `${object.kind} · disabled`}</small></button><PopupMenuButton className="btn creatorObjectMore" ariaLabel={`Object actions for ${object.name}`} title="Object actions" items={[{ label: "Copy", onSelect: () => { selectCreatorObject(object.id); void copyObjectById(object.id); } }, { label: "Duplicate", onSelect: () => duplicateObject(object.id), disabled: object.kind === "background" || SINGLETON_GLOBAL_IDS.has(object.elementId) }, { label: object.enabled ? "Disable" : "Enable", onSelect: () => editObject(object.id, { enabled: !object.enabled }) }, { label: "Delete", onSelect: () => deleteObject(object.id), tone: "danger" }]} /></div>)}</div> : selectedCatalog && !addingElement ? <div className="muted">No authored objects of this type yet.</div> : null}
             {selectedObjectIds.length > 1 ? <div className="creatorBulkInspector"><div className="creatorInspectorSubheading">Bulk edit · {selectedObjectIds.length} objects</div><div className="creatorFileActions"><button className="btn" onClick={() => bulkEditSelected({ enabled: true })} type="button">Enable</button><button className="btn" onClick={() => bulkEditSelected({ enabled: false })} type="button">Disable</button><button className="btn" onClick={duplicateSelectedObjects} type="button">Duplicate</button><button className="btn" onClick={() => moveSelectedToEdge("back")} type="button">Send to back</button><button className="btn" onClick={() => moveSelectedToEdge("front")} type="button">Bring to front</button><button className="btn danger" onClick={deleteSelectedObjects} type="button">Delete</button></div><div className="creatorPropertyGrid"><label>Color<input className="url" placeholder="#555555" onChange={(event) => { if (event.target.value) bulkEditSelected({ color: event.target.value }); }} /></label><label>Opacity<input className="url" type="number" min="0" max="1" step="0.05" defaultValue="1" onBlur={(event) => bulkEditSelected({ opacity: Number(event.target.value) })} /></label></div>{selectedCosmetics.length >= 2 ? <><div className="creatorFileActions creatorAlignActions"><button className="btn" onClick={() => alignSelected("left")} type="button">Align left</button><button className="btn" onClick={() => alignSelected("center-x")} type="button">Center X</button><button className="btn" onClick={() => alignSelected("right")} type="button">Align right</button><button className="btn" onClick={() => alignSelected("top")} type="button">Align top</button><button className="btn" onClick={() => alignSelected("center-y")} type="button">Center Y</button><button className="btn" onClick={() => alignSelected("bottom")} type="button">Align bottom</button></div><div className="creatorFileActions"><button className="btn" onClick={() => snapSelected("cell-center")} type="button">Snap to cell centers</button><button className="btn" onClick={() => snapSelected("cell-edge")} type="button">Snap to grid</button></div></> : null}</div> : null}
@@ -1813,24 +2014,10 @@ export function PuzzleEditorPage() {
                 {selectedGlobalConstraint.type === "fog-trigger" ? <><div className="creatorSelection">Trigger cells: {((selectedGlobalConstraint.triggerCells ?? selectedGlobalCells) as CellRC[]).map(cellLabel).join(", ") || "none"}</div><div className="creatorSelection">Reveal cells: {((selectedGlobalConstraint.effectCells ?? []) as CellRC[]).map(cellLabel).join(", ") || "none"}</div><div className="creatorFileActions"><button className="btn" onClick={() => applySelectionForGlobal(selectedObject.id, "trigger")} type="button">Set trigger cells</button><button className="btn" onClick={() => applySelectionForGlobal(selectedObject.id, "effect")} type="button">Set reveal cells</button></div><div className="creatorHelp">When all trigger cells satisfy the runtime trigger condition, the reveal cells are cleared from fog. 11H will provide the complete worker-equivalent trigger/validation engine.</div></> : null}
               </div> : null}
               {selectedObject.kind === "cosmetic" && selectedObject.elementId === "cosmetic-images" ? <label>Image URL<input className="url" value={String(objectSample.imageUrl ?? "")} onChange={(event) => editObject(selectedObject.id, { url: event.target.value })} /></label> : null}
-              {selectedObject.kind !== "background" ? <>
-                <div className="creatorPropertyGrid">
-                  <label>Line/color<input className="url" value={String(objectSample.color ?? "")} onChange={(event) => editObject(selectedObject.id, { color: event.target.value })} placeholder="#555555" /></label>
-                  <label>Fill<input className="url" value={String(objectSample.backgroundColor ?? "")} onChange={(event) => editObject(selectedObject.id, { backgroundColor: event.target.value })} placeholder="transparent" /></label>
-                  <label>Border<input className="url" value={String(objectSample.borderColor ?? objectSample.outlineC ?? "")} onChange={(event) => editObject(selectedObject.id, { borderColor: event.target.value })} placeholder="#555555" /></label>
-                  <label>Text color<input className="url" value={String(objectSample.textColor ?? objectSample.fontC ?? "")} onChange={(event) => editObject(selectedObject.id, { textColor: event.target.value })} placeholder="#555555" /></label>
-                  <label>Opacity<input className="url" type="number" min="0" max="1" step="0.05" value={objectSample.opacity === undefined ? 1 : Number(objectSample.opacity)} onChange={(event) => editObject(selectedObject.id, { opacity: Number(event.target.value) })} /></label>
-                  <label>Thickness<input className="url" type="number" min="0" step="0.5" value={Number(objectSample.thickness ?? objectSample.borderSize ?? 0)} onChange={(event) => editObject(selectedObject.id, { thickness: Number(event.target.value) })} /></label>
-                  <label>Width<input className="url" type="number" min="0" step="0.1" value={Number(objectSample.width ?? 0)} onChange={(event) => editObject(selectedObject.id, { width: Number(event.target.value) })} /></label>
-                  <label>Height<input className="url" type="number" min="0" step="0.1" value={Number(objectSample.height ?? 0)} onChange={(event) => editObject(selectedObject.id, { height: Number(event.target.value) })} /></label>
-                  <label>Angle<input className="url" type="number" step="1" value={Number(objectSample.angle ?? 0)} onChange={(event) => editObject(selectedObject.id, { angle: Number(event.target.value) })} /></label>
-                  <label>Font size<input className="url" type="number" min="1" step="1" value={Number(objectSample.fontSize ?? 16)} onChange={(event) => editObject(selectedObject.id, { fontSize: Number(event.target.value) })} /></label>
-                </div>
-                <label>Text<input className="url" value={String(objectSample.text ?? objectSample.value ?? "")} onChange={(event) => editObject(selectedObject.id, { text: event.target.value, ...(selectedObject.kind === "cosmetic" && selectedObject.collections.includes("cages") ? { value: event.target.value } : {}) })} /></label>
-                <label className="creatorToggle"><input type="checkbox" checked={Boolean(objectSample.rounded)} onChange={(event) => editObject(selectedObject.id, { rounded: event.target.checked })} />Rounded shape</label>
-                {selectedObject.kind === "cosmetic" && (selectedObject.collections.includes("underlays") || selectedObject.collections.includes("overlays")) ? <label>Graphic layer<select className="url" value={selectedObject.collections.includes("overlays") ? "overlay" : "underlay"} onChange={(event) => changeObjectLayer(selectedObject.id, event.target.value as "underlay" | "overlay")}><option value="underlay">Under grid content</option><option value="overlay">Over grid content</option></select></label> : null}
-              </> : <><label>Opacity<input className="url" type="number" min="0" max="1" step="0.05" value={Number(objectSample.opacity ?? 1)} onChange={(event) => editObject(selectedObject.id, { opacity: Number(event.target.value) })} /></label><label>Image layer<select className="url" value={String(objectSample.target ?? "background")} onChange={(event) => editObject(selectedObject.id, { target: event.target.value })}><option value="background">Background</option><option value="underlay">Underlay</option><option value="overlay">Overlay</option></select></label></>}
-              <div className="creatorObjectActions"><button className="btn" onClick={() => reorderObject(selectedObject.id, -1)} type="button">Backward</button><button className="btn" onClick={() => reorderObject(selectedObject.id, 1)} type="button">Forward</button><button className="btn" onClick={() => { if (data) save(moveCreatorObjectsToEdge(data.def, [selectedObject.id], "back")); }} type="button">To back</button><button className="btn" onClick={() => { if (data) save(moveCreatorObjectsToEdge(data.def, [selectedObject.id], "front")); }} type="button">To front</button><button className="btn" disabled={selectedObject.kind === "background" || SINGLETON_GLOBAL_IDS.has(selectedObject.elementId)} onClick={() => duplicateObject(selectedObject.id)} type="button">Duplicate</button><button className="btn" disabled={selectedObject.kind === "background"} onClick={() => void copyObjectById(selectedObject.id)} type="button">Copy</button><button className="btn" disabled={selectedObject.kind === "background"} onClick={saveToolDefaultsForSelected} type="button">Save as defaults</button><button className="btn danger" onClick={() => deleteObject(selectedObject.id)} type="button">Delete</button></div>
+              {selectedObject.kind === "cosmetic" && (selectedObject.elementId === "cosmetic-text" || selectedObject.elementId === "cosmetic-symbols") ? <label>{selectedObject.elementId === "cosmetic-text" ? "Text" : "Symbol"}<input className="url" value={String(objectSample.text ?? "")} onChange={(event) => save(updateCreatorObjectVisuals(data.def, selectedObject.id, ["underlays", "overlays"], { text: event.target.value }))} /></label> : null}
+              {selectedObject.kind === "cosmetic" && selectedObject.elementId === "cosmetic-cages" ? <label>Clue / label<input className="url" value={String(objectSample.value ?? "")} onChange={(event) => editObject(selectedObject.id, { value: event.target.value })} /></label> : null}
+              {selectedObject.kind !== "background" ? <>{renderAppearanceSettings(selectedObject.elementId)}{selectedObject.kind === "cosmetic" && (selectedObject.collections.includes("underlays") || selectedObject.collections.includes("overlays")) ? <label>Graphic layer<select className="url" value={selectedObject.collections.includes("overlays") ? "overlay" : "underlay"} onChange={(event) => changeObjectLayer(selectedObject.id, event.target.value as "underlay" | "overlay")}><option value="underlay">Under grid content</option><option value="overlay">Over grid content</option></select></label> : null}</> : <><label>Opacity<input className="url" type="number" min="0" max="1" step="0.05" value={Number(objectSample.opacity ?? 1)} onChange={(event) => editObject(selectedObject.id, { opacity: Number(event.target.value) })} /></label><label>Image layer<select className="url" value={String(objectSample.target ?? "background")} onChange={(event) => editObject(selectedObject.id, { target: event.target.value })}><option value="background">Background</option><option value="underlay">Underlay</option><option value="overlay">Overlay</option></select></label></>}
+              <div className="creatorObjectActions"><button className="btn" onClick={() => reorderObject(selectedObject.id, -1)} type="button">Backward</button><button className="btn" onClick={() => reorderObject(selectedObject.id, 1)} type="button">Forward</button><button className="btn" onClick={() => { if (data) save(moveCreatorObjectsToEdge(data.def, [selectedObject.id], "back")); }} type="button">To back</button><button className="btn" onClick={() => { if (data) save(moveCreatorObjectsToEdge(data.def, [selectedObject.id], "front")); }} type="button">To front</button><button className="btn" disabled={selectedObject.kind === "background" || SINGLETON_GLOBAL_IDS.has(selectedObject.elementId)} onClick={() => duplicateObject(selectedObject.id)} type="button">Duplicate</button><button className="btn" disabled={selectedObject.kind === "background"} onClick={() => void copyObjectById(selectedObject.id)} type="button">Copy</button><button className="btn" disabled={selectedObject.kind === "background"} onClick={saveToolDefaultsForSelected} type="button">Use as defaults</button><button className="btn danger" onClick={() => deleteObject(selectedObject.id)} type="button">Delete</button></div>
             </div> : null}
           </div>
           <div className="creatorStatus">{message || (selectionKey(selection) || "no selection")}</div>

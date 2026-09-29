@@ -4,7 +4,7 @@ import { useTheme } from "../app/theme";
 import { sceneWithPuzzleProgress } from "../sudokupad/app/progressScene";
 import { sphenPadSudokuPadAssetResolver } from "../sudokupad/app/network";
 import { SudokuPadBoard } from "./SudokuPadBoard";
-import { BoardInteractionLayer, type BoardLineKind, type BoardLineSegment } from "./BoardInteractionLayer";
+import { BoardInteractionLayer, type BoardLineKind, type BoardLineSegment, type CreatorBoardPoint, type CreatorDirectMode, type CreatorSnapMode } from "./BoardInteractionLayer";
 
 const EMPTY_CONFLICT_CELLS: CellRC[] = [];
 const EMPTY_CREATOR_OBJECT_IDS: string[] = [];
@@ -61,6 +61,15 @@ export interface GridCanvasProps {
   selectedCreatorObjectIds?: string[];
   onCreatorObjectPointerDown?: (objectId: string, modifiers: { additive: boolean }) => boolean | void;
   creatorObjectOnly?: boolean;
+  creatorDirectMode?: CreatorDirectMode;
+  creatorSnapMode?: CreatorSnapMode;
+  creatorGridResolution?: number;
+  creatorShowGrid?: boolean;
+  onCreatorCells?: (cells: CellRC[]) => void;
+  onCreatorEdge?: (a: CellRC, b: CellRC) => void;
+  onCreatorCorner?: (corner: CreatorBoardPoint) => void;
+  onCreatorPoint?: (point: CreatorBoardPoint) => void;
+  onCreatorFreePath?: (points: CreatorBoardPoint[]) => void;
 }
 
 /**
@@ -370,6 +379,15 @@ export function GridCanvas(props: GridCanvasProps) {
         onCreatorPath={props.onCreatorPath}
         onCreatorObjectPointerDown={props.onCreatorObjectPointerDown}
         creatorObjectOnly={props.creatorObjectOnly}
+        creatorDirectMode={props.creatorDirectMode}
+        creatorSnapMode={props.creatorSnapMode}
+        creatorGridResolution={props.creatorGridResolution}
+        creatorShowGrid={props.creatorShowGrid}
+        onCreatorCells={props.onCreatorCells}
+        onCreatorEdge={props.onCreatorEdge}
+        onCreatorCorner={props.onCreatorCorner}
+        onCreatorPoint={props.onCreatorPoint}
+        onCreatorFreePath={props.onCreatorFreePath}
       /> : null}
     </div>
   );

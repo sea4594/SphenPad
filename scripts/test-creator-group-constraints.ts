@@ -5,6 +5,7 @@ import { validateCreatorDefinition } from "../src/sudokupad/creator/checker";
 import { creatorProjectFromDefinition, definitionFromCreatorProject } from "../src/sudokupad/creator/project";
 import { createAuthoredPuzzleDefinition, creatorConstraints } from "../src/sudokupad/creator/nativeAuthoring";
 import { addCreatorGroupConstraint, formatDigitList, normalizeCreatorGroupConstraints, replaceCreatorGroupCells, updateCreatorGroupConstraint } from "../src/sudokupad/creator/groupConstraints";
+import { updateCreatorObjectVisuals } from "../src/sudokupad/creator/objectEditing";
 
 function base(): PuzzleDefinition { return createAuthoredPuzzleDefinition({ id: "group", rows: 9, cols: 9, subgrid: { r: 3, c: 3 }, digitRange: { min: 1, max: 9 }, meta: {} }); }
 function withValues(def: PuzzleDefinition, entries: Array<[CellRC, number]>): PuzzleDefinition { return { ...def, givens: entries.map(([rc, value]) => ({ rc, v: String(value) })) }; }
@@ -58,7 +59,9 @@ const circles=[{r:0,c:0},{r:4,c:4},{r:8,c:7}]; made=add(base(),"counting-circles
 made=add(base(),"difference-kropki",[a,{r:2,c:2}],"1"); ok(validateCreatorDefinition(made.def).some((m)=>m.includes("orthogonally adjacent")));
 made=add(base(),"quadruples",[a,{r:3,c:3}],"12"); ok(validateCreatorDefinition(made.def).some((m)=>m.startsWith("A quadruple must")));
 made=add(base(),"ratio-kropki",[a,b],"3"); ok(made.def.scene?.overlays.some((part)=>part["data-sphenpad-constraint"]===made.constraintId));
-def=replaceCreatorGroupCells(made.def,made.constraintId,[{r:2,c:2},{r:2,c:3}]); equal((creatorConstraints(def)[0].cells as CellRC[])[0].r,2); ok(def.scene?.overlays.some((part)=>part["data-sphenpad-constraint"]===made.constraintId));
+made.def=updateCreatorObjectVisuals(made.def,made.constraintId,["overlays"],{backgroundColor:"#123456",borderColor:"#abcdef",width:0.5,height:0.5});
+made.def=updateCreatorGroupConstraint(made.def,made.constraintId,{ratio:4}); const restyledDot=made.def.scene?.overlays.find((part)=>part["data-sphenpad-constraint"]===made.constraintId); ok(restyledDot); equal(restyledDot.backgroundColor,"#123456"); equal(restyledDot.borderColor,"#abcdef");
+def=replaceCreatorGroupCells(made.def,made.constraintId,[{r:2,c:2},{r:2,c:3}]); equal((creatorConstraints(def)[0].cells as CellRC[])[0].r,2); const movedDot=def.scene?.overlays.find((part)=>part["data-sphenpad-constraint"]===made.constraintId); ok(movedDot); equal(movedDot.backgroundColor,"#123456"); equal(movedDot.borderColor,"#abcdef"); equal(movedDot.width,0.5);
 def=updateCreatorGroupConstraint(def,made.constraintId,{negativeValues:[2,3],overrideNegativeDifferences:true}); const roundTrip=definitionFromCreatorProject(creatorProjectFromDefinition(def)); equal((creatorConstraints(roundTrip)[0].negativeValues as number[]).join(","),"2,3"); equal(creatorConstraints(roundTrip)[0].overrideNegativeDifferences,true);
 
 let legacy=add(base(),"difference-kropki",[a,b],"1").def; legacy={...legacy,logic:{...(legacy.logic??{}),constraints:creatorConstraints(legacy).map((constraint)=>({...constraint,type:"difference-kropki",sourceElementId:undefined,difference:undefined,value:undefined}))}}; legacy=normalizeCreatorGroupConstraints(legacy); equal(creatorConstraints(legacy)[0].type,"difference"); equal(Number(creatorConstraints(legacy)[0].difference),1);
