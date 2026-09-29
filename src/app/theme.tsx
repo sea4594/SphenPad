@@ -43,7 +43,7 @@ function normalizeSelectionOutlineThickness(value: unknown, version: unknown): S
   if (value === "thin" || value === "normal") return "extra-thin";
   if (value === "medium") return "thin";
   if (value === "thick" || value === "extra") return "medium";
-  return "extra-thin";
+  return "medium";
 }
 
 function normalizeThemeSelection(mode: ThemeMode, color: ThemeColor): { mode: ThemeMode; color: ThemeColor } {
@@ -75,7 +75,7 @@ function readInitialTheme(): {
         labelRowsCols: false,
         conflictChecker: true,
         selectionColor: "blue",
-        selectionOutlineThickness: "extra-thin",
+        selectionOutlineThickness: "medium",
         highlightTransparency: 0,
       };
     }
@@ -121,7 +121,7 @@ function readInitialTheme(): {
       labelRowsCols: false,
       conflictChecker: true,
       selectionColor: "blue",
-      selectionOutlineThickness: "extra-thin",
+      selectionOutlineThickness: "medium",
       highlightTransparency: 0,
     };
   }

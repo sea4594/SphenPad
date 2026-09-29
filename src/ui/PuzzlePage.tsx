@@ -150,24 +150,59 @@ function toHistorySelection(entry: unknown): CellRC[] | null {
   return normalizeSelection((entry as { selection?: unknown }).selection);
 }
 
-function isSelectionOnlyHistoryEntry(entry: unknown): boolean {
+function selectionOnlyTransition(entry: unknown): { prev: CellRC[]; next: CellRC[] } | null {
   const historyEntry = toHistoryEntry(entry);
-  return historyEntry.patches.length === 1 && historyEntry.patches[0]?.path.length === 1 && historyEntry.patches[0]?.path[0] === "selection";
+  if (!historyEntry.patches.length || !historyEntry.patches.every((patch) => patch.path.length === 1 && patch.path[0] === "selection")) return null;
+  const prev = normalizeSelection(historyEntry.patches[0]?.prev);
+  const next = normalizeSelection(historyEntry.patches[historyEntry.patches.length - 1]?.next);
+  return prev && next ? { prev, next } : null;
+}
+
+function isSelectionOnlyHistoryEntry(entry: unknown): boolean {
+  return selectionOnlyTransition(entry) !== null;
+}
+
+function makeSelectionHistoryEntry(prev: CellRC[], next: CellRC[]) {
+  return { patches: [{ path: ["selection"], prev, next }] };
+}
+
+function coalesceSelectionHistory(history: unknown[], stack: "undo" | "redo"): unknown[] {
+  const traversal = stack === "undo" ? history : [...history].reverse();
+  const out: unknown[] = [];
+  for (const raw of traversal) {
+    const current = selectionOnlyTransition(raw);
+    const previous = out.length ? selectionOnlyTransition(out[out.length - 1]) : null;
+    if (!current || !previous) {
+      out.push(raw);
+      continue;
+    }
+    out.pop();
+    if (!sameSelection(previous.prev, current.next)) out.push(makeSelectionHistoryEntry(previous.prev, current.next));
+  }
+  return stack === "undo" ? out : out.reverse();
+}
+
+function dropSelectionOnlyHistory(history: unknown[]): unknown[] {
+  return history.filter((entry) => !isSelectionOnlyHistoryEntry(entry));
 }
 
 function withTrailingSelectionHistoryEntry(history: unknown[], currentSelection: CellRC[], selection: CellRC[]): unknown[] {
-  const trailing = history.length && isSelectionOnlyHistoryEntry(history[history.length - 1])
-    ? toHistoryEntry(history[history.length - 1])
+  const normalizedHistory = coalesceSelectionHistory(history, "undo");
+  const trailing = normalizedHistory.length && isSelectionOnlyHistoryEntry(normalizedHistory[normalizedHistory.length - 1])
+    ? toHistoryEntry(normalizedHistory[normalizedHistory.length - 1])
     : null;
-  const baseHistory = trailing ? history.slice(0, -1) : history;
+  const baseHistory = trailing ? normalizedHistory.slice(0, -1) : normalizedHistory;
   const prevSelection = trailing ? normalizeSelection(trailing.patches[0]?.prev) ?? currentSelection : currentSelection;
   if (sameSelection(prevSelection, selection)) return baseHistory;
-  return [
-    ...baseHistory,
-    {
-      patches: [{ path: ["selection"], prev: prevSelection, next: selection }],
-    },
-  ];
+  return [...baseHistory, makeSelectionHistoryEntry(prevSelection, selection)];
+}
+
+function normalizeSelectionHistories(data: PersistedPuzzle): PersistedPuzzle {
+  return {
+    ...data,
+    undo: coalesceSelectionHistory(data.undo, "undo"),
+    redo: coalesceSelectionHistory(data.redo, "redo"),
+  };
 }
 
 function normalizeComparisonSymbol(symbol: string | undefined): string {
@@ -674,7 +709,7 @@ export function PuzzlePage(props: { editor?: boolean }) {
         startTransition(() => nav("/"));
         return;
       }
-      const normalizedBase = normalizePersistedDefinition({ ...local, progress: normalizeProgress(local.progress) });
+      const normalizedBase = normalizeSelectionHistories(normalizePersistedDefinition({ ...local, progress: normalizeProgress(local.progress) }));
       const creatorPlaytest = requestedCreatorPlaytest && Boolean(normalizedBase.def.meta.creatorPuzzle);
       const normalized = creatorPlaytest
         ? freshCreatorPlaytestData(normalizedBase)
@@ -693,10 +728,14 @@ export function PuzzlePage(props: { editor?: boolean }) {
       if (requestedCreatorPlaytest) return;
       const local = await getPuzzle(key);
       if (cancelledRef.current || !local) return;
-      const normalizedBase = normalizePersistedDefinition({ ...local, progress: normalizeProgress(local.progress) });
-      const normalized = editor
-        ? { ...normalizedBase, progress: { ...normalizedBase.progress, paused: false } }
+      const normalizedBase = normalizeSelectionHistories(normalizePersistedDefinition({ ...local, progress: normalizeProgress(local.progress) }));
+      const currentSelection = latestDataRef.current?.progress.selection;
+      const withLocalSelection = currentSelection
+        ? { ...normalizedBase, progress: { ...normalizedBase.progress, selection: currentSelection } }
         : normalizedBase;
+      const normalized = editor
+        ? { ...withLocalSelection, progress: { ...withLocalSelection.progress, paused: false } }
+        : withLocalSelection;
 
       latestDataRef.current = normalized;
       setData(normalized);
@@ -1153,37 +1192,48 @@ export function PuzzlePage(props: { editor?: boolean }) {
   }
 
   function undo() {
-    if (!data || data.undo.length === 0) return;
-    const historyEntry = toHistoryEntry(data.undo[data.undo.length - 1]);
+    const current = latestDataRef.current;
+    if (!current) return;
+    const normalizedUndo = coalesceSelectionHistory(current.undo, "undo");
+    const normalizedRedo = coalesceSelectionHistory(current.redo, "redo");
+    if (!normalizedUndo.length) return;
+    const historyEntry = toHistoryEntry(normalizedUndo[normalizedUndo.length - 1]);
     if (!historyEntry.patches.length) return;
-    let nextProgress = data.progress;
+    const selectionOnly = isSelectionOnlyHistoryEntry(historyEntry);
+    let nextProgress = current.progress;
     for (let i = historyEntry.patches.length - 1; i >= 0; i--) nextProgress = applyPatch(nextProgress, invertPatch(historyEntry.patches[i]));
     if (historyEntry.selection) nextProgress = { ...nextProgress, selection: historyEntry.selection };
-    const nextRedo = [...data.redo, historyEntry];
+    const nextRedo = coalesceSelectionHistory([...normalizedRedo, historyEntry], "redo");
 
-    persist({
-      ...data,
+    void persist({
+      ...current,
       progress: nextProgress,
-      undo: data.undo.slice(0, -1),
+      undo: normalizedUndo.slice(0, -1),
       redo: nextRedo,
-      updatedAt: Date.now(),
-    });
+      updatedAt: selectionOnly ? current.updatedAt : Date.now(),
+    }, !selectionOnly);
   }
 
   function redo() {
-    if (!data || data.redo.length === 0) return;
-    const historyEntry = toHistoryEntry(data.redo[data.redo.length - 1]);
+    const current = latestDataRef.current;
+    if (!current) return;
+    const normalizedUndo = coalesceSelectionHistory(current.undo, "undo");
+    const normalizedRedo = coalesceSelectionHistory(current.redo, "redo");
+    if (!normalizedRedo.length) return;
+    const historyEntry = toHistoryEntry(normalizedRedo[normalizedRedo.length - 1]);
     if (!historyEntry.patches.length) return;
-    let nextProgress = data.progress;
+    const selectionOnly = isSelectionOnlyHistoryEntry(historyEntry);
+    let nextProgress = current.progress;
     for (const p of historyEntry.patches) nextProgress = applyPatch(nextProgress, p);
     if (historyEntry.selection) nextProgress = { ...nextProgress, selection: historyEntry.selection };
-    persist({
-      ...data,
+    const nextUndo = coalesceSelectionHistory([...normalizedUndo, historyEntry], "undo");
+    void persist({
+      ...current,
       progress: nextProgress,
-      undo: [...data.undo, historyEntry],
-      redo: data.redo.slice(0, -1),
-      updatedAt: Date.now(),
-    });
+      undo: nextUndo,
+      redo: normalizedRedo.slice(0, -1),
+      updatedAt: selectionOnly ? current.updatedAt : Date.now(),
+    }, !selectionOnly);
   }
 
   useEffect(() => {
@@ -1225,12 +1275,14 @@ export function PuzzlePage(props: { editor?: boolean }) {
     const current = latestDataRef.current;
     if (!current || current.progress.activeTool === "line" || sameSelection(current.progress.selection, sel)) return;
     const nextUndo = withTrailingSelectionHistoryEntry(current.undo, current.progress.selection, sel);
+    const nextRedo = coalesceSelectionHistory(dropSelectionOnlyHistory(current.redo), "redo");
     void persist({
       ...current,
       progress: { ...current.progress, selection: sel },
       undo: nextUndo,
-      // Selection is a local/session state change, so it must not invalidate redo
-      // or advance the durable puzzle conflict timestamp.
+      redo: nextRedo,
+      // Selection is device-local. A new selection supersedes any undone
+      // selection-only branch but preserves substantive redo history.
       updatedAt: current.updatedAt,
     }, false);
   }

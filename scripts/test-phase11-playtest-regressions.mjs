@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
-const [interaction, puzzlePage, gridCanvas, renderer, fog, layers, rendererCss, appCss, emojiAssets, progressScene, conflicts, renderCells, creatorPage, creatorEditor, youtubePlayer, theme, settingsOverlay, viewportLayout] = await Promise.all([
+const [interaction, puzzlePage, gridCanvas, renderer, fog, layers, rendererCss, appCss, emojiAssets, progressScene, conflicts, renderCells, creatorPage, creatorEditor, youtubePlayer, theme, settingsOverlay, viewportLayout, storage] = await Promise.all([
   read("src/ui/BoardInteractionLayer.tsx"),
   read("src/ui/PuzzlePage.tsx"),
   read("src/ui/GridCanvas.tsx"),
@@ -20,6 +20,7 @@ const [interaction, puzzlePage, gridCanvas, renderer, fog, layers, rendererCss, 
   read("src/app/theme.tsx"),
   read("src/ui/SettingsOverlay.tsx"),
   read("src/app/viewportLayout.ts"),
+  read("src/core/storage.ts"),
 ]);
 
 function expect(condition, message) {
@@ -75,7 +76,8 @@ expect(!creatorEditor.includes('{ id: "solution-digits"') && creatorEditor.inclu
 expect(creatorEditor.includes("layoutTabletPortrait") && creatorEditor.includes("layoutTabletLandscape") && viewportLayout.includes('(orientation: portrait)') && viewportLayout.includes('(orientation: landscape)'), "creator/tablet layout must use explicit orientation-aware solver layout classes");
 
 
-expect(puzzlePage.includes("withTrailingSelectionHistoryEntry") && puzzlePage.includes("latestDataRef.current") && !puzzlePage.includes("const selectionOnlyPatch: Patch"), "selection changes must coalesce into one trailing history entry without duplicate undo-generated selection steps");
+expect(puzzlePage.includes("withTrailingSelectionHistoryEntry") && puzzlePage.includes("coalesceSelectionHistory") && puzzlePage.includes("dropSelectionOnlyHistory(current.redo)") && storage.includes("pendingPuzzleWrites") && storage.includes("puzzleWriteTails") && puzzlePage.includes("const current = latestDataRef.current;") && puzzlePage.includes("const currentSelection = latestDataRef.current?.progress.selection") && !puzzlePage.includes("const selectionOnlyPatch: Patch"), "selection changes must maintain one coalesced selection-only history event, discard obsolete selection redo branches, use immediate history state for rapid undo/redo, and preserve the final local selection across storage refresh/reopen");
+expect(theme.includes('selectionOutlineThickness: "medium"'), "new/default selection outline thickness must be medium");
 expect(!puzzlePage.includes("useEffect(() => {\n    void refreshFolders();\n  }, []);"), "opening a puzzle must not eagerly hydrate the entire puzzle library for the folder picker");
 expect(puzzlePage.includes("startSelectModeHold") && puzzlePage.includes("selectAllCells") && puzzlePage.includes("hold to select all cells"), "solver multi-select button must select the full grid on press-and-hold without toggling mode");
 expect(creatorEditor.includes("startSelectModeHold") && creatorEditor.includes("selectAllGridCells") && creatorEditor.includes("hold to select all cells"), "creator multi-select button must select the full grid on press-and-hold without toggling mode");

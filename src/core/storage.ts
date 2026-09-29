@@ -35,6 +35,8 @@ let creatorProjectsListCache: CreatorProjectStorageRow[] | null = null;
 // definition in memory so opening a puzzle already shown in a menu does not
 // decode/compile its source payload a second time.
 const hydratedDefinitionCache = new Map<string, { sourcePayload?: string; importRevision?: number; def: PuzzleDefinition }>();
+const pendingPuzzleWrites = new Map<string, PersistedPuzzle>();
+const puzzleWriteTails = new Map<string, Promise<void>>();
 
 function makeFolderId() {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
@@ -343,13 +345,34 @@ export async function deleteCreatorProject(key: string) {
 export async function upsertPuzzle(key: string, data: PersistedPuzzle, options: { sync?: boolean } = {}) {
   const sync = options.sync !== false;
   cacheHydratedDefinition(data.def);
-  await db.puzzles.put({ key, data: forPersistence(data) });
+  pendingPuzzleWrites.set(key, data);
   updatePuzzleListCache(key, data);
-  if (sync) markSyncDirty("puzzle", key, undefined, false);
-  signalStorageMutation(sync, data.updatedAt || Date.now(), { puzzles: false, folders: false, creatorProjects: false });
+
+  const previous = puzzleWriteTails.get(key) ?? Promise.resolve();
+  const write = previous.catch(() => {}).then(async () => {
+    await db.puzzles.put({ key, data: forPersistence(data) });
+    if (sync) markSyncDirty("puzzle", key, undefined, false);
+    signalStorageMutation(sync, data.updatedAt || Date.now(), { puzzles: false, folders: false, creatorProjects: false });
+  });
+  puzzleWriteTails.set(key, write);
+
+  try {
+    await write;
+  } catch (error) {
+    puzzlesListCache = null;
+    throw error;
+  } finally {
+    if (pendingPuzzleWrites.get(key) === data) pendingPuzzleWrites.delete(key);
+    if (puzzleWriteTails.get(key) === write) puzzleWriteTails.delete(key);
+  }
 }
 
 export async function getPuzzle(key: string) {
+  // A just-made local/session change must win immediately even if its IndexedDB
+  // write is still queued. This guarantees the final selection survives a
+  // quick close/re-open without waiting for background persistence to finish.
+  const pending = pendingPuzzleWrites.get(key);
+  if (pending) return pending;
   // Menus already hydrate visible puzzle definitions for their previews. Reuse
   // that exact definition instead of recompiling a potentially very large
   // SudokuPad payload again on navigation into the puzzle.
