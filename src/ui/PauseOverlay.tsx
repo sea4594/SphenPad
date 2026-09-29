@@ -11,10 +11,11 @@ export function PauseOverlay(props: {
   started: boolean;
   onStart: () => void;
   onResume: () => void;
+  onClose?: () => void;
   onAddToFolder: () => void;
   onSudokuPadLink?: (href: string) => void | Promise<void>;
 }) {
-  const { def, meta, started, onResume, onStart, onAddToFolder, onSudokuPadLink } = props;
+  const { def, meta, started, onResume, onStart, onClose, onAddToFolder, onSudokuPadLink } = props;
   const clean = (value: string | null | undefined) => (value ?? "").trim();
   const formatDurationHm = (seconds: number | null | undefined): string => {
     if (seconds == null || seconds < 0) return "~";
@@ -38,9 +39,10 @@ export function PauseOverlay(props: {
   const youtubeUrl = clean(meta?.archiveYouTubeUrl);
 
   const onBackdropClick = useCallback(() => {
+    if (onClose) { onClose(); return; }
     if (started) onResume();
     else onStart();
-  }, [onResume, onStart, started]);
+  }, [onClose, onResume, onStart, started]);
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
@@ -61,8 +63,8 @@ export function PauseOverlay(props: {
               type="button"
               className="btn"
               onClick={onBackdropClick}
-              aria-label={started ? "Resume puzzle" : "Start puzzle"}
-              title={started ? "Resume" : "Start"}
+              aria-label={onClose ? "Close pause menu" : started ? "Resume puzzle" : "Start puzzle"}
+              title={onClose ? "Close" : started ? "Resume" : "Start"}
               style={{ width: 32, height: 32, minHeight: 32, padding: 0, lineHeight: 1, fontSize: 16, flexShrink: 0 }}
             >
               x

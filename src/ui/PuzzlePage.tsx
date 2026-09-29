@@ -681,7 +681,6 @@ export function PuzzlePage(props: { editor?: boolean }) {
           : normalizedBase;
       setData(normalized);
       setPauseMenuOpen(editor || creatorPlaytest ? false : Boolean(normalized.progress.paused));
-      if (!creatorPlaytest) await upsertPuzzle(key, normalized);
     })();
   }, [key, nav, editor, requestedCreatorPlaytest]);
 
@@ -1487,7 +1486,10 @@ export function PuzzlePage(props: { editor?: boolean }) {
 
   function onPausePlayClick() {
     if (!data) return;
-    if (data.progress.status === "complete") return;
+    if (data.progress.status === "complete") {
+      setPauseMenuOpen(true);
+      return;
+    }
     if (data.progress.paused) {
       startOrResume();
       return;
@@ -2235,7 +2237,7 @@ export function PuzzlePage(props: { editor?: boolean }) {
             {!editor ? <button className="btn" onClick={onCheckAnswers} title="Check answers" disabled={data.progress.status === "complete" || data.progress.paused}>
               <IconCheck />
             </button> : null}
-            {!editor ? <button className="btn" onClick={onPausePlayClick} title="Pause or resume" disabled={data.progress.status === "complete"}>
+            {!editor ? <button className="btn" onClick={onPausePlayClick} title={data.progress.status === "complete" ? "Open pause menu" : "Pause or resume"}>
               {data.progress.status === "complete" ? <IconPause /> : data.progress.paused ? <IconPlay /> : <IconPause />}
             </button> : null}
             {!editor ? <button className="btn" onClick={onReloadPuzzleClick} title="Restart puzzle" disabled={reloadingPuzzle}>
@@ -2433,6 +2435,7 @@ export function PuzzlePage(props: { editor?: boolean }) {
           started={Boolean(data.progress.startedAt)}
           onStart={startOrResume}
           onResume={startOrResume}
+          onClose={data.progress.status === "complete" ? () => setPauseMenuOpen(false) : undefined}
           onAddToFolder={onOpenAddToFolderDialog}
           onSudokuPadLink={onImportSudokuPadLinkInApp}
         />

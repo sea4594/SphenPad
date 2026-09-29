@@ -34,6 +34,7 @@
   paint-order: stroke fill;
 }
 .sphenpad-sudokupad-renderer .cell-highlight { fill: rgba(255, 215, 0, 0.5); }
+.sphenpad-sudokupad-renderer #cell-colors .cell-color { opacity: var(--sphenpad-highlight-opacity, 1); }
 .sphenpad-sudokupad-renderer .cell-error { fill: var(--puzzle-cellerror); }
 .sphenpad-sudokupad-renderer .cell-grid {
   fill: none;

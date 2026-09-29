@@ -36,7 +36,7 @@ const firebaseConfig = {
   projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
 };
 const provider = new GoogleAuthProvider();
-const CLOUD_SCHEMA_VERSION = 2;
+export const CLOUD_SCHEMA_VERSION = 3;
 const MAX_WRITES_PER_COMMIT = 75;
 const MAX_ESTIMATED_COMMIT_BYTES = 5 * 1024 * 1024;
 const MAX_RECORD_PAYLOAD_BYTES = 850 * 1024;
@@ -162,11 +162,15 @@ export async function pullCloudState(userId: string): Promise<CloudAppSnapshot |
   if (!firebaseEnabled || !db) return null;
   const metadata = await pullCloudStateMetadata(userId);
   if (!metadata) return null;
-  if (metadata.version < CLOUD_SCHEMA_VERSION) return pullLegacyCloudState(userId);
+  if (metadata.version < 2) return pullLegacyCloudState(userId);
+  const v2 = metadata.version < CLOUD_SCHEMA_VERSION;
+  const puzzleCollection = v2 ? "puzzles" : "syncPuzzles";
+  const folderCollection = v2 ? "folders" : "syncFolders";
+  const creatorCollection = v2 ? "creatorProjects" : "syncCreatorProjects";
   const [puzzleDocs, folderDocs, creatorDocs] = await Promise.all([
-    getDocs(collection(db, "users", userId, "puzzles")),
-    getDocs(collection(db, "users", userId, "folders")),
-    getDocs(collection(db, "users", userId, "creatorProjects")),
+    getDocs(collection(db, "users", userId, puzzleCollection)),
+    getDocs(collection(db, "users", userId, folderCollection)),
+    getDocs(collection(db, "users", userId, creatorCollection)),
   ]);
   const creatorProjects: CreatorProjectStorageRow[] = [];
   const creatorByKey = new Map<string, CreatorProjectStorageRow>();
@@ -174,7 +178,7 @@ export async function pullCloudState(userId: string): Promise<CloudAppSnapshot |
     const data = entry.data();
     if (typeof data.syncRevision !== "number") continue;
     if (data.syncDeleted === true) continue;
-    if (typeof data.syncPayload !== "string") throw new Error(`Malformed v2 creator project: ${keyForDocId(entry.id)}`);
+    if (typeof data.syncPayload !== "string") throw new Error(`Malformed cloud creator project: ${keyForDocId(entry.id)}`);
     const row = cleanCreatorProject(deserialize<CreatorProjectStorageRow>(data.syncPayload)); creatorProjects.push(row); creatorByKey.set(row.key, row);
   }
   const folders: PuzzleFolder[] = [];
@@ -182,7 +186,7 @@ export async function pullCloudState(userId: string): Promise<CloudAppSnapshot |
     const data = entry.data();
     if (typeof data.syncRevision !== "number") continue;
     if (data.syncDeleted === true) continue;
-    if (typeof data.syncPayload !== "string") throw new Error(`Malformed v2 folder: ${keyForDocId(entry.id)}`);
+    if (typeof data.syncPayload !== "string") throw new Error(`Malformed cloud folder: ${keyForDocId(entry.id)}`);
     folders.push(deserialize<PuzzleFolder>(data.syncPayload));
   }
   const puzzles: { key: string; data: PersistedPuzzle }[] = [];
@@ -190,7 +194,7 @@ export async function pullCloudState(userId: string): Promise<CloudAppSnapshot |
     const data = entry.data();
     if (typeof data.syncRevision !== "number") continue;
     if (data.syncDeleted === true) continue;
-    if (typeof data.syncPayload !== "string") throw new Error(`Malformed v2 cloud puzzle: ${keyForDocId(entry.id)}`);
+    if (typeof data.syncPayload !== "string") throw new Error(`Malformed cloud puzzle: ${keyForDocId(entry.id)}`);
     const key = keyForDocId(entry.id);
     const payload = deserialize<CloudPuzzlePayload>(data.syncPayload);
     puzzles.push({ key, data: puzzleFromCloudPayload(payload, null, payload.creatorProjectKey ? creatorByKey.get(payload.creatorProjectKey) : null) });
@@ -209,7 +213,7 @@ export async function pullCloudChanges(userId: string, afterRevision: number): P
   if (metadata.version < CLOUD_SCHEMA_VERSION) return { version: metadata.version, revision: metadata.revision, updatedAt: metadata.updatedAt, changes: [] };
   if (metadata.revision <= afterRevision) return { version: metadata.version, revision: metadata.revision, updatedAt: metadata.updatedAt, changes: [] };
   const [puzzles, folders, creators] = await Promise.all([
-    changedDocs(userId, "puzzles", afterRevision), changedDocs(userId, "folders", afterRevision), changedDocs(userId, "creatorProjects", afterRevision),
+    changedDocs(userId, "syncPuzzles", afterRevision), changedDocs(userId, "syncFolders", afterRevision), changedDocs(userId, "syncCreatorProjects", afterRevision),
   ]);
   const changes: CloudChange[] = [];
   for (const entry of creators) {
@@ -245,7 +249,19 @@ function chunkChanges(changes: CloudChange[]) {
   if (current.length) chunks.push(current);
   return chunks;
 }
-function collectionForKind(kind: CloudChange["kind"]) { return kind === "puzzle" ? "puzzles" : kind === "folder" ? "folders" : "creatorProjects"; }
+function yieldToBrowser() { return new Promise<void>((resolve) => setTimeout(resolve, 0)); }
+async function chunkChangesYielding(changes: CloudChange[]) {
+  const chunks: ReturnType<typeof encodedMutation>[][] = []; let current: ReturnType<typeof encodedMutation>[] = []; let bytes = 0;
+  for (let index = 0; index < changes.length; index += 1) {
+    const encoded = encodedMutation(changes[index]);
+    if (current.length && (current.length >= MAX_WRITES_PER_COMMIT || bytes + encoded.bytes > MAX_ESTIMATED_COMMIT_BYTES)) { chunks.push(current); current = []; bytes = 0; }
+    current.push(encoded); bytes += encoded.bytes;
+    if (index % 8 === 7) await yieldToBrowser();
+  }
+  if (current.length) chunks.push(current);
+  return chunks;
+}
+function collectionForKind(kind: CloudChange["kind"]) { return kind === "puzzle" ? "syncPuzzles" : kind === "folder" ? "syncFolders" : "syncCreatorProjects"; }
 
 export async function pushCloudChanges(userId: string, changes: CloudChange[], expectedRevision: number): Promise<{ revision: number; updatedAt: number }> {
   if (!firebaseEnabled || !db || changes.length === 0) return { revision: expectedRevision, updatedAt: 0 };
@@ -268,7 +284,7 @@ export async function pushCloudChanges(userId: string, changes: CloudChange[], e
           syncUpdatedAt: entry.change.updatedAt,
           syncDeleted: entry.change.payload == null,
           ...(entry.payload == null ? {} : { syncPayload: entry.payload }),
-        }, { merge: true });
+        });
       }
       transaction.set(stateRef, { version: CLOUD_SCHEMA_VERSION, revision: nextRevision, updatedAt: chunkUpdatedAt }, { merge: stateSnap.exists() });
       return { revision: nextRevision, updatedAt: chunkUpdatedAt };
@@ -278,20 +294,38 @@ export async function pushCloudChanges(userId: string, changes: CloudChange[], e
   return { revision, updatedAt: latestUpdatedAt };
 }
 
-/** Stage a legacy v1 account into v2 fields without making the staged records visible until every chunk is present. */
-export async function migrateLegacyCloudToV2(userId: string, changes: CloudChange[], expectedLegacyRevision: number): Promise<{ revision: number; updatedAt: number }> {
-  if (!firebaseEnabled || !db) return { revision: expectedLegacyRevision, updatedAt: 0 };
-  const targetRevision = expectedLegacyRevision + 1;
-  const intendedFolderKeys = new Set(changes.filter((change) => change.kind === "folder").map((change) => change.key));
-  const existingFolderDocs = await getDocs(collection(db, "users", userId, "folders"));
+/** Stage any older cloud schema into isolated v3 collections, then atomically publish v3. */
+export async function migrateCloudToCurrentSchema(
+  userId: string,
+  changes: CloudChange[],
+  expectedSourceVersion: number,
+  expectedSourceRevision: number,
+): Promise<{ revision: number; updatedAt: number }> {
+  if (!firebaseEnabled || !db) return { revision: expectedSourceRevision, updatedAt: 0 };
+  const targetRevision = expectedSourceRevision + 1;
+  const intended = {
+    puzzle: new Set(changes.filter((change) => change.kind === "puzzle").map((change) => change.key)),
+    folder: new Set(changes.filter((change) => change.kind === "folder").map((change) => change.key)),
+    creatorProject: new Set(changes.filter((change) => change.kind === "creatorProject").map((change) => change.key)),
+  };
+  const [existingPuzzles, existingFolders, existingCreators] = await Promise.all([
+    getDocs(collection(db, "users", userId, "syncPuzzles")),
+    getDocs(collection(db, "users", userId, "syncFolders")),
+    getDocs(collection(db, "users", userId, "syncCreatorProjects")),
+  ]);
   const stagedChanges = [...changes];
-  for (const entry of existingFolderDocs.docs) {
-    const data = entry.data();
-    const key = keyForDocId(entry.id);
-    if (typeof data.syncRevision === "number" && !intendedFolderKeys.has(key)) stagedChanges.push({ kind: "folder", key, updatedAt: Date.now(), payload: null });
-  }
-  const encodedChunks = chunkChanges(stagedChanges);
-  for (const chunk of encodedChunks) {
+  const addMissingTombstones = (kind: CloudChange["kind"], docs: typeof existingPuzzles.docs) => {
+    for (const entry of docs) {
+      const key = keyForDocId(entry.id);
+      if (!intended[kind].has(key)) stagedChanges.push({ kind, key, updatedAt: Date.now(), payload: null } as CloudChange);
+    }
+  };
+  addMissingTombstones("puzzle", existingPuzzles.docs);
+  addMissingTombstones("folder", existingFolders.docs);
+  addMissingTombstones("creatorProject", existingCreators.docs);
+
+  const chunks = await chunkChangesYielding(stagedChanges);
+  for (const chunk of chunks) {
     const batch = writeBatch(db);
     for (const entry of chunk) {
       const target = doc(db, "users", userId, collectionForKind(entry.change.kind), docIdForKey(entry.change.key));
@@ -300,10 +334,12 @@ export async function migrateLegacyCloudToV2(userId: string, changes: CloudChang
         syncUpdatedAt: entry.change.updatedAt,
         syncDeleted: entry.change.payload == null,
         ...(entry.payload == null ? {} : { syncPayload: entry.payload }),
-      }, { merge: true });
+      });
     }
     await batch.commit();
+    await yieldToBrowser();
   }
+
   const latestUpdatedAt = Math.max(Date.now(), ...stagedChanges.map((entry) => entry.updatedAt));
   const stateRef = doc(db, "users", userId, "app", "state");
   return runTransaction(db, async (transaction) => {
@@ -313,7 +349,7 @@ export async function migrateLegacyCloudToV2(userId: string, changes: CloudChang
     const currentVersion = typeof state.version === "number" ? state.version : 1;
     const currentRevision = typeof state.revision === "number" ? state.revision : 0;
     if (currentVersion >= CLOUD_SCHEMA_VERSION) throw new Error("cloud-state-revision-conflict");
-    if (currentRevision !== expectedLegacyRevision) throw new Error("cloud-state-revision-conflict");
+    if (currentVersion !== expectedSourceVersion || currentRevision !== expectedSourceRevision) throw new Error("cloud-state-revision-conflict");
     transaction.set(stateRef, {
       version: CLOUD_SCHEMA_VERSION, revision: targetRevision, updatedAt: latestUpdatedAt,
       puzzleKeys: deleteField(), creatorProjectKeys: deleteField(), folders: deleteField(), localStorage: deleteField(),

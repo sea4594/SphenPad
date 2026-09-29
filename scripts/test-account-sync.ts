@@ -30,7 +30,11 @@ assert.match(firebaseSource, /MAX_ESTIMATED_COMMIT_BYTES = 5 \* 1024 \* 1024/);
 assert.doesNotMatch(firebaseSource, /MAX_BATCH_SIZE = 400/);
 
 assert.match(firebaseSource, /syncRevision/);
-assert.match(firebaseSource, /migrateLegacyCloudToV2/);
+assert.match(firebaseSource, /CLOUD_SCHEMA_VERSION = 3/);
+assert.match(firebaseSource, /syncPuzzles/);
+assert.match(firebaseSource, /syncFolders/);
+assert.match(firebaseSource, /syncCreatorProjects/);
+assert.match(firebaseSource, /migrateCloudToCurrentSchema/);
 assert.match(firebaseSource, /deleteField\(\)/);
 assert.match(firebaseSource, /cloud-schema-migration-required/);
 const accountSource = readFileSync(new URL("../src/app/accountSync.tsx", import.meta.url), "utf8");
@@ -38,18 +42,27 @@ assert.match(accountSource, /readSyncDirtyRecords/);
 assert.match(accountSource, /authEpochRef/);
 assert.match(accountSource, /runExclusive/);
 assert.match(accountSource, /readLocalMutationRevision/);
-assert.match(accountSource, /migrateLegacyCloudToV2/);
+assert.match(accountSource, /migrateCloudToCurrentSchema/);
+assert.match(accountSource, /useState\(true\)/, "same-account launch must not wait on cloud sync");
+assert.match(accountSource, /if \(switchingAccounts\) \{ readyRef\.current = false; setReady\(false\); \}/, "only account switching should gate local UI");
 assert.match(accountSource, /Logout cancelled because some local changes could not be synced/);
 
 const storageSource = readFileSync(new URL("../src/core/storage.ts", import.meta.url), "utf8");
 assert.match(storageSource, /markSyncDirty\("puzzle", key, updatedAt, false\)/, "normal puzzle deletion must leave a cloud tombstone");
 assert.match(storageSource, /options: \{ sync\?: boolean \} = \{\}/, "local autosave must be separable from cloud dirtying");
 assert.match(storageSource, /supersede\("puzzle", change.key\)/, "remote winners must clear only superseded dirty puzzle mutations");
+assert.match(storageSource, /updatePuzzleListCache\(key, data\)/, "single-puzzle autosaves must not invalidate the full puzzle-list cache");
 
 const puzzlePageSource = readFileSync(new URL("../src/ui/PuzzlePage.tsx", import.meta.url), "utf8");
 assert.match(puzzlePageSource, /5_000/, "active puzzle progress should autosave locally");
 assert.match(puzzlePageSource, /30_000/, "background cloud progress should be coalesced");
 assert.match(puzzlePageSource, /backgroundProgressDirtyRef/, "timer/video-only progress should use the lightweight background path");
+assert.doesNotMatch(puzzlePageSource, /if \(!creatorPlaytest\) await upsertPuzzle\(key, normalized\)/, "opening a puzzle must not create a no-op write/sync");
+assert.match(puzzlePageSource, /status === "complete"\) \{\s*setPauseMenuOpen\(true\)/s, "completed puzzles must still open the pause menu");
+
+const themeSource = readFileSync(new URL("../src/app/theme.tsx", import.meta.url), "utf8");
+assert.match(themeSource, /highlightTransparency/);
+assert.match(themeSource, /setSyncedLocalStorageItem\(STORAGE_KEY/, "highlight transparency should stay in the device-local theme record");
 
 const appStateSource = readFileSync(new URL("../src/core/appState.ts", import.meta.url), "utf8");
 assert.match(appStateSource, /localStorage: \{\}/, "theme and view preferences must remain device-local");

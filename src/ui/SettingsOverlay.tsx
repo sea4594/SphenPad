@@ -60,6 +60,7 @@ export function SettingsOverlay(props: { onClose: () => void }) {
     conflictChecker,
     selectionColor,
     selectionOutlineThickness,
+    highlightTransparency,
     setTheme,
     setHideTimer,
     setOutlineDigits,
@@ -68,6 +69,7 @@ export function SettingsOverlay(props: { onClose: () => void }) {
     setConflictChecker,
     setSelectionColor,
     setSelectionOutlineThickness,
+    setHighlightTransparency,
   } = useTheme();
   const activePreset = themePresets.find((preset) => preset.mode === mode && preset.color === color) ?? themePresets[0];
 
@@ -230,6 +232,23 @@ export function SettingsOverlay(props: { onClose: () => void }) {
                   <option key={option.value} value={option.value}>{option.label}</option>
                 ))}
               </select>
+            </div>
+
+            <div className="settingsRow" style={{ marginTop: 8, alignItems: "center", gap: 10 }}>
+              <div className="muted">Highlight transparency</div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 180 }}>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  step="1"
+                  value={highlightTransparency}
+                  onChange={(event) => setHighlightTransparency(Number(event.target.value))}
+                  aria-label="Highlight transparency"
+                  style={{ width: 130 }}
+                />
+                <output style={{ minWidth: 42, textAlign: "right" }}>{highlightTransparency}%</output>
+              </div>
             </div>
           </div>
         </div>

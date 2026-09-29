@@ -7,13 +7,13 @@ import { acknowledgeSyncDirty, clearSyncJournal, hasSyncDirtyRecords, markAllSyn
 import { notifyStorageRefreshNeeded, onCloudSyncNeeded } from "../core/syncSignal";
 import { applyRemoteStorageChanges, readAllSyncKeys, readCreatorProjectForSync, readFolderForSync, readPuzzleRowForSync } from "../core/storage";
 import {
-  type CloudChange, firebaseEnabled, googleLogin, googleLogout, onGoogleAuthStateChanged, pullCloudChanges, pullCloudState,
-  migrateLegacyCloudToV2, pullCloudStateMetadata, pushCloudChanges, resolveGoogleRedirectLogin, snapshotToCloudChanges,
+  CLOUD_SCHEMA_VERSION, type CloudChange, firebaseEnabled, googleLogin, googleLogout, onGoogleAuthStateChanged, pullCloudChanges, pullCloudState,
+  migrateCloudToCurrentSchema, pullCloudStateMetadata, pushCloudChanges, resolveGoogleRedirectLogin, snapshotToCloudChanges,
 } from "../firebase/client";
 
 type SyncStatus = "idle" | "syncing" | "error";
 const CLOUD_RECONCILE_INTERVAL_MS = 45_000;
-const REVISION_KEY_PREFIX = "sphenpad-cloud-revision-v2:";
+const REVISION_KEY_PREFIX = "sphenpad-cloud-revision-v3:";
 
 type AccountSyncContextValue = {
   ready: boolean; firebaseEnabled: boolean; user: User | null; syncStatus: SyncStatus; syncError: string;
@@ -68,7 +68,7 @@ function mergeCloudChanges(base: CloudChange[], overrides: CloudChange[]) {
 }
 
 export function AccountSyncProvider({ children }: { children: ReactNode }) {
-  const [ready, setReady] = useState(!firebaseEnabled);
+  const [ready, setReady] = useState(true);
   const [user, setUser] = useState<User | null>(null);
   const [syncStatus, setSyncStatus] = useState<SyncStatus>("idle");
   const [syncError, setSyncError] = useState("");
@@ -125,7 +125,7 @@ export function AccountSyncProvider({ children }: { children: ReactNode }) {
     assertSession(uid, epoch);
     const result = await pullCloudChanges(uid, cloudRevisionRef.current);
     assertSession(uid, epoch);
-    if (result.version < 2) return false;
+    if (result.version < CLOUD_SCHEMA_VERSION) return false;
     if (result.changes.length) {
       await applyRemoteStorageChanges({
         creatorProjects: result.changes.filter((c) => c.kind === "creatorProject").map((c) => ({ key: c.key, updatedAt: c.updatedAt, data: c.payload })),
@@ -145,7 +145,7 @@ export function AccountSyncProvider({ children }: { children: ReactNode }) {
       const dirty = readSyncDirtyRecords();
       if (!dirty.length) return;
       const metadata = await pullCloudStateMetadata(uid); assertSession(uid, epoch);
-      if (metadata && metadata.version < 2) { await migrateLegacyAccount(uid, epoch); continue; }
+      if (metadata && metadata.version < CLOUD_SCHEMA_VERSION) { await migrateAccountSchema(uid, epoch); continue; }
       const remoteRevision = metadata?.revision ?? 0;
       if (remoteRevision !== cloudRevisionRef.current) { await applyIncrementalCloud(uid, epoch); continue; }
       const changes = await buildDirtyChanges(dirty); assertSession(uid, epoch);
@@ -162,7 +162,7 @@ export function AccountSyncProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  async function migrateLegacyAccount(uid: string, epoch: number) {
+  async function migrateAccountSchema(uid: string, epoch: number) {
     for (let attempt = 0; attempt < 3; attempt++) {
       assertSession(uid, epoch);
       const localSnapshot = await exportLocalAppSnapshot();
@@ -171,7 +171,7 @@ export function AccountSyncProvider({ children }: { children: ReactNode }) {
       const capturedLocalRevision = readLocalMutationRevision();
       const [cloudSnapshot, legacyMetadata] = await Promise.all([pullCloudState(uid), pullCloudStateMetadata(uid)]);
       assertSession(uid, epoch);
-      if (legacyMetadata?.version && legacyMetadata.version >= 2) {
+      if (legacyMetadata?.version && legacyMetadata.version >= CLOUD_SCHEMA_VERSION) {
         cloudRevisionRef.current = 0;
         await applyIncrementalCloud(uid, epoch);
         return;
@@ -181,7 +181,7 @@ export function AccountSyncProvider({ children }: { children: ReactNode }) {
       const merged = overlayDirtyLocalState(mergedBase, localSnapshot, dirtyBefore);
       const changes = mergeCloudChanges(snapshotToCloudChanges(merged), dirtyOverrides);
       try {
-        const result = await migrateLegacyCloudToV2(uid, changes, legacyMetadata?.revision ?? 0);
+        const result = await migrateCloudToCurrentSchema(uid, changes, legacyMetadata?.version ?? 1, legacyMetadata?.revision ?? 0);
         assertSession(uid, epoch);
         const localUnchanged = readLocalMutationRevision() === capturedLocalRevision;
         if (localUnchanged) await importLocalAppSnapshot(merged, false);
@@ -200,12 +200,21 @@ export function AccountSyncProvider({ children }: { children: ReactNode }) {
   async function syncOnce(activeUser = userRef.current) {
     if (!activeUser || !readyRef.current) return;
     const uid = activeUser.uid; const epoch = authEpochRef.current;
-    setSyncStatus("syncing"); setSyncError("");
+    setSyncError("");
     try {
       const metadata = await pullCloudStateMetadata(uid); assertSession(uid, epoch);
-      if (metadata?.version && metadata.version < 2) await migrateLegacyAccount(uid, epoch);
+      const needsMigration = Boolean(metadata?.version && metadata.version < CLOUD_SCHEMA_VERSION);
+      const needsPull = !needsMigration && (metadata?.revision ?? 0) > cloudRevisionRef.current;
+      const needsPush = hasSyncDirtyRecords();
+      if (!needsMigration && !needsPull && !needsPush) {
+        if (syncStatus !== "idle") setSyncStatus("idle");
+        retryCountRef.current = 0; clearRetryTimer();
+        return;
+      }
+      setSyncStatus("syncing");
+      if (needsMigration) await migrateAccountSchema(uid, epoch);
       else {
-        if ((metadata?.revision ?? 0) > cloudRevisionRef.current) await applyIncrementalCloud(uid, epoch);
+        if (needsPull) await applyIncrementalCloud(uid, epoch);
         if (hasSyncDirtyRecords()) await pushDirty(uid, epoch);
       }
       assertSession(uid, epoch); setSyncStatus("idle"); retryCountRef.current = 0; clearRetryTimer();
@@ -218,15 +227,17 @@ export function AccountSyncProvider({ children }: { children: ReactNode }) {
   }
 
   async function initializeUser(activeUser: User, epoch: number) {
-    const uid = activeUser.uid; setReady(false); setSyncStatus("syncing"); setSyncError("");
+    const uid = activeUser.uid;
     const owner = getLocalDataOwnerId(); const switchingAccounts = owner !== null && owner !== uid;
+    if (switchingAccounts) { readyRef.current = false; setReady(false); }
+    setSyncStatus("syncing"); setSyncError("");
     try {
       const [metadata, localMetadata] = await Promise.all([pullCloudStateMetadata(uid), exportLocalAppSnapshotMetadata()]); assertSession(uid, epoch);
       if (switchingAccounts) {
         if (hasSyncDirtyRecords()) throw new Error("Unsynced local changes still belong to the previously signed-in account. Sign back into that account and allow sync to finish before switching accounts.");
         const cloudSnapshot = await pullCloudState(uid); assertSession(uid, epoch);
         await importLocalAppSnapshot(cloudSnapshot ?? emptySnapshot(), false); clearSyncJournal();
-        cloudRevisionRef.current = metadata?.version === 2 ? metadata.revision : 0; saveRevision(uid, cloudRevisionRef.current);
+        cloudRevisionRef.current = metadata?.version === CLOUD_SCHEMA_VERSION ? metadata.revision : 0; saveRevision(uid, cloudRevisionRef.current);
         notifyStorageRefreshNeeded(); setAppStateNonce((value) => value + 1);
       } else if (!metadata?.hasData) {
         cloudRevisionRef.current = 0; saveRevision(uid, 0);
@@ -234,8 +245,8 @@ export function AccountSyncProvider({ children }: { children: ReactNode }) {
           if (!hasSyncDirtyRecords()) markAllSyncDirty(await readAllSyncKeys(), false);
           await pushDirty(uid, epoch);
         }
-      } else if (metadata.version < 2) {
-        await migrateLegacyAccount(uid, epoch);
+      } else if (metadata.version < CLOUD_SCHEMA_VERSION) {
+        await migrateAccountSchema(uid, epoch);
       } else if (!localMetadata.hasData) {
         const cloudSnapshot = await pullCloudState(uid); assertSession(uid, epoch);
         await importLocalAppSnapshot(cloudSnapshot ?? emptySnapshot(), false); clearSyncJournal();
@@ -246,12 +257,12 @@ export function AccountSyncProvider({ children }: { children: ReactNode }) {
         await applyIncrementalCloud(uid, epoch);
         if (hasSyncDirtyRecords()) await pushDirty(uid, epoch);
       }
-      assertSession(uid, epoch); setLocalDataOwnerId(uid); initializedUidRef.current = uid; setSyncStatus("idle"); setReady(true);
+      assertSession(uid, epoch); setLocalDataOwnerId(uid); initializedUidRef.current = uid; setSyncStatus("idle"); readyRef.current = true; setReady(true);
     } catch (error) {
       if (error instanceof Error && error.message === "cloud-sync-session-changed") return;
       setSyncStatus("error"); setSyncError(describeSyncError(error));
       // Same-account/offline failures may continue using local data. Cross-account restore failures stay gated.
-      if (!switchingAccounts) setReady(true);
+      if (!switchingAccounts) { readyRef.current = true; setReady(true); }
     }
   }
 

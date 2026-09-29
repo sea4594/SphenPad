@@ -54,11 +54,20 @@ async function hydratePersistedPuzzle(data: PersistedPuzzle): Promise<PersistedP
   }
 }
 
-function signalStorageMutation(notify = true, updatedAt = Date.now()) {
-  puzzlesListCache = null;
-  foldersListCache = null;
-  creatorProjectsListCache = null;
+function signalStorageMutation(notify = true, updatedAt = Date.now(), invalidate: { puzzles?: boolean; folders?: boolean; creatorProjects?: boolean } = {}) {
+  if (invalidate.puzzles !== false) puzzlesListCache = null;
+  if (invalidate.folders !== false) foldersListCache = null;
+  if (invalidate.creatorProjects !== false) creatorProjectsListCache = null;
   markLocalDataChanged(updatedAt, notify);
+}
+
+function updatePuzzleListCache(key: string, data: PersistedPuzzle) {
+  if (!puzzlesListCache) return;
+  const visible = !data.def.meta.creatorPuzzle || data.def.meta.creatorPublished === true;
+  const next = puzzlesListCache.filter((row) => row.key !== key);
+  if (visible) next.push({ key, ...data });
+  next.sort((a, b) => b.updatedAt - a.updatedAt);
+  puzzlesListCache = next;
 }
 
 class SphenDB extends Dexie {
@@ -317,8 +326,9 @@ export async function deleteCreatorProject(key: string) {
 export async function upsertPuzzle(key: string, data: PersistedPuzzle, options: { sync?: boolean } = {}) {
   const sync = options.sync !== false;
   await db.puzzles.put({ key, data: forPersistence(data) });
+  updatePuzzleListCache(key, data);
   if (sync) markSyncDirty("puzzle", key, undefined, false);
-  signalStorageMutation(sync, data.updatedAt || Date.now());
+  signalStorageMutation(sync, data.updatedAt || Date.now(), { puzzles: false, folders: false, creatorProjects: false });
 }
 
 export async function getPuzzle(key: string) {

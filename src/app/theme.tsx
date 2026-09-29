@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { onSyncedLocalDataApplied, setSyncedLocalStorageItem } from "../core/localDataState";
 
 export type ThemeMode = "light" | "dark";
@@ -16,6 +16,7 @@ type ThemeContextValue = {
   conflictChecker: boolean;
   selectionColor: SelectionColor;
   selectionOutlineThickness: SelectionOutlineThickness;
+  highlightTransparency: number;
   setTheme: (mode: ThemeMode, color: ThemeColor) => void;
   setMode: (mode: ThemeMode) => void;
   setColor: (color: ThemeColor) => void;
@@ -26,6 +27,7 @@ type ThemeContextValue = {
   setConflictChecker: (conflictChecker: boolean) => void;
   setSelectionColor: (selectionColor: SelectionColor) => void;
   setSelectionOutlineThickness: (selectionOutlineThickness: SelectionOutlineThickness) => void;
+  setHighlightTransparency: (highlightTransparency: number) => void;
 };
 
 const STORAGE_KEY = "sphenpad-theme-v1";
@@ -59,6 +61,7 @@ function readInitialTheme(): {
   conflictChecker: boolean;
   selectionColor: SelectionColor;
   selectionOutlineThickness: SelectionOutlineThickness;
+  highlightTransparency: number;
 } {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -73,6 +76,7 @@ function readInitialTheme(): {
         conflictChecker: true,
         selectionColor: "blue",
         selectionOutlineThickness: "extra-thin",
+        highlightTransparency: 0,
       };
     }
     const parsed = JSON.parse(raw) as {
@@ -86,6 +90,7 @@ function readInitialTheme(): {
       selectionColor?: SelectionColor;
       selectionOutlineThickness?: SelectionOutlineThickness | "normal" | "extra";
       selectionOutlineThicknessVersion?: number;
+      highlightTransparency?: number;
     };
     const mode: ThemeMode = parsed.mode === "light" || parsed.mode === "dark" ? parsed.mode : "light";
     const mappedColor = parsed.color === "sunset" || parsed.color === "sepia" ? "clay" : parsed.color;
@@ -102,7 +107,10 @@ function readInitialTheme(): {
       ? (parsed.selectionColor as SelectionColor)
       : "blue";
     const selectionOutlineThickness = normalizeSelectionOutlineThickness(parsed.selectionOutlineThickness, parsed.selectionOutlineThicknessVersion);
-    return { mode: normalizedTheme.mode, color: normalizedTheme.color, hideTimer, outlineDigits, compactMarks, labelRowsCols, conflictChecker, selectionColor, selectionOutlineThickness };
+    const highlightTransparency = typeof parsed.highlightTransparency === "number" && Number.isFinite(parsed.highlightTransparency)
+      ? Math.max(0, Math.min(100, Math.round(parsed.highlightTransparency)))
+      : 0;
+    return { mode: normalizedTheme.mode, color: normalizedTheme.color, hideTimer, outlineDigits, compactMarks, labelRowsCols, conflictChecker, selectionColor, selectionOutlineThickness, highlightTransparency };
   } catch {
     return {
       mode: "light",
@@ -114,6 +122,7 @@ function readInitialTheme(): {
       conflictChecker: true,
       selectionColor: "blue",
       selectionOutlineThickness: "extra-thin",
+      highlightTransparency: 0,
     };
   }
 }
@@ -129,6 +138,7 @@ export function ThemeProvider(props: { children: ReactNode }) {
   const [conflictChecker, setConflictChecker] = useState<boolean>(initialTheme.conflictChecker);
   const [selectionColor, setSelectionColor] = useState<SelectionColor>(initialTheme.selectionColor);
   const [selectionOutlineThickness, setSelectionOutlineThickness] = useState<SelectionOutlineThickness>(initialTheme.selectionOutlineThickness);
+  const [highlightTransparency, setHighlightTransparencyState] = useState<number>(initialTheme.highlightTransparency);
 
   const setTheme = (nextMode: ThemeMode, nextColor: ThemeColor) => {
     const normalized = normalizeThemeSelection(nextMode, nextColor);
@@ -156,6 +166,7 @@ export function ThemeProvider(props: { children: ReactNode }) {
       setConflictChecker(next.conflictChecker);
       setSelectionColor(next.selectionColor);
       setSelectionOutlineThickness(next.selectionOutlineThickness);
+      setHighlightTransparencyState(next.highlightTransparency);
     };
     return onSyncedLocalDataApplied(applyThemeFromStorage);
   }, []);
@@ -177,8 +188,12 @@ export function ThemeProvider(props: { children: ReactNode }) {
     document.documentElement.style.backgroundColor = bg;
     document.body.style.backgroundColor = bg;
 
-    setSyncedLocalStorageItem(STORAGE_KEY, JSON.stringify({ mode, color, hideTimer, outlineDigits, compactMarks, labelRowsCols, conflictChecker, selectionColor, selectionOutlineThickness, selectionOutlineThicknessVersion: 2 }));
-  }, [mode, color, hideTimer, outlineDigits, compactMarks, labelRowsCols, conflictChecker, selectionColor, selectionOutlineThickness]);
+    setSyncedLocalStorageItem(STORAGE_KEY, JSON.stringify({ mode, color, hideTimer, outlineDigits, compactMarks, labelRowsCols, conflictChecker, selectionColor, selectionOutlineThickness, selectionOutlineThicknessVersion: 2, highlightTransparency }));
+  }, [mode, color, hideTimer, outlineDigits, compactMarks, labelRowsCols, conflictChecker, selectionColor, selectionOutlineThickness, highlightTransparency]);
+
+  const setHighlightTransparency = useCallback((value: number) => {
+    setHighlightTransparencyState(Math.max(0, Math.min(100, Math.round(value))));
+  }, []);
 
   const value = useMemo(
     () => ({
@@ -191,6 +206,7 @@ export function ThemeProvider(props: { children: ReactNode }) {
       conflictChecker,
       selectionColor,
       selectionOutlineThickness,
+      highlightTransparency,
       setTheme,
       setMode,
       setColor,
@@ -201,8 +217,9 @@ export function ThemeProvider(props: { children: ReactNode }) {
       setConflictChecker,
       setSelectionColor,
       setSelectionOutlineThickness,
+      setHighlightTransparency,
     }),
-    [mode, color, hideTimer, outlineDigits, compactMarks, labelRowsCols, conflictChecker, selectionColor, selectionOutlineThickness, setMode, setColor],
+    [mode, color, hideTimer, outlineDigits, compactMarks, labelRowsCols, conflictChecker, selectionColor, selectionOutlineThickness, highlightTransparency, setMode, setColor, setHighlightTransparency],
   );
   return <ThemeContext.Provider value={value}>{props.children}</ThemeContext.Provider>;
 }

@@ -177,6 +177,7 @@ export function GridCanvas(props: GridCanvasProps) {
         position: "relative",
         maxWidth: "100%",
         maxHeight: "100%",
+        "--sphenpad-highlight-opacity": String(1 - theme.highlightTransparency / 100),
         ...(requestedHeight ? { height: requestedHeight } : {}),
         ...(activeFitSize ? {
           "--sphenpad-board-fit-width": `${activeFitSize.width}px`,
