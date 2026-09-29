@@ -3,7 +3,7 @@ import type { Table } from "dexie";
 import { markLocalDataChanged } from "./localDataState";
 import { acknowledgeSyncDirty, isSyncDirty, markSyncDirty, readSyncDirtyRecords, type SyncDirtyRecord } from "./syncJournal";
 import { puzzleFromCloudPayload, type CloudPuzzlePayload } from "./puzzleSync";
-import type { PersistedPuzzle } from "./model";
+import type { PersistedPuzzle, PuzzleDefinition } from "./model";
 import { creatorProjectFromDefinition, definitionFromCreatorProject, parseCreatorProject, type CreatorProject } from "../sudokupad/creator/project";
 import { cloneCreatorProjectForDuplicate, compareCreatorProjectStorageRows, mergeCreatorProjectStorageRows, normalizeCreatorProjectStorageRow, type CreatorProjectStorageRow } from "../sudokupad/creator/projectStorage";
 import { definitionForPersistence } from "../sudokupad/migration/puzzleDefinition";
@@ -31,6 +31,10 @@ export type { CreatorProjectStorageRow } from "../sudokupad/creator/projectStora
 let puzzlesListCache: StoredPuzzleRow[] | null = null;
 let foldersListCache: PuzzleFolder[] | null = null;
 let creatorProjectsListCache: CreatorProjectStorageRow[] | null = null;
+// Imported SudokuPad scenes are expensive derived data. Keep the hydrated
+// definition in memory so opening a puzzle already shown in a menu does not
+// decode/compile its source payload a second time.
+const hydratedDefinitionCache = new Map<string, { sourcePayload?: string; importRevision?: number; def: PuzzleDefinition }>();
 
 function makeFolderId() {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
@@ -44,9 +48,22 @@ function forPersistence(data: PersistedPuzzle): PersistedPuzzle {
   return { ...data, def: definitionForPersistence(data.def) };
 }
 
+function cacheHydratedDefinition(def: PuzzleDefinition) {
+  if (!def.scene || !def.logic) return;
+  const key = def.id || def.sourceId;
+  if (!key) return;
+  hydratedDefinitionCache.set(key, { sourcePayload: def.sourcePayload, importRevision: def.importRevision, def });
+}
+
 async function hydratePersistedPuzzle(data: PersistedPuzzle): Promise<PersistedPuzzle> {
+  const key = data.def.id || data.def.sourceId;
+  const cached = key ? hydratedDefinitionCache.get(key) : undefined;
+  if (cached && cached.sourcePayload === data.def.sourcePayload && cached.importRevision === data.def.importRevision) {
+    return { ...data, def: cached.def };
+  }
   try {
     const def = await rehydrateImportedSudokuPadDefinition(data.def);
+    cacheHydratedDefinition(def);
     return def === data.def ? data : { ...data, def };
   } catch (error) {
     console.warn("Failed to rehydrate imported SudokuPad scene; keeping stored definition", error);
@@ -325,6 +342,7 @@ export async function deleteCreatorProject(key: string) {
 
 export async function upsertPuzzle(key: string, data: PersistedPuzzle, options: { sync?: boolean } = {}) {
   const sync = options.sync !== false;
+  cacheHydratedDefinition(data.def);
   await db.puzzles.put({ key, data: forPersistence(data) });
   updatePuzzleListCache(key, data);
   if (sync) markSyncDirty("puzzle", key, undefined, false);
@@ -332,6 +350,11 @@ export async function upsertPuzzle(key: string, data: PersistedPuzzle, options: 
 }
 
 export async function getPuzzle(key: string) {
+  // Menus already hydrate visible puzzle definitions for their previews. Reuse
+  // that exact definition instead of recompiling a potentially very large
+  // SudokuPad payload again on navigation into the puzzle.
+  const hot = puzzlesListCache?.find((row) => row.key === key);
+  if (hot) return hot;
   const data = (await db.puzzles.get(key))?.data ?? null;
   return data ? hydratePersistedPuzzle(data) : null;
 }

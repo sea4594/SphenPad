@@ -30,7 +30,7 @@ expect(interaction.includes("getCellOutline(visualSelection") && interaction.inc
 expect(!interaction.includes("<rect key={key}"), "selection must not draw one border rectangle per cell");
 expect(interaction.includes("const next = progress.multiSelect ? new Set(current) : new Set<string>();"), "SudokuPad multi-select add/remove state machine missing");
 expect(interaction.includes('!progress.multiSelect && !drag.moved && drag.startedSelected && drag.startedSelectionSize === 1'), "single selected-cell toggle rule missing");
-expect(puzzlePage.includes('.sphenpad-native-board, .sphenpad-sudokupad-renderer, .sphenpad-board-interaction'), "outer player shell must recognize SVG board taps as in-board interaction");
+expect(puzzlePage.includes('.sphenpad-sudokupad-renderer, .sphenpad-board-interaction') && !puzzlePage.includes('.sphenpad-native-board, .sphenpad-sudokupad-renderer, .sphenpad-board-interaction'), "only actual rendered/interaction SVG taps should count as in-grid; white board fitting space must deselect");
 expect(!puzzlePage.includes('querySelector<HTMLCanvasElement>("canvas")'), "portrait video resizing must not depend on the removed canvas renderer");
 expect(puzzlePage.includes('querySelector<SVGSVGElement>(".sphenpad-sudokupad-renderer")'), "portrait video resizing must use the live SVG geometry");
 expect(puzzlePage.includes("setPortraitBoardHeight") && puzzlePage.includes("requestedHeight={portraitBoardHeight ?? undefined}"), "pre-Phase-1 portrait video slider must resize the board height as well as the video");
@@ -74,6 +74,9 @@ expect(interaction.includes("selectionPreview") && interaction.includes("request
 expect(!creatorEditor.includes('{ id: "solution-digits"') && creatorEditor.includes("activeCatalogElement === null") && creatorEditor.includes("applyCreatorDigit") && creatorEditor.includes("handleCreatorBackspace"), "creator neutral mode must replace the removed Solution digits catalog element");
 expect(creatorEditor.includes("layoutTabletPortrait") && creatorEditor.includes("layoutTabletLandscape") && viewportLayout.includes('(orientation: portrait)') && viewportLayout.includes('(orientation: landscape)'), "creator/tablet layout must use explicit orientation-aware solver layout classes");
 
+
+expect(puzzlePage.includes("withTrailingSelectionHistoryEntry") && puzzlePage.includes("latestDataRef.current") && !puzzlePage.includes("const selectionOnlyPatch: Patch"), "selection changes must coalesce into one trailing history entry without duplicate undo-generated selection steps");
+expect(!puzzlePage.includes("useEffect(() => {\n    void refreshFolders();\n  }, []);"), "opening a puzzle must not eagerly hydrate the entire puzzle library for the folder picker");
 expect(puzzlePage.includes("startSelectModeHold") && puzzlePage.includes("selectAllCells") && puzzlePage.includes("hold to select all cells"), "solver multi-select button must select the full grid on press-and-hold without toggling mode");
 expect(creatorEditor.includes("startSelectModeHold") && creatorEditor.includes("selectAllGridCells") && creatorEditor.includes("hold to select all cells"), "creator multi-select button must select the full grid on press-and-hold without toggling mode");
 expect(creatorEditor.includes('conflictCheckerEnabled={activeCatalogElement === "regions" ? false : theme.conflictChecker}') && creatorEditor.includes('hideAuthoredEntries={activeCatalogElement === "regions"}') && creatorEditor.includes("liveCreatorConflictCells") && creatorEditor.includes("validateGrid(data.def"), "creator live conflict checking must cover authored constraints while Regions mode suppresses conflict rendering and authored entries");

@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-29T14:26:20.690Z",
+  "generatedAt": "2026-09-29T15:07:32.600Z",
   "phase": "11L",
   "target": "SphenPad Phase 11 / SudokuMaker creator parity on pinned SudokuPad 0.612.0",
   "productionInputs": [
@@ -20560,8 +20560,8 @@
     },
     {
       "path": "src/core/storage.ts",
-      "bytes": 31488,
-      "sha256": "1498afb0cf7c6ea3b117c2db01f772d7756f0b395e40dad37524451a7b8a6883"
+      "bytes": 32766,
+      "sha256": "b12e0a914d9f113f9d3d7102378305c7372f2faf9ebca49d677b5eeb67d68a00"
     },
     {
       "path": "src/core/sudokupad.ts",
@@ -21085,8 +21085,8 @@
     },
     {
       "path": "src/ui/PuzzlePage.tsx",
-      "bytes": 105051,
-      "sha256": "099fc6c15b9690c4183fa311a64843a6a4611241ccfc0407d9520c53b73dfa47"
+      "bytes": 104897,
+      "sha256": "e166c95e5ee8a71be4f5a4b28f4418f9d33a00494a403edd2a41fdd96a56349b"
     },
     {
       "path": "src/ui/SelectControl.tsx",
@@ -41633,9 +41633,9 @@
       "sha256": "8ef716c72ebb283e743aea92da259609c3e75040a1866e522257de74d16b9c17"
     },
     {
-      "path": "dist/assets/index-CYr-3MoH.js",
-      "bytes": 1263355,
-      "sha256": "b86ab369368f0e07d2ddf8f1211d399c7ac3859482a2657f0601f4085ce0a733"
+      "path": "dist/assets/index-CrWVTaXt.js",
+      "bytes": 1263556,
+      "sha256": "51deab5770e24d130d74148a28c04924045fc47aeb87772ba05e02af8d250177"
     },
     {
       "path": "dist/assets/sudokupad-compatibility-manifest.json",
@@ -41650,7 +41650,7 @@
     {
       "path": "dist/index.html",
       "bytes": 1115,
-      "sha256": "29941c2b8eed79249d54186c1b938da92fdc6f73e63d2b7032762ce73e7736c6"
+      "sha256": "8b8c54f9faeea2cff679be66b1356778dc1ae1c594b1a1e9bb0bd82d8a1be105"
     },
     {
       "path": "dist/manifest.json",
@@ -41674,5 +41674,5 @@
     }
   ],
   "bundleBuilt": true,
-  "releaseContentSha256": "441e5bcfe79f28299c57e8c20b864347b76085016464c088f06da5739673150d"
+  "releaseContentSha256": "b364d2bca027670f18c4807536ada0601d42fd137a54c5dd52d6976fe70d2307"
 }

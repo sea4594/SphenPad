@@ -155,21 +155,17 @@ function isSelectionOnlyHistoryEntry(entry: unknown): boolean {
   return historyEntry.patches.length === 1 && historyEntry.patches[0]?.path.length === 1 && historyEntry.patches[0]?.path[0] === "selection";
 }
 
-function mergeTrailingSelectionHistoryEntry(history: unknown[], selection: CellRC[]): unknown[] | null {
-  if (!history.length || !isSelectionOnlyHistoryEntry(history[history.length - 1])) return null;
-  const historyEntry = toHistoryEntry(history[history.length - 1]);
-  const patch = historyEntry.patches[0];
-  const prevSelection = normalizeSelection(patch?.prev) ?? [];
-  if (sameSelection(prevSelection, selection)) return history.slice(0, -1);
+function withTrailingSelectionHistoryEntry(history: unknown[], currentSelection: CellRC[], selection: CellRC[]): unknown[] {
+  const trailing = history.length && isSelectionOnlyHistoryEntry(history[history.length - 1])
+    ? toHistoryEntry(history[history.length - 1])
+    : null;
+  const baseHistory = trailing ? history.slice(0, -1) : history;
+  const prevSelection = trailing ? normalizeSelection(trailing.patches[0]?.prev) ?? currentSelection : currentSelection;
+  if (sameSelection(prevSelection, selection)) return baseHistory;
   return [
-    ...history.slice(0, -1),
+    ...baseHistory,
     {
-      patches: [
-        {
-          ...patch,
-          next: selection,
-        },
-      ],
+      patches: [{ path: ["selection"], prev: prevSelection, next: selection }],
     },
   ];
 }
@@ -526,7 +522,10 @@ export function PuzzlePage(props: { editor?: boolean }) {
     // Keep selection while interacting with the rendered puzzle. The player is
     // SVG-based now; treating only <canvas> as the board clears SudokuPad's
     // multi-selection state before the board interaction handler can update it.
-    if (target.closest(".sphenpad-native-board, .sphenpad-sudokupad-renderer, .sphenpad-board-interaction")) return;
+    // Only the actual rendered/interactive SVG counts as the puzzle. The board
+    // surface/card can contain white fitting space, and tapping that space should
+    // clear the selection just like any other area outside the grid.
+    if (target.closest(".sphenpad-sudokupad-renderer, .sphenpad-board-interaction")) return;
     // Solver keypad/tool controls need the current selection in order to apply
     // their action. Everything else outside the board (rules, page chrome,
     // top bar, blank space, video area, etc.) deselects the grid.
@@ -915,10 +914,6 @@ export function PuzzlePage(props: { editor?: boolean }) {
     setFolderPuzzleRows(nextPuzzleRows);
   }
 
-  useEffect(() => {
-    void refreshFolders();
-  }, []);
-
   // Recovery: if a puzzle is missing archive meta (e.g. wiped by a prior definition refresh),
   // look it up in the archive manifest and silently restore the fields.
   const archiveMetaRecoveryInFlightRef = useRef(new Set<string>());
@@ -1164,20 +1159,7 @@ export function PuzzlePage(props: { editor?: boolean }) {
     let nextProgress = data.progress;
     for (let i = historyEntry.patches.length - 1; i >= 0; i--) nextProgress = applyPatch(nextProgress, invertPatch(historyEntry.patches[i]));
     if (historyEntry.selection) nextProgress = { ...nextProgress, selection: historyEntry.selection };
-    const nextRedo = [...data.redo];
-    if (data.redo.length === 0) {
-      const selectionBeforeAction = historyEntry.selection ?? [];
-      if (!sameSelection(selectionBeforeAction, data.progress.selection)) {
-        const selectionOnlyPatch: Patch = {
-          path: ["selection"],
-          prev: selectionBeforeAction,
-          next: data.progress.selection,
-        };
-        // Keep selection restoration as its own final redo step.
-        nextRedo.push({ patches: [selectionOnlyPatch] });
-      }
-    }
-    nextRedo.push(historyEntry);
+    const nextRedo = [...data.redo, historyEntry];
 
     persist({
       ...data,
@@ -1240,21 +1222,17 @@ export function PuzzlePage(props: { editor?: boolean }) {
   }
 
   function setSelection(sel: CellRC[]) {
-    if (!data || data.progress.activeTool === "line") return;
-    const nextUndo = mergeTrailingSelectionHistoryEntry(data.undo, sel);
-    if (nextUndo) {
-      void persist({
-        ...data,
-        progress: {
-          ...data.progress,
-          selection: sel,
-        },
-        undo: nextUndo,
-        updatedAt: data.updatedAt,
-      }, false);
-      return;
-    }
-    pushSessionPatch(patchAt(data.progress, ["selection"], sel));
+    const current = latestDataRef.current;
+    if (!current || current.progress.activeTool === "line" || sameSelection(current.progress.selection, sel)) return;
+    const nextUndo = withTrailingSelectionHistoryEntry(current.undo, current.progress.selection, sel);
+    void persist({
+      ...current,
+      progress: { ...current.progress, selection: sel },
+      undo: nextUndo,
+      // Selection is a local/session state change, so it must not invalidate redo
+      // or advance the durable puzzle conflict timestamp.
+      updatedAt: current.updatedAt,
+    }, false);
   }
 
   function setSelectionMode(multiSelect: boolean) {
