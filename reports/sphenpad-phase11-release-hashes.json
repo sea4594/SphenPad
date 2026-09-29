@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-29T17:31:35.584Z",
+  "generatedAt": "2026-09-29T17:57:33.139Z",
   "phase": "11L",
   "target": "SphenPad Phase 11 / SudokuMaker creator parity on pinned SudokuPad 0.612.0",
   "productionInputs": [
@@ -20655,8 +20655,8 @@
     },
     {
       "path": "src/app/styles.css",
-      "bytes": 85555,
-      "sha256": "3101ac553dc97c95f5ca0ac0dfb31272a5abccad9c08fa27f8f243ebd40e77c1"
+      "bytes": 86001,
+      "sha256": "67c2a020dc018650484accac77ff163d51363619ab022ca126010194080a335f"
     },
     {
       "path": "src/app/theme.tsx",
@@ -21185,8 +21185,8 @@
     },
     {
       "path": "src/ui/GridCanvas.tsx",
-      "bytes": 14704,
-      "sha256": "beb2b121be8e98ff026878ef7049e9717600b22be764f617c096248fe79c21ac"
+      "bytes": 16199,
+      "sha256": "5de73519cecb430043514c31ac56c2c9ba9ee6aca7bb9a6f42e572c84d287f25"
     },
     {
       "path": "src/ui/icons.tsx",
@@ -21245,8 +21245,8 @@
     },
     {
       "path": "src/ui/PuzzlePage.tsx",
-      "bytes": 112807,
-      "sha256": "c342820e99a757e70da4c400611553635ea35a2fb423aed03d3c5297ed9f30b8"
+      "bytes": 112534,
+      "sha256": "f2f9373fd5b46e49b069d2db9c1c0ae07c2cb6ac44c6c8bee7c5d69e03826887"
     },
     {
       "path": "src/ui/SelectControl.tsx",
@@ -41948,14 +41948,14 @@
       "sha256": "bebaa50f7a5c47189579f4e54a7380036d9c27028916981271a4cfc99f952b7d"
     },
     {
-      "path": "dist/assets/index-CRu1xWVP.css",
-      "bytes": 84084,
-      "sha256": "8ef716c72ebb283e743aea92da259609c3e75040a1866e522257de74d16b9c17"
+      "path": "dist/assets/index-BdqLtSzq.js",
+      "bytes": 1267930,
+      "sha256": "c1cd13c3c6a2874fa7652936c79fccda7796aab4439d30f60e21e4e3a28565ea"
     },
     {
-      "path": "dist/assets/index-vVKocEoa.js",
-      "bytes": 1267532,
-      "sha256": "02a6c7bd15f1773ab87f34e351be8dcf6a50e8ce1c6a20521e7e229af3ea15ac"
+      "path": "dist/assets/index-Dv8v-xOz.css",
+      "bytes": 84300,
+      "sha256": "a0d9f6beab7260db375d1a76db5a2ba74b242263b298ab5fbdd8f022b6f376f2"
     },
     {
       "path": "dist/assets/sudokupad-compatibility-manifest.json",
@@ -41970,7 +41970,7 @@
     {
       "path": "dist/index.html",
       "bytes": 1115,
-      "sha256": "501067e6fa6581369e43261504bcd216864c389e5451862808e4f26c8335fed4"
+      "sha256": "8a4b06bdb9e7072846b6b051e1486ecf267f4cc857169e6050355193ad3970e4"
     },
     {
       "path": "dist/manifest.json",
@@ -41994,5 +41994,5 @@
     }
   ],
   "bundleBuilt": true,
-  "releaseContentSha256": "961ee5269ff510e3ea3f48195c2dfddf28654701e38a71f73ed177c4b58f6789"
+  "releaseContentSha256": "689894bb3eb3a11928d6598fcaa5edcb46e6b9d5fba82da22342ea1cc9db7510"
 }

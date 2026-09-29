@@ -75,6 +75,7 @@ export function GridCanvas(props: GridCanvasProps) {
   const surfaceRef = useRef<HTMLDivElement | null>(null);
   const [svg, setSvg] = useState<SVGSVGElement | null>(null);
   const [fitSize, setFitSize] = useState<{ width: number; height: number } | null>(null);
+  const [previewFitSize, setPreviewFitSize] = useState<{ width: number; height: number } | null>(null);
 
   const explicitRender = def.sourceContext?.urlSettings.render ?? {};
   const scene = useMemo(() => {
@@ -112,7 +113,7 @@ export function GridCanvas(props: GridCanvasProps) {
     };
   }, [def.scene, def.logic, sceneProgress, hideAuthoredEntries, conflictCheckerEnabled, additionalConflictCells, explicitRender.outlineDigits, explicitRender.compactMarks, explicitRender.labelRowsCols, theme.outlineDigits, theme.compactMarks, theme.labelRowsCols, theme.conflictChecker]);
 
-  const activeFitSize = previewMode || !svg ? null : fitSize;
+  const activeFitSize = !svg ? null : (previewMode ? previewFitSize : fitSize);
 
   useEffect(() => {
     if (!previewMode || !svg) return;
@@ -131,15 +132,32 @@ export function GridCanvas(props: GridCanvasProps) {
       let contentTop = Number.POSITIVE_INFINITY;
       let contentRight = Number.NEGATIVE_INFINITY;
       let contentBottom = Number.NEGATIVE_INFINITY;
+      const addBox = (box: DOMRect | SVGRect) => {
+        contentLeft = Math.min(contentLeft, box.x);
+        contentTop = Math.min(contentTop, box.y);
+        contentRight = Math.max(contentRight, box.x + box.width);
+        contentBottom = Math.max(contentBottom, box.y + box.height);
+      };
+      // Root getBBox() is the most direct full-content bound and works for
+      // rectangular puzzles. Some browsers do not support getBBox(options), so
+      // always fall back to the standard no-argument form.
+      try {
+        addBox(svg.getBBox());
+      } catch { /* layer fallback below */ }
       const layers = Array.from(svg.querySelectorAll(":scope > g:not(.defs)")) as SVGGElement[];
       for (const layer of layers) {
         const layerScreen = layer.getScreenCTM();
         if (!layerScreen || typeof layer.getBBox !== "function") continue;
         try {
-          const box = (layer.getBBox as unknown as (options?: { fill?: boolean; stroke?: boolean; markers?: boolean }) => DOMRect).call(
-            layer,
-            { fill: true, stroke: true, markers: true },
-          );
+          let box: DOMRect | SVGRect;
+          try {
+            box = (layer.getBBox as unknown as (options?: { fill?: boolean; stroke?: boolean; markers?: boolean }) => DOMRect).call(
+              layer,
+              { fill: true, stroke: true, markers: true },
+            );
+          } catch {
+            box = layer.getBBox();
+          }
           const corners = [
             new DOMPoint(box.x, box.y),
             new DOMPoint(box.x + box.width, box.y),
@@ -166,6 +184,12 @@ export function GridCanvas(props: GridCanvasProps) {
       const bottom = Math.max(vb.y + vb.height, contentBottom + pad);
       const width = right - left;
       const height = bottom - top;
+      svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
+      const surface = surfaceRef.current;
+      if (surface && surface.clientWidth > 0 && surface.clientHeight > 0) {
+        const scale = Math.min(surface.clientWidth / width, surface.clientHeight / height);
+        setPreviewFitSize({ width: Math.max(1, width * scale), height: Math.max(1, height * scale) });
+      }
       if (Math.abs(left - vb.x) < 0.5 && Math.abs(top - vb.y) < 0.5 && Math.abs(width - vb.width) < 0.5 && Math.abs(height - vb.height) < 0.5) return;
       svg.setAttribute("viewBox", `${left} ${top} ${width} ${height}`);
       svg.querySelectorAll<SVGElement>(".viewboxsize").forEach((elem) => {
@@ -183,9 +207,14 @@ export function GridCanvas(props: GridCanvasProps) {
       for (const delay of [80, 240, 500]) timeoutIds.push(window.setTimeout(expandPreviewViewBox, delay));
     };
     schedule();
+    const resizeObserver = typeof ResizeObserver !== "undefined" && surfaceRef.current
+      ? new ResizeObserver(schedule)
+      : null;
+    if (resizeObserver && surfaceRef.current) resizeObserver.observe(surfaceRef.current);
     return () => {
       if (rafId !== null) window.cancelAnimationFrame(rafId);
       for (const id of timeoutIds) window.clearTimeout(id);
+      resizeObserver?.disconnect();
     };
   }, [previewMode, svg, scene]);
 

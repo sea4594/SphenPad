@@ -3807,6 +3807,15 @@ input.url {
   max-height: 100% !important;
   margin: 0 !important;
 }
+/* Preview boards use an explicit contain fit derived from the final viewBox.
+   This matters for rectangular/non-square puzzles: fill the thumbnail as much as
+   possible, but never crop either axis. */
+.sphenpad-native-board.preview.fitted > .sphenpad-sudokupad-renderer {
+  width: var(--sphenpad-board-fit-width) !important;
+  height: var(--sphenpad-board-fit-height) !important;
+  max-width: none !important;
+  max-height: none !important;
+}
 .sphenpad-native-board.preview .sphenpad-sudokupad-renderer [vector-effect="non-scaling-stroke"]:not([transform*="scale("]),
 .sphenpad-native-board.preview .sphenpad-sudokupad-renderer .cell-grid {
   vector-effect: none !important;

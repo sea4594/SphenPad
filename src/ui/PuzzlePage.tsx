@@ -212,16 +212,6 @@ function withTrailingSelectionHistoryEntry(history: unknown[], currentSelection:
   return [...substantive, makeSelectionHistoryEntry(prevSelection, selection)];
 }
 
-function withTerminalRedoSelection(history: unknown[], currentSelection: CellRC[], selection: CellRC[]): unknown[] {
-  const normalized = normalizeRedoSelectionHistory(history);
-  const { substantive, selection: trailing } = splitTrailingSelectionHistory(normalized);
-  if (!substantive.length) return [];
-  const transition = trailing ? selectionOnlyTransition(trailing) : null;
-  const prevSelection = transition?.prev ?? currentSelection;
-  if (sameSelection(prevSelection, selection)) return substantive;
-  return [...substantive, makeSelectionHistoryEntry(prevSelection, selection)];
-}
-
 function normalizeSelectionHistories(data: PersistedPuzzle): PersistedPuzzle {
   const normalizedUndo = normalizeUndoSelectionHistory(data.undo);
   const normalizedRedo = normalizeRedoSelectionHistory(data.redo);
@@ -1372,9 +1362,12 @@ export function PuzzlePage(props: { editor?: boolean }) {
     const nextUndo = redoParts.substantive.length
       ? splitTrailingSelectionHistory(normalizeUndoSelectionHistory(current.undo)).substantive
       : withTrailingSelectionHistoryEntry(current.undo, current.progress.selection, sel);
-    const nextRedo = redoParts.substantive.length
-      ? withTerminalRedoSelection(normalizedRedo, current.progress.selection, sel)
-      : [];
+    // While substantive redo actions remain, the one terminal selection snapshot
+    // is frozen: it represents the selection that existed before Undo began.
+    // Selections made while inspecting an undone state are temporary UI state and
+    // must not rewrite history. Once there are no substantive redos left, normal
+    // selection tracking resumes at the end of the undo history.
+    const nextRedo = redoParts.substantive.length ? normalizedRedo : [];
     void persist({
       ...current,
       progress: { ...current.progress, selection: sel },
