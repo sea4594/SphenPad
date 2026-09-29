@@ -495,6 +495,8 @@ export function PuzzlePage(props: { editor?: boolean }) {
   const [portraitBoardHeight, setPortraitBoardHeight] = useState<number | null>(null);
   const [sideVideoWidth, setSideVideoWidth] = useState<number | null>(null);
   const tickRef = useRef<number | null>(null);
+  const latestDataRef = useRef<PersistedPuzzle | null>(null);
+  const backgroundProgressDirtyRef = useRef(false);
   const holdDelayRef = useRef<number | null>(null);
   const holdIntervalRef = useRef<number | null>(null);
   const activeHoldRef = useRef<"undo" | "redo" | null>(null);
@@ -973,37 +975,62 @@ export function PuzzlePage(props: { editor?: boolean }) {
     })();
   }, [data, key, editor, requestedCreatorPlaytest]);
 
-  async function persist(next: PersistedPuzzle) {
+  async function persist(next: PersistedPuzzle, sync = true) {
+    latestDataRef.current = next;
     setData(next);
-    if (!requestedCreatorPlaytest) await upsertPuzzle(key, next);
+    if (!requestedCreatorPlaytest) await upsertPuzzle(key, next, { sync });
   }
 
+  useEffect(() => { latestDataRef.current = data; }, [data]);
+  const hasLoadedPuzzle = data !== null;
+
   useEffect(() => {
-    if (editor) return;
-    if (!data) return;
+    if (editor || !hasLoadedPuzzle) return;
     if (tickRef.current) window.clearInterval(tickRef.current);
 
     tickRef.current = window.setInterval(() => {
-      let promotedNext: PersistedPuzzle | null = null;
-      setData((prev) => {
-        if (!prev) return prev;
-        if (prev.progress.paused) return prev;
-        const next = structuredClone(prev);
-        next.progress.totalMillis += 250;
-        const nextProgress = maybePromoteToInProgress(next.progress);
-        if (nextProgress !== next.progress) promotedNext = { ...next, progress: nextProgress };
-        next.progress = nextProgress;
-        next.updatedAt = Date.now();
-        return next;
-      });
-      if (promotedNext && !requestedCreatorPlaytest) void upsertPuzzle(key, promotedNext);
+      const prev = latestDataRef.current;
+      if (!prev || prev.progress.paused) return;
+      const next = structuredClone(prev);
+      next.progress.totalMillis += 250;
+      const nextProgress = maybePromoteToInProgress(next.progress);
+      const promoted = nextProgress !== next.progress;
+      next.progress = nextProgress;
+      if (promoted) next.updatedAt = Date.now();
+      latestDataRef.current = next;
+      backgroundProgressDirtyRef.current = true;
+      setData(next);
+      if (promoted && !requestedCreatorPlaytest) void upsertPuzzle(key, next);
     }, 250);
 
     return () => {
       if (tickRef.current) window.clearInterval(tickRef.current);
       tickRef.current = null;
     };
-  }, [data, editor, requestedCreatorPlaytest]);
+  }, [editor, hasLoadedPuzzle, key, requestedCreatorPlaytest]);
+
+  useEffect(() => {
+    if (editor || requestedCreatorPlaytest) return;
+    const saveBackgroundProgress = (sync: boolean) => {
+      if (!backgroundProgressDirtyRef.current) return;
+      const current = latestDataRef.current;
+      if (!current) return;
+      if (sync) backgroundProgressDirtyRef.current = false;
+      void upsertPuzzle(key, current, { sync });
+    };
+    const localTimer = window.setInterval(() => saveBackgroundProgress(false), 5_000);
+    const cloudTimer = window.setInterval(() => saveBackgroundProgress(true), 30_000);
+    const visibility = () => { if (document.visibilityState === "hidden") saveBackgroundProgress(true); };
+    const pageHide = () => saveBackgroundProgress(true);
+    window.addEventListener("pagehide", pageHide);
+    document.addEventListener("visibilitychange", visibility);
+    return () => {
+      saveBackgroundProgress(true);
+      window.clearInterval(localTimer); window.clearInterval(cloudTimer);
+      window.removeEventListener("pagehide", pageHide);
+      document.removeEventListener("visibilitychange", visibility);
+    };
+  }, [editor, key, requestedCreatorPlaytest]);
 
   const meta = data?.def.meta;
   const youtubeVideoId = useMemo(() => parseYouTubeVideoId(meta?.archiveYouTubeUrl), [meta?.archiveYouTubeUrl]);
@@ -2149,9 +2176,9 @@ export function PuzzlePage(props: { editor?: boolean }) {
         ...data.progress,
         videoResumeSeconds: rounded,
       },
-      updatedAt: Date.now(),
     };
-    void persist(next);
+    backgroundProgressDirtyRef.current = true;
+    void persist(next, false);
   };
 
   const renderVideoPlayer = (locationClassName: string) => (

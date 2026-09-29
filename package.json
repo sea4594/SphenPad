@@ -42,7 +42,8 @@
     "write-phase11-release-hashes": "node scripts/write-phase11-release-hashes.mjs",
     "finish-phase11-release": "bash scripts/finish-phase11-release.sh",
     "test-phase11-playtest-regressions": "node scripts/test-phase11-playtest-regressions.mjs",
-    "test-phase11-reported-puzzles": "tsx scripts/test-phase11-reported-puzzles.ts"
+    "test-phase11-reported-puzzles": "tsx scripts/test-phase11-reported-puzzles.ts",
+    "test-account-sync": "tsx scripts/test-account-sync.ts"
   },
   "dependencies": {
     "dexie": "^4.3.0",

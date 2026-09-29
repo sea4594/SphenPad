@@ -1,607 +1,315 @@
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type ReactNode,
-} from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { User } from "firebase/auth";
+import { exportLocalAppSnapshot, exportLocalAppSnapshotMetadata, importLocalAppSnapshot, mergeSnapshots, type LocalAppSnapshot } from "../core/appState";
+import { getLocalDataOwnerId, readLocalMutationRevision, setLocalDataOwnerId } from "../core/localDataState";
+import { puzzleToCloudPayload } from "../core/puzzleSync";
+import { acknowledgeSyncDirty, clearSyncJournal, hasSyncDirtyRecords, markAllSyncDirty, readSyncDirtyRecords, type SyncDirtyRecord } from "../core/syncJournal";
+import { notifyStorageRefreshNeeded, onCloudSyncNeeded } from "../core/syncSignal";
+import { applyRemoteStorageChanges, readAllSyncKeys, readCreatorProjectForSync, readFolderForSync, readPuzzleRowForSync } from "../core/storage";
 import {
-  exportLocalAppSnapshot,
-  exportLocalAppSnapshotMetadata,
-  hasLocalAppSnapshotData,
-  importLocalAppSnapshot,
-  mergeSnapshots,
-} from "../core/appState";
-import { getLocalDataOwnerId, readLocalDataUpdatedAt, setLocalDataOwnerId } from "../core/localDataState";
-import { onCloudSyncNeeded } from "../core/syncSignal";
-import { notifyStorageRefreshNeeded } from "../core/syncSignal";
-import {
-  type CloudStateMetadata,
-  firebaseEnabled,
-  googleLogin,
-  googleLogout,
-  onGoogleAuthStateChanged,
-  pullCloudStateMetadata,
-  pullCloudState,
-  resolveGoogleRedirectLogin,
-  pushCloudState,
-  type CloudAppSnapshot,
+  type CloudChange, firebaseEnabled, googleLogin, googleLogout, onGoogleAuthStateChanged, pullCloudChanges, pullCloudState,
+  migrateLegacyCloudToV2, pullCloudStateMetadata, pushCloudChanges, resolveGoogleRedirectLogin, snapshotToCloudChanges,
 } from "../firebase/client";
 
 type SyncStatus = "idle" | "syncing" | "error";
-
 const CLOUD_RECONCILE_INTERVAL_MS = 45_000;
+const REVISION_KEY_PREFIX = "sphenpad-cloud-revision-v2:";
 
 type AccountSyncContextValue = {
-  ready: boolean;
-  firebaseEnabled: boolean;
-  user: User | null;
-  syncStatus: SyncStatus;
-  syncError: string;
-  appStateNonce: number;
-  loginPending: boolean;
-  login: () => Promise<void>;
-  logout: () => Promise<void>;
+  ready: boolean; firebaseEnabled: boolean; user: User | null; syncStatus: SyncStatus; syncError: string;
+  appStateNonce: number; loginPending: boolean; login: () => Promise<void>; logout: () => Promise<void>;
 };
-
 const AccountSyncContext = createContext<AccountSyncContextValue | null>(null);
-
-function snapshotPuzzleKeys(snapshot: CloudAppSnapshot | null): string[] {
-  if (!snapshot) return [];
-  return snapshot.puzzles.map((row) => row.key);
-}
-
-function metadataPuzzleKeys(snapshot: CloudStateMetadata | null): string[] {
-  if (!snapshot) return [];
-  return snapshot.puzzleKeys;
-}
-
-function snapshotCreatorProjectKeys(snapshot: CloudAppSnapshot | null): string[] {
-  if (!snapshot) return [];
-  return snapshot.creatorProjects.map((row) => row.key);
-}
-
-function metadataCreatorProjectKeys(snapshot: CloudStateMetadata | null): string[] {
-  if (!snapshot) return [];
-  return snapshot.creatorProjectKeys;
-}
-
-function havePuzzleKeysChanged(previous: string[], next: string[]): boolean {
-  if (previous.length !== next.length) return true;
-  const previousSet = new Set(previous);
-  for (const key of next) {
-    if (!previousSet.has(key)) return true;
-  }
-  return false;
-}
-
-function sameLocalStorageSnapshot(
-  a: CloudAppSnapshot["localStorage"],
-  b: CloudAppSnapshot["localStorage"],
-): boolean {
-  const aKeys = Object.keys(a);
-  const bKeys = Object.keys(b);
-  if (aKeys.length !== bKeys.length) return false;
-  for (const key of aKeys) {
-    if (a[key as keyof typeof a] !== b[key as keyof typeof b]) return false;
-  }
-  return true;
-}
-
-function snapshotNeedsLocalApply(local: CloudAppSnapshot, merged: CloudAppSnapshot): boolean {
-  if (local.updatedAt !== merged.updatedAt) return true;
-  if (local.puzzles.length !== merged.puzzles.length) return true;
-  if (local.creatorProjects.length !== merged.creatorProjects.length) return true;
-  if (local.folders.length !== merged.folders.length) return true;
-  if (!sameLocalStorageSnapshot(local.localStorage, merged.localStorage)) return true;
-
-  const localPuzzleUpdatedAt = new Map(local.puzzles.map((row) => [row.key, row.data.updatedAt ?? 0]));
-  for (const row of merged.puzzles) {
-    if (!localPuzzleUpdatedAt.has(row.key)) return true;
-    if (localPuzzleUpdatedAt.get(row.key) !== (row.data.updatedAt ?? 0)) return true;
-  }
-
-  const localCreatorProjects = new Map(local.creatorProjects.map((row) => [row.key, `${row.updatedAt}:${row.lastOpenedAt}:${row.deletedAt ?? 0}`]));
-  for (const row of merged.creatorProjects) {
-    if (localCreatorProjects.get(row.key) !== `${row.updatedAt}:${row.lastOpenedAt}:${row.deletedAt ?? 0}`) return true;
-  }
-
-  const localFolderUpdatedAt = new Map(local.folders.map((folder) => [folder.id, folder.updatedAt]));
-  for (const folder of merged.folders) {
-    if (!localFolderUpdatedAt.has(folder.id)) return true;
-    if (localFolderUpdatedAt.get(folder.id) !== folder.updatedAt) return true;
-  }
-
-  return false;
-}
-
-function makeEmptySnapshot(): CloudAppSnapshot {
-  return {
-    version: 1,
-    updatedAt: 0,
-    localStorage: {},
-    folders: [],
-    puzzles: [],
-    creatorProjects: [],
-  };
-}
-
-function isCloudRevisionConflict(error: unknown): boolean {
-  return error instanceof Error && error.message === "cloud-state-revision-conflict";
-}
-
-function errorCodeOf(error: unknown): string {
-  if (!error || typeof error !== "object") return "";
-  const code = (error as { code?: unknown }).code;
-  return typeof code === "string" ? code : "";
-}
-
-function isLikelyOfflineError(error: unknown): boolean {
+function emptySnapshot() { return { version: 1 as const, updatedAt: 0, localStorage: {}, folders: [], puzzles: [], creatorProjects: [] }; }
+function errorCodeOf(error: unknown) { return error && typeof error === "object" && typeof (error as { code?: unknown }).code === "string" ? String((error as { code: string }).code) : ""; }
+function isLikelyOfflineError(error: unknown) {
   if (typeof navigator !== "undefined" && navigator.onLine === false) return true;
-  const code = errorCodeOf(error).toLowerCase();
-  if (code.includes("network") || code.includes("unavailable") || code.includes("timeout")) return true;
-  const message = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
-  return (
-    message.includes("network") ||
-    message.includes("offline") ||
-    message.includes("failed to fetch") ||
-    message.includes("timeout") ||
-    message.includes("unavailable")
-  );
+  const text = `${errorCodeOf(error)} ${error instanceof Error ? error.message : String(error)}`.toLowerCase();
+  return text.includes("network") || text.includes("offline") || text.includes("failed to fetch") || text.includes("timeout") || text.includes("unavailable");
 }
-
-function describeSyncError(error: unknown): string {
-  if (isLikelyOfflineError(error)) {
-    return "Cloud sync is temporarily unavailable (offline/network issue). Local puzzles remain available on this device and will sync when connection is restored.";
-  }
+function describeSyncError(error: unknown) {
+  if (isLikelyOfflineError(error)) return "Cloud sync is temporarily unavailable. Local puzzles remain available on this device and will sync automatically when the connection returns.";
   const message = error instanceof Error ? error.message : String(error);
-  if (!message.trim()) {
-    return "Cloud sync failed. Local puzzles remain available on this device.";
+  return `Cloud sync failed${message.trim() ? `: ${message}` : ""}. Local puzzles remain available on this device.`;
+}
+function readSavedRevision(uid: string) {
+  try { const value = Number(localStorage.getItem(`${REVISION_KEY_PREFIX}${uid}`)); return Number.isFinite(value) && value >= 0 ? value : 0; } catch { return 0; }
+}
+function saveRevision(uid: string, revision: number) { try { localStorage.setItem(`${REVISION_KEY_PREFIX}${uid}`, String(revision)); } catch { /* best effort */ } }
+
+function overlayDirtyLocalState(merged: LocalAppSnapshot, local: LocalAppSnapshot, dirty: SyncDirtyRecord[]): LocalAppSnapshot {
+  const puzzles = new Map(merged.puzzles.map((row) => [row.key, row]));
+  const localPuzzles = new Map(local.puzzles.map((row) => [row.key, row]));
+  const folders = new Map(merged.folders.map((row) => [row.id, row]));
+  const localFolders = new Map(local.folders.map((row) => [row.id, row]));
+  const creators = new Map(merged.creatorProjects.map((row) => [row.key, row]));
+  const localCreators = new Map(local.creatorProjects.map((row) => [row.key, row]));
+  for (const record of dirty) {
+    if (record.kind === "puzzle") {
+      if (record.deletedAt) puzzles.delete(record.key);
+      else { const row = localPuzzles.get(record.key); if (row) puzzles.set(record.key, row); }
+    } else if (record.kind === "folder") {
+      const row = localFolders.get(record.key);
+      if (row) folders.set(record.key, row);
+      else if (record.deletedAt) folders.delete(record.key);
+    } else {
+      const row = localCreators.get(record.key);
+      if (row) creators.set(record.key, row);
+      else if (record.deletedAt) creators.delete(record.key);
+    }
   }
-  return `Cloud sync failed: ${message}. Local puzzles remain available on this device.`;
+  return { ...merged, puzzles: [...puzzles.values()], folders: [...folders.values()], creatorProjects: [...creators.values()] };
 }
 
-export function AccountSyncProvider(props: { children: ReactNode }) {
-  const { children } = props;
+function mergeCloudChanges(base: CloudChange[], overrides: CloudChange[]) {
+  const map = new Map(base.map((change) => [`${change.kind}:${change.key}`, change]));
+  for (const change of overrides) map.set(`${change.kind}:${change.key}`, change);
+  return [...map.values()];
+}
+
+export function AccountSyncProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(!firebaseEnabled);
   const [user, setUser] = useState<User | null>(null);
   const [syncStatus, setSyncStatus] = useState<SyncStatus>("idle");
   const [syncError, setSyncError] = useState("");
   const [appStateNonce, setAppStateNonce] = useState(0);
   const [loginPending, setLoginPending] = useState(false);
-  const initializedUserIdRef = useRef<string | null>(null);
   const readyRef = useRef(ready);
-  const syncTimeoutRef = useRef<number | null>(null);
-  const syncInFlightRef = useRef(false);
-  const syncRequestedRef = useRef(false);
-  const reconcileInFlightRef = useRef(false);
-  const reconcileRequestedRef = useRef(false);
-  const restoringRef = useRef(false);
-  const initializingForUidRef = useRef<string | null>(null);
-  const loginInFlightRef = useRef(false);
-  const cloudPuzzleKeysRef = useRef<string[]>([]);
-  const cloudCreatorProjectKeysRef = useRef<string[]>([]);
-  const lastSuccessfulSyncAtRef = useRef(0);
-  const cloudMetadataUpdatedAtRef = useRef(0);
+  const userRef = useRef<User | null>(null);
+  const authEpochRef = useRef(0);
+  const initializedUidRef = useRef<string | null>(null);
   const cloudRevisionRef = useRef(0);
+  const syncTimerRef = useRef<number | null>(null);
+  const retryTimerRef = useRef<number | null>(null);
+  const retryCountRef = useRef(0);
+  const operationTailRef = useRef<Promise<void>>(Promise.resolve());
+  const loginInFlightRef = useRef(false);
 
-  function clearScheduledSync() {
-    if (syncTimeoutRef.current != null) {
-      window.clearTimeout(syncTimeoutRef.current);
-      syncTimeoutRef.current = null;
+  useEffect(() => { readyRef.current = ready; }, [ready]);
+  function clearSyncTimer() { if (syncTimerRef.current != null) { window.clearTimeout(syncTimerRef.current); syncTimerRef.current = null; } }
+  function clearRetryTimer() { if (retryTimerRef.current != null) { window.clearTimeout(retryTimerRef.current); retryTimerRef.current = null; } }
+  function sessionIsCurrent(uid: string, epoch: number) { return userRef.current?.uid === uid && authEpochRef.current === epoch; }
+  function assertSession(uid: string, epoch: number) { if (!sessionIsCurrent(uid, epoch)) throw new Error("cloud-sync-session-changed"); }
+  function runExclusive(task: () => Promise<void>) {
+    const run = operationTailRef.current.catch(() => {}).then(task);
+    operationTailRef.current = run.catch(() => {});
+    return run;
+  }
+  function scheduleRetry() {
+    if (!userRef.current || !readyRef.current || retryTimerRef.current != null) return;
+    const delay = Math.min(60_000, 2_000 * (2 ** retryCountRef.current)); retryCountRef.current = Math.min(retryCountRef.current + 1, 5);
+    retryTimerRef.current = window.setTimeout(() => { retryTimerRef.current = null; scheduleSync(0); }, delay);
+  }
+
+  async function buildDirtyChanges(records: SyncDirtyRecord[]): Promise<CloudChange[]> {
+    const changes: CloudChange[] = [];
+    for (const record of records) {
+      if (record.kind === "puzzle") {
+        const row = await readPuzzleRowForSync(record.key);
+        const deletedAt = record.deletedAt ?? (row ? 0 : Date.now());
+        changes.push({ kind: "puzzle", key: record.key, updatedAt: deletedAt || row!.data.updatedAt, payload: deletedAt ? null : puzzleToCloudPayload(record.key, row!.data) });
+      } else if (record.kind === "folder") {
+        const row = await readFolderForSync(record.key);
+        const deletedAt = record.deletedAt ?? row?.deletedAt ?? (row ? 0 : Date.now());
+        changes.push({ kind: "folder", key: record.key, updatedAt: deletedAt || row!.updatedAt, payload: deletedAt ? null : row });
+      } else {
+        const row = await readCreatorProjectForSync(record.key);
+        const deletedAt = record.deletedAt ?? row?.deletedAt ?? (row ? 0 : Date.now());
+        changes.push({ kind: "creatorProject", key: record.key, updatedAt: deletedAt || row!.updatedAt, payload: deletedAt ? null : row });
+      }
     }
+    return changes;
   }
 
-  function updateCloudSyncPointers(updatedAt: number, puzzleKeys: string[], creatorProjectKeys: string[], revision = cloudRevisionRef.current) {
-    cloudPuzzleKeysRef.current = puzzleKeys;
-    cloudCreatorProjectKeysRef.current = creatorProjectKeys;
-    lastSuccessfulSyncAtRef.current = updatedAt;
-    cloudMetadataUpdatedAtRef.current = updatedAt;
-    cloudRevisionRef.current = revision;
+  async function applyIncrementalCloud(uid: string, epoch: number) {
+    assertSession(uid, epoch);
+    const result = await pullCloudChanges(uid, cloudRevisionRef.current);
+    assertSession(uid, epoch);
+    if (result.version < 2) return false;
+    if (result.changes.length) {
+      await applyRemoteStorageChanges({
+        creatorProjects: result.changes.filter((c) => c.kind === "creatorProject").map((c) => ({ key: c.key, updatedAt: c.updatedAt, data: c.payload })),
+        folders: result.changes.filter((c) => c.kind === "folder").map((c) => ({ key: c.key, updatedAt: c.updatedAt, data: c.payload })),
+        puzzles: result.changes.filter((c) => c.kind === "puzzle").map((c) => ({ key: c.key, updatedAt: c.updatedAt, data: c.payload })),
+      }, false);
+      assertSession(uid, epoch);
+      notifyStorageRefreshNeeded(); setAppStateNonce((value) => value + 1);
+    }
+    cloudRevisionRef.current = result.revision; saveRevision(uid, result.revision);
+    return true;
   }
 
-  async function uploadLocalSnapshot(activeUser: User) {
-    const localSnapshot = await exportLocalAppSnapshot();
-    const result = await pushCloudState(
-      activeUser.uid,
-      localSnapshot,
-      cloudPuzzleKeysRef.current,
-      cloudRevisionRef.current,
-    );
-    updateCloudSyncPointers(
-      localSnapshot.updatedAt,
-      localSnapshot.puzzles.map((row) => row.key),
-      localSnapshot.creatorProjects.map((row) => row.key),
-      result.revision,
-    );
-  }
-
-  async function reconcileLocalAndCloud(activeUser: User) {
-    for (let attempt = 0; attempt < 3; attempt++) {
+  async function pushDirty(uid: string, epoch: number) {
+    for (let attempt = 0; attempt < 4; attempt++) {
+      assertSession(uid, epoch);
+      const dirty = readSyncDirtyRecords();
+      if (!dirty.length) return;
+      const metadata = await pullCloudStateMetadata(uid); assertSession(uid, epoch);
+      if (metadata && metadata.version < 2) { await migrateLegacyAccount(uid, epoch); continue; }
+      const remoteRevision = metadata?.revision ?? 0;
+      if (remoteRevision !== cloudRevisionRef.current) { await applyIncrementalCloud(uid, epoch); continue; }
+      const changes = await buildDirtyChanges(dirty); assertSession(uid, epoch);
       try {
-        const [cloudMetadata, cloudSnapshot, localSnapshot] = await Promise.all([
-          pullCloudStateMetadata(activeUser.uid),
-          pullCloudState(activeUser.uid),
-          exportLocalAppSnapshot(),
-        ]);
-        const cloudPuzzleKeys = snapshotPuzzleKeys(cloudSnapshot);
-        const cloudCreatorProjectKeys = snapshotCreatorProjectKeys(cloudSnapshot);
-        const expectedRevision = cloudMetadata?.revision ?? 0;
-
-        if (!cloudSnapshot && hasLocalAppSnapshotData(localSnapshot)) {
-          const result = await pushCloudState(
-            activeUser.uid,
-            localSnapshot,
-            cloudPuzzleKeysRef.current,
-            expectedRevision,
-          );
-          updateCloudSyncPointers(
-            localSnapshot.updatedAt,
-            localSnapshot.puzzles.map((row) => row.key),
-            localSnapshot.creatorProjects.map((row) => row.key),
-            result.revision,
-          );
-          return;
-        }
-
-        if (cloudSnapshot && !hasLocalAppSnapshotData(localSnapshot)) {
-          await importLocalAppSnapshot(cloudSnapshot, false);
-          updateCloudSyncPointers(cloudSnapshot.updatedAt, cloudPuzzleKeys, cloudCreatorProjectKeys, expectedRevision);
-          notifyStorageRefreshNeeded();
-          setAppStateNonce((n) => n + 1);
-          return;
-        }
-
-        if (!cloudSnapshot) {
-          updateCloudSyncPointers(0, [], [], expectedRevision);
-          return;
-        }
-
-        const merged = mergeSnapshots(localSnapshot, cloudSnapshot);
-        if (snapshotNeedsLocalApply(localSnapshot, merged)) {
-          await importLocalAppSnapshot(merged, false);
-          notifyStorageRefreshNeeded();
-          setAppStateNonce((n) => n + 1);
-        }
-
-        const result = await pushCloudState(activeUser.uid, merged, cloudPuzzleKeys, expectedRevision);
-        updateCloudSyncPointers(
-          merged.updatedAt,
-          merged.puzzles.map((row) => row.key),
-          merged.creatorProjects.map((row) => row.key),
-          result.revision,
-        );
+        const result = await pushCloudChanges(uid, changes, cloudRevisionRef.current); assertSession(uid, epoch);
+        cloudRevisionRef.current = result.revision; saveRevision(uid, result.revision);
+        acknowledgeSyncDirty(dirty);
+        retryCountRef.current = 0; clearRetryTimer();
         return;
       } catch (error) {
-        if (isCloudRevisionConflict(error) && attempt < 2) continue;
+        if (error instanceof Error && error.message === "cloud-state-revision-conflict" && attempt < 3) { await applyIncrementalCloud(uid, epoch); continue; }
         throw error;
       }
     }
   }
 
-  async function reconcileCloudUpdates(activeUser: User, force = false) {
-    if (syncInFlightRef.current || restoringRef.current) {
-      reconcileRequestedRef.current = true;
-      return;
+  async function migrateLegacyAccount(uid: string, epoch: number) {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      assertSession(uid, epoch);
+      const localSnapshot = await exportLocalAppSnapshot();
+      const dirtyBefore = readSyncDirtyRecords();
+      const dirtyOverrides = await buildDirtyChanges(dirtyBefore);
+      const capturedLocalRevision = readLocalMutationRevision();
+      const [cloudSnapshot, legacyMetadata] = await Promise.all([pullCloudState(uid), pullCloudStateMetadata(uid)]);
+      assertSession(uid, epoch);
+      if (legacyMetadata?.version && legacyMetadata.version >= 2) {
+        cloudRevisionRef.current = 0;
+        await applyIncrementalCloud(uid, epoch);
+        return;
+      }
+      if (readLocalMutationRevision() !== capturedLocalRevision) continue;
+      const mergedBase = cloudSnapshot ? mergeSnapshots(localSnapshot, cloudSnapshot) : localSnapshot;
+      const merged = overlayDirtyLocalState(mergedBase, localSnapshot, dirtyBefore);
+      const changes = mergeCloudChanges(snapshotToCloudChanges(merged), dirtyOverrides);
+      try {
+        const result = await migrateLegacyCloudToV2(uid, changes, legacyMetadata?.revision ?? 0);
+        assertSession(uid, epoch);
+        const localUnchanged = readLocalMutationRevision() === capturedLocalRevision;
+        if (localUnchanged) await importLocalAppSnapshot(merged, false);
+        acknowledgeSyncDirty(dirtyBefore);
+        cloudRevisionRef.current = result.revision; saveRevision(uid, result.revision);
+        if (localUnchanged) { notifyStorageRefreshNeeded(); setAppStateNonce((value) => value + 1); }
+        return;
+      } catch (error) {
+        if (error instanceof Error && error.message === "cloud-state-revision-conflict" && attempt < 2) continue;
+        throw error;
+      }
     }
-    if (reconcileInFlightRef.current) {
-      reconcileRequestedRef.current = true;
-      return;
-    }
+    throw new Error("Cloud account changed repeatedly during migration. Local changes remain queued and will retry automatically.");
+  }
 
-    reconcileInFlightRef.current = true;
-
+  async function syncOnce(activeUser = userRef.current) {
+    if (!activeUser || !readyRef.current) return;
+    const uid = activeUser.uid; const epoch = authEpochRef.current;
+    setSyncStatus("syncing"); setSyncError("");
     try {
-      const cloudMetadata = await pullCloudStateMetadata(activeUser.uid);
-      if (!cloudMetadata || !cloudMetadata.hasData) {
-        if (readLocalDataUpdatedAt() > lastSuccessfulSyncAtRef.current) {
-          setSyncStatus("syncing");
-          setSyncError("");
-          await uploadLocalSnapshot(activeUser);
-          setSyncStatus("idle");
-        } else {
-          updateCloudSyncPointers(0, [], [], 0);
-        }
-        return;
+      const metadata = await pullCloudStateMetadata(uid); assertSession(uid, epoch);
+      if (metadata?.version && metadata.version < 2) await migrateLegacyAccount(uid, epoch);
+      else {
+        if ((metadata?.revision ?? 0) > cloudRevisionRef.current) await applyIncrementalCloud(uid, epoch);
+        if (hasSyncDirtyRecords()) await pushDirty(uid, epoch);
       }
-
-      const nextPuzzleKeys = metadataPuzzleKeys(cloudMetadata);
-      const nextCreatorProjectKeys = metadataCreatorProjectKeys(cloudMetadata);
-      const remoteChanged =
-        cloudMetadata.revision > cloudRevisionRef.current ||
-        cloudMetadata.updatedAt > cloudMetadataUpdatedAtRef.current ||
-        havePuzzleKeysChanged(cloudPuzzleKeysRef.current, nextPuzzleKeys) ||
-        havePuzzleKeysChanged(cloudCreatorProjectKeysRef.current, nextCreatorProjectKeys);
-
-      if (!force && !remoteChanged) {
-        cloudPuzzleKeysRef.current = nextPuzzleKeys;
-        cloudCreatorProjectKeysRef.current = nextCreatorProjectKeys;
-        cloudMetadataUpdatedAtRef.current = cloudMetadata.updatedAt;
-        cloudRevisionRef.current = cloudMetadata.revision;
-        return;
-      }
-
-      cloudMetadataUpdatedAtRef.current = cloudMetadata.updatedAt;
-      cloudRevisionRef.current = cloudMetadata.revision;
-      setSyncStatus("syncing");
-      setSyncError("");
-      await reconcileLocalAndCloud(activeUser);
-      setSyncStatus("idle");
+      assertSession(uid, epoch); setSyncStatus("idle"); retryCountRef.current = 0; clearRetryTimer();
     } catch (error) {
-      setSyncStatus("error");
-      setSyncError(describeSyncError(error));
-    } finally {
-      reconcileInFlightRef.current = false;
-      if (reconcileRequestedRef.current) {
-        reconcileRequestedRef.current = false;
-        window.setTimeout(() => {
-          void reconcileCloudUpdates(activeUser);
-        }, 350);
-      }
+      if (error instanceof Error && error.message === "cloud-sync-session-changed") return;
+      setSyncStatus("error"); setSyncError(describeSyncError(error));
+      if (hasSyncDirtyRecords()) scheduleRetry();
+      throw error;
     }
   }
 
-  async function initializeUserState(activeUser: User) {
-    if (initializingForUidRef.current === activeUser.uid) return;
-    initializingForUidRef.current = activeUser.uid;
-    restoringRef.current = true;
-    setReady(false);
-    setSyncError("");
-    setSyncStatus("syncing");
-
+  async function initializeUser(activeUser: User, epoch: number) {
+    const uid = activeUser.uid; setReady(false); setSyncStatus("syncing"); setSyncError("");
+    const owner = getLocalDataOwnerId(); const switchingAccounts = owner !== null && owner !== uid;
     try {
-      const [cloudMetadata, localMetadata] = await Promise.all([
-        pullCloudStateMetadata(activeUser.uid),
-        exportLocalAppSnapshotMetadata(),
-      ]);
-
-      const localOwnerId = getLocalDataOwnerId();
-      const localBelongsToOtherAccount = localOwnerId !== null && localOwnerId !== activeUser.uid;
-      const localLikelyHasData = localMetadata.hasData;
-      const cloudLikelyHasData = Boolean(cloudMetadata?.hasData);
-
-      if (localBelongsToOtherAccount) {
-        if (!cloudLikelyHasData) {
-          const empty = makeEmptySnapshot();
-          await importLocalAppSnapshot(empty, false);
-          updateCloudSyncPointers(0, [], [], 0);
-        } else {
-          const cloudSnapshot = await pullCloudState(activeUser.uid);
-          const safeCloud = cloudSnapshot ?? makeEmptySnapshot();
-          await importLocalAppSnapshot(safeCloud, false);
-          updateCloudSyncPointers(
-            safeCloud.updatedAt,
-            snapshotPuzzleKeys(cloudSnapshot),
-            snapshotCreatorProjectKeys(cloudSnapshot),
-            cloudMetadata?.revision ?? 0,
-          );
+      const [metadata, localMetadata] = await Promise.all([pullCloudStateMetadata(uid), exportLocalAppSnapshotMetadata()]); assertSession(uid, epoch);
+      if (switchingAccounts) {
+        if (hasSyncDirtyRecords()) throw new Error("Unsynced local changes still belong to the previously signed-in account. Sign back into that account and allow sync to finish before switching accounts.");
+        const cloudSnapshot = await pullCloudState(uid); assertSession(uid, epoch);
+        await importLocalAppSnapshot(cloudSnapshot ?? emptySnapshot(), false); clearSyncJournal();
+        cloudRevisionRef.current = metadata?.version === 2 ? metadata.revision : 0; saveRevision(uid, cloudRevisionRef.current);
+        notifyStorageRefreshNeeded(); setAppStateNonce((value) => value + 1);
+      } else if (!metadata?.hasData) {
+        cloudRevisionRef.current = 0; saveRevision(uid, 0);
+        if (localMetadata.hasData) {
+          if (!hasSyncDirtyRecords()) markAllSyncDirty(await readAllSyncKeys(), false);
+          await pushDirty(uid, epoch);
         }
-        notifyStorageRefreshNeeded();
-        setAppStateNonce((n) => n + 1);
-      } else if (!cloudMetadata || !cloudLikelyHasData) {
-        if (localLikelyHasData) {
-          await uploadLocalSnapshot(activeUser);
-        } else {
-          updateCloudSyncPointers(
-            cloudMetadata?.updatedAt ?? 0,
-            cloudMetadata ? metadataPuzzleKeys(cloudMetadata) : [],
-            cloudMetadata ? metadataCreatorProjectKeys(cloudMetadata) : [],
-            cloudMetadata?.revision ?? 0,
-          );
-        }
-      } else if (!localLikelyHasData) {
-        const cloudSnapshot = await pullCloudState(activeUser.uid);
-        const safeCloud = cloudSnapshot ?? makeEmptySnapshot();
-        await importLocalAppSnapshot(safeCloud, false);
-        updateCloudSyncPointers(
-          safeCloud.updatedAt,
-          snapshotPuzzleKeys(cloudSnapshot),
-          snapshotCreatorProjectKeys(cloudSnapshot),
-          cloudMetadata.revision,
-        );
-        notifyStorageRefreshNeeded();
-        setAppStateNonce((n) => n + 1);
+      } else if (metadata.version < 2) {
+        await migrateLegacyAccount(uid, epoch);
+      } else if (!localMetadata.hasData) {
+        const cloudSnapshot = await pullCloudState(uid); assertSession(uid, epoch);
+        await importLocalAppSnapshot(cloudSnapshot ?? emptySnapshot(), false); clearSyncJournal();
+        cloudRevisionRef.current = metadata.revision; saveRevision(uid, metadata.revision);
+        notifyStorageRefreshNeeded(); setAppStateNonce((value) => value + 1);
       } else {
-        // Always reconcile same-account startup to avoid stale-tab overwrites.
-        await reconcileLocalAndCloud(activeUser);
+        cloudRevisionRef.current = Math.min(readSavedRevision(uid), metadata.revision);
+        await applyIncrementalCloud(uid, epoch);
+        if (hasSyncDirtyRecords()) await pushDirty(uid, epoch);
       }
-
-      // Stamp local data as belonging to this account so future logins (same or different
-      // account) can be handled correctly.
-      setLocalDataOwnerId(activeUser.uid);
-      initializedUserIdRef.current = activeUser.uid;
-      setSyncStatus("idle");
-      setReady(true);
+      assertSession(uid, epoch); setLocalDataOwnerId(uid); initializedUidRef.current = uid; setSyncStatus("idle"); setReady(true);
     } catch (error) {
-      setSyncStatus("error");
-      setSyncError(describeSyncError(error));
-      setReady(true);
-    } finally {
-      initializingForUidRef.current = null;
-      restoringRef.current = false;
+      if (error instanceof Error && error.message === "cloud-sync-session-changed") return;
+      setSyncStatus("error"); setSyncError(describeSyncError(error));
+      // Same-account/offline failures may continue using local data. Cross-account restore failures stay gated.
+      if (!switchingAccounts) setReady(true);
     }
   }
 
-  async function flushSync() {
-    clearScheduledSync();
-    if (!user || !ready || restoringRef.current) return;
-    if (syncInFlightRef.current) {
-      syncRequestedRef.current = true;
-      return;
-    }
-
-    syncInFlightRef.current = true;
-    syncRequestedRef.current = false;
-    setSyncStatus("syncing");
-    setSyncError("");
-
-    try {
-      await reconcileLocalAndCloud(user);
-      setSyncStatus("idle");
-    } catch (error) {
-      setSyncStatus("error");
-      setSyncError(describeSyncError(error));
-    } finally {
-      syncInFlightRef.current = false;
-      if (syncRequestedRef.current) {
-        syncRequestedRef.current = false;
-        syncTimeoutRef.current = window.setTimeout(() => {
-          void flushSync();
-        }, 800);
-      }
-    }
+  function scheduleSync(delay = 800) {
+    if (!userRef.current || !readyRef.current) return;
+    clearSyncTimer();
+    syncTimerRef.current = window.setTimeout(() => {
+      syncTimerRef.current = null;
+      void runExclusive(() => syncOnce()).catch(() => {});
+    }, delay);
   }
-
-  function scheduleSync() {
-    if (!user || !ready || restoringRef.current) return;
-    syncRequestedRef.current = true;
-    clearScheduledSync();
-    syncTimeoutRef.current = window.setTimeout(() => {
-      void flushSync();
-    }, 800);
-  }
-
-  useEffect(() => {
-    readyRef.current = ready;
-  }, [ready]);
 
   useEffect(() => {
     if (!firebaseEnabled) return;
-
     let cancelled = false;
-
     const unsubscribe = onGoogleAuthStateChanged((nextUser) => {
       if (cancelled) return;
-      setUser(nextUser);
-      clearScheduledSync();
-      syncRequestedRef.current = false;
-
+      authEpochRef.current += 1; const epoch = authEpochRef.current;
+      userRef.current = nextUser; setUser(nextUser); clearSyncTimer(); clearRetryTimer();
       if (!nextUser) {
-        initializedUserIdRef.current = null;
-        updateCloudSyncPointers(0, [], [], 0);
-        setSyncStatus("idle");
-        setSyncError("");
-        setReady(true);
-        return;
+        initializedUidRef.current = null; cloudRevisionRef.current = 0; setReady(true); setSyncStatus("idle"); setSyncError(""); return;
       }
-
-      if (initializedUserIdRef.current === nextUser.uid && readyRef.current) return;
-      void initializeUserState(nextUser);
+      if (initializedUidRef.current === nextUser.uid && readyRef.current) return;
+      void runExclusive(() => initializeUser(nextUser, epoch));
     });
-
-    void (async () => {
-      try {
-        const redirectUser = await resolveGoogleRedirectLogin();
-        if (cancelled || !redirectUser) return;
-        setUser(redirectUser);
-        if (initializedUserIdRef.current === redirectUser.uid && readyRef.current) return;
-        await initializeUserState(redirectUser);
-      } catch (error) {
-        if (cancelled) return;
-        setSyncStatus("error");
-        setSyncError(`Google login redirect failed: ${describeSyncError(error)}`);
-        setReady(true);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-      clearScheduledSync();
-      unsubscribe();
-    };
+    void resolveGoogleRedirectLogin().catch((error) => { if (!cancelled) { setSyncStatus("error"); setSyncError(`Google login redirect failed: ${describeSyncError(error)}`); } });
+    return () => { cancelled = true; clearSyncTimer(); clearRetryTimer(); unsubscribe(); };
   }, []);
 
+  useEffect(() => { if (!firebaseEnabled || !user || !ready) return; return onCloudSyncNeeded(() => scheduleSync()); }, [ready, user]);
   useEffect(() => {
     if (!firebaseEnabled || !user || !ready) return;
-    return onCloudSyncNeeded(() => {
-      scheduleSync();
-    });
+    const reconcile = () => void runExclusive(() => syncOnce(user)).catch(() => {});
+    const online = () => reconcile(); const focus = () => reconcile(); const visibility = () => { if (document.visibilityState === "visible") reconcile(); };
+    const interval = window.setInterval(() => { if (document.visibilityState === "visible") reconcile(); }, CLOUD_RECONCILE_INTERVAL_MS);
+    window.addEventListener("online", online); window.addEventListener("focus", focus); document.addEventListener("visibilitychange", visibility);
+    reconcile();
+    return () => { window.removeEventListener("online", online); window.removeEventListener("focus", focus); document.removeEventListener("visibilitychange", visibility); window.clearInterval(interval); };
   }, [ready, user]);
 
-  // Retry any dirty local changes as soon as the browser reports it is back online.
-  useEffect(() => {
-    if (!firebaseEnabled || !user || !ready) return;
-    const handleOnline = () => {
-      void reconcileCloudUpdates(user);
-      if (readLocalDataUpdatedAt() > lastSuccessfulSyncAtRef.current) {
-        scheduleSync();
+  const value = useMemo<AccountSyncContextValue>(() => ({
+    ready, firebaseEnabled, user, syncStatus, syncError, appStateNonce, loginPending,
+    login: async () => {
+      if (loginInFlightRef.current) return; loginInFlightRef.current = true; setLoginPending(true); setSyncError("");
+      try { await googleLogin(); } finally { loginInFlightRef.current = false; setLoginPending(false); }
+    },
+    logout: async () => {
+      const active = userRef.current;
+      if (active && hasSyncDirtyRecords()) {
+        await runExclusive(() => syncOnce(active));
+        if (hasSyncDirtyRecords()) throw new Error("Logout cancelled because some local changes could not be synced. Your local data has been preserved; try again when cloud sync succeeds.");
       }
-    };
-    window.addEventListener("online", handleOnline);
-    return () => window.removeEventListener("online", handleOnline);
-  }, [ready, user]);
+      await googleLogout();
+    },
+  }), [appStateNonce, loginPending, ready, syncError, syncStatus, user]);
 
-  // Pull remote updates while this tab stays open so cross-device progress appears quickly.
-  useEffect(() => {
-    if (!firebaseEnabled || !user || !ready) return;
-
-    void reconcileCloudUpdates(user);
-
-    const handleFocus = () => {
-      void reconcileCloudUpdates(user);
-    };
-
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible") {
-        void reconcileCloudUpdates(user);
-      }
-    };
-
-    const interval = window.setInterval(() => {
-      if (document.visibilityState === "visible") {
-        void reconcileCloudUpdates(user);
-      }
-    }, CLOUD_RECONCILE_INTERVAL_MS);
-
-    window.addEventListener("focus", handleFocus);
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-
-    return () => {
-      window.removeEventListener("focus", handleFocus);
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-      window.clearInterval(interval);
-    };
-  }, [ready, user]);
-
-  const value = useMemo<AccountSyncContextValue>(
-    () => ({
-      ready,
-      firebaseEnabled,
-      user,
-      syncStatus,
-      syncError,
-      appStateNonce,
-      loginPending,
-      login: async () => {
-        if (loginInFlightRef.current) return;
-        setSyncError("");
-        loginInFlightRef.current = true;
-        setLoginPending(true);
-        try {
-          await googleLogin();
-        } finally {
-          loginInFlightRef.current = false;
-          setLoginPending(false);
-        }
-      },
-      logout: async () => {
-        clearScheduledSync();
-        syncRequestedRef.current = false;
-        await googleLogout();
-      },
-    }),
-    [appStateNonce, ready, syncError, syncStatus, user, loginPending],
-  );
-
-  return <AccountSyncContext.Provider value={value}>{children}</AccountSyncContext.Provider>;
+  return <AccountSyncContext.Provider value={value}>{ready ? children : null}</AccountSyncContext.Provider>;
 }
 
 // eslint-disable-next-line react-refresh/only-export-components
-export function useAccountSync() {
-  const context = useContext(AccountSyncContext);
-  if (!context) throw new Error("useAccountSync must be used within AccountSyncProvider");
-  return context;
-}
+export function useAccountSync() { const context = useContext(AccountSyncContext); if (!context) throw new Error("useAccountSync must be used within AccountSyncProvider"); return context; }

@@ -1,41 +1,25 @@
 type SyncListener = () => void;
-
 const listeners = new Set<SyncListener>();
-
-export function onCloudSyncNeeded(listener: SyncListener) {
-  listeners.add(listener);
-  return () => {
-    listeners.delete(listener);
-  };
-}
-
-export function notifyCloudSyncNeeded() {
-  for (const listener of listeners) {
-    try {
-      listener();
-    } catch {
-      // Ignore listener failures so other subscribers still run.
-    }
-  }
-}
-
 const refreshListeners = new Set<SyncListener>();
+const CHANNEL_NAME = "sphenpad-cloud-sync-v2";
+let channel: BroadcastChannel | null = null;
 
-/** Subscribe to notifications that local storage data has been rewritten by a cloud sync. */
-export function onStorageRefreshNeeded(listener: SyncListener) {
-  refreshListeners.add(listener);
-  return () => {
-    refreshListeners.delete(listener);
-  };
+function emitSyncNeeded() {
+  for (const listener of listeners) { try { listener(); } catch { /* keep notifying */ } }
 }
-
-/** Notify all UI listeners that IndexedDB data has been replaced and should be re-queried. */
-export function notifyStorageRefreshNeeded() {
-  for (const listener of refreshListeners) {
-    try {
-      listener();
-    } catch {
-      // Ignore listener failures so other subscribers still run.
-    }
-  }
+function getChannel() {
+  if (channel || typeof BroadcastChannel === "undefined") return channel;
+  channel = new BroadcastChannel(CHANNEL_NAME);
+  channel.addEventListener("message", (event) => { if (event.data === "dirty") emitSyncNeeded(); });
+  return channel;
 }
+export function onCloudSyncNeeded(listener: SyncListener) {
+  listeners.add(listener); getChannel();
+  return () => { listeners.delete(listener); };
+}
+export function notifyCloudSyncNeeded() {
+  emitSyncNeeded();
+  try { getChannel()?.postMessage("dirty"); } catch { /* same-tab notification already fired */ }
+}
+export function onStorageRefreshNeeded(listener: SyncListener) { refreshListeners.add(listener); return () => { refreshListeners.delete(listener); }; }
+export function notifyStorageRefreshNeeded() { for (const listener of refreshListeners) { try { listener(); } catch { /* keep notifying */ } } }

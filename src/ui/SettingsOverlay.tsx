@@ -111,7 +111,7 @@ export function SettingsOverlay(props: { onClose: () => void }) {
                       : syncError
                         ? syncError
                         : user
-                          ? "Your puzzles, folders, and settings sync to this Google account."
+                          ? "Your puzzles, progress, folders, and creator projects sync to this Google account. Theme and view preferences stay on this device."
                           : "Sign in with Google to sync everything across devices."}
                 </div>
               </div>

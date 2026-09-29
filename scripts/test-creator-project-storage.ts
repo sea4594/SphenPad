@@ -21,7 +21,7 @@ const deleteWins = mergeCreatorProjectStorageRows([local], [deleted]);
 equal(deleteWins[0].deletedAt, 600);
 const editedAfterDelete: CreatorProjectStorageRow = { ...cloud, updatedAt: 700, savedAt: 700, lastOpenedAt: 700 };
 const editWins = mergeCreatorProjectStorageRows([deleted], [editedAfterDelete]);
-equal(editWins[0].deletedAt, undefined);
+equal(editWins[0].deletedAt, 600);
 equal(editWins[0].updatedAt, 700);
 
 const normalized = normalizeCreatorProjectStorageRow({ ...cloud, savedAt: Number.NaN, lastOpenedAt: Number.NaN });

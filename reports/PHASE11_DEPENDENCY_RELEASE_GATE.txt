@@ -1,8 +1,8 @@
-Phase 11 dependency-backed release gate — 2026-09-26T23:05:29Z
+Phase 11 dependency-backed release gate — 2026-09-29T01:17:02Z
 Node: v20.20.2
 npm: 10.8.2
 
-[1/10] Clean dependency install
+[1/11] Clean dependency install
 
 added 274 packages, and audited 275 packages in 4s
 
@@ -15,56 +15,56 @@ To address all issues, run:
   npm audit fix
 
 Run `npm audit` for details.
-[2/10] Production dependency security audit
+[2/11] Production dependency security audit
 found 0 vulnerabilities
-[3/10] Lint
+[3/11] Lint
 
 > sphenpad@0.0.0 lint
 > eslint .
 
 
 /Users/sea/SphenPad-phase11-deploy/src/app/accountSync.tsx
-  515:6  warning  React Hook useEffect has a missing dependency: 'initializeUserState'. Either include it or remove the dependency array                         react-hooks/exhaustive-deps
-  522:6  warning  React Hook useEffect has a missing dependency: 'scheduleSync'. Either include it or remove the dependency array                                react-hooks/exhaustive-deps
-  535:6  warning  React Hook useEffect has missing dependencies: 'reconcileCloudUpdates' and 'scheduleSync'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
-  567:6  warning  React Hook useEffect has a missing dependency: 'reconcileCloudUpdates'. Either include it or remove the dependency array                       react-hooks/exhaustive-deps
+  282:6    warning  React Hook useEffect has a missing dependency: 'initializeUser'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  284:121  warning  React Hook useEffect has a missing dependency: 'scheduleSync'. Either include it or remove the dependency array    react-hooks/exhaustive-deps
+  293:6    warning  React Hook useEffect has a missing dependency: 'syncOnce'. Either include it or remove the dependency array        react-hooks/exhaustive-deps
+  309:7    warning  React Hook useMemo has a missing dependency: 'syncOnce'. Either include it or remove the dependency array          react-hooks/exhaustive-deps
 
 /Users/sea/SphenPad-phase11-deploy/src/app/theme.tsx
-  128:9  warning  The 'setMode' function makes the dependencies of useMemo Hook (at line 194) change on every render. Move it inside the useMemo callback. Alternatively, wrap the definition of 'setMode' in its own useCallback() Hook    react-hooks/exhaustive-deps
-  132:9  warning  The 'setColor' function makes the dependencies of useMemo Hook (at line 194) change on every render. Move it inside the useMemo callback. Alternatively, wrap the definition of 'setColor' in its own useCallback() Hook  react-hooks/exhaustive-deps
+  139:9  warning  The 'setMode' function makes the dependencies of useMemo Hook (at line 205) change on every render. Move it inside the useMemo callback. Alternatively, wrap the definition of 'setMode' in its own useCallback() Hook    react-hooks/exhaustive-deps
+  143:9  warning  The 'setColor' function makes the dependencies of useMemo Hook (at line 205) change on every render. Move it inside the useMemo callback. Alternatively, wrap the definition of 'setColor' in its own useCallback() Hook  react-hooks/exhaustive-deps
 
 /Users/sea/SphenPad-phase11-deploy/src/ui/PopupMenuButton.tsx
-   96:6  warning  React Hook useEffect has a missing dependency: 'positionMenu'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
-  102:6  warning  React Hook useEffect has a missing dependency: 'positionMenu'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+   97:6  warning  React Hook useEffect has a missing dependency: 'positionMenu'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  103:6  warning  React Hook useEffect has a missing dependency: 'positionMenu'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
 
 /Users/sea/SphenPad-phase11-deploy/src/ui/PuzzleEditorPage.tsx
-  1175:6  warning  React Hook useEffect has a missing dependency: 'selectedObjectIds'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  1404:6  warning  React Hook useEffect has a missing dependency: 'selectedObjectIds'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
 
 /Users/sea/SphenPad-phase11-deploy/src/ui/SelectControl.tsx
   51:9  warning  The 'selectedValues' conditional could make the dependencies of useMemo Hook (at line 53) change on every render. Move it inside the useMemo callback. Alternatively, wrap the initialization of 'selectedValues' in its own useMemo() Hook  react-hooks/exhaustive-deps
 
 ✖ 10 problems (0 errors, 10 warnings)
 
-[4/10] Production build
+[4/11] Production build
 
 > sphenpad@0.0.0 build
 > tsc -b && vite build
 
 vite v7.3.1 building client environment for production...
 transforming...
-✓ 169 modules transformed.
+✓ 171 modules transformed.
 rendering chunks...
 computing gzip size...
 dist/index.html                     1.12 kB │ gzip:   0.50 kB
-dist/assets/index-Cc6zkiCA.css     81.47 kB │ gzip:  14.41 kB
-dist/assets/index-BX4fksh6.js   1,232.39 kB │ gzip: 371.98 kB
+dist/assets/index-D7foeshD.css     81.11 kB │ gzip:  14.54 kB
+dist/assets/index-F_0PY9Ty.js   1,256.94 kB │ gzip: 378.72 kB
 
 (!) Some chunks are larger than 500 kB after minification. Consider:
 - Using dynamic import() to code-split the application
 - Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
 - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
-✓ built in 2.82s
-[5/10] Complete Phase 11 creator regression matrix
+✓ built in 2.81s
+[5/11] Complete Phase 11 creator regression matrix
 
 > sphenpad@0.0.0 test-creator-phase11
 > npm run test-creator-project && npm run test-creator-storage && npm run test-creator-grid && npm run test-creator-objects && npm run test-creator-lines && npm run test-creator-groups && npm run test-creator-globals && npm run test-creator-worker && npm run test-creator-interchange && npm run test-creator-playtest && npm run test-creator-playtest-ui && npm run test-creator-editing-ux && npm run test-creator-editing-ux-ui && npm run test-creator-phase11-release && npm run test-phase11-playtest-regressions && npm run test-phase11-reported-puzzles
@@ -150,7 +150,13 @@ Phase 11 playtest rendering/selection regression checks passed
 > tsx scripts/test-phase11-reported-puzzles.ts
 
 Reported arrow/fog puzzle import-to-play regressions passed
-[6/10] Built artifact integrity + cleanliness
+[6/11] Account sync regression checks
+
+> sphenpad@0.0.0 test-account-sync
+> tsx scripts/test-account-sync.ts
+
+Account sync regression checks passed.
+[7/11] Built artifact integrity + cleanliness
 
 > sphenpad@0.0.0 verify-production-build
 > node scripts/verify-production-build.mjs
@@ -160,14 +166,14 @@ Production smoke: PASS (2 built asset references checked)
 > sphenpad@0.0.0 verify-production-bundle-clean
 > node scripts/verify-production-bundle-clean.mjs
 
-Production bundle cleanliness: PASS (4282 files, no test/debug/conformance leakage)
-[7/10] Built-app browser smoke
+Production bundle cleanliness: PASS (4215 files, no test/debug/conformance leakage)
+[8/11] Built-app browser smoke
 
 > sphenpad@0.0.0 verify-production-browser
 > node scripts/verify-production-browser.mjs
 
 PASS production browser smoke: /Applications/Google Chrome.app/Contents/MacOS/Google Chrome
-[8/10] Phase 1-10 proxy / asset compatibility gates
+[9/11] Phase 1-10 proxy / asset compatibility gates
 
 > sphenpad@0.0.0 test-sudokupad-proxy
 > node scripts/test-sudokupad-proxy.mjs
@@ -179,14 +185,14 @@ SudokuPad proxy tests: PASS
 
 SudokuPad asset resolver tests: PASS
 SudokuPad font loader tests: PASS
-[9/10] Pinned SudokuPad compatibility target
+[10/11] Pinned SudokuPad compatibility target
 SudokuPad compatibility manifest: PASS (67 JS/CSS assets, 13 fonts)
-[10/10] Phase 11 release hashes
+[11/11] Phase 11 release hashes
 
 > sphenpad@0.0.0 write-phase11-release-hashes
 > node scripts/write-phase11-release-hashes.mjs
 
-Phase 11 release hash manifest: PASS (4416 production inputs, 15 creator tests, 4282 built files)
-releaseContentSha256=e9458b93fd074b8b141563a2219df272bdddfe763c201a48417711e2652050ec
+Phase 11 release hash manifest: PASS (4351 production inputs, 15 creator tests, 4215 built files)
+releaseContentSha256=bcec3846407f3559a7ae052ccbe0b8f36b49999fc6bc32b7fd50ae85f4dbf53b
 
 PHASE 11 DEPENDENCY-BACKED RELEASE GATE PASSED

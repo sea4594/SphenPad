@@ -13,7 +13,7 @@ const LOCAL_DATA_APPLIED_EVENT = "sphenpad:local-data-applied";
 
 export type SyncedLocalStorageKey = (typeof SYNCED_LOCAL_STORAGE_KEYS)[number];
 
-type SyncMeta = { updatedAt: number; ownerId?: string };
+type SyncMeta = { updatedAt: number; ownerId?: string; mutationRevision?: number };
 
 function readRawSyncMeta(): SyncMeta {
   try {
@@ -23,6 +23,7 @@ function readRawSyncMeta(): SyncMeta {
     return {
       updatedAt: typeof parsed.updatedAt === "number" && Number.isFinite(parsed.updatedAt) ? parsed.updatedAt : 0,
       ownerId: typeof parsed.ownerId === "string" ? parsed.ownerId : undefined,
+      mutationRevision: typeof parsed.mutationRevision === "number" && Number.isFinite(parsed.mutationRevision) ? parsed.mutationRevision : 0,
     };
   } catch {
     return { updatedAt: 0 };
@@ -38,6 +39,10 @@ export function readLocalDataUpdatedAt(): number {
   return readRawSyncMeta().updatedAt;
 }
 
+export function readLocalMutationRevision(): number {
+  return readRawSyncMeta().mutationRevision ?? 0;
+}
+
 /** Returns the uid of the Google account that last synced to/from this device's local data, or null if the data has never been linked to an account. */
 export function getLocalDataOwnerId(): string | null {
   return readRawSyncMeta().ownerId ?? null;
@@ -49,9 +54,11 @@ export function setLocalDataOwnerId(uid: string | null) {
 }
 
 export function markLocalDataChanged(updatedAt = Date.now(), notify = true) {
-  writeSyncMeta({ updatedAt });
+  const current = readRawSyncMeta();
+  const nextUpdatedAt = Math.max(current.updatedAt, updatedAt);
+  writeSyncMeta({ updatedAt: nextUpdatedAt, mutationRevision: (current.mutationRevision ?? 0) + 1 });
   if (notify) notifyCloudSyncNeeded();
-  return updatedAt;
+  return nextUpdatedAt;
 }
 
 export function readSyncedLocalStorage(): Partial<Record<SyncedLocalStorageKey, string>> {
@@ -67,13 +74,13 @@ export function setSyncedLocalStorageItem(key: SyncedLocalStorageKey, value: str
   const previous = localStorage.getItem(key);
   if (previous === value) return;
   localStorage.setItem(key, value);
-  markLocalDataChanged(Date.now(), notify);
+  void notify; // UI/device preference only; never marks cloud data dirty.
 }
 
 export function removeSyncedLocalStorageItem(key: SyncedLocalStorageKey, notify = true) {
   if (localStorage.getItem(key) === null) return;
   localStorage.removeItem(key);
-  markLocalDataChanged(Date.now(), notify);
+  void notify; // UI/device preference only; never marks cloud data dirty.
 }
 
 export function applySyncedLocalStorage(
@@ -86,7 +93,8 @@ export function applySyncedLocalStorage(
     if (typeof nextValue === "string") localStorage.setItem(key, nextValue);
     else localStorage.removeItem(key);
   }
-  markLocalDataChanged(updatedAt, notify);
+  void updatedAt;
+  void notify;
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event(LOCAL_DATA_APPLIED_EVENT));
   }

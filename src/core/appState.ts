@@ -1,8 +1,6 @@
 import {
-  applySyncedLocalStorage,
   markLocalDataChanged,
   readLocalDataUpdatedAt,
-  readSyncedLocalStorage,
   type SyncedLocalStorageKey,
 } from "./localDataState";
 import type { PersistedPuzzle } from "./model";
@@ -50,9 +48,15 @@ function folderDeletedTimestamp(folder: PuzzleFolder): number {
   return folder.deletedAt ?? 0;
 }
 
+function folderMembershipState(folder: PuzzleFolder) {
+  if (folder.membershipState) return { ...folder.membershipState };
+  const updatedAt = folder.membershipUpdatedAt ?? folder.updatedAt ?? 0;
+  return Object.fromEntries(folder.puzzleKeys.map((key) => [key, { present: true, updatedAt }]));
+}
+
 export async function exportLocalAppSnapshotMetadata(): Promise<LocalAppSnapshotMetadata> {
-  const [counts, localStorage] = await Promise.all([readStorageCounts(), Promise.resolve(readSyncedLocalStorage())]);
-  const localStorageCount = Object.keys(localStorage).length;
+  const counts = await readStorageCounts();
+  const localStorageCount = 0;
   const updatedAt = readLocalDataUpdatedAt();
   const hasData = updatedAt > 0 || counts.puzzleCount > 0 || counts.creatorProjectCount > 0 || counts.folderCount > 0 || localStorageCount > 0;
 
@@ -78,7 +82,7 @@ export async function exportLocalAppSnapshot(): Promise<LocalAppSnapshot> {
   return {
     version: 1,
     updatedAt,
-    localStorage: readSyncedLocalStorage(),
+    localStorage: {},
     folders: storageSnapshot.folders,
     puzzles: storageSnapshot.puzzles,
     creatorProjects: storageSnapshot.creatorProjects,
@@ -86,7 +90,6 @@ export async function exportLocalAppSnapshot(): Promise<LocalAppSnapshot> {
 }
 
 export async function importLocalAppSnapshot(snapshot: LocalAppSnapshot, notify = false) {
-  applySyncedLocalStorage(snapshot.localStorage, snapshot.updatedAt, false);
   await importStorageSnapshot({ puzzles: snapshot.puzzles, folders: snapshot.folders, creatorProjects: snapshot.creatorProjects ?? [] }, false, snapshot.updatedAt);
   markLocalDataChanged(snapshot.updatedAt, notify);
   if (typeof window !== "undefined") {
@@ -101,14 +104,14 @@ export function onLocalAppSnapshotImported(listener: () => void) {
 }
 
 export function hasLocalAppSnapshotData(snapshot: LocalAppSnapshot): boolean {
-  return snapshot.puzzles.length > 0 || (snapshot.creatorProjects?.length ?? 0) > 0 || snapshot.folders.length > 0 || Object.keys(snapshot.localStorage).length > 0;
+  return snapshot.puzzles.length > 0 || (snapshot.creatorProjects?.length ?? 0) > 0 || snapshot.folders.length > 0;
 }
 
 /**
  * Merges two snapshots without discarding data from either side.
  * - Puzzles: union; when both sides have the same key the one with the newer updatedAt wins.
  * - Folders: per-field merge with tombstones; deletes dominate older edits.
- * - Settings (localStorage): taken from whichever snapshot has the more recent overall updatedAt.
+ * - Device/UI settings are intentionally not part of account sync.
  */
 export function mergeSnapshots(local: LocalAppSnapshot, cloud: LocalAppSnapshot): LocalAppSnapshot {
   const puzzleMap = new Map<string, PuzzleSnapshotRow>();
@@ -143,19 +146,12 @@ export function mergeSnapshots(local: LocalAppSnapshot, cloud: LocalAppSnapshot)
     const name = localNameAt >= cloudNameAt ? folder.name : existing.name;
     const parentId = localParentAt >= cloudParentAt ? folder.parentId : existing.parentId;
 
-    let puzzleKeys: string[];
-    if (localMembershipAt > cloudMembershipAt) puzzleKeys = [...folder.puzzleKeys];
-    else if (cloudMembershipAt > localMembershipAt) puzzleKeys = [...existing.puzzleKeys];
-    else {
-      const mergedPuzzleKeys = [...existing.puzzleKeys];
-      const mergedPuzzleKeySet = new Set(mergedPuzzleKeys);
-      for (const key of folder.puzzleKeys) {
-        if (mergedPuzzleKeySet.has(key)) continue;
-        mergedPuzzleKeySet.add(key);
-        mergedPuzzleKeys.push(key);
-      }
-      puzzleKeys = mergedPuzzleKeys;
+    const membershipState = folderMembershipState(existing);
+    for (const [key, localState] of Object.entries(folderMembershipState(folder))) {
+      const current = membershipState[key];
+      if (!current || localState.updatedAt >= current.updatedAt) membershipState[key] = localState;
     }
+    let puzzleKeys = Object.entries(membershipState).filter(([, state]) => state.present).map(([key]) => key);
 
     if (deletedAt) {
       const newestMutation = Math.max(localNameAt, cloudNameAt, localParentAt, cloudParentAt, localMembershipAt, cloudMembershipAt);
@@ -172,6 +168,7 @@ export function mergeSnapshots(local: LocalAppSnapshot, cloud: LocalAppSnapshot)
       nameUpdatedAt: Math.max(localNameAt, cloudNameAt),
       parentUpdatedAt: Math.max(localParentAt, cloudParentAt),
       membershipUpdatedAt: Math.max(localMembershipAt, cloudMembershipAt),
+      membershipState,
       ...(typeof deletedAt === "number" ? { deletedAt } : {}),
       createdAt: Math.min(folder.createdAt ?? existing.createdAt, existing.createdAt ?? folder.createdAt),
       updatedAt: Math.max(folder.updatedAt ?? 0, existing.updatedAt ?? 0),
@@ -181,11 +178,10 @@ export function mergeSnapshots(local: LocalAppSnapshot, cloud: LocalAppSnapshot)
   const creatorProjects = mergeCreatorProjectStorageRows(local.creatorProjects ?? [], cloud.creatorProjects ?? []);
   const deletedCreatorProjectKeys = new Set(creatorProjects.filter((row) => row.deletedAt).map((row) => row.key));
   const mergedPuzzles = Array.from(puzzleMap.values()).filter((row) => !deletedCreatorProjectKeys.has(row.key));
-  const useLocalSettings = local.updatedAt >= cloud.updatedAt;
   return {
     version: 1,
     updatedAt: Math.max(local.updatedAt, cloud.updatedAt),
-    localStorage: useLocalSettings ? local.localStorage : cloud.localStorage,
+    localStorage: {},
     folders: Array.from(folderMap.values()),
     puzzles: mergedPuzzles,
     creatorProjects,

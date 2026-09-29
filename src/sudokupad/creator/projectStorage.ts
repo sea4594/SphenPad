@@ -57,7 +57,7 @@ export function mergeCreatorProjectStorageRows(localRows: CreatorProjectStorageR
       updatedAt: newestEditAt,
       savedAt: Math.max(localRow.savedAt || 0, cloudRow.savedAt || 0),
       lastOpenedAt: Math.max(localRow.lastOpenedAt || 0, cloudRow.lastOpenedAt || 0),
-      ...(deletedAt && deletedAt >= newestEditAt ? { deletedAt } : {}),
+      ...(deletedAt ? { deletedAt } : {}),
     });
   }
   return Array.from(merged.values());
