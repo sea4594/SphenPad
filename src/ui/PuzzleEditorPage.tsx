@@ -1,4 +1,4 @@
-import { startTransition, useEffect, useMemo, useRef, useState } from "react";
+import { startTransition, useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { getCreatorProject, saveCreatorProject, setCreatorProjectPublished } from "../core/storage";
 import type { CellRC, LineStroke, PersistedPuzzle, PuzzleDefinition, PuzzleProgress } from "../core/model";
@@ -14,6 +14,7 @@ import { SettingsOverlay } from "./SettingsOverlay";
 import { useTheme } from "../app/theme";
 import { validateCreatorDefinition } from "../sudokupad/creator/checker";
 import { creatorProjectFromDefinition, definitionFromCreatorProject } from "../sudokupad/creator/project";
+import { applyCreatorProjectHistoryEntry, createCreatorProjectHistoryEntry, normalizeCreatorProjectHistory, type CreatorProjectHistoryEntry, type CreatorProjectHistoryState } from "../sudokupad/creator/history";
 import {
   clearCreatorGivens,
   clearCreatorRegions,
@@ -66,6 +67,20 @@ type CatalogElement = {
 
 const NOOP = () => {};
 const VIEWPORT_REFRESH_DELAYS = [120, 320, 620, 1000, 1600] as const;
+const CREATOR_PANE_SPLIT_KEY = "sphenpad.creatorPaneSplit.v1";
+type CreatorPaneSplit = { portrait: number; landscape: number };
+function clampPaneSplit(value: number, landscape: boolean) { return Math.max(landscape ? 0.28 : 0.28, Math.min(landscape ? 0.58 : 0.64, value)); }
+function readCreatorPaneSplit(): CreatorPaneSplit {
+  const fallback = { portrait: 0.38, landscape: 0.36 };
+  if (typeof window === "undefined") return fallback;
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(CREATOR_PANE_SPLIT_KEY) ?? "null") as Partial<CreatorPaneSplit> | null;
+    return {
+      portrait: clampPaneSplit(Number(parsed?.portrait) || fallback.portrait, false),
+      landscape: clampPaneSplit(Number(parsed?.landscape) || fallback.landscape, true),
+    };
+  } catch { return fallback; }
+}
 const CREATOR_SOLVER_CONTROL_ELEMENT_IDS = new Set(["given-digits", "regions"]);
 const CHECKABLE_ELEMENT_IDS = new Set(["antiking", "antiknight", ...CREATOR_GROUP_ELEMENT_IDS, ...CREATOR_LINE_ELEMENT_IDS, ...CREATOR_GLOBAL_ELEMENT_IDS]);
 const VISUAL_EDITOR_IDS = new Set([...CREATOR_GLOBAL_ELEMENT_IDS, ...CREATOR_GROUP_ELEMENT_IDS, ...CREATOR_LINE_ELEMENT_IDS, "cosmetic-lines", "cosmetic-cages", "cosmetic-symbols", "cosmetic-text", "cosmetic-shapes", "cosmetic-images", "cosmetic-backgrounds"]);
@@ -215,7 +230,7 @@ function sanitizeDefinition(input: PuzzleDefinition): PuzzleDefinition {
 }
 
 function validationMessages(def: PuzzleDefinition) { return validateCreatorDefinition(def); }
-async function persistCreatorDefinition(key: string, def: PuzzleDefinition) { return saveCreatorProject(key, creatorProjectFromDefinition(def)); }
+async function persistCreatorDefinition(key: string, def: PuzzleDefinition, history?: CreatorProjectHistoryState) { return saveCreatorProject(key, creatorProjectFromDefinition(def), Date.now(), history); }
 
 export function PuzzleEditorPage() {
   const { puzzleId } = useParams();
@@ -248,8 +263,8 @@ export function PuzzleEditorPage() {
   const [objectContextMenu, setObjectContextMenu] = useState<{ id: string; x: number; y: number } | null>(null);
   const [message, setMessage] = useState("");
   const testPlay = false;
-  const [history, setHistory] = useState<PuzzleDefinition[]>([]);
-  const [future, setFuture] = useState<PuzzleDefinition[]>([]);
+  const [history, setHistory] = useState<CreatorProjectHistoryEntry[]>([]);
+  const [future, setFuture] = useState<CreatorProjectHistoryEntry[]>([]);
   const [testProgress, setTestProgress] = useState<PuzzleProgress | null>(null);
   const [testHistory, setTestHistory] = useState<PuzzleProgress[]>([]);
   const [testFuture, setTestFuture] = useState<PuzzleProgress[]>([]);
@@ -271,6 +286,7 @@ export function PuzzleEditorPage() {
   const [creatorScratchProgress, setCreatorScratchProgress] = useState<PuzzleProgress | null>(null);
   const [creatorControlView, setCreatorControlView] = useState<"element" | "solver">("solver");
   const [viewportLayoutKind, setViewportLayoutKind] = useState<ViewportLayoutKind>(() => typeof window === "undefined" ? "desktop" : getViewportLayoutKind());
+  const [creatorPaneSplit, setCreatorPaneSplit] = useState<CreatorPaneSplit>(() => readCreatorPaneSplit());
   const [dirty, setDirty] = useState(false);
   const [workerValidation, setWorkerValidation] = useState<CreatorGridValidation | null>(null);
   const [workerConstraintErrors, setWorkerConstraintErrors] = useState<Array<{ id: string; message: string }>>([]);
@@ -278,6 +294,9 @@ export function PuzzleEditorPage() {
   const [solutionSearch, setSolutionSearch] = useState<CreatorSolutionSearchResult | null>(null);
   const [interchangeReport, setInterchangeReport] = useState<CreatorInterchangeReport | null>(null);
   const editRevisionRef = useRef(0);
+  const creatorHistoryRef = useRef<CreatorProjectHistoryState>({ undo: [], redo: [] });
+  const creatorGridLayoutRef = useRef<HTMLDivElement | null>(null);
+  const creatorPaneResizeRef = useRef<{ pointerId: number; landscape: boolean } | null>(null);
   const objectClipboardRef = useRef("");
   const selectModeHoldTimerRef = useRef<number | null>(null);
   const selectModeHoldTriggeredRef = useRef(false);
@@ -316,8 +335,11 @@ export function PuzzleEditorPage() {
       setEditorLineDouble(restored?.editorLineDouble ?? false);
       setCanvasZoom(Math.max(0.5, Math.min(2.5, restored?.canvasZoom ?? 1)));
       setCanvasPan(restored?.canvasPan ?? { x: 0, y: 0 });
-      setHistory([]);
-      setFuture([]);
+      const restoredUndo = normalizeCreatorProjectHistory(stored.undo);
+      const restoredRedo = normalizeCreatorProjectHistory(stored.redo);
+      creatorHistoryRef.current = { undo: restoredUndo, redo: restoredRedo };
+      setHistory(restoredUndo);
+      setFuture(restoredRedo);
       setTestProgress(null);
       setTestHistory([]);
       setTestFuture([]);
@@ -365,6 +387,10 @@ export function PuzzleEditorPage() {
     };
   }, []);
 
+  useEffect(() => {
+    try { window.localStorage.setItem(CREATOR_PANE_SPLIT_KEY, JSON.stringify(creatorPaneSplit)); } catch { /* layout preference is best-effort */ }
+  }, [creatorPaneSplit]);
+
   const progress = useMemo(() => {
     if (!data) return null;
     const next = makeInitialProgress(data.def);
@@ -400,8 +426,9 @@ export function PuzzleEditorPage() {
     if (!dirty || !data) return;
     const revision = editRevisionRef.current;
     const snapshot = data.def;
+    const historySnapshot = creatorHistoryRef.current;
     const timer = window.setTimeout(() => {
-      void persistCreatorDefinition(key, snapshot).then(() => {
+      void persistCreatorDefinition(key, snapshot, historySnapshot).then(() => {
         if (editRevisionRef.current === revision) {
           setDirty(false);
           setMessage((current) => current.startsWith("Autosave failed") ? "" : current);
@@ -418,12 +445,19 @@ export function PuzzleEditorPage() {
     return () => window.removeEventListener("beforeunload", warn);
   }, [dirty]);
 
+  function setCreatorHistoryState(undo: CreatorProjectHistoryEntry[], redo: CreatorProjectHistoryEntry[]) {
+    const nextUndo = undo.slice(-100), nextRedo = redo.slice(-100);
+    creatorHistoryRef.current = { undo: nextUndo, redo: nextRedo };
+    setHistory(nextUndo);
+    setFuture(nextRedo);
+  }
+
   function save(nextDef: PuzzleDefinition, opts?: { recordHistory?: boolean }) {
-    if (!data) return;
+    if (!data) return null;
     const def = syncCreatorMetadata(sanitizeDefinition(nextDef));
     if (opts?.recordHistory !== false) {
-      setHistory((entries) => [...entries.slice(-99), data.def]);
-      setFuture([]);
+      const entry = createCreatorProjectHistoryEntry(creatorProjectFromDefinition(data.def), creatorProjectFromDefinition(def));
+      if (entry) setCreatorHistoryState([...creatorHistoryRef.current.undo, entry], []);
     }
     const next: PersistedPuzzle = {
       ...data,
@@ -434,6 +468,7 @@ export function PuzzleEditorPage() {
       updatedAt: Date.now(),
     };
     editRevisionRef.current += 1;
+    const revision = editRevisionRef.current;
     setDirty(true);
     setMessage("");
     setWorkerValidation(null);
@@ -441,6 +476,14 @@ export function PuzzleEditorPage() {
     setLogicalResult(null);
     setSolutionSearch(null);
     setData(next);
+    return { def, revision };
+  }
+
+  function persistCreatorHistoryNavigation(saved: { def: PuzzleDefinition; revision: number } | null, historyState: CreatorProjectHistoryState) {
+    if (!saved) return;
+    void persistCreatorDefinition(key, saved.def, historyState).then(() => {
+      if (editRevisionRef.current === saved.revision) setDirty(false);
+    }).catch(() => setMessage("Save failed. Your undo/redo change remains open and will retry on the next edit."));
   }
 
   function runWorkerValidation(source: "givens" | "solution" = "givens") {
@@ -492,11 +535,58 @@ export function PuzzleEditorPage() {
     setSelection(seen); setMessage(`${seen.length} cell${seen.length === 1 ? "" : "s"} seen by every selected cell.`);
   }
 
+  function startCreatorPaneResize(event: ReactPointerEvent<HTMLDivElement>) {
+    if (viewportLayoutKind === "desktop" || !creatorGridLayoutRef.current) return;
+    const landscape = viewportLayoutKind === "phone-landscape" || viewportLayoutKind === "tablet-landscape";
+    creatorPaneResizeRef.current = { pointerId: event.pointerId, landscape };
+    event.currentTarget.setPointerCapture(event.pointerId);
+    event.preventDefault();
+    event.stopPropagation();
+  }
+
+  function resizeCreatorPane(event: ReactPointerEvent<HTMLDivElement>) {
+    const drag = creatorPaneResizeRef.current, grid = creatorGridLayoutRef.current;
+    if (!drag || drag.pointerId !== event.pointerId || !grid) return;
+    const rect = grid.getBoundingClientRect();
+    const fraction = drag.landscape
+      ? (rect.right - event.clientX) / Math.max(1, rect.width)
+      : (rect.bottom - event.clientY) / Math.max(1, rect.height);
+    const value = clampPaneSplit(fraction, drag.landscape);
+    setCreatorPaneSplit((current) => drag.landscape ? { ...current, landscape: value } : { ...current, portrait: value });
+    event.preventDefault();
+    event.stopPropagation();
+  }
+
+  function stopCreatorPaneResize(event: ReactPointerEvent<HTMLDivElement>) {
+    if (creatorPaneResizeRef.current?.pointerId !== event.pointerId) return;
+    creatorPaneResizeRef.current = null;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+    window.requestAnimationFrame(() => window.dispatchEvent(new Event("resize")));
+    event.preventDefault();
+    event.stopPropagation();
+  }
+
+  function keyCreatorPaneResize(event: ReactKeyboardEvent<HTMLDivElement>) {
+    if (viewportLayoutKind === "desktop") return;
+    const landscape = viewportLayoutKind === "phone-landscape" || viewportLayoutKind === "tablet-landscape";
+    const increase = landscape ? event.key === "ArrowLeft" : event.key === "ArrowUp";
+    const decrease = landscape ? event.key === "ArrowRight" : event.key === "ArrowDown";
+    if (!increase && !decrease && event.key !== "Home" && event.key !== "End") return;
+    event.preventDefault();
+    const minimum = 0.28, maximum = landscape ? 0.58 : 0.64;
+    setCreatorPaneSplit((current) => {
+      const currentValue = landscape ? current.landscape : current.portrait;
+      const value = event.key === "Home" ? minimum : event.key === "End" ? maximum : clampPaneSplit(currentValue + (increase ? 0.03 : -0.03), landscape);
+      return landscape ? { ...current, landscape: value } : { ...current, portrait: value };
+    });
+    window.requestAnimationFrame(() => window.dispatchEvent(new Event("resize")));
+  }
+
   async function persistNow() {
     if (!data) return false;
     const revision = editRevisionRef.current;
     try {
-      await persistCreatorDefinition(key, data.def);
+      await persistCreatorDefinition(key, data.def, creatorHistoryRef.current);
       if (editRevisionRef.current === revision) setDirty(false);
       return true;
     } catch {
@@ -511,19 +601,31 @@ export function PuzzleEditorPage() {
   }
 
   function undoDefinition() {
-    if (!data || !history.length) return;
-    const previous = history[history.length - 1];
-    setHistory((entries) => entries.slice(0, -1));
-    setFuture((entries) => [data.def, ...entries].slice(0, 100));
-    save(previous, { recordHistory: false });
+    if (!data) return;
+    const undo = creatorHistoryRef.current.undo;
+    const entry = undo[undo.length - 1];
+    if (!entry) return;
+    const project = applyCreatorProjectHistoryEntry(creatorProjectFromDefinition(data.def), entry, "undo");
+    const nextUndo = undo.slice(0, -1);
+    const nextRedo = [...creatorHistoryRef.current.redo, entry];
+    const nextHistory = { undo: nextUndo, redo: nextRedo };
+    setCreatorHistoryState(nextUndo, nextRedo);
+    const saved = save(definitionFromCreatorProject(project, { id: key, sourceId: key }), { recordHistory: false });
+    persistCreatorHistoryNavigation(saved, nextHistory);
   }
 
   function redoDefinition() {
-    if (!data || !future.length) return;
-    const next = future[0];
-    setFuture((entries) => entries.slice(1));
-    setHistory((entries) => [...entries, data.def].slice(-100));
-    save(next, { recordHistory: false });
+    if (!data) return;
+    const redo = creatorHistoryRef.current.redo;
+    const entry = redo[redo.length - 1];
+    if (!entry) return;
+    const project = applyCreatorProjectHistoryEntry(creatorProjectFromDefinition(data.def), entry, "redo");
+    const nextRedo = redo.slice(0, -1);
+    const nextUndo = [...creatorHistoryRef.current.undo, entry];
+    const nextHistory = { undo: nextUndo, redo: nextRedo };
+    setCreatorHistoryState(nextUndo, nextRedo);
+    const saved = save(definitionFromCreatorProject(project, { id: key, sourceId: key }), { recordHistory: false });
+    persistCreatorHistoryNavigation(saved, nextHistory);
   }
 
   function selectCreatorObject(objectId: string, additive = false) {
@@ -1842,6 +1944,10 @@ export function PuzzleEditorPage() {
     controlProgress = { ...controlProgress, cells: controlProgress.cells.map((row, r) => row.map((cell, c) => invalid.has(`${r}:${c}`) ? { ...cell, highlights: [...new Set([...(cell.highlights ?? []), "rgba(255, 70, 70, 0.36)"])] } : cell)) };
   }
   const creatorLayoutClass = viewportLayoutKind === "tablet-portrait" ? " layoutTabletPortrait" : viewportLayoutKind === "tablet-landscape" ? " layoutTabletLandscape" : "";
+  const creatorResizableLayout = viewportLayoutKind !== "desktop";
+  const creatorLandscapeLayout = viewportLayoutKind === "phone-landscape" || viewportLayoutKind === "tablet-landscape";
+  const creatorControlSplit = creatorLandscapeLayout ? creatorPaneSplit.landscape : creatorPaneSplit.portrait;
+  const creatorGridStyle = creatorResizableLayout ? ({ "--creator-controls-size": `${(creatorControlSplit * 100).toFixed(2)}%` } as CSSProperties) : undefined;
   const selectedElementUsesSolverControls = activeCatalogElement === null || CREATOR_SOLVER_CONTROL_ELEMENT_IDS.has(activeCatalogElement);
   const showElementControls = creatorTab === "elements" && activeCatalogElement !== null && !testPlay && creatorControlView === "element";
   const showSolverControls = testPlay || creatorTab !== "elements" || activeCatalogElement === null || creatorControlView === "solver";
@@ -1941,7 +2047,7 @@ export function PuzzleEditorPage() {
           </div> : null}
           {creatorTab === "tools" ? <div className="creatorToolStrip"><button className="btn" onClick={() => runWorkerValidation("givens")} type="button">Check validity</button><button className="btn" onClick={runLogicalSolver} type="button">Logical solve</button><button className="btn" onClick={runSolutionSearch} type="button">Find solutions</button><button className="btn" onClick={selectCellsSeen} disabled={!selection.length} type="button">Select cells seen</button><button className="btn" onClick={() => { setCreatorTab("file"); setMessage(`${workerComponents.length} registered worker components; expand Worker components to inspect them.`); }} type="button">Inspect components</button>{solutionSearch?.solutions[0] ? <button className="btn primary" onClick={useFoundSolution} type="button">Use solution</button> : null}</div> : null}
 
-        <div className="gridLayout creatorGridLayout">
+        <div ref={creatorGridLayoutRef} className="gridLayout creatorGridLayout" style={creatorGridStyle}>
           <section className="boardColumn creatorBoardColumn">
             <div className="card boardCard creatorCanvasViewport" onWheel={(event) => { if (!(event.ctrlKey || event.metaKey)) return; event.preventDefault(); setCanvasZoom((value) => Math.max(0.5, Math.min(2.5, value + (event.deltaY < 0 ? 0.1 : -0.1)))); }}>
               <div className="creatorCanvasTransform" style={{ transform: `translate(${canvasPan.x}px, ${canvasPan.y}px) scale(${canvasZoom})` }}><GridCanvas
@@ -1978,6 +2084,7 @@ export function PuzzleEditorPage() {
               /></div>
             </div>
           </section>
+          {creatorResizableLayout ? <div className={`creatorPaneResizeHandle${creatorLandscapeLayout ? " landscape" : " portrait"}`} role="separator" tabIndex={0} aria-label="Resize puzzle and creator controls" aria-orientation={creatorLandscapeLayout ? "vertical" : "horizontal"} aria-valuemin={28} aria-valuemax={creatorLandscapeLayout ? 58 : 64} aria-valuenow={Math.round(creatorControlSplit * 100)} onKeyDown={keyCreatorPaneResize} onPointerDown={startCreatorPaneResize} onPointerMove={resizeCreatorPane} onPointerUp={stopCreatorPaneResize} onPointerCancel={stopCreatorPaneResize}><span /></div> : null}
           <div className="kbdPanel">
           {showElementControls ? <section className="creatorInlineAuthoringPanel" aria-label="Puzzle element settings">
         <aside className="creatorInspector card">

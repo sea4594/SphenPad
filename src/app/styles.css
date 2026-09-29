@@ -4094,7 +4094,14 @@ input.url {
 
 /* Creator direct-manipulation selection. Editor-only; never serialized into puzzle data. */
 .creatorEditorShell .sphenpad-sudokupad-renderer .sphenpad-creator-selected {
-  filter: drop-shadow(0 0 1.5px var(--accent)) drop-shadow(0 0 3px var(--accent));
+  /* Four directional shadows read as a crisp editor-only outline while preserving
+     the authored fill/stroke color underneath. */
+  filter:
+    drop-shadow(1.6px 0 0 var(--accent))
+    drop-shadow(-1.6px 0 0 var(--accent))
+    drop-shadow(0 1.6px 0 var(--accent))
+    drop-shadow(0 -1.6px 0 var(--accent))
+    drop-shadow(0 0 2px color-mix(in srgb, var(--panel) 75%, transparent));
 }
 .creatorInteractionModes .danger.primary {
   border-color: var(--danger);
@@ -4181,4 +4188,82 @@ input.url {
 .creatorFallbackAuthoring[open] {
   display: grid;
   gap: 7px;
+}
+
+
+/* Creator puzzle/control splitter. The preference is device-local; puzzle and
+   creator history continue to use the existing project persistence/sync path. */
+.creatorPaneResizeHandle {
+  display: none;
+  place-items: center;
+  min-width: 0;
+  min-height: 0;
+  touch-action: none;
+  user-select: none;
+  z-index: 12;
+}
+.creatorPaneResizeHandle span {
+  display: block;
+  border-radius: 999px;
+  background: var(--ui-border-strong);
+}
+.creatorPaneResizeHandle.portrait { cursor: row-resize; }
+.creatorPaneResizeHandle.portrait span { width: 52px; height: 5px; }
+.creatorPaneResizeHandle.landscape { cursor: col-resize; }
+.creatorPaneResizeHandle.landscape span { width: 5px; height: 52px; }
+.creatorPaneResizeHandle:focus-visible,
+.creatorPaneResizeHandle:active { outline: none; background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.creatorPaneResizeHandle:focus-visible span,
+.creatorPaneResizeHandle:active span { background: var(--accent); }
+
+.creatorEditorShell[data-layout-mode="phone-portrait"] .creatorGridLayout,
+.creatorEditorShell[data-layout-mode="tablet-portrait"] .creatorGridLayout {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) 16px clamp(170px, var(--creator-controls-size, 38%), 64%);
+  gap: 0;
+}
+.creatorEditorShell[data-layout-mode="phone-portrait"] .creatorBoardColumn,
+.creatorEditorShell[data-layout-mode="tablet-portrait"] .creatorBoardColumn { grid-column: 1; grid-row: 1; }
+.creatorEditorShell[data-layout-mode="phone-portrait"] .creatorPaneResizeHandle,
+.creatorEditorShell[data-layout-mode="tablet-portrait"] .creatorPaneResizeHandle { display: grid; grid-column: 1; grid-row: 2; }
+.creatorEditorShell[data-layout-mode="phone-portrait"] .creatorGridLayout > .kbdPanel,
+.creatorEditorShell[data-layout-mode="tablet-portrait"] .creatorGridLayout > .kbdPanel {
+  grid-column: 1;
+  grid-row: 3;
+  width: 100%;
+  height: 100%;
+  max-height: none;
+}
+
+.creatorEditorShell[data-layout-mode="phone-landscape"] .creatorGridLayout,
+.creatorEditorShell[data-layout-mode="tablet-landscape"] .creatorGridLayout {
+  grid-template-columns: minmax(0, 1fr) 16px clamp(220px, var(--creator-controls-size, 36%), 58%);
+  grid-template-rows: minmax(0, 1fr);
+  gap: 0;
+}
+.creatorEditorShell[data-layout-mode="phone-landscape"] .creatorBoardColumn,
+.creatorEditorShell[data-layout-mode="tablet-landscape"] .creatorBoardColumn { grid-column: 1; grid-row: 1; }
+.creatorEditorShell[data-layout-mode="phone-landscape"] .creatorPaneResizeHandle,
+.creatorEditorShell[data-layout-mode="tablet-landscape"] .creatorPaneResizeHandle { display: grid; grid-column: 2; grid-row: 1; }
+.creatorEditorShell[data-layout-mode="phone-landscape"] .creatorGridLayout > .kbdPanel,
+.creatorEditorShell[data-layout-mode="tablet-landscape"] .creatorGridLayout > .kbdPanel {
+  grid-column: 3;
+  grid-row: 1;
+  justify-self: stretch;
+  width: 100%;
+  height: 100%;
+  max-height: none;
+  grid-template-rows: minmax(0, 1fr);
+}
+.creatorEditorShell[data-layout-mode="phone-landscape"] .creatorInlineAuthoringPanel,
+.creatorEditorShell[data-layout-mode="tablet-landscape"] .creatorInlineAuthoringPanel,
+.creatorEditorShell[data-layout-mode="phone-landscape"] .creatorControls,
+.creatorEditorShell[data-layout-mode="tablet-landscape"] .creatorControls,
+.creatorEditorShell[data-layout-mode="phone-portrait"] .creatorInlineAuthoringPanel,
+.creatorEditorShell[data-layout-mode="tablet-portrait"] .creatorInlineAuthoringPanel,
+.creatorEditorShell[data-layout-mode="phone-portrait"] .creatorControls,
+.creatorEditorShell[data-layout-mode="tablet-portrait"] .creatorControls {
+  height: 100%;
+  max-height: 100%;
+  min-height: 0;
 }

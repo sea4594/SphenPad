@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-29T23:11:28.027Z",
+  "generatedAt": "2026-09-29T23:58:19.998Z",
   "phase": "11L",
   "target": "SphenPad Phase 11 / SudokuMaker creator parity on pinned SudokuPad 0.612.0",
   "productionInputs": [
@@ -20426,7 +20426,7 @@
     {
       "path": "src/.DS_Store",
       "bytes": 6148,
-      "sha256": "b3ed87d00d34fdf40e0b7a8fb4debe8e1f29a910b82fe3b16e446fd14f0a762e"
+      "sha256": "5eff1e0a690fcb9d58ff392fdb15fbfd913d867f1023200a50c3a52c4358231b"
     },
     {
       "path": "src/app/accountSync.tsx",
@@ -20445,8 +20445,8 @@
     },
     {
       "path": "src/app/styles.css",
-      "bytes": 88310,
-      "sha256": "b3fd08c1f93293348721f2ef8f0e85e717bee935312e92282d960deac0e3e7d2"
+      "bytes": 92260,
+      "sha256": "8e52addc77910d6f0108a272f7c168f5b8f44e3ebcb5b342589d7f0b83d445c0"
     },
     {
       "path": "src/app/theme.tsx",
@@ -20510,8 +20510,8 @@
     },
     {
       "path": "src/core/storage.ts",
-      "bytes": 33682,
-      "sha256": "123aacf8a6e265f7b5ab3ae8959acbbd27d8b60ad2f078b31deb7ab8b26f528e"
+      "bytes": 34134,
+      "sha256": "581a909ba2b47b170cf249eae1981dab3a5ef874846d295eaaf625170c19c698"
     },
     {
       "path": "src/core/sudokupad.ts",
@@ -20551,7 +20551,7 @@
     {
       "path": "src/sudokupad/.DS_Store",
       "bytes": 10244,
-      "sha256": "773fb13768ee88ac58216dcdecf623f7a4df19091d103070557df29afe25c584"
+      "sha256": "d2a1ab1af098e9e4b996328d6b229f30f8a6313c1c75a5cf0376b044b91e4123"
     },
     {
       "path": "src/sudokupad/app/boardClasses.ts",
@@ -20674,6 +20674,11 @@
       "sha256": "2b1ae911e892daa7ea1a3f3e1a0b165a4e1604388c21ba295662e2c9b407bcea"
     },
     {
+      "path": "src/sudokupad/creator/history.ts",
+      "bytes": 3502,
+      "sha256": "3d83c3f6bd4982cd3809eb4b8f7d477be85eb6216af6d3a39a3912e0a19914d5"
+    },
+    {
       "path": "src/sudokupad/creator/interchange.ts",
       "bytes": 21017,
       "sha256": "392c53937ce8d88152d391011a43a21f278f1e4312a5e1fdf3fef132e55671be"
@@ -20705,8 +20710,8 @@
     },
     {
       "path": "src/sudokupad/creator/projectStorage.ts",
-      "bytes": 3041,
-      "sha256": "bb2a0b840b2be0a005eb82095b884278e8e4126d47f62d62600ffd9e345ceb94"
+      "bytes": 3316,
+      "sha256": "bea8b4ebee8e6f4794f9aa9efa1c5b2c783e0fd73eea222efe6e00a01e949a88"
     },
     {
       "path": "src/sudokupad/creator/solver.ts",
@@ -21025,8 +21030,8 @@
     },
     {
       "path": "src/ui/PuzzleEditorPage.tsx",
-      "bytes": 186491,
-      "sha256": "b4b3c3ffb009254d8acc526ba4db8399d0ea27327dd3652b73c4457c279328fb"
+      "bytes": 194101,
+      "sha256": "98494b9b1ea08468e0f0efcdc5cd1f5c561554df827a36cbcbaac64083d3266b"
     },
     {
       "path": "src/ui/PuzzleMetadataOverlay.tsx",
@@ -21097,8 +21102,8 @@
   "creatorTestInputs": [
     {
       "path": "scripts/test-creator-editing-ux-integration.mjs",
-      "bytes": 6036,
-      "sha256": "ada0511091a3079f7a1e3bdce69d2eebc4a91ea4b978138916130d2ada5edcd4"
+      "bytes": 7506,
+      "sha256": "47ff1694b5acc6bfd73b5708cc6463c1a0ea1ed5d3566c877d9524e53feb370a"
     },
     {
       "path": "scripts/test-creator-editing-ux.ts",
@@ -21157,8 +21162,8 @@
     },
     {
       "path": "scripts/test-creator-project-storage.ts",
-      "bytes": 2755,
-      "sha256": "24bb1000057dfda98b72e29ddac3d5dba1f5f321542466b717ebdbd4c8c00dd6"
+      "bytes": 3590,
+      "sha256": "00dde0355ec14f07655cd458813c27ad7c1c35a952fab15e7c14525d6bd7ac75"
     },
     {
       "path": "scripts/test-creator-project.ts",
@@ -21175,7 +21180,7 @@
     {
       "path": "dist/.DS_Store",
       "bytes": 6148,
-      "sha256": "73ac1f3b04f8c6c70e21bf0e904a3ab84a43efa0427fb6c79325151684a9fb92"
+      "sha256": "8f7db20bca0850a3dacfa1eecfc8594cea172f038a3191f5b0d4fdc61e70522a"
     },
     {
       "path": "dist/apple-touch-icon.png",
@@ -21185,7 +21190,7 @@
     {
       "path": "dist/archive/.DS_Store",
       "bytes": 6148,
-      "sha256": "d85084df7f82f97f8e721bbbd7d54c5afa5b03d3b941e555b073e477e7e39a72"
+      "sha256": "60f307d4f79d050014e90efa1fed649de5e48d423cc994e0c000584bcf0019f5"
     },
     {
       "path": "dist/archive/archive-manifest.json",
@@ -41533,14 +41538,14 @@
       "sha256": "bebaa50f7a5c47189579f4e54a7380036d9c27028916981271a4cfc99f952b7d"
     },
     {
-      "path": "dist/assets/index-BWNzlHpH.js",
-      "bytes": 1305101,
-      "sha256": "4139a4d7860f1563560fd32a0d9a170614f429ffc8d4980679ab8694afaa2571"
+      "path": "dist/assets/index-CvNBt78Z.css",
+      "bytes": 89445,
+      "sha256": "424e7ae3600352ae1a8a8c8c5e75beb5f26ed2c50409eec6ce67adfd6a45c0be"
     },
     {
-      "path": "dist/assets/index-UciM3YnZ.css",
-      "bytes": 86105,
-      "sha256": "fcab212730feabb3eddf608d5208d9d5c14e2f131b327be62f05e00590b76349"
+      "path": "dist/assets/index-mfnU8FLN.js",
+      "bytes": 1310036,
+      "sha256": "2123f7509280f776cb1d8d72bf8d034e7cc91c35a9cb6bf71d247a9d399167e2"
     },
     {
       "path": "dist/assets/sudokupad-compatibility-manifest.json",
@@ -41555,7 +41560,7 @@
     {
       "path": "dist/index.html",
       "bytes": 1115,
-      "sha256": "6bf6033b775fefe3dd7eaa691702f7eef1f16ffa9cf109742e466fb1e330f876"
+      "sha256": "245abd7020968e907cb4dde7cd4c7521003f909651d1097fab6569b6f34c4d6c"
     },
     {
       "path": "dist/manifest.json",
@@ -41579,5 +41584,5 @@
     }
   ],
   "bundleBuilt": true,
-  "releaseContentSha256": "85a63a61be6b173a0135800124b8c6b92dca5c193750cb68a4512afdf14dbebb"
+  "releaseContentSha256": "bc2d6512663a8c3d6ee31ac0f524fd7d7ac14a2d1ca437205911a7f83c9aa469"
 }

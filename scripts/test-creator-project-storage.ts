@@ -4,16 +4,25 @@ function equal(actual: unknown, expected: unknown) { if (actual !== expected) th
 import { createAuthoredPuzzleDefinition } from "../src/sudokupad/creator/nativeAuthoring";
 import { creatorProjectFromDefinition } from "../src/sudokupad/creator/project";
 import { cloneCreatorProjectForDuplicate, compareCreatorProjectStorageRows, mergeCreatorProjectStorageRows, normalizeCreatorProjectStorageRow, type CreatorProjectStorageRow } from "../src/sudokupad/creator/projectStorage";
+import { applyCreatorProjectHistoryEntry, createCreatorProjectHistoryEntry } from "../src/sudokupad/creator/history";
 
 const def = createAuthoredPuzzleDefinition({ id: "creator-a", rows: 9, cols: 9, subgrid: { r: 3, c: 3 }, meta: { title: "Original", author: "A", rules: "R" } });
 const project = creatorProjectFromDefinition(def);
 const duplicate = cloneCreatorProjectForDuplicate(project, "creator-b");
 equal(duplicate.projectId, "creator-b"); equal(duplicate.sourceId, "creator-b"); equal(duplicate.metadata.title, "Original copy"); equal(duplicate.settings.publishedToMyPuzzles, false); equal(project.projectId, "creator-a");
 
-const local: CreatorProjectStorageRow = { key: "creator-a", project: { ...project, metadata: { ...project.metadata, title: "Older content" } }, createdAt: 10, updatedAt: 100, savedAt: 100, lastOpenedAt: 500 };
+const renamed = { ...project, metadata: { ...project.metadata, title: "Renamed" } };
+const historyEntry = createCreatorProjectHistoryEntry(project, renamed);
+ok(historyEntry, "creator history entry should be created");
+equal(historyEntry.patches.length, 1);
+equal(JSON.stringify(historyEntry.patches[0].path), JSON.stringify(["metadata", "title"]));
+equal(applyCreatorProjectHistoryEntry(renamed, historyEntry, "undo").metadata.title, "Original");
+equal(applyCreatorProjectHistoryEntry(project, historyEntry, "redo").metadata.title, "Renamed");
+
+const local: CreatorProjectStorageRow = { key: "creator-a", project: { ...project, metadata: { ...project.metadata, title: "Older content" } }, createdAt: 10, updatedAt: 100, savedAt: 100, lastOpenedAt: 500, undo: historyEntry ? [historyEntry] : [], redo: [] };
 const cloud: CreatorProjectStorageRow = { key: "creator-a", project: { ...project, metadata: { ...project.metadata, title: "Newer content" } }, createdAt: 10, updatedAt: 200, savedAt: 200, lastOpenedAt: 300 };
 const merged = mergeCreatorProjectStorageRows([local], [cloud]);
-equal(merged.length, 1); equal(merged[0].project.metadata.title, "Newer content"); equal(merged[0].updatedAt, 200); equal(merged[0].lastOpenedAt, 500);
+equal(merged.length, 1); equal(merged[0].project.metadata.title, "Newer content"); equal(merged[0].updatedAt, 200); equal(merged[0].lastOpenedAt, 500); equal(merged[0].undo?.length ?? 0, 0);
 
 
 const deleted: CreatorProjectStorageRow = { ...cloud, updatedAt: 600, savedAt: 500, deletedAt: 600, lastOpenedAt: 500 };
@@ -25,7 +34,7 @@ equal(editWins[0].deletedAt, 600);
 equal(editWins[0].updatedAt, 700);
 
 const normalized = normalizeCreatorProjectStorageRow({ ...cloud, savedAt: Number.NaN, lastOpenedAt: Number.NaN });
-equal(normalized.savedAt, cloud.updatedAt); equal(normalized.lastOpenedAt, 0);
+equal(normalized.savedAt, cloud.updatedAt); equal(normalized.lastOpenedAt, 0); equal(normalized.undo?.length ?? 0, 0); equal(normalized.redo?.length ?? 0, 0);
 const second: CreatorProjectStorageRow = { ...cloud, key: "creator-z", lastOpenedAt: 800 };
 ok([cloud, second].sort(compareCreatorProjectStorageRows)[0].key === "creator-z");
 console.log("creator project storage model tests passed");

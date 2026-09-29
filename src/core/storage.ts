@@ -6,6 +6,7 @@ import { puzzleFromCloudPayload, type CloudPuzzlePayload } from "./puzzleSync";
 import type { PersistedPuzzle, PuzzleDefinition } from "./model";
 import { creatorProjectFromDefinition, definitionFromCreatorProject, parseCreatorProject, type CreatorProject } from "../sudokupad/creator/project";
 import { cloneCreatorProjectForDuplicate, compareCreatorProjectStorageRows, mergeCreatorProjectStorageRows, normalizeCreatorProjectStorageRow, type CreatorProjectStorageRow } from "../sudokupad/creator/projectStorage";
+import { normalizeCreatorProjectHistory, type CreatorProjectHistoryState } from "../sudokupad/creator/history";
 import { definitionForPersistence } from "../sudokupad/migration/puzzleDefinition";
 import { rebaseCreatorSolveState } from "../sudokupad/creator/playtest";
 import { rehydrateImportedSudokuPadDefinition } from "../sudokupad/app/coreAdapter";
@@ -196,7 +197,7 @@ async function migrateLegacyCreatorProjects() {
       const project = creatorProjectFromDefinition(row.data.def);
       const createdAt = row.data.createdAt ?? row.data.updatedAt ?? Date.now();
       const updatedAt = row.data.updatedAt ?? createdAt;
-      migrated.push({ key: row.key, project, createdAt, updatedAt, savedAt: updatedAt, lastOpenedAt: 0 });
+      migrated.push({ key: row.key, project, createdAt, updatedAt, savedAt: updatedAt, lastOpenedAt: 0, undo: [], redo: [] });
     } catch (error) {
       console.warn(`Failed to migrate creator project ${row.key}`, error);
     }
@@ -219,7 +220,7 @@ export async function createCreatorProject(projectInput: CreatorProject, now = D
   const key = project.projectId;
   if (!key) throw new Error("Creator project is missing its project ID.");
   if (await db.creatorProjects.get(key)) throw new Error("Creator project already exists.");
-  const row: CreatorProjectStorageRow = { key, project, createdAt: now, updatedAt: now, savedAt: now, lastOpenedAt: now };
+  const row: CreatorProjectStorageRow = { key, project, createdAt: now, updatedAt: now, savedAt: now, lastOpenedAt: now, undo: [], redo: [] };
   const existingPuzzle = (await db.puzzles.get(key))?.data ?? null;
   await db.transaction("rw", db.creatorProjects, db.puzzles, async () => {
     await db.creatorProjects.add(row);
@@ -231,7 +232,7 @@ export async function createCreatorProject(projectInput: CreatorProject, now = D
   return row;
 }
 
-export async function saveCreatorProject(key: string, projectInput: CreatorProject, now = Date.now()) {
+export async function saveCreatorProject(key: string, projectInput: CreatorProject, now = Date.now(), history?: CreatorProjectHistoryState) {
   const project = parseCreatorProject(projectInput);
   if (project.projectId !== key || project.sourceId !== key) {
     project.projectId = key;
@@ -240,6 +241,7 @@ export async function saveCreatorProject(key: string, projectInput: CreatorProje
   const existing = await db.creatorProjects.get(key);
   if (existing?.deletedAt) throw new Error("Creator project was deleted. Restore it explicitly before saving.");
   const createdAt = existing?.createdAt ?? now;
+  const normalizedExisting = existing ? normalizeCreatorProjectStorageRow(existing) : null;
   const row: CreatorProjectStorageRow = {
     key,
     project,
@@ -247,6 +249,8 @@ export async function saveCreatorProject(key: string, projectInput: CreatorProje
     updatedAt: now,
     savedAt: now,
     lastOpenedAt: existing?.lastOpenedAt ?? now,
+    undo: normalizeCreatorProjectHistory(history?.undo ?? normalizedExisting?.undo),
+    redo: normalizeCreatorProjectHistory(history?.redo ?? normalizedExisting?.redo),
   };
   const existingPuzzle = (await db.puzzles.get(key))?.data ?? null;
   await db.transaction("rw", db.creatorProjects, db.puzzles, async () => {

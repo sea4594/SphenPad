@@ -1,4 +1,5 @@
 import { parseCreatorProject, type CreatorProject } from "./project";
+import { normalizeCreatorProjectHistory, type CreatorProjectHistoryEntry } from "./history";
 
 export type CreatorProjectStorageRow = {
   key: string;
@@ -8,6 +9,8 @@ export type CreatorProjectStorageRow = {
   savedAt: number;
   lastOpenedAt: number;
   deletedAt?: number;
+  undo?: CreatorProjectHistoryEntry[];
+  redo?: CreatorProjectHistoryEntry[];
 };
 
 const clone = <T,>(value: T): T => value == null ? value : JSON.parse(JSON.stringify(value)) as T;
@@ -22,6 +25,8 @@ export function normalizeCreatorProjectStorageRow(row: CreatorProjectStorageRow)
     updatedAt,
     savedAt: Number.isFinite(row.savedAt) ? row.savedAt : updatedAt,
     lastOpenedAt: Number.isFinite(row.lastOpenedAt) ? row.lastOpenedAt : 0,
+    undo: normalizeCreatorProjectHistory(row.undo),
+    redo: normalizeCreatorProjectHistory(row.redo),
     ...(typeof row.deletedAt === "number" && Number.isFinite(row.deletedAt) && row.deletedAt > 0 ? { deletedAt: row.deletedAt } : {}),
   };
 }

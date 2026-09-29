@@ -5,6 +5,8 @@ const board = fs.readFileSync(new URL('../src/ui/BoardInteractionLayer.tsx', imp
 const grid = fs.readFileSync(new URL('../src/ui/GridCanvas.tsx', import.meta.url), 'utf8');
 const renderer = fs.readFileSync(new URL('../src/sudokupad/render/SvgRenderer.ts', import.meta.url), 'utf8');
 const renderScene = fs.readFileSync(new URL('../src/sudokupad/render/renderScene.ts', import.meta.url), 'utf8');
+const creatorHistory = fs.readFileSync(new URL('../src/sudokupad/creator/history.ts', import.meta.url), 'utf8');
+const projectStorage = fs.readFileSync(new URL('../src/sudokupad/creator/projectStorage.ts', import.meta.url), 'utf8');
 const required = [
   'copySelectedObjects', 'pasteSelectedObjects', 'selectAllCatalogObjects', 'deleteSelectedObjects',
   'creatorObjectContextMenu', 'creatorPathPoints', 'setCreatorLinePathPoint', 'reorderCreatorLinePathPoint',
@@ -51,5 +53,17 @@ for (const token of [
   'creatorPaintBaseCells={props.creatorPaintBaseCells}', 'creatorOutsideDiagonal={props.creatorOutsideDiagonal}', 'creatorEditPath={props.creatorEditPath}', 'onCreatorOutsideRay={props.onCreatorOutsideRay}'
 ]) if (!grid.includes(token)) throw new Error(`missing Phase C grid passthrough token: ${token}`);
 for (const token of ['.creatorFogRole', '.sphenpad-creator-path-handles']) if (!styles.includes(token)) throw new Error(`missing Phase C creator style: ${token}`);
+
+
+for (const token of [
+  'createCreatorProjectHistoryEntry', 'applyCreatorProjectHistoryEntry', 'creatorHistoryRef', 'persistCreatorDefinition(key, snapshot, historySnapshot)',
+  'persistCreatorHistoryNavigation', 'creatorPaneResizeHandle', 'startCreatorPaneResize', 'resizeCreatorPane', 'keyCreatorPaneResize',
+  'aria-valuenow={Math.round(creatorControlSplit * 100)}', 'creatorGridLayoutRef', '--creator-controls-size'
+]) if (!editor.includes(token)) throw new Error(`missing creator UX hardening token: ${token}`);
+for (const token of ['collectPatches(', 'validHistoryPath(', 'applyCreatorProjectHistoryEntry']) if (!creatorHistory.includes(token)) throw new Error(`missing compact creator history token: ${token}`);
+for (const token of ['undo?: CreatorProjectHistoryEntry[]', 'redo?: CreatorProjectHistoryEntry[]', 'normalizeCreatorProjectHistory(row.undo)']) if (!projectStorage.includes(token)) throw new Error(`missing persisted creator history token: ${token}`);
+for (const token of [
+  '.creatorPaneResizeHandle', '[data-layout-mode="phone-landscape"] .creatorGridLayout', 'grid-column: 3', 'drop-shadow(1.6px 0 0 var(--accent))'
+]) if (!styles.includes(token)) throw new Error(`missing creator UX hardening style: ${token}`);
 
 console.log('creator 11K editor integration checks passed');
