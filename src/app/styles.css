@@ -4144,3 +4144,41 @@ input.url {
   stroke-width: 2;
   vector-effect: non-scaling-stroke;
 }
+
+/* Phase C creator geometry handles and specialized paint controls. */
+.creatorFogRole {
+  display: grid;
+  gap: 7px;
+  padding: 9px;
+  border: 1px solid var(--ui-border);
+  border-radius: 8px;
+  background: var(--panel-soft);
+}
+.sphenpad-creator-path-handles polyline {
+  stroke: var(--accent);
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: .55;
+}
+.sphenpad-creator-path-handles circle {
+  fill: var(--panel);
+  stroke: var(--accent);
+  stroke-width: 2.2;
+  vector-effect: non-scaling-stroke;
+}
+.creatorFallbackAuthoring {
+  border-top: 1px solid var(--ui-border);
+  padding-top: 7px;
+}
+.creatorFallbackAuthoring summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: .86rem;
+  user-select: none;
+}
+.creatorFallbackAuthoring[open] {
+  display: grid;
+  gap: 7px;
+}

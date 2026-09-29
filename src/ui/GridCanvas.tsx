@@ -65,11 +65,16 @@ export interface GridCanvasProps {
   creatorSnapMode?: CreatorSnapMode;
   creatorGridResolution?: number;
   creatorShowGrid?: boolean;
+  creatorPaintBaseCells?: CellRC[];
+  creatorOutsideDiagonal?: boolean;
+  creatorEditPath?: CellRC[];
+  onCreatorEditPathPoint?: (index: number, cell: CellRC) => void;
   onCreatorCells?: (cells: CellRC[]) => void;
   onCreatorEdge?: (a: CellRC, b: CellRC) => void;
   onCreatorCorner?: (corner: CreatorBoardPoint) => void;
   onCreatorPoint?: (point: CreatorBoardPoint) => void;
   onCreatorFreePath?: (points: CreatorBoardPoint[]) => void;
+  onCreatorOutsideRay?: (cells: CellRC[]) => void;
 }
 
 /**
@@ -383,11 +388,16 @@ export function GridCanvas(props: GridCanvasProps) {
         creatorSnapMode={props.creatorSnapMode}
         creatorGridResolution={props.creatorGridResolution}
         creatorShowGrid={props.creatorShowGrid}
+        creatorPaintBaseCells={props.creatorPaintBaseCells}
+        creatorOutsideDiagonal={props.creatorOutsideDiagonal}
+        creatorEditPath={props.creatorEditPath}
+        onCreatorEditPathPoint={props.onCreatorEditPathPoint}
         onCreatorCells={props.onCreatorCells}
         onCreatorEdge={props.onCreatorEdge}
         onCreatorCorner={props.onCreatorCorner}
         onCreatorPoint={props.onCreatorPoint}
         onCreatorFreePath={props.onCreatorFreePath}
+        onCreatorOutsideRay={props.onCreatorOutsideRay}
       /> : null}
     </div>
   );

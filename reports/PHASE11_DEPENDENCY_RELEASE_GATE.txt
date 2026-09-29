@@ -1,4 +1,4 @@
-Phase 11 dependency-backed release gate — 2026-09-29T21:57:52Z
+Phase 11 dependency-backed release gate — 2026-09-29T23:10:58Z
 Node: v20.20.2
 npm: 10.8.2
 
@@ -38,7 +38,7 @@ found 0 vulnerabilities
   103:6  warning  React Hook useEffect has a missing dependency: 'positionMenu'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
 
 /Users/sea/Desktop/SphenPad/src/ui/PuzzleEditorPage.tsx
-  1601:6  warning  React Hook useEffect has a missing dependency: 'selectedObjectIds'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  1639:6  warning  React Hook useEffect has a missing dependency: 'selectedObjectIds'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
 
 /Users/sea/Desktop/SphenPad/src/ui/SelectControl.tsx
   51:9  warning  The 'selectedValues' conditional could make the dependencies of useMemo Hook (at line 53) change on every render. Move it inside the useMemo callback. Alternatively, wrap the initialization of 'selectedValues' in its own useMemo() Hook  react-hooks/exhaustive-deps
@@ -55,15 +55,15 @@ transforming...
 ✓ 171 modules transformed.
 rendering chunks...
 computing gzip size...
-dist/index.html                     1.12 kB │ gzip:   0.51 kB
-dist/assets/index-CLY8ipDN.css     85.42 kB │ gzip:  15.21 kB
-dist/assets/index-BEZzXHy_.js   1,297.59 kB │ gzip: 390.35 kB
+dist/index.html                     1.12 kB │ gzip:   0.50 kB
+dist/assets/index-UciM3YnZ.css     86.11 kB │ gzip:  15.31 kB
+dist/assets/index-BWNzlHpH.js   1,305.10 kB │ gzip: 392.29 kB
 
 (!) Some chunks are larger than 500 kB after minification. Consider:
 - Using dynamic import() to code-split the application
 - Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
 - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
-✓ built in 2.85s
+✓ built in 2.81s
 [5/11] Complete Phase 11 creator regression matrix
 
 > sphenpad@0.0.0 test-creator-phase11
@@ -166,7 +166,7 @@ Production smoke: PASS (2 built asset references checked)
 > sphenpad@0.0.0 verify-production-bundle-clean
 > node scripts/verify-production-bundle-clean.mjs
 
-Production bundle cleanliness: PASS (4082 files, no test/debug/conformance leakage)
+Production bundle cleanliness: PASS (4081 files, no test/debug/conformance leakage)
 [8/11] Built-app browser smoke
 
 > sphenpad@0.0.0 verify-production-browser
@@ -192,7 +192,7 @@ SudokuPad compatibility manifest: PASS (67 JS/CSS assets, 13 fonts)
 > sphenpad@0.0.0 write-phase11-release-hashes
 > node scripts/write-phase11-release-hashes.mjs
 
-Phase 11 release hash manifest: PASS (4219 production inputs, 15 creator tests, 4082 built files)
-releaseContentSha256=d69a391b76d29a91a7e4a5d76f8af6a11594c0f5ae7f2bb24bb94630beec6bc0
+Phase 11 release hash manifest: PASS (4218 production inputs, 15 creator tests, 4081 built files)
+releaseContentSha256=85a63a61be6b173a0135800124b8c6b92dca5c193750cb68a4512afdf14dbebb
 
 PHASE 11 DEPENDENCY-BACKED RELEASE GATE PASSED

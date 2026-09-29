@@ -39,4 +39,17 @@ for (const token of ['creatorDirectMode?: CreatorDirectMode', 'creatorSnappedPoi
 for (const token of ['creatorDirectMode={props.creatorDirectMode}', 'creatorSnapMode={props.creatorSnapMode}', 'creatorGridResolution={props.creatorGridResolution}', 'creatorShowGrid={props.creatorShowGrid}']) if (!grid.includes(token)) throw new Error(`missing Phase B grid target token: ${token}`);
 for (const token of ['.creatorAppearanceSection', '.creatorColorControl', '.sphenpad-creator-drawing-grid', '.sphenpad-creator-point-preview']) if (!styles.includes(token)) throw new Error(`missing Phase B creator style: ${token}`);
 
+for (const token of [
+  'DIRECT_OUTSIDE_IDS', 'fogPaintRole', 'handleCreatorOutsideRay', 'handleCreatorEditPathPoint',
+  'creatorPaintBaseCells={selectedPaintBaseCells}', 'creatorOutsideDiagonal={activeCatalogElement === "little-killers"}', 'creatorEditPath={creatorEditPath}', 'onCreatorOutsideRay={handleCreatorOutsideRay}'
+]) if (!editor.includes(token)) throw new Error(`missing Phase C creator parity token: ${token}`);
+for (const token of [
+  '"free-line" | "outside"', 'creatorObjectCandidates(', 'creatorPickRef', 'creatorOutsideStartAt(', 'creatorOutsideRay(',
+  'creatorPaintBaseCells !== undefined', 'creatorPathHandleIndex(', 'sphenpad-creator-path-handles'
+]) if (!board.includes(token)) throw new Error(`missing Phase C board interaction token: ${token}`);
+for (const token of [
+  'creatorPaintBaseCells={props.creatorPaintBaseCells}', 'creatorOutsideDiagonal={props.creatorOutsideDiagonal}', 'creatorEditPath={props.creatorEditPath}', 'onCreatorOutsideRay={props.onCreatorOutsideRay}'
+]) if (!grid.includes(token)) throw new Error(`missing Phase C grid passthrough token: ${token}`);
+for (const token of ['.creatorFogRole', '.sphenpad-creator-path-handles']) if (!styles.includes(token)) throw new Error(`missing Phase C creator style: ${token}`);
+
 console.log('creator 11K editor integration checks passed');
