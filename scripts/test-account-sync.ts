@@ -29,6 +29,10 @@ assert.match(firebaseSource, /MAX_WRITES_PER_COMMIT = 75/);
 assert.match(firebaseSource, /MAX_ESTIMATED_COMMIT_BYTES = 5 \* 1024 \* 1024/);
 assert.doesNotMatch(firebaseSource, /MAX_BATCH_SIZE = 400/);
 
+assert.match(firebaseSource, /SYNC_PAYLOAD_ENCODING_LZ/, "large cloud records should use compressed payloads when smaller");
+assert.match(firebaseSource, /onCloudStateChanged/, "cross-device revision changes should be observable immediately");
+assert.match(firebaseSource, /await chunkChangesYielding\(changes\)/, "bulk cloud encoding should yield between records");
+
 assert.match(firebaseSource, /syncRevision/);
 assert.match(firebaseSource, /CLOUD_SCHEMA_VERSION = 3/);
 assert.match(firebaseSource, /syncPuzzles/);
@@ -53,10 +57,15 @@ assert.match(storageSource, /options: \{ sync\?: boolean \} = \{\}/, "local auto
 assert.match(storageSource, /supersede\("puzzle", change.key\)/, "remote winners must clear only superseded dirty puzzle mutations");
 assert.match(storageSource, /updatePuzzleListCache\(key, data\)/, "single-puzzle autosaves must not invalidate the full puzzle-list cache");
 
+assert.match(storageSource, /Keep the hot puzzle-list cache intact/, "one remote puzzle must not invalidate the entire hydrated library");
+
 const puzzlePageSource = readFileSync(new URL("../src/ui/PuzzlePage.tsx", import.meta.url), "utf8");
 assert.match(puzzlePageSource, /5_000/, "active puzzle progress should autosave locally");
 assert.match(puzzlePageSource, /30_000/, "background cloud progress should be coalesced");
 assert.match(puzzlePageSource, /backgroundProgressDirtyRef/, "timer/video-only progress should use the lightweight background path");
+
+assert.match(puzzlePageSource, /applySessionPatches/, "selection/tool/pause UI changes should remain local-only");
+assert.match(puzzlePageSource, /touchUpdatedAt: false/, "session-only changes must not win cloud conflict resolution");
 assert.doesNotMatch(puzzlePageSource, /if \(!creatorPlaytest\) await upsertPuzzle\(key, normalized\)/, "opening a puzzle must not create a no-op write/sync");
 assert.match(puzzlePageSource, /status === "complete"\) \{\s*setPauseMenuOpen\(true\)/s, "completed puzzles must still open the pause menu");
 

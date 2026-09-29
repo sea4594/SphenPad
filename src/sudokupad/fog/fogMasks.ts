@@ -63,6 +63,12 @@ export function applySudokuPadFogMasks(svg: SVGSVGElement, scene: SudokuPadScene
   const fogMaskId = sudokuPadScopedSvgId(svg, "fog-mask-fog");
   const lightMaskId = sudokuPadScopedSvgId(svg, "fog-mask-light");
   const fogCoverId = sudokuPadScopedSvgId(svg, "fog-fogcover");
+  // Some native SudokuPad/SudokuMaker payloads contain authored paths that
+  // directly reference the stock fog mask IDs. SphenPad scopes generated SVG
+  // IDs per board so multiple thumbnails can coexist; scope those authored
+  // references too, otherwise a preview can resolve another board's mask.
+  svg.querySelectorAll<SVGElement>('[mask="url(#fog-mask-fog)"]').forEach((elem) => elem.setAttribute("mask", `url(#${fogMaskId})`));
+  svg.querySelectorAll<SVGElement>('[mask="url(#fog-mask-light)"]').forEach((elem) => elem.setAttribute("mask", `url(#${lightMaskId})`));
   const defs = createSvgElement("defs");
   defs.id = fogDefsId;
   defs.dataset.sphenpadFogRoot = "defs";

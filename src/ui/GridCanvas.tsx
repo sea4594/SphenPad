@@ -6,6 +6,37 @@ import { sphenPadSudokuPadAssetResolver } from "../sudokupad/app/network";
 import { SudokuPadBoard } from "./SudokuPadBoard";
 import { BoardInteractionLayer, type BoardLineKind, type BoardLineSegment } from "./BoardInteractionLayer";
 
+const EMPTY_CONFLICT_CELLS: CellRC[] = [];
+
+function sceneProgressOnly(
+  cells: PuzzleProgress["cells"],
+  lines: PuzzleProgress["lines"],
+  lineCenterMarks: PuzzleProgress["lineCenterMarks"],
+  lineEdgeMarks: PuzzleProgress["lineEdgeMarks"],
+  status: PuzzleProgress["status"],
+): PuzzleProgress {
+  return {
+    totalMillis: 0,
+    status,
+    selection: [],
+    multiSelect: false,
+    cells,
+    lines,
+    lineCenterMarks,
+    lineEdgeMarks,
+    entryMode: "value",
+    alphabetMode: false,
+    alphabetPage: 0,
+    highlightPalettePage: 0,
+    activeHighlightColor: "",
+    linePaletteColor: "",
+    linePaletteKind: "center",
+    lineDoubleMode: false,
+    activeTool: "value",
+    paused: false,
+  };
+}
+
 export interface GridCanvasProps {
   def: PuzzleDefinition;
   progress: PuzzleProgress;
@@ -31,8 +62,15 @@ export interface GridCanvasProps {
  * Every puzzle renders through the native SudokuPad-compatible SVG scene.
  */
 export function GridCanvas(props: GridCanvasProps) {
-  const { def, progress, interactive = true, previewMode = false, strictScale = false, requestedHeight, scalePuzzleStrokes = false, conflictCheckerEnabled, additionalConflictCells = [], hideAuthoredEntries = false } = props;
-  const renderProgress = useMemo(() => previewMode ? { ...progress, selection: [], multiSelect: false } : progress, [previewMode, progress]);
+  const { def, progress, interactive = true, previewMode = false, strictScale = false, requestedHeight, scalePuzzleStrokes = false, conflictCheckerEnabled, additionalConflictCells = EMPTY_CONFLICT_CELLS, hideAuthoredEntries = false } = props;
+  const interactionProgress = useMemo(() => previewMode ? { ...progress, selection: [], multiSelect: false } : progress, [previewMode, progress]);
+  const { cells: sceneCells, lines: sceneLines, lineCenterMarks: sceneCenterMarks, lineEdgeMarks: sceneEdgeMarks, status: sceneStatus } = progress;
+  // Scene rendering ignores timer/selection/tool/pause state. Keeping this
+  // object stable prevents expensive SVG reconstruction for ordinary UI actions.
+  const sceneProgress = useMemo(
+    () => sceneProgressOnly(sceneCells, sceneLines, sceneCenterMarks, sceneEdgeMarks, sceneStatus),
+    [sceneCells, sceneLines, sceneCenterMarks, sceneEdgeMarks, sceneStatus],
+  );
   const theme = useTheme();
   const surfaceRef = useRef<HTMLDivElement | null>(null);
   const [svg, setSvg] = useState<SVGSVGElement | null>(null);
@@ -54,7 +92,7 @@ export function GridCanvas(props: GridCanvasProps) {
       }
       : def.scene;
     const checkerEnabled = conflictCheckerEnabled ?? theme.conflictChecker;
-    const withProgress = sceneWithPuzzleProgress(authoredScene, renderProgress, def.logic, checkerEnabled);
+    const withProgress = sceneWithPuzzleProgress(authoredScene, sceneProgress, def.logic, checkerEnabled);
     const extraConflicts = checkerEnabled ? new Set(additionalConflictCells.map((cell) => `${cell.r}:${cell.c}`)) : new Set<string>();
     const cells = extraConflicts.size
       ? withProgress.cells.map((row, r) => row.map((cell, c) => extraConflicts.has(`${r}:${c}`) ? { ...cell, hasError: true } : cell))
@@ -72,7 +110,7 @@ export function GridCanvas(props: GridCanvasProps) {
         labelRowsCols: explicitRender.labelRowsCols ?? theme.labelRowsCols,
       },
     };
-  }, [def.scene, def.logic, renderProgress, hideAuthoredEntries, conflictCheckerEnabled, additionalConflictCells, explicitRender.outlineDigits, explicitRender.compactMarks, explicitRender.labelRowsCols, theme.outlineDigits, theme.compactMarks, theme.labelRowsCols, theme.conflictChecker]);
+  }, [def.scene, def.logic, sceneProgress, hideAuthoredEntries, conflictCheckerEnabled, additionalConflictCells, explicitRender.outlineDigits, explicitRender.compactMarks, explicitRender.labelRowsCols, theme.outlineDigits, theme.compactMarks, theme.labelRowsCols, theme.conflictChecker]);
 
   const activeFitSize = previewMode || !svg ? null : fitSize;
 
@@ -192,7 +230,7 @@ export function GridCanvas(props: GridCanvasProps) {
         svg={svg}
         rows={scene.rows}
         cols={scene.cols}
-        progress={renderProgress}
+        progress={interactionProgress}
         selectionColor={theme.selectionColor}
         selectionOutlineThickness={theme.selectionOutlineThickness}
         interactive={interactive}

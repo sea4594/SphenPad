@@ -651,9 +651,30 @@ export async function applyRemoteStorageChanges(changes: {
   });
 
   acknowledgeSyncDirty(supersededDirty);
-  puzzlesListCache = null;
-  foldersListCache = null;
-  creatorProjectsListCache = null;
+  // Keep the hot puzzle-list cache intact when only a few remote puzzles change.
+  // Invalidating it forces every imported puzzle to be rehydrated on the next
+  // menu render, which is disproportionately expensive for large libraries.
+  if (puzzlesListCache && changes.puzzles.length) {
+    for (const change of changes.puzzles) {
+      if (!change.data) {
+        puzzlesListCache = puzzlesListCache.filter((row) => row.key !== change.key);
+        continue;
+      }
+      const stored = await db.puzzles.get(change.key);
+      if (!stored) continue;
+      const cached = puzzlesListCache.find((row) => row.key === change.key);
+      const sameDefinition = Boolean(cached
+        && cached.def.id === stored.data.def.id
+        && cached.def.sourcePayload === stored.data.def.sourcePayload
+        && cached.def.meta.creatorPuzzle === stored.data.def.meta.creatorPuzzle);
+      const hydrated = sameDefinition && cached
+        ? { ...stored.data, def: cached.def }
+        : await hydratePersistedPuzzle(stored.data);
+      updatePuzzleListCache(change.key, hydrated);
+    }
+  }
+  if (changes.folders.length) foldersListCache = null;
+  if (changes.creatorProjects.length) creatorProjectsListCache = null;
   if (maxUpdatedAt) markLocalDataChanged(maxUpdatedAt, false);
   if (notify) {
     // UI refresh is dispatched by AccountSync after all cloud records are applied.

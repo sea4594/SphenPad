@@ -21,6 +21,7 @@ import {
   where,
   writeBatch,
   deleteField,
+  onSnapshot,
 } from "firebase/firestore";
 import type { FirebaseApp } from "firebase/app";
 import type { Auth, User } from "firebase/auth";
@@ -29,6 +30,7 @@ import type { LocalAppSnapshot } from "../core/appState";
 import type { PersistedPuzzle } from "../core/model";
 import { puzzleFromCloudPayload, puzzleToCloudPayload, type CloudPuzzlePayload } from "../core/puzzleSync";
 import type { CreatorProjectStorageRow, PuzzleFolder } from "../core/storage";
+import { compressPuzzleBase64, decompressPuzzleBase64 } from "../sudokupad/codecs/base64Puzzle";
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -80,6 +82,22 @@ function jsonReviver(_key: string, value: unknown) {
 }
 function serialize(value: unknown) { return JSON.stringify(value, jsonReplacer); }
 function deserialize<T>(payload: string) { return JSON.parse(payload, jsonReviver) as T; }
+const SYNC_PAYLOAD_ENCODING_LZ = "lz-base64";
+function encodeSyncPayload(value: unknown) {
+  const json = serialize(value);
+  if (json.length < 8_192) return { payload: json, encoding: "json" };
+  const compressed = compressPuzzleBase64(json);
+  return compressed.length < json.length ? { payload: compressed, encoding: SYNC_PAYLOAD_ENCODING_LZ } : { payload: json, encoding: "json" };
+}
+function decodeSyncPayload<T>(data: { syncPayload?: unknown; syncEncoding?: unknown }): T {
+  if (typeof data.syncPayload !== "string") throw new Error("Cloud sync payload is missing.");
+  if (data.syncEncoding === SYNC_PAYLOAD_ENCODING_LZ) {
+    const decoded = decompressPuzzleBase64(data.syncPayload);
+    if (decoded == null) throw new Error("Cloud sync payload could not be decompressed.");
+    return deserialize<T>(decoded);
+  }
+  return deserialize<T>(data.syncPayload);
+}
 function docIdForKey(key: string) { return encodeURIComponent(key); }
 function keyForDocId(docId: string) { try { return decodeURIComponent(docId); } catch { return docId; } }
 function byteLength(value: string) { return typeof TextEncoder !== "undefined" ? new TextEncoder().encode(value).byteLength : value.length * 2; }
@@ -134,6 +152,19 @@ export async function pullCloudStateMetadata(userId: string): Promise<CloudState
   return { version, updatedAt, revision, hasData: revision > 0 || updatedAt > 0 || legacyHasData };
 }
 
+export function onCloudStateChanged(userId: string, listener: (metadata: CloudStateMetadata | null) => void, onError?: (error: unknown) => void) {
+  if (!firebaseEnabled || !db) { listener(null); return () => {}; }
+  return onSnapshot(doc(db, "users", userId, "app", "state"), (snap) => {
+    if (!snap.exists()) { listener(null); return; }
+    const data = snap.data() as { version?: unknown; updatedAt?: unknown; revision?: unknown; puzzleKeys?: unknown; creatorProjectKeys?: unknown; folders?: unknown };
+    const version = typeof data.version === "number" ? data.version : 1;
+    const updatedAt = typeof data.updatedAt === "number" ? data.updatedAt : 0;
+    const revision = typeof data.revision === "number" ? data.revision : 0;
+    const legacyHasData = (Array.isArray(data.puzzleKeys) && data.puzzleKeys.length > 0) || (Array.isArray(data.creatorProjectKeys) && data.creatorProjectKeys.length > 0) || (Array.isArray(data.folders) && data.folders.length > 0);
+    listener({ version, updatedAt, revision, hasData: revision > 0 || updatedAt > 0 || legacyHasData });
+  }, (error) => onError?.(error));
+}
+
 async function pullLegacyCloudState(userId: string): Promise<CloudAppSnapshot | null> {
   if (!db) return null;
   const [stateSnap, puzzleDocs, creatorDocs] = await Promise.all([
@@ -179,7 +210,7 @@ export async function pullCloudState(userId: string): Promise<CloudAppSnapshot |
     if (typeof data.syncRevision !== "number") continue;
     if (data.syncDeleted === true) continue;
     if (typeof data.syncPayload !== "string") throw new Error(`Malformed cloud creator project: ${keyForDocId(entry.id)}`);
-    const row = cleanCreatorProject(deserialize<CreatorProjectStorageRow>(data.syncPayload)); creatorProjects.push(row); creatorByKey.set(row.key, row);
+    const row = cleanCreatorProject(decodeSyncPayload<CreatorProjectStorageRow>(data)); creatorProjects.push(row); creatorByKey.set(row.key, row);
   }
   const folders: PuzzleFolder[] = [];
   for (const entry of folderDocs.docs) {
@@ -187,7 +218,7 @@ export async function pullCloudState(userId: string): Promise<CloudAppSnapshot |
     if (typeof data.syncRevision !== "number") continue;
     if (data.syncDeleted === true) continue;
     if (typeof data.syncPayload !== "string") throw new Error(`Malformed cloud folder: ${keyForDocId(entry.id)}`);
-    folders.push(deserialize<PuzzleFolder>(data.syncPayload));
+    folders.push(decodeSyncPayload<PuzzleFolder>(data));
   }
   const puzzles: { key: string; data: PersistedPuzzle }[] = [];
   for (const entry of puzzleDocs.docs) {
@@ -196,7 +227,7 @@ export async function pullCloudState(userId: string): Promise<CloudAppSnapshot |
     if (data.syncDeleted === true) continue;
     if (typeof data.syncPayload !== "string") throw new Error(`Malformed cloud puzzle: ${keyForDocId(entry.id)}`);
     const key = keyForDocId(entry.id);
-    const payload = deserialize<CloudPuzzlePayload>(data.syncPayload);
+    const payload = decodeSyncPayload<CloudPuzzlePayload>(data);
     puzzles.push({ key, data: puzzleFromCloudPayload(payload, null, payload.creatorProjectKey ? creatorByKey.get(payload.creatorProjectKey) : null) });
   }
   return { version: 1, updatedAt: metadata.updatedAt, localStorage: {}, folders, puzzles, creatorProjects };
@@ -219,35 +250,28 @@ export async function pullCloudChanges(userId: string, afterRevision: number): P
   for (const entry of creators) {
     const data = entry.data(); const key = keyForDocId(entry.id); const updatedAt = typeof data.syncUpdatedAt === "number" ? data.syncUpdatedAt : 0;
     if (data.syncDeleted !== true && typeof data.syncPayload !== "string") throw new Error(`Malformed v2 creator project: ${key}`);
-    changes.push({ kind: "creatorProject", key, updatedAt, payload: data.syncDeleted === true ? null : cleanCreatorProject(deserialize<CreatorProjectStorageRow>(data.syncPayload as string)) });
+    changes.push({ kind: "creatorProject", key, updatedAt, payload: data.syncDeleted === true ? null : cleanCreatorProject(decodeSyncPayload<CreatorProjectStorageRow>(data)) });
   }
   for (const entry of folders) {
     const data = entry.data(); const key = keyForDocId(entry.id); const updatedAt = typeof data.syncUpdatedAt === "number" ? data.syncUpdatedAt : 0;
     if (data.syncDeleted !== true && typeof data.syncPayload !== "string") throw new Error(`Malformed v2 folder: ${key}`);
-    changes.push({ kind: "folder", key, updatedAt, payload: data.syncDeleted === true ? null : deserialize<PuzzleFolder>(data.syncPayload as string) });
+    changes.push({ kind: "folder", key, updatedAt, payload: data.syncDeleted === true ? null : decodeSyncPayload<PuzzleFolder>(data) });
   }
   for (const entry of puzzles) {
     const data = entry.data(); const key = keyForDocId(entry.id); const updatedAt = typeof data.syncUpdatedAt === "number" ? data.syncUpdatedAt : 0;
     if (data.syncDeleted !== true && typeof data.syncPayload !== "string") throw new Error(`Malformed v2 cloud puzzle: ${key}`);
-    changes.push({ kind: "puzzle", key, updatedAt, payload: data.syncDeleted === true ? null : deserialize<CloudPuzzlePayload>(data.syncPayload as string) });
+    changes.push({ kind: "puzzle", key, updatedAt, payload: data.syncDeleted === true ? null : decodeSyncPayload<CloudPuzzlePayload>(data) });
   }
   return { version: metadata.version, revision: metadata.revision, updatedAt: metadata.updatedAt, changes };
 }
 
 function encodedMutation(change: CloudChange) {
-  const payload = change.payload == null ? null : serialize(change.payload);
-  const bytes = payload == null ? 256 : byteLength(payload) + 512;
-  if (payload != null && byteLength(payload) > MAX_RECORD_PAYLOAD_BYTES) throw new Error(`Cloud sync record is too large: ${change.kind} ${change.key}`);
-  return { change, payload, bytes };
-}
-function chunkChanges(changes: CloudChange[]) {
-  const chunks: ReturnType<typeof encodedMutation>[][] = []; let current: ReturnType<typeof encodedMutation>[] = []; let bytes = 0;
-  for (const encoded of changes.map(encodedMutation)) {
-    if (current.length && (current.length >= MAX_WRITES_PER_COMMIT || bytes + encoded.bytes > MAX_ESTIMATED_COMMIT_BYTES)) { chunks.push(current); current = []; bytes = 0; }
-    current.push(encoded); bytes += encoded.bytes;
-  }
-  if (current.length) chunks.push(current);
-  return chunks;
+  const encoded = change.payload == null ? null : encodeSyncPayload(change.payload);
+  const payload = encoded?.payload ?? null;
+  const encoding = encoded?.encoding ?? null;
+  const bytes = payload == null ? 256 : byteLength(payload) + 768;
+  if (payload != null && byteLength(payload) > MAX_RECORD_PAYLOAD_BYTES) throw new Error(`Cloud sync record is too large even after compression: ${change.kind} ${change.key}`);
+  return { change, payload, encoding, bytes };
 }
 function yieldToBrowser() { return new Promise<void>((resolve) => setTimeout(resolve, 0)); }
 async function chunkChangesYielding(changes: CloudChange[]) {
@@ -266,7 +290,7 @@ function collectionForKind(kind: CloudChange["kind"]) { return kind === "puzzle"
 export async function pushCloudChanges(userId: string, changes: CloudChange[], expectedRevision: number): Promise<{ revision: number; updatedAt: number }> {
   if (!firebaseEnabled || !db || changes.length === 0) return { revision: expectedRevision, updatedAt: 0 };
   let revision = expectedRevision; let latestUpdatedAt = 0;
-  for (const chunk of chunkChanges(changes)) {
+  for (const chunk of await chunkChangesYielding(changes)) {
     const stateRef = doc(db, "users", userId, "app", "state");
     const result = await runTransaction(db, async (transaction) => {
       const stateSnap = await transaction.get(stateRef);
@@ -283,7 +307,7 @@ export async function pushCloudChanges(userId: string, changes: CloudChange[], e
           syncRevision: nextRevision,
           syncUpdatedAt: entry.change.updatedAt,
           syncDeleted: entry.change.payload == null,
-          ...(entry.payload == null ? {} : { syncPayload: entry.payload }),
+          ...(entry.payload == null ? {} : { syncPayload: entry.payload, syncEncoding: entry.encoding }),
         });
       }
       transaction.set(stateRef, { version: CLOUD_SCHEMA_VERSION, revision: nextRevision, updatedAt: chunkUpdatedAt }, { merge: stateSnap.exists() });
@@ -333,7 +357,7 @@ export async function migrateCloudToCurrentSchema(
         syncRevision: targetRevision,
         syncUpdatedAt: entry.change.updatedAt,
         syncDeleted: entry.change.payload == null,
-        ...(entry.payload == null ? {} : { syncPayload: entry.payload }),
+        ...(entry.payload == null ? {} : { syncPayload: entry.payload, syncEncoding: entry.encoding }),
       });
     }
     await batch.commit();

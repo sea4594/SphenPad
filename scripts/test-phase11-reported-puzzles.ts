@@ -32,4 +32,21 @@ const fogLive = sceneWithPuzzleProgress(fogImported.def.scene, makeInitialProgre
 expect(fogLive.fog, "search-and-surprise: fog state was lost in live progress rendering");
 expect(getSudokuPadLitCells(fogLive).length > 0, "search-and-surprise: initial fog state has no lit cells");
 
-console.log("Reported arrow/fog puzzle import-to-play regressions passed");
+
+// Schrodinger's Carry On contains internally scaled authored cage paths with
+// non-scaling strokes and direct stock fog-mask references. Thumbnail CSS must
+// not turn those strokes into giant black blocks, and fog IDs must be scoped per SVG.
+const schrodingerPayload = await archivedPayload("james-sinclair_schrodingers-carry-on.json");
+const schrodingerResult = await loadResolvedSudokuPadPayload(schrodingerPayload, { context: { sourceId: "james-sinclair/schrodingers-carry-on", urlSettings: emptySudokuPadUrlSettings() } });
+const schrodingerImported = definitionFromSudokuPadImport(schrodingerResult);
+expect(schrodingerImported.def.scene, "schrodingers-carry-on: normalized scene missing");
+const schrodingerSource = JSON.stringify(schrodingerResult.sourcePuzzle);
+expect(schrodingerSource.includes("non-scaling-stroke"), "schrodingers-carry-on: expected non-scaling authored path missing");
+expect(schrodingerSource.includes("scale(56 56)"), "schrodingers-carry-on: expected internally scaled authored path missing");
+expect(schrodingerSource.includes("fog-mask-fog"), "schrodingers-carry-on: expected authored fog-mask reference missing");
+const stylesSource = await readFile(new URL("../src/app/styles.css", import.meta.url), "utf8");
+expect(stylesSource.includes(':not([transform*="scale("])'), "preview CSS must preserve non-scaling-stroke on internally scaled authored paths");
+const fogMaskSource = await readFile(new URL("../src/sudokupad/fog/fogMasks.ts", import.meta.url), "utf8");
+expect(fogMaskSource.includes('[mask="url(#fog-mask-fog)"]'), "authored fog-mask references must be scoped per board");
+
+console.log("Reported arrow/fog/preview puzzle import-to-play regressions passed");

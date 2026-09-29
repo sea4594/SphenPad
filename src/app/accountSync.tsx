@@ -7,12 +7,12 @@ import { acknowledgeSyncDirty, clearSyncJournal, hasSyncDirtyRecords, markAllSyn
 import { notifyStorageRefreshNeeded, onCloudSyncNeeded } from "../core/syncSignal";
 import { applyRemoteStorageChanges, readAllSyncKeys, readCreatorProjectForSync, readFolderForSync, readPuzzleRowForSync } from "../core/storage";
 import {
-  CLOUD_SCHEMA_VERSION, type CloudChange, firebaseEnabled, googleLogin, googleLogout, onGoogleAuthStateChanged, pullCloudChanges, pullCloudState,
+  CLOUD_SCHEMA_VERSION, type CloudChange, firebaseEnabled, googleLogin, googleLogout, onCloudStateChanged, onGoogleAuthStateChanged, pullCloudChanges, pullCloudState,
   migrateCloudToCurrentSchema, pullCloudStateMetadata, pushCloudChanges, resolveGoogleRedirectLogin, snapshotToCloudChanges,
 } from "../firebase/client";
 
 type SyncStatus = "idle" | "syncing" | "error";
-const CLOUD_RECONCILE_INTERVAL_MS = 45_000;
+const CLOUD_RECONCILE_INTERVAL_MS = 5 * 60_000;
 const REVISION_KEY_PREFIX = "sphenpad-cloud-revision-v3:";
 
 type AccountSyncContextValue = {
@@ -296,11 +296,33 @@ export function AccountSyncProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!firebaseEnabled || !user || !ready) return;
     const reconcile = () => void runExclusive(() => syncOnce(user)).catch(() => {});
-    const online = () => reconcile(); const focus = () => reconcile(); const visibility = () => { if (document.visibilityState === "visible") reconcile(); };
+    // Listen only to the tiny account state document. A revision change wakes
+    // incremental sync immediately; the slow interval remains only as a fallback.
+    const unsubscribeCloud = onCloudStateChanged(user.uid, (metadata) => {
+      if (!metadata) return;
+      if (metadata.version < CLOUD_SCHEMA_VERSION || metadata.revision > cloudRevisionRef.current) reconcile();
+    }, () => { if (hasSyncDirtyRecords()) scheduleRetry(); });
+    const online = () => reconcile();
+    const focus = () => reconcile();
+    const visibility = () => {
+      if (document.visibilityState === "visible") reconcile();
+      else if (hasSyncDirtyRecords()) reconcile();
+    };
+    const pageHide = () => { if (hasSyncDirtyRecords()) reconcile(); };
     const interval = window.setInterval(() => { if (document.visibilityState === "visible") reconcile(); }, CLOUD_RECONCILE_INTERVAL_MS);
-    window.addEventListener("online", online); window.addEventListener("focus", focus); document.addEventListener("visibilitychange", visibility);
+    window.addEventListener("online", online);
+    window.addEventListener("focus", focus);
+    window.addEventListener("pagehide", pageHide);
+    document.addEventListener("visibilitychange", visibility);
     reconcile();
-    return () => { window.removeEventListener("online", online); window.removeEventListener("focus", focus); document.removeEventListener("visibilitychange", visibility); window.clearInterval(interval); };
+    return () => {
+      unsubscribeCloud();
+      window.removeEventListener("online", online);
+      window.removeEventListener("focus", focus);
+      window.removeEventListener("pagehide", pageHide);
+      document.removeEventListener("visibilitychange", visibility);
+      window.clearInterval(interval);
+    };
   }, [ready, user]);
 
   const value = useMemo<AccountSyncContextValue>(() => ({

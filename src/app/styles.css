@@ -3807,10 +3807,13 @@ input.url {
   max-height: 100% !important;
   margin: 0 !important;
 }
-.sphenpad-native-board.preview .sphenpad-sudokupad-renderer [vector-effect="non-scaling-stroke"],
+.sphenpad-native-board.preview .sphenpad-sudokupad-renderer [vector-effect="non-scaling-stroke"]:not([transform*="scale("]),
 .sphenpad-native-board.preview .sphenpad-sudokupad-renderer .cell-grid {
   vector-effect: none !important;
 }
+/* Authored SudokuPad paths can use a large internal scale transform together with
+   non-scaling-stroke. Removing vector-effect from those paths multiplies the
+   stroke by the internal scale and can turn a thumbnail into solid black blocks. */
 
 /* Phase 11B creator project persistence */
 .creatorSaveState {

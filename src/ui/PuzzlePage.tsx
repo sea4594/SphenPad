@@ -699,11 +699,8 @@ export function PuzzlePage(props: { editor?: boolean }) {
         ? { ...normalizedBase, progress: { ...normalizedBase.progress, paused: false } }
         : normalizedBase;
 
-      setData((prev) => {
-        if (!prev) return normalized;
-        if ((prev.updatedAt ?? 0) > (normalized.updatedAt ?? 0)) return prev;
-        return normalized;
-      });
+      latestDataRef.current = normalized;
+      setData(normalized);
       setPauseMenuOpen(editor ? false : Boolean(normalized.progress.paused));
     };
 
@@ -990,20 +987,22 @@ export function PuzzlePage(props: { editor?: boolean }) {
     if (editor || !hasLoadedPuzzle) return;
     if (tickRef.current) window.clearInterval(tickRef.current);
 
+    let lastTickAt = Date.now();
     tickRef.current = window.setInterval(() => {
+      const now = Date.now();
       const prev = latestDataRef.current;
-      if (!prev || prev.progress.paused) return;
-      const next = structuredClone(prev);
-      next.progress.totalMillis += 250;
-      const nextProgress = maybePromoteToInProgress(next.progress);
-      const promoted = nextProgress !== next.progress;
-      next.progress = nextProgress;
-      if (promoted) next.updatedAt = Date.now();
+      if (!prev || prev.progress.paused) { lastTickAt = now; return; }
+      const elapsed = Math.max(0, Math.min(5_000, now - lastTickAt));
+      lastTickAt = now;
+      const timedProgress = { ...prev.progress, totalMillis: prev.progress.totalMillis + elapsed };
+      const nextProgress = maybePromoteToInProgress(timedProgress);
+      const promoted = nextProgress !== timedProgress;
+      const next = { ...prev, progress: nextProgress, ...(promoted ? { updatedAt: now } : {}) };
       latestDataRef.current = next;
       backgroundProgressDirtyRef.current = true;
       setData(next);
       if (promoted && !requestedCreatorPlaytest) void upsertPuzzle(key, next);
-    }, 250);
+    }, 1_000);
 
     return () => {
       if (tickRef.current) window.clearInterval(tickRef.current);
@@ -1098,9 +1097,11 @@ export function PuzzlePage(props: { editor?: boolean }) {
   const canAddToCurrentFolder = Boolean(addFolderNav);
   const isCurrentFolderAlreadyAdded = addFolderNav ? selectedPuzzleFolderIds.has(addFolderNav.id) : false;
 
-  function applyPatches(patches: Patch[], opts?: { recordHistory?: boolean }) {
+  function applyPatches(patches: Patch[], opts?: { recordHistory?: boolean; sync?: boolean; touchUpdatedAt?: boolean }) {
     if (!data || !patches.length) return;
     const recordHistory = opts?.recordHistory ?? true;
+    const sync = opts?.sync ?? true;
+    const touchUpdatedAt = opts?.touchUpdatedAt ?? true;
     let nextProgress: PuzzleProgress = data.progress;
     for (const p of patches) nextProgress = applyPatch(nextProgress, p);
 
@@ -1134,18 +1135,26 @@ export function PuzzlePage(props: { editor?: boolean }) {
         )),
       }
       : data.def;
-    persist({
+    void persist({
       ...data,
       def: nextDefinition,
       progress: nextProgress,
       undo: nextUndo,
       redo: nextRedo,
-      updatedAt: Date.now(),
-    });
+      updatedAt: touchUpdatedAt ? Date.now() : data.updatedAt,
+    }, sync);
   }
 
-  function pushPatch(p: Patch, opts?: { recordHistory?: boolean }) {
+  function pushPatch(p: Patch, opts?: { recordHistory?: boolean; sync?: boolean; touchUpdatedAt?: boolean }) {
     applyPatches([p], opts);
+  }
+
+  function applySessionPatches(patches: Patch[]) {
+    applyPatches(patches, { recordHistory: false, sync: false, touchUpdatedAt: false });
+  }
+
+  function pushSessionPatch(p: Patch) {
+    applySessionPatches([p]);
   }
 
   function undo() {
@@ -1234,23 +1243,23 @@ export function PuzzlePage(props: { editor?: boolean }) {
     if (!data || data.progress.activeTool === "line") return;
     const nextUndo = mergeTrailingSelectionHistoryEntry(data.undo, sel);
     if (nextUndo) {
-      persist({
+      void persist({
         ...data,
         progress: {
           ...data.progress,
           selection: sel,
         },
         undo: nextUndo,
-        updatedAt: Date.now(),
-      });
+        updatedAt: data.updatedAt,
+      }, false);
       return;
     }
-    pushPatch(patchAt(data.progress, ["selection"], sel), { recordHistory: false });
+    pushSessionPatch(patchAt(data.progress, ["selection"], sel));
   }
 
   function setSelectionMode(multiSelect: boolean) {
     if (!data || data.progress.multiSelect === multiSelect) return;
-    pushPatch(patchAt(data.progress, ["multiSelect"], multiSelect), { recordHistory: false });
+    pushSessionPatch(patchAt(data.progress, ["multiSelect"], multiSelect));
   }
 
   function toggleSelectionMode() {
@@ -1429,10 +1438,14 @@ export function PuzzlePage(props: { editor?: boolean }) {
 
   function startOrResume() {
     if (!data) return;
-    const patches: Patch[] = [];
-    if (!data.progress.startedAt) patches.push(patchAt(data.progress, ["startedAt"], Date.now()));
-    patches.push(patchAt(data.progress, ["paused"], false));
-    applyPatches(patches, { recordHistory: false });
+    if (!data.progress.startedAt) {
+      applyPatches([
+        patchAt(data.progress, ["startedAt"], Date.now()),
+        patchAt(data.progress, ["paused"], false),
+      ], { recordHistory: false });
+    } else {
+      pushSessionPatch(patchAt(data.progress, ["paused"], false));
+    }
     setPauseMenuOpen(false);
   }
 
@@ -1497,7 +1510,7 @@ export function PuzzlePage(props: { editor?: boolean }) {
       startOrResume();
       return;
     }
-    pushPatch(patchAt(data.progress, ["paused"], true), { recordHistory: false });
+    pushSessionPatch(patchAt(data.progress, ["paused"], true));
     setPauseMenuOpen(true);
   }
 
@@ -1585,7 +1598,7 @@ export function PuzzlePage(props: { editor?: boolean }) {
       patches.push(patchAt(data.progress, ["storedSelectionWhenLineTool"], undefined));
     }
 
-    applyPatches(patches, { recordHistory: false });
+    applySessionPatches(patches);
   }
 
   function applyDigit(sym: string, forcedMode?: PuzzleProgress["entryMode"]) {
@@ -1684,10 +1697,10 @@ export function PuzzlePage(props: { editor?: boolean }) {
       for (const mark of lineCenterMarks) {
         if (mark.color.toLowerCase() === normalizedTarget) add(mark.rc);
       }
-      applyPatches([
+      applySessionPatches([
         patchAt(data.progress, ["selection"], matches),
         patchAt(data.progress, ["storedSelectionWhenLineTool"], matches),
-      ], { recordHistory: false });
+      ]);
       return;
     }
 
@@ -1696,7 +1709,7 @@ export function PuzzlePage(props: { editor?: boolean }) {
 
   function clearLineToolSelection() {
     if (!data || data.progress.activeTool !== "line" || !data.progress.selection.length) return;
-    pushPatch(patchAt(data.progress, ["selection"], []), { recordHistory: false });
+    pushSessionPatch(patchAt(data.progress, ["selection"], []));
   }
 
   function clearLinesForSelection(progress: PuzzleProgress, selected: CellRC[]): { lines: LineStroke[]; changed: boolean } {
@@ -2027,7 +2040,7 @@ export function PuzzlePage(props: { editor?: boolean }) {
       if (!e.altKey && !e.ctrlKey && !e.metaKey && k === "escape") {
         e.preventDefault();
         if (!data) return;
-        if (!data.progress.paused) pushPatch(patchAt(data.progress, ["paused"], true), { recordHistory: false });
+        if (!data.progress.paused) pushSessionPatch(patchAt(data.progress, ["paused"], true));
         setPauseMenuOpen(true);
         return;
       }
@@ -2079,11 +2092,11 @@ export function PuzzlePage(props: { editor?: boolean }) {
 
         if (!e.ctrlKey && !e.shiftKey && data.progress.activeTool === "line") {
           if (digit === "0") {
-            pushPatch(patchAt(data.progress, ["linePaletteColor"], "#ffffff"), { recordHistory: false });
+            pushSessionPatch(patchAt(data.progress, ["linePaletteColor"], "#ffffff"));
             return;
           }
           const color = linePalette[paletteIndex];
-          if (color) pushPatch(patchAt(data.progress, ["linePaletteColor"], color), { recordHistory: false });
+          if (color) pushSessionPatch(patchAt(data.progress, ["linePaletteColor"], color));
           return;
         }
 
@@ -2099,7 +2112,7 @@ export function PuzzlePage(props: { editor?: boolean }) {
           (data.progress.activeTool === "value" || data.progress.activeTool === "center" || data.progress.activeTool === "corner")
         ) {
           const next = ((data.progress.alphabetPage + 1) % 3) as 0 | 1 | 2;
-          pushPatch(patchAt(data.progress, ["alphabetPage"], next), { recordHistory: false });
+          pushSessionPatch(patchAt(data.progress, ["alphabetPage"], next));
           return;
         }
 
@@ -2389,10 +2402,10 @@ export function PuzzlePage(props: { editor?: boolean }) {
                     onDigit={applyDigit}
                     onDigitLongPress={selectMatchingCells}
                     onBackspace={handleBackspace}
-                    onToggleAlphabet={() => pushPatch(patchAt(data.progress, ["alphabetMode"], !data.progress.alphabetMode), { recordHistory: false })}
+                    onToggleAlphabet={() => pushSessionPatch(patchAt(data.progress, ["alphabetMode"], !data.progress.alphabetMode))}
                     onCycleAlphabetPage={() => {
                       const next = ((data.progress.alphabetPage + 1) % 3) as 0 | 1 | 2;
-                      pushPatch(patchAt(data.progress, ["alphabetPage"], next), { recordHistory: false });
+                      pushSessionPatch(patchAt(data.progress, ["alphabetPage"], next));
                     }}
                   />
                 ) : null}
@@ -2408,7 +2421,7 @@ export function PuzzlePage(props: { editor?: boolean }) {
                     onBackspace={handleBackspace}
                     onFlipPalette={() => {
                       const next = (data.progress.highlightPalettePage === 0 ? 1 : 0) as 0 | 1;
-                      pushPatch(patchAt(data.progress, ["highlightPalettePage"], next), { recordHistory: false });
+                      pushSessionPatch(patchAt(data.progress, ["highlightPalettePage"], next));
                     }}
                   />
                 ) : null}
@@ -2419,9 +2432,9 @@ export function PuzzlePage(props: { editor?: boolean }) {
                     kind="line"
                     progress={data.progress}
                     onBackspace={handleBackspace}
-                    onColor={(c) => pushPatch(patchAt(data.progress, ["linePaletteColor"], c), { recordHistory: false })}
+                    onColor={(c) => pushSessionPatch(patchAt(data.progress, ["linePaletteColor"], c))}
                     onColorLongPress={selectMatchingCells}
-                    onToggleDoubleLine={() => pushPatch(patchAt(data.progress, ["lineDoubleMode"], !data.progress.lineDoubleMode), { recordHistory: false })}
+                    onToggleDoubleLine={() => pushSessionPatch(patchAt(data.progress, ["lineDoubleMode"], !data.progress.lineDoubleMode))}
                   />
                 ) : null}
               </div>
