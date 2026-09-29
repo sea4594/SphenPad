@@ -12,7 +12,7 @@ import { ThemeProvider } from "./theme";
 
 const LAST_ROUTE_KEY = "sphenpad-last-route-v1";
 const VIEWPORT_LOCKED_META = "width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content";
-const VIEWPORT_REFRESH_DELAYS = [120, 320, 620] as const;
+const VIEWPORT_REFRESH_DELAYS = [120, 320, 620, 1000, 1600] as const;
 const MAIN_ROUTES = ["/", "/folders", "/archive"] as const;
 type MainRoute = (typeof MAIN_ROUTES)[number];
 
@@ -110,8 +110,17 @@ export function App() {
     const timeoutIds: number[] = [];
 
     const syncViewportSize = () => {
-      const width = Math.round(Math.max(1, viewport?.width ?? window.innerWidth));
-      const height = Math.round(Math.max(1, viewport?.height ?? window.innerHeight));
+      const active = document.activeElement as HTMLElement | null;
+      const editingText = Boolean(active && (active.matches("input, textarea, select") || active.isContentEditable));
+      const visualWidth = viewport?.width ?? 0;
+      const visualHeight = viewport?.height ?? 0;
+      const layoutWidth = Math.max(window.innerWidth || 0, document.documentElement.clientWidth || 0);
+      const layoutHeight = Math.max(window.innerHeight || 0, document.documentElement.clientHeight || 0);
+      // iOS Safari can briefly retain the old visualViewport dimensions after
+      // rotating back to portrait. Outside of keyboard editing, prefer the larger
+      // layout measurement so the app cannot get stuck shorter than the screen.
+      const width = Math.round(Math.max(1, editingText && visualWidth ? visualWidth : Math.max(visualWidth, layoutWidth)));
+      const height = Math.round(Math.max(1, editingText && visualHeight ? visualHeight : Math.max(visualHeight, layoutHeight)));
       root.style.setProperty("--app-vw", `${width}px`);
       root.style.setProperty("--app-vh", `${height}px`);
     };
@@ -158,8 +167,12 @@ export function App() {
       }
     };
 
+    const onVisibilityChange = () => { if (document.visibilityState === "visible") scheduleViewportSync(); };
     window.addEventListener("resize", scheduleViewportSync);
     window.addEventListener("orientationchange", scheduleViewportSync);
+    window.addEventListener("focus", scheduleViewportSync);
+    window.addEventListener("pageshow", scheduleViewportSync);
+    document.addEventListener("visibilitychange", onVisibilityChange);
     orientation?.addEventListener("change", scheduleViewportSync);
     viewport?.addEventListener("resize", scheduleViewportSync);
     viewport?.addEventListener("scroll", scheduleViewportSync);
@@ -174,6 +187,9 @@ export function App() {
       clearScheduledSync();
       window.removeEventListener("resize", scheduleViewportSync);
       window.removeEventListener("orientationchange", scheduleViewportSync);
+      window.removeEventListener("focus", scheduleViewportSync);
+      window.removeEventListener("pageshow", scheduleViewportSync);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
       orientation?.removeEventListener("change", scheduleViewportSync);
       viewport?.removeEventListener("resize", scheduleViewportSync);
       viewport?.removeEventListener("scroll", scheduleViewportSync);

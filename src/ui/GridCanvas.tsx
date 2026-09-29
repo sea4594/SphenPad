@@ -93,12 +93,15 @@ export function GridCanvas(props: GridCanvasProps) {
       const gridLayout = surface.closest<HTMLElement>(".gridLayout");
       const kbdPanel = gridLayout?.querySelector<HTMLElement>(".kbdPanel") ?? null;
       const pane = boardCard ?? boardColumn ?? surface;
-      const wrapRect = surface.getBoundingClientRect();
+      // Use the untransformed layout box for fitting. The creator can zoom/pan
+      // the board with a CSS transform; measuring the transformed surface here
+      // creates a feedback loop where one zoom-out step repeatedly shrinks the fit.
+      const layoutRect = (boardCard ?? boardColumn ?? surface).getBoundingClientRect();
       const viewportWidth = viewport?.width ?? window.innerWidth;
       const viewportHeightRaw = viewport?.height ?? window.innerHeight;
       const topbar = document.querySelector<HTMLElement>(".topbar");
       const viewportHeight = Math.max(180, viewportHeightRaw - (topbar?.offsetHeight ?? 0) - 16);
-      const width = Math.max(1, Math.floor(wrapRect.width) || surface.clientWidth || pane.clientWidth || viewportWidth);
+      const width = Math.max(1, surface.clientWidth || pane.clientWidth || Math.floor(layoutRect.width) || viewportWidth);
       const measuredHeight = Math.max(
         boardCard?.clientHeight ?? 0,
         boardColumn?.clientHeight ?? 0,
@@ -106,9 +109,9 @@ export function GridCanvas(props: GridCanvasProps) {
         pane.clientHeight || 0,
       );
       const controlsRect = kbdPanel?.getBoundingClientRect() ?? null;
-      const overlapsControlsHorizontally = Boolean(controlsRect && controlsRect.left < wrapRect.right && controlsRect.right > wrapRect.left);
+      const overlapsControlsHorizontally = Boolean(controlsRect && controlsRect.left < layoutRect.right && controlsRect.right > layoutRect.left);
       const spaceAboveControls = controlsRect && overlapsControlsHorizontally
-        ? Math.max(0, Math.floor(controlsRect.top - wrapRect.top))
+        ? Math.max(0, Math.floor(controlsRect.top - layoutRect.top))
         : 0;
       const height = typeof requestedHeight === "number"
         ? requestedHeight
@@ -177,7 +180,6 @@ export function GridCanvas(props: GridCanvasProps) {
         position: "relative",
         maxWidth: "100%",
         maxHeight: "100%",
-        "--sphenpad-highlight-opacity": String(1 - theme.highlightTransparency / 100),
         ...(requestedHeight ? { height: requestedHeight } : {}),
         ...(activeFitSize ? {
           "--sphenpad-board-fit-width": `${activeFitSize.width}px`,

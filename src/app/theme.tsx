@@ -174,6 +174,7 @@ export function ThemeProvider(props: { children: ReactNode }) {
   useEffect(() => {
     document.documentElement.dataset.mode = mode;
     document.documentElement.dataset.theme = color;
+    document.documentElement.style.setProperty("--sphenpad-highlight-opacity", String(1 - highlightTransparency / 100));
 
     // Keep browser chrome (notch/status bar area) aligned with the active theme color.
     const bg = getComputedStyle(document.documentElement).getPropertyValue("--bg").trim() || "#191c22";

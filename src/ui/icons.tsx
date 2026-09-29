@@ -52,6 +52,13 @@ export const IconSettings = () => (
 	</svg>
 );
 
+export const IconZoomPan = () => (
+	<svg width="18" height="18" viewBox="0 0 20 20" aria-hidden>
+		<circle cx="8.2" cy="8.2" r="4.7" fill="none" stroke="currentColor" strokeWidth="1.5" />
+		<path d="M11.7 11.7 16.2 16.2M8.2 5.7v5M5.7 8.2h5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+	</svg>
+);
+
 export const IconMenu = () => (
 	<svg width="18" height="18" viewBox="0 0 20 20" aria-hidden>
 		<path d="M3.5 5.5h13M3.5 10h13M3.5 14.5h13" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />

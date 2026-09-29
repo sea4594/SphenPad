@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 type PopupMenuLeafItem = {
   label: string;
@@ -22,7 +22,7 @@ export function PopupMenuButton(props: {
   items: PopupMenuItem[];
   disabled?: boolean;
   className?: string;
-  triggerLabel?: string;
+  triggerLabel?: ReactNode;
 }) {
   const { ariaLabel, title, items, disabled, className, triggerLabel } = props;
   const [open, setOpen] = useState(false);

@@ -7,7 +7,7 @@ import { GridCanvas } from "./GridCanvas";
 import type { BoardLineKind, BoardLineSegment } from "./BoardInteractionLayer";
 import { getViewportLayoutKind, type ViewportLayoutKind } from "../app/viewportLayout";
 import { Keyboard } from "./Keyboard";
-import { IconRedo, IconSelectMode, IconSettings, IconToolBig, IconToolCenter, IconToolCorner, IconToolHighlight, IconToolLine, IconUndo } from "./icons";
+import { IconRedo, IconSelectMode, IconSettings, IconToolBig, IconToolCenter, IconToolCorner, IconToolHighlight, IconToolLine, IconUndo, IconZoomPan } from "./icons";
 import { PopupMenuButton } from "./PopupMenuButton";
 import { SettingsOverlay } from "./SettingsOverlay";
 import { useTheme } from "../app/theme";
@@ -64,7 +64,7 @@ type CatalogElement = {
 };
 
 const NOOP = () => {};
-const VIEWPORT_REFRESH_DELAYS = [120, 320, 620] as const;
+const VIEWPORT_REFRESH_DELAYS = [120, 320, 620, 1000, 1600] as const;
 const CREATOR_SOLVER_CONTROL_ELEMENT_IDS = new Set(["given-digits", "regions"]);
 const CHECKABLE_ELEMENT_IDS = new Set(["antiking", "antiknight", ...CREATOR_GROUP_ELEMENT_IDS, ...CREATOR_LINE_ELEMENT_IDS, ...CREATOR_GLOBAL_ELEMENT_IDS]);
 const VISUAL_EDITOR_IDS = new Set([...CREATOR_GLOBAL_ELEMENT_IDS, ...CREATOR_GROUP_ELEMENT_IDS, ...CREATOR_LINE_ELEMENT_IDS, "cosmetic-lines", "cosmetic-cages", "cosmetic-symbols", "cosmetic-text", "cosmetic-shapes", "cosmetic-images", "cosmetic-backgrounds"]);
@@ -1507,6 +1507,15 @@ export function PuzzleEditorPage() {
   const selectedElementUsesSolverControls = activeCatalogElement === null || CREATOR_SOLVER_CONTROL_ELEMENT_IDS.has(activeCatalogElement);
   const showElementControls = creatorTab === "elements" && activeCatalogElement !== null && !testPlay && creatorControlView === "element";
   const showSolverControls = testPlay || creatorTab !== "elements" || activeCatalogElement === null || creatorControlView === "solver";
+  const creatorViewMenuItems = [
+    { label: "Zoom in", onSelect: () => setCanvasZoom((value) => Math.min(2.5, Math.round((value + 0.1) * 10) / 10)) },
+    { label: "Zoom out", onSelect: () => setCanvasZoom((value) => Math.max(0.5, Math.round((value - 0.1) * 10) / 10)) },
+    { label: "Reset view", onSelect: () => { setCanvasZoom(1); setCanvasPan({ x: 0, y: 0 }); } },
+    { label: "Pan up", onSelect: () => setCanvasPan((value) => ({ ...value, y: value.y + 24 })) },
+    { label: "Pan down", onSelect: () => setCanvasPan((value) => ({ ...value, y: value.y - 24 })) },
+    { label: "Pan left", onSelect: () => setCanvasPan((value) => ({ ...value, x: value.x + 24 })) },
+    { label: "Pan right", onSelect: () => setCanvasPan((value) => ({ ...value, x: value.x - 24 })) },
+  ];
 
   return (
     <div className={`shell puzzleShell creatorEditorShell${creatorLayoutClass}`} data-layout-mode={viewportLayoutKind}>
@@ -1517,7 +1526,10 @@ export function PuzzleEditorPage() {
           <button className={creatorTab === "elements" ? "btn primary" : "btn"} onClick={() => { setCreatorTab("elements"); setAuthoringOpen(false); }} type="button">Elements</button>
           <button className={creatorTab === "tools" ? "btn primary" : "btn"} onClick={() => { setCreatorTab("tools"); setAuthoringOpen(false); }} type="button">Tools</button>
         </nav>
-        <button className="btn topbarSettingsButton" onClick={() => setSettingsOpen(true)} title="Settings" type="button"><IconSettings /></button>
+        <div className="creatorTopbarActions">
+          {creatorTab !== "file" ? <PopupMenuButton className="btn creatorCanvasViewButton creatorTopbarIconButton" ariaLabel={`Zoom and pan controls. Current zoom ${Math.round(canvasZoom * 100)} percent`} title={`Zoom and pan · ${Math.round(canvasZoom * 100)}%`} triggerLabel={<IconZoomPan />} items={creatorViewMenuItems} /> : null}
+          <button className="btn topbarSettingsButton" onClick={() => setSettingsOpen(true)} title="Settings" type="button"><IconSettings /></button>
+        </div>
       </header>
       {creatorTab === "file" ? <main className="page creatorFilePage">
         <div className="creatorFileContent">
@@ -1545,7 +1557,6 @@ export function PuzzleEditorPage() {
 
         <div className="gridLayout creatorGridLayout">
           <section className="boardColumn creatorBoardColumn">
-            <div className="creatorCanvasToolbar" aria-label="Board view controls"><PopupMenuButton className="btn creatorCanvasViewButton" ariaLabel="Zoom and pan controls" title="Zoom and pan" triggerLabel={`View ${Math.round(canvasZoom * 100)}% ▾`} items={[{ label: "Zoom in", onSelect: () => setCanvasZoom((value) => Math.min(2.5, Math.round((value + 0.1) * 10) / 10)) }, { label: "Zoom out", onSelect: () => setCanvasZoom((value) => Math.max(0.5, Math.round((value - 0.1) * 10) / 10)) }, { label: "Reset view", onSelect: () => { setCanvasZoom(1); setCanvasPan({ x: 0, y: 0 }); } }, { label: "Pan up", onSelect: () => setCanvasPan((value) => ({ ...value, y: value.y + 24 })) }, { label: "Pan down", onSelect: () => setCanvasPan((value) => ({ ...value, y: value.y - 24 })) }, { label: "Pan left", onSelect: () => setCanvasPan((value) => ({ ...value, x: value.x + 24 })) }, { label: "Pan right", onSelect: () => setCanvasPan((value) => ({ ...value, x: value.x - 24 })) }]} /></div>
             <div className="card boardCard creatorCanvasViewport" onWheel={(event) => { if (!(event.ctrlKey || event.metaKey)) return; event.preventDefault(); setCanvasZoom((value) => Math.max(0.5, Math.min(2.5, value + (event.deltaY < 0 ? 0.1 : -0.1)))); }}>
               <div className="creatorCanvasTransform" style={{ transform: `translate(${canvasPan.x}px, ${canvasPan.y}px) scale(${canvasZoom})` }}><GridCanvas def={data.def} progress={controlProgress} conflictCheckerEnabled={activeCatalogElement === "regions" ? false : theme.conflictChecker} additionalConflictCells={activeCatalogElement === "regions" ? [] : liveCreatorConflictCells} hideAuthoredEntries={activeCatalogElement === "regions"} onSelection={testPlay ? (next) => setTestProgress((current) => current ? { ...current, selection: next } : current) : setSelection} onLineStroke={testPlay ? NOOP : onCreatorLineStroke} onLineTapCell={testPlay ? NOOP : onCreatorLineTapCell} onLineTapEdge={testPlay ? NOOP : onCreatorLineTapEdge} onLineGridTouch={() => { if (!testPlay && activeCatalogElement === null && editorTool === "line") setSelection([]); }} onDoubleCell={NOOP} /></div>
             </div>

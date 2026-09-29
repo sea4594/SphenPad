@@ -1,5 +1,6 @@
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAccountSync } from "../app/accountSync";
+import { hasSyncDirtyRecords } from "../core/syncJournal";
 import { useTheme, type SelectionColor, type SelectionOutlineThickness, type ThemeColor } from "../app/theme";
 
 type ThemePreset = {
@@ -72,6 +73,23 @@ export function SettingsOverlay(props: { onClose: () => void }) {
     setHighlightTransparency,
   } = useTheme();
   const activePreset = themePresets.find((preset) => preset.mode === mode && preset.color === color) ?? themePresets[0];
+  const [highlightTransparencyDraft, setHighlightTransparencyDraft] = useState(highlightTransparency);
+  const highlightTransparencyDraftRef = useRef(highlightTransparency);
+
+  const previewHighlightTransparency = (value: number) => {
+    const next = Math.max(0, Math.min(100, Math.round(value)));
+    highlightTransparencyDraftRef.current = next;
+    setHighlightTransparencyDraft(next);
+    document.documentElement.style.setProperty("--sphenpad-highlight-opacity", String(1 - next / 100));
+  };
+  const commitHighlightTransparency = () => {
+    const next = highlightTransparencyDraftRef.current;
+    if (next !== highlightTransparency) setHighlightTransparency(next);
+  };
+  const closeSettings = () => {
+    commitHighlightTransparency();
+    onClose();
+  };
 
   const applyThemePreset = (presetId: string) => {
     const preset = themePresets.find((item) => item.id === presetId);
@@ -79,24 +97,31 @@ export function SettingsOverlay(props: { onClose: () => void }) {
     setTheme(preset.mode, preset.color);
   };
   useEffect(() => {
+    highlightTransparencyDraftRef.current = highlightTransparency;
+    document.documentElement.style.setProperty("--sphenpad-highlight-opacity", String(1 - highlightTransparency / 100));
+  }, [highlightTransparency]);
+
+  useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
       event.preventDefault();
+      const next = highlightTransparencyDraftRef.current;
+      if (next !== highlightTransparency) setHighlightTransparency(next);
       onClose();
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [onClose]);
+  }, [highlightTransparency, onClose, setHighlightTransparency]);
 
   return (
-    <div className="overlayBackdrop" onClick={onClose}>
+    <div className="overlayBackdrop" onClick={closeSettings}>
       <div className="card settingsCard" role="dialog" aria-modal="true" aria-label="Settings" onClick={(e) => e.stopPropagation()}>
         <div className="settingsHeader">
           <div>
             <div style={{ fontWeight: 800, fontSize: 22 }}>Settings</div>
             <div className="muted" style={{ marginTop: 2, fontSize: 12 }}>Commit: {appCommitSha}</div>
           </div>
-          <button className="btn" onClick={onClose}>Close</button>
+          <button className="btn" onClick={closeSettings}>Close</button>
         </div>
 
         <div className="settingsBody">
@@ -108,12 +133,12 @@ export function SettingsOverlay(props: { onClose: () => void }) {
                 <div className="muted" style={{ marginTop: 4 }}>
                   {!firebaseEnabled
                     ? "Google sync is disabled until Firebase env vars are configured."
-                    : syncStatus === "syncing"
-                      ? "Syncing your app data..."
-                      : syncError
-                        ? syncError
+                    : syncError
+                      ? syncError
+                      : user && (syncStatus === "syncing" || hasSyncDirtyRecords())
+                        ? "Syncing..."
                         : user
-                          ? "Your puzzles, progress, folders, and creator projects sync to this Google account. Theme and view preferences stay on this device."
+                          ? "Synced"
                           : "Sign in with Google to sync everything across devices."}
                 </div>
               </div>
@@ -234,20 +259,24 @@ export function SettingsOverlay(props: { onClose: () => void }) {
               </select>
             </div>
 
-            <div className="settingsRow" style={{ marginTop: 8, alignItems: "center", gap: 10 }}>
+            <div className="settingsRow settingsHighlightRow" style={{ marginTop: 8 }}>
               <div className="muted">Highlight transparency</div>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 180 }}>
+              <div className="settingsSliderControl">
                 <input
+                  className="settingsRange"
                   type="range"
                   min="0"
                   max="100"
                   step="1"
-                  value={highlightTransparency}
-                  onChange={(event) => setHighlightTransparency(Number(event.target.value))}
+                  value={highlightTransparencyDraft}
+                  onInput={(event) => previewHighlightTransparency(Number(event.currentTarget.value))}
+                  onPointerUp={commitHighlightTransparency}
+                  onTouchEnd={commitHighlightTransparency}
+                  onKeyUp={commitHighlightTransparency}
+                  onBlur={commitHighlightTransparency}
                   aria-label="Highlight transparency"
-                  style={{ width: 130 }}
                 />
-                <output style={{ minWidth: 42, textAlign: "right" }}>{highlightTransparency}%</output>
+                <output>{highlightTransparencyDraft}%</output>
               </div>
             </div>
           </div>

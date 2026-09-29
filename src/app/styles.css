@@ -827,7 +827,17 @@ input.url {
 
 .creatorTopTabs {
   display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
   gap: 4px;
+}
+
+.creatorTopbarActions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
 }
 
 .creatorFilePage {
@@ -1311,8 +1321,10 @@ input.url {
   }
   .creatorEditorIdentity { display: none; }
   .creatorExitButton { min-width: 0; }
-  .creatorTopTabs { gap: 3px; }
-  .creatorTopTabs .btn { min-width: 0; }
+  .creatorTopTabs { flex: 1 1 auto; min-width: 0; gap: 3px; }
+  .creatorTopTabs .btn { min-width: 0; padding-inline: 7px; }
+  .creatorTopbarActions { flex: 0 0 auto; margin-left: auto; gap: 3px; }
+  .creatorTopbarActions .btn { width: 38px; min-width: 38px !important; height: 38px; min-height: 38px; padding: 0; }
   .creatorEditorActions { margin-left: auto; flex-wrap: nowrap; gap: 4px; }
   .creatorEditorActions .btn { min-height: 34px; padding: 5px 8px; }
   .creatorEditorShell { height: 100%; min-height: 0; overflow: hidden; }
@@ -2809,6 +2821,8 @@ input.url {
 
 .settingsCard {
   width: min(680px, 100%);
+  max-width: 100%;
+  min-width: 0;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
   gap: 14px;
@@ -2818,8 +2832,11 @@ input.url {
 }
 
 .settingsBody {
+  min-width: 0;
   min-height: 0;
-  overflow: auto;
+  max-width: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
   display: grid;
   gap: 14px;
   align-content: start;
@@ -2872,11 +2889,15 @@ input.url {
 
 .settingsSection {
   display: grid;
+  min-width: 0;
+  max-width: 100%;
   gap: 12px;
 }
 
 .settingsAccountBlock {
   display: grid;
+  min-width: 0;
+  max-width: 100%;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 12px;
   align-items: center;
@@ -2890,10 +2911,43 @@ input.url {
   justify-content: flex-end;
 }
 
+.settingsAccountBlock > div { min-width: 0; }
+.settingsAccountBlock .muted { overflow-wrap: anywhere; }
+
 .settingsRow {
   display: flex;
+  min-width: 0;
+  max-width: 100%;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
+}
+
+.settingsRow > * {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.settingsSliderControl {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) 46px;
+  align-items: center;
+  gap: 8px;
+  width: min(230px, 58vw);
+  min-width: 0;
+  max-width: 100%;
+}
+
+.settingsRange {
+  width: 100%;
+  min-width: 0;
+  touch-action: pan-x;
+}
+
+.settingsSliderControl output {
+  min-width: 0;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 
 .switch {
@@ -2948,6 +3002,16 @@ input.url {
   outline: none !important;
   box-shadow: none !important;
   border-color: var(--ui-border-strong);
+}
+
+@media (max-width: 520px) {
+  .overlayBackdrop { padding-inline: 10px; }
+  .settingsCard { width: 100%; }
+  .settingsAccountBlock { grid-template-columns: minmax(0, 1fr); }
+  .settingsAccountActions { justify-content: flex-start; }
+  .settingsRow { flex-wrap: wrap; }
+  .settingsRow > select.settingsThemeNativeSelect { flex: 1 1 180px; width: min(100%, 220px) !important; }
+  .settingsSliderControl { width: 100%; grid-template-columns: minmax(0, 1fr) 42px; }
 }
 
 .themeGrid {
@@ -3323,12 +3387,12 @@ input.url {
 }
 
 @media (max-width: 960px) and (orientation: landscape) and (hover: none) and (pointer: coarse) {
-  .puzzleShell {
+  .puzzleShell:not(.creatorEditorShell) {
     grid-template-columns: auto minmax(0, 1fr);
     grid-template-rows: 1fr;
   }
 
-  .puzzleShell .puzzleTopbar {
+  .puzzleShell:not(.creatorEditorShell) .puzzleTopbar {
     grid-column: 1;
     grid-row: 1;
     flex-direction: column;
@@ -3342,30 +3406,30 @@ input.url {
     gap: 6px;
   }
 
-  .puzzleShell .puzzleTopbarButtons {
+  .puzzleShell:not(.creatorEditorShell) .puzzleTopbarButtons {
     width: 100%;
     flex-direction: column;
     align-items: stretch;
     gap: 6px;
   }
 
-  .puzzleShell .puzzleTopbar > .btn,
-  .puzzleShell .puzzleTopbarButtons > .btn,
-  .puzzleShell .puzzleTopbarRight > .btn {
+  .puzzleShell:not(.creatorEditorShell) .puzzleTopbar > .btn,
+  .puzzleShell:not(.creatorEditorShell) .puzzleTopbarButtons > .btn,
+  .puzzleShell:not(.creatorEditorShell) .puzzleTopbarRight > .btn {
     width: 100%;
     min-width: 0;
     padding: 6px 4px;
     min-height: 36px;
   }
 
-  .puzzleShell .puzzleTopbarRight {
+  .puzzleShell:not(.creatorEditorShell) .puzzleTopbarRight {
     margin-left: 0;
     width: 100%;
     flex-direction: column;
     gap: 6px;
   }
 
-  .puzzleShell .puzzleTopbar .puzzleTimer {
+  .puzzleShell:not(.creatorEditorShell) .puzzleTopbar .puzzleTimer {
     font-size: 11px;
     line-height: 1.1;
     text-align: center;
@@ -3373,14 +3437,14 @@ input.url {
     overflow-wrap: anywhere;
   }
 
-  .puzzleShell .puzzlePage {
+  .puzzleShell:not(.creatorEditorShell) .puzzlePage {
     grid-column: 2;
     grid-row: 1;
     padding: 8px;
     overflow: hidden;
   }
 
-  .puzzleShell .gridLayout {
+  .puzzleShell:not(.creatorEditorShell) .gridLayout {
     grid-template-columns: minmax(0, 1fr) minmax(220px, 34vw);
     grid-template-rows: 1fr;
     gap: 8px;
@@ -3388,17 +3452,17 @@ input.url {
     align-items: stretch;
   }
 
-  .puzzleShell .boardColumn,
-  .puzzleShell .boardCard,
-  .puzzleShell .kbdPanel,
-  .puzzleShell .controlStack,
-  .puzzleShell .mobileControlPanel {
+  .puzzleShell:not(.creatorEditorShell) .boardColumn,
+  .puzzleShell:not(.creatorEditorShell) .boardCard,
+  .puzzleShell:not(.creatorEditorShell) .kbdPanel,
+  .puzzleShell:not(.creatorEditorShell) .controlStack,
+  .puzzleShell:not(.creatorEditorShell) .mobileControlPanel {
     height: 100%;
     max-height: none;
     min-height: 0;
   }
 
-  .puzzleShell .kbdPanel {
+  .puzzleShell:not(.creatorEditorShell) .kbdPanel {
     width: min(34vw, 320px);
     justify-self: end;
   }
@@ -3431,6 +3495,56 @@ input.url {
 }
 
 /* Tablet-specific baseline: portrait follows mobile pattern with reduced control footprint. */
+@media (max-width: 960px) and (orientation: landscape) and (hover: none) and (pointer: coarse) {
+  .creatorEditorShell {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+  .creatorEditorShell .creatorEditorTopbar {
+    position: relative;
+    flex-direction: row;
+    width: 100%;
+    min-width: 0;
+    min-height: 48px;
+    padding: max(4px, var(--safe-top)) max(8px, var(--safe-right)) 4px max(8px, var(--safe-left));
+    border-right: 0;
+    border-bottom: 1px solid var(--ui-border);
+    gap: 4px;
+  }
+  .creatorEditorShell .creatorTopTabs {
+    flex: 1 1 auto;
+    min-width: 0;
+    gap: 3px;
+  }
+  .creatorEditorShell .creatorTopTabs .btn {
+    min-width: 0;
+    min-height: 36px;
+    padding: 5px 8px;
+  }
+  .creatorEditorShell .creatorTopbarActions {
+    flex: 0 0 auto;
+    width: auto;
+    margin-left: auto;
+    flex-direction: row;
+    gap: 4px;
+  }
+  .creatorEditorShell .creatorTopbarActions .btn {
+    width: 38px;
+    min-width: 38px !important;
+    height: 38px;
+    min-height: 38px;
+    padding: 0;
+  }
+  .creatorEditorShell .creatorPuzzlePage {
+    grid-column: 1;
+    grid-row: 2;
+    max-width: none;
+    margin: 0;
+    padding: 6px;
+    overflow: hidden;
+  }
+}
+
 .puzzleShell.layoutTabletPortrait .gridLayout {
   --panel-gap: 4px;
   --panel-pad: 8px;
@@ -3881,9 +3995,10 @@ input.url {
 .creatorBoardColumn { position: relative; min-width: 0; min-height: 0; height: 100%; grid-template-rows: minmax(0, 1fr); align-content: stretch; }
 .creatorCanvasToolbar { position: absolute; top: 6px; right: 6px; z-index: 8; justify-content: flex-end; width: auto; margin: 0; padding: 4px; border-radius: 6px; background: color-mix(in srgb, var(--panel) 86%, transparent); box-shadow: 0 1px 4px rgba(0,0,0,.18); }
 .creatorCanvasToolbar .btn { min-width: 34px; padding: 5px 8px; }
-.creatorCanvasViewButton { min-width: 112px !important; white-space: nowrap; }
+.creatorCanvasViewButton { white-space: nowrap; }
+.creatorTopbarIconButton { width: 44px; min-width: 44px !important; height: 44px; padding: 0 !important; display: inline-grid; place-items: center; }
 .creatorCanvasViewport { overflow: hidden; touch-action: none; min-height: 0; height: 100%; width: 100%; }
-.creatorCanvasTransform { transform-origin: center center; transition: transform 100ms ease-out; }
+.creatorCanvasTransform { display: grid; place-items: center; width: 100%; height: 100%; min-width: 0; min-height: 0; transform-origin: center center; transition: transform 100ms ease-out; }
 @media (max-width: 620px) {
   .creatorPathPoint { grid-template-columns: minmax(90px, 1fr) repeat(3, auto); }
   .creatorPathPoint .btn:nth-child(n+5) { display: none; }

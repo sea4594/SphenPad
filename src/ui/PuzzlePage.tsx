@@ -527,7 +527,10 @@ export function PuzzlePage(props: { editor?: boolean }) {
     // SVG-based now; treating only <canvas> as the board clears SudokuPad's
     // multi-selection state before the board interaction handler can update it.
     if (target.closest(".sphenpad-native-board, .sphenpad-sudokupad-renderer, .sphenpad-board-interaction")) return;
-    if (target.closest("button, input, textarea, select, a, label, [role='button']")) return;
+    // Solver keypad/tool controls need the current selection in order to apply
+    // their action. Everything else outside the board (rules, page chrome,
+    // top bar, blank space, video area, etc.) deselects the grid.
+    if (target.closest(".controlStack, .overlayBackdrop")) return;
 
     setSelection([]);
   }
