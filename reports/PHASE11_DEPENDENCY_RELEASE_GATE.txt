@@ -1,4 +1,4 @@
-Phase 11 dependency-backed release gate — 2026-09-29T19:27:17Z
+Phase 11 dependency-backed release gate — 2026-09-29T19:58:41Z
 Node: v20.20.2
 npm: 10.8.2
 
@@ -57,13 +57,13 @@ rendering chunks...
 computing gzip size...
 dist/index.html                     1.12 kB │ gzip:   0.50 kB
 dist/assets/index-Dv8v-xOz.css     84.30 kB │ gzip:  14.98 kB
-dist/assets/index-6wpMCIeD.js   1,270.64 kB │ gzip: 383.00 kB
+dist/assets/index-DSpBdu0M.js   1,274.62 kB │ gzip: 384.49 kB
 
 (!) Some chunks are larger than 500 kB after minification. Consider:
 - Using dynamic import() to code-split the application
 - Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
 - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
-✓ built in 2.60s
+✓ built in 2.86s
 [5/11] Complete Phase 11 creator regression matrix
 
 > sphenpad@0.0.0 test-creator-phase11
@@ -166,7 +166,7 @@ Production smoke: PASS (2 built asset references checked)
 > sphenpad@0.0.0 verify-production-bundle-clean
 > node scripts/verify-production-bundle-clean.mjs
 
-Production bundle cleanliness: PASS (4122 files, no test/debug/conformance leakage)
+Production bundle cleanliness: PASS (4123 files, no test/debug/conformance leakage)
 [8/11] Built-app browser smoke
 
 > sphenpad@0.0.0 verify-production-browser
@@ -192,7 +192,7 @@ SudokuPad compatibility manifest: PASS (67 JS/CSS assets, 13 fonts)
 > sphenpad@0.0.0 write-phase11-release-hashes
 > node scripts/write-phase11-release-hashes.mjs
 
-Phase 11 release hash manifest: PASS (4259 production inputs, 15 creator tests, 4122 built files)
-releaseContentSha256=82887025cfdec4aafbca1a01d1b7a6a95444aa0f3c0cddfee628fc38d601c5c7
+Phase 11 release hash manifest: PASS (4259 production inputs, 15 creator tests, 4123 built files)
+releaseContentSha256=bb34a36e746bcc9060bbf870674bb80a655f42a75896ed6949d16b4ea76b95f0
 
 PHASE 11 DEPENDENCY-BACKED RELEASE GATE PASSED

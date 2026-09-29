@@ -5,6 +5,7 @@ import { emptySudokuPadUrlSettings } from "../src/sudokupad/loader/urlSettings";
 import { sceneWithPuzzleProgress } from "../src/sudokupad/app/progressScene";
 import { makeInitialProgress } from "../src/core/scl";
 import { getSudokuPadLitCells } from "../src/sudokupad/fog/fogState";
+import { createAuthoredPuzzleDefinition } from "../src/sudokupad/creator/nativeAuthoring";
 
 function expect(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
@@ -31,6 +32,46 @@ expect(fogImported.def.scene?.fog, "search-and-surprise: fog state was lost duri
 const fogLive = sceneWithPuzzleProgress(fogImported.def.scene, makeInitialProgress(fogImported.def), fogImported.def.logic, true);
 expect(fogLive.fog, "search-and-surprise: fog state was lost in live progress rendering");
 expect(getSudokuPadLitCells(fogLive).length > 0, "search-and-surprise: initial fog state has no lit cells");
+
+
+// User-drawn double lines share the same progress renderer in solving and creator mode.
+// Stored segment direction is intentionally inconsistent here: rendering must keep each
+// colour in a stable lane and join same-colour corners/splits without mutating progress.
+const lineDef = createAuthoredPuzzleDefinition({ id: "double-line-rendering", rows: 4, cols: 4, meta: {}, subgrid: { r: 2, c: 2 }, digitRange: { min: 1, max: 4 } });
+expect(lineDef.scene, "double-line-rendering: authored scene missing");
+const userLines = (progress: ReturnType<typeof makeInitialProgress>) => sceneWithPuzzleProgress(lineDef.scene!, progress, lineDef.logic, true).lines.filter((line) => line.className === "sphenpad-user-line");
+const pointDistance = (a: [number, number], b: [number, number]) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+{
+  const progress = makeInitialProgress(lineDef);
+  const segments = [{ a: { r: 0, c: 0 }, b: { r: 0, c: 1 } }, { a: { r: 0, c: 2 }, b: { r: 0, c: 1 } }];
+  progress.lines = [{ kind: "center", color: "#57d38c", segments }, { kind: "center", color: "#ff8fc3", segments }];
+  const lines = userLines(progress), green = lines.filter((line) => line.color === "#57d38c");
+  expect(green.length === 2, "double-line-rendering: expected two green straight segments");
+  expect(pointDistance(green[0].wayPoints![1] as [number, number], green[1].wayPoints![0] as [number, number]) < 1e-9, "double-line-rendering: reversed stored segment direction swapped the green lane");
+}
+{
+  const progress = makeInitialProgress(lineDef);
+  const segments = [{ a: { r: 0, c: 0 }, b: { r: 0, c: 1 } }, { a: { r: 0, c: 1 }, b: { r: 1, c: 1 } }];
+  progress.lines = [{ kind: "center", color: "#57d38c", segments }, { kind: "center", color: "#ff8fc3", segments }];
+  const lines = userLines(progress), green = lines.filter((line) => line.color === "#57d38c"), pink = lines.filter((line) => line.color === "#ff8fc3");
+  expect(pointDistance(green[0].wayPoints![1] as [number, number], green[1].wayPoints![0] as [number, number]) < 1e-9, "double-line-rendering: green corner did not join cleanly");
+  expect(pointDistance(pink[0].wayPoints![1] as [number, number], pink[1].wayPoints![0] as [number, number]) < 1e-9, "double-line-rendering: pink corner did not join cleanly");
+  expect(pointDistance(green[0].wayPoints![1] as [number, number], pink[0].wayPoints![1] as [number, number]) > 0.04, "double-line-rendering: parallel corner lanes collapsed together");
+}
+{
+  const progress = makeInitialProgress(lineDef);
+  const incoming = { a: { r: 1, c: 0 }, b: { r: 1, c: 1 } };
+  progress.lines = [
+    { kind: "center", color: "#ff8fc3", segments: [incoming, { a: { r: 1, c: 1 }, b: { r: 2, c: 1 } }] },
+    { kind: "center", color: "#57d38c", segments: [incoming, { a: { r: 1, c: 1 }, b: { r: 0, c: 1 } }] },
+  ];
+  const lines = userLines(progress);
+  const incomingGreen = lines.find((line) => line.color === "#57d38c" && Math.min(...line.wayPoints!.map((point) => point[1])) < 1);
+  const incomingPink = lines.find((line) => line.color === "#ff8fc3" && Math.min(...line.wayPoints!.map((point) => point[1])) < 1);
+  expect(incomingGreen && incomingPink, "double-line-rendering: split incoming lanes missing");
+  const greenJoin = incomingGreen.wayPoints![1] as [number, number], pinkJoin = incomingPink.wayPoints![1] as [number, number];
+  expect(greenJoin[0] < pinkJoin[0], "double-line-rendering: split heuristic did not keep green toward its upper branch and pink toward its lower branch");
+}
 
 
 // Schrodinger's Carry On contains internally scaled authored cage paths with
