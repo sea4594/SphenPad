@@ -7,6 +7,7 @@ import { GridCanvas } from "./GridCanvas";
 import type { BoardLineKind, BoardLineSegment } from "./BoardInteractionLayer";
 import { getViewportLayoutKind, type ViewportLayoutKind } from "../app/viewportLayout";
 import { Keyboard } from "./Keyboard";
+import { highlightPalettePages, linePalette } from "./toolPalettes";
 import { IconRedo, IconSelectMode, IconSettings, IconToolBig, IconToolCenter, IconToolCorner, IconToolHighlight, IconToolLine, IconUndo, IconZoomPan } from "./icons";
 import { PopupMenuButton } from "./PopupMenuButton";
 import { SettingsOverlay } from "./SettingsOverlay";
@@ -697,14 +698,15 @@ export function PuzzleEditorPage() {
     setCreatorScratchProgress((current) => mutator(current ?? makeInitialProgress(data.def)));
   }
 
-  function applyCreatorDigit(value: string) {
+  function applyCreatorDigit(value: string, forcedTool?: "value" | "center" | "corner") {
     if (!data || !selection.length) return;
-    if (activeCatalogElement !== null || editorTool === "value") {
+    const tool = forcedTool ?? editorTool;
+    if (activeCatalogElement !== null || tool === "value") {
       setCellValue(value);
       return;
     }
-    if (editorTool !== "center" && editorTool !== "corner") return;
-    const noteKind = editorTool;
+    if (tool !== "center" && tool !== "corner") return;
+    const noteKind = tool;
     updateCreatorScratch((current) => {
       const cells = current.cells.map((row) => row.map((cell) => ({ ...cell, notes: { corner: new Set(cell.notes.corner), center: new Set(cell.notes.center), candidates: new Set(cell.notes.candidates) } })));
       const allHave = Boolean(value) && selection.every((rc) => cells[rc.r]?.[rc.c]?.notes[noteKind].has(value));
@@ -1404,20 +1406,116 @@ export function PuzzleEditorPage() {
   }, [selectedObjectId]);
 
   useEffect(() => {
+    const toolCycle: PuzzleProgress["activeTool"][] = ["value", "corner", "center", "highlight", "line"];
+    const keyToTool: Record<string, PuzzleProgress["activeTool"]> = { z: "value", x: "corner", c: "center", v: "highlight", b: "line" };
+    const letterHotkeys: Record<string, string> = { q: "A", w: "B", e: "C", r: "D", t: "E", y: "F", u: "G", i: "H", o: "I", 0: "0" };
+    const alphabetPages: ReadonlyArray<ReadonlyArray<string>> = [["A", "B", "C", "D", "E", "F", "G", "H", "I"], ["J", "K", "L", "M", "N", "O", "P", "Q", "R"], ["S", "T", "U", "V", "W", "X", "Y", "Z", "*"]];
+    const normalizeDigit = (key: string): string | null => {
+      if (/^[1-9]$/.test(key)) return key;
+      if (key === "0") return "0";
+      if (key.startsWith("numpad") && /^numpad[0-9]$/.test(key)) return key.slice(-1);
+      return null;
+    };
+    const solverControlsActive = testPlay || creatorTab !== "elements" || activeCatalogElement === null || creatorControlView === "solver";
+    const elementControlsActive = creatorTab === "elements" && activeCatalogElement !== null && !testPlay && creatorControlView === "element";
+    const selectionSet = () => new Set(selection.map(rcKey));
+    const moveSelection = (dr: number, dc: number, extend: boolean) => {
+      if (!data) return;
+      const anchor = selection[selection.length - 1] ?? { r: 0, c: 0 };
+      const next = { r: Math.max(0, Math.min(data.def.rows - 1, anchor.r + dr)), c: Math.max(0, Math.min(data.def.cols - 1, anchor.c + dc)) };
+      if (!extend) { setSelection([next]); return; }
+      const selected = selectionSet();
+      selected.add(rcKey(next));
+      setSelection(Array.from(selected).map((key) => { const [r, c] = key.split(":").map(Number); return { r, c }; }));
+    };
+    const cycleTool = (direction: 1 | -1) => {
+      const index = toolCycle.indexOf(editorTool);
+      setActiveTool(toolCycle[(index + direction + toolCycle.length) % toolCycle.length]);
+    };
     const onKeyDown = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
       const typing = Boolean(target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.tagName === "SELECT" || target.isContentEditable));
+      if (typing) return;
+      const key = event.key.toLowerCase();
       const mod = event.metaKey || event.ctrlKey;
-      if (mod && event.key.toLowerCase() === "z" && !typing) { event.preventDefault(); if (event.shiftKey) redoDefinition(); else undoDefinition(); return; }
-      if (mod && event.key.toLowerCase() === "y" && !typing) { event.preventDefault(); redoDefinition(); return; }
-      if (creatorTab === "elements" && !typing && mod && event.key.toLowerCase() === "c" && selectedObjectIds.length) { event.preventDefault(); void copySelectedObjects(); return; }
-      if (creatorTab === "elements" && !typing && mod && event.key.toLowerCase() === "v") { event.preventDefault(); void pasteSelectedObjects(); return; }
-      if (creatorTab === "elements" && !typing && mod && event.key.toLowerCase() === "a" && activeCatalogElement) { event.preventDefault(); selectAllCatalogObjects(); return; }
-      if (creatorTab === "elements" && !typing && (event.key === "Delete" || event.key === "Backspace") && selectedObjectIds.length) { event.preventDefault(); deleteSelectedObjects(); return; }
-      if (creatorTab === "elements" && !typing && activeCatalogElement === null && (event.key === "Delete" || event.key === "Backspace")) { event.preventDefault(); handleCreatorBackspace(); return; }
-      if (!typing && event.key === "Escape") { setObjectContextMenu(null); setAddingElement(false); setSelectedObjectIds([]); setSelectedObjectId(null); return; }
-      if (!typing && (event.key === "+" || event.key === "=")) { event.preventDefault(); setCanvasZoom((value) => Math.min(2.5, Math.round((value + 0.1) * 10) / 10)); return; }
-      if (!typing && event.key === "-") { event.preventDefault(); setCanvasZoom((value) => Math.max(0.5, Math.round((value - 0.1) * 10) / 10)); }
+
+      if (!event.altKey && !event.ctrlKey && !event.metaKey && (key === "n" || key === "m")) { event.preventDefault(); if (key === "n") undoDefinition(); else redoDefinition(); return; }
+      if (mod && !event.altKey && key === "z") { event.preventDefault(); if (event.shiftKey) redoDefinition(); else undoDefinition(); return; }
+      if (mod && !event.altKey && key === "y") { event.preventDefault(); redoDefinition(); return; }
+      if (elementControlsActive && mod && key === "c" && selectedObjectIds.length) { event.preventDefault(); void copySelectedObjects(); return; }
+      if (elementControlsActive && mod && key === "v") { event.preventDefault(); void pasteSelectedObjects(); return; }
+      if (elementControlsActive && mod && key === "a") { event.preventDefault(); selectAllCatalogObjects(); return; }
+      if (elementControlsActive && (key === "delete" || key === "backspace") && selectedObjectIds.length) { event.preventDefault(); deleteSelectedObjects(); return; }
+
+      if (solverControlsActive && event.ctrlKey && !event.altKey && !event.metaKey && key === "a") {
+        event.preventDefault();
+        if (event.shiftKey) { setSelection([]); return; }
+        selectAllGridCells();
+        return;
+      }
+      if (solverControlsActive && event.ctrlKey && !event.altKey && !event.metaKey && !event.shiftKey && key === "i") {
+        if (!data) return;
+        event.preventDefault();
+        const selected = selectionSet();
+        const next: CellRC[] = [];
+        for (let r = 0; r < data.def.rows; r++) for (let c = 0; c < data.def.cols; c++) if (!selected.has(`${r}:${c}`)) next.push({ r, c });
+        setSelection(next);
+        return;
+      }
+      if (solverControlsActive && !event.altKey && !event.ctrlKey && !event.metaKey && keyToTool[key]) { event.preventDefault(); setActiveTool(keyToTool[key]); return; }
+      if (key === "escape") { setObjectContextMenu(null); setAddingElement(false); setSelectedObjectIds([]); setSelectedObjectId(null); return; }
+      if (solverControlsActive && !event.altKey && !event.metaKey && (key === " " || key === "pagedown")) { event.preventDefault(); cycleTool(1); return; }
+      if (solverControlsActive && !event.altKey && !event.metaKey && ((event.ctrlKey && key === " ") || key === "pageup")) { event.preventDefault(); cycleTool(-1); return; }
+      if (solverControlsActive && !event.altKey && !event.metaKey && ["arrowup", "arrowdown", "arrowleft", "arrowright"].includes(key)) {
+        event.preventDefault();
+        const extend = event.ctrlKey || event.shiftKey;
+        if (key === "arrowup") moveSelection(-1, 0, extend);
+        if (key === "arrowdown") moveSelection(1, 0, extend);
+        if (key === "arrowleft") moveSelection(0, -1, extend);
+        if (key === "arrowright") moveSelection(0, 1, extend);
+        return;
+      }
+      if (solverControlsActive && !event.altKey && !event.ctrlKey && !event.metaKey && (key === "backspace" || key === "delete")) { event.preventDefault(); handleCreatorBackspace(); return; }
+
+      const digit = normalizeDigit(key);
+      if (solverControlsActive && digit && !event.altKey && !event.metaKey) {
+        event.preventDefault();
+        const paletteIndex = digit === "0" ? -1 : Number(digit) - 1;
+        if (!event.ctrlKey && !event.shiftKey && activeCatalogElement === null && editorTool === "highlight") {
+          if (digit === "0") { applyCreatorHighlight("rgba(0,0,0,0)"); return; }
+          const palette = highlightPalettePages[editorHighlightPage] ?? highlightPalettePages[0];
+          const color = palette[paletteIndex];
+          if (color) applyCreatorHighlight(color);
+          return;
+        }
+        if (!event.ctrlKey && !event.shiftKey && activeCatalogElement === null && editorTool === "line") {
+          if (digit === "0") { setEditorLineColor("#ffffff"); return; }
+          const color = linePalette[paletteIndex];
+          if (color) setEditorLineColor(color);
+          return;
+        }
+        if (event.ctrlKey && event.shiftKey) { setActiveTool("highlight"); return; }
+        if (digit === "0" && !event.ctrlKey && !event.shiftKey && editorAlphabetMode && (editorTool === "value" || editorTool === "center" || editorTool === "corner")) { setEditorAlphabetPage((editorAlphabetPage + 1) % 3 as 0 | 1 | 2); return; }
+        if (editorAlphabetMode && !event.ctrlKey && !event.shiftKey && (editorTool === "value" || editorTool === "center" || editorTool === "corner")) {
+          const symbol = alphabetPages[editorAlphabetPage]?.[paletteIndex];
+          if (symbol) applyCreatorDigit(symbol);
+          return;
+        }
+        if (event.ctrlKey) { applyCreatorDigit(digit, "center"); return; }
+        if (event.shiftKey) { applyCreatorDigit(digit, "corner"); return; }
+        applyCreatorDigit(digit);
+        return;
+      }
+      if (solverControlsActive && !event.altKey && !event.ctrlKey && !event.metaKey && letterHotkeys[key]) {
+        event.preventDefault();
+        const symbol = letterHotkeys[key];
+        if (editorTool === "center") applyCreatorDigit(symbol, "center");
+        else if (editorTool === "corner") applyCreatorDigit(symbol, "corner");
+        else applyCreatorDigit(symbol, "value");
+        return;
+      }
+      if (key === "+" || key === "=") { event.preventDefault(); setCanvasZoom((value) => Math.min(2.5, Math.round((value + 0.1) * 10) / 10)); return; }
+      if (key === "-") { event.preventDefault(); setCanvasZoom((value) => Math.max(0.5, Math.round((value - 0.1) * 10) / 10)); }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
