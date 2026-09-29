@@ -166,43 +166,83 @@ function makeSelectionHistoryEntry(prev: CellRC[], next: CellRC[]) {
   return { patches: [{ path: ["selection"], prev, next }] };
 }
 
-function coalesceSelectionHistory(history: unknown[], stack: "undo" | "redo"): unknown[] {
-  const traversal = stack === "undo" ? history : [...history].reverse();
-  const out: unknown[] = [];
-  for (const raw of traversal) {
-    const current = selectionOnlyTransition(raw);
-    const previous = out.length ? selectionOnlyTransition(out[out.length - 1]) : null;
-    if (!current || !previous) {
-      out.push(raw);
-      continue;
-    }
-    out.pop();
-    if (!sameSelection(previous.prev, current.next)) out.push(makeSelectionHistoryEntry(previous.prev, current.next));
+function normalizeUndoSelectionHistory(history: unknown[]): unknown[] {
+  const substantive: unknown[] = [];
+  let trailingSelection: { prev: CellRC[]; next: CellRC[] } | null = null;
+  for (const raw of history) {
+    const transition = selectionOnlyTransition(raw);
+    if (transition) trailingSelection = transition;
+    else substantive.push(raw);
   }
-  return stack === "undo" ? out : out.reverse();
+  if (trailingSelection && !sameSelection(trailingSelection.prev, trailingSelection.next)) {
+    substantive.push(makeSelectionHistoryEntry(trailingSelection.prev, trailingSelection.next));
+  }
+  return substantive;
 }
 
-function dropSelectionOnlyHistory(history: unknown[]): unknown[] {
-  return history.filter((entry) => !isSelectionOnlyHistoryEntry(entry));
+function normalizeRedoSelectionHistory(history: unknown[]): unknown[] {
+  const substantive: unknown[] = [];
+  let terminalSelection: { prev: CellRC[]; next: CellRC[] } | null = null;
+  for (const raw of history) {
+    const transition = selectionOnlyTransition(raw);
+    // Older SphenPad redo stacks stored the terminal selection restoration
+    // before substantive entries because redo popped from the end. Preserve
+    // the first such snapshot, then normalize it to a single trailing entry.
+    if (transition) {
+      if (!terminalSelection) terminalSelection = transition;
+    } else substantive.push(raw);
+  }
+  if (terminalSelection && !sameSelection(terminalSelection.prev, terminalSelection.next)) {
+    substantive.push(makeSelectionHistoryEntry(terminalSelection.prev, terminalSelection.next));
+  }
+  return substantive;
+}
+
+function splitTrailingSelectionHistory(history: unknown[]): { substantive: unknown[]; selection: unknown | null } {
+  if (!history.length || !isSelectionOnlyHistoryEntry(history[history.length - 1])) return { substantive: history, selection: null };
+  return { substantive: history.slice(0, -1), selection: history[history.length - 1] };
 }
 
 function withTrailingSelectionHistoryEntry(history: unknown[], currentSelection: CellRC[], selection: CellRC[]): unknown[] {
-  const normalizedHistory = coalesceSelectionHistory(history, "undo");
-  const trailing = normalizedHistory.length && isSelectionOnlyHistoryEntry(normalizedHistory[normalizedHistory.length - 1])
-    ? toHistoryEntry(normalizedHistory[normalizedHistory.length - 1])
-    : null;
-  const baseHistory = trailing ? normalizedHistory.slice(0, -1) : normalizedHistory;
-  const prevSelection = trailing ? normalizeSelection(trailing.patches[0]?.prev) ?? currentSelection : currentSelection;
-  if (sameSelection(prevSelection, selection)) return baseHistory;
-  return [...baseHistory, makeSelectionHistoryEntry(prevSelection, selection)];
+  const normalized = normalizeUndoSelectionHistory(history);
+  const { substantive, selection: trailing } = splitTrailingSelectionHistory(normalized);
+  const transition = trailing ? selectionOnlyTransition(trailing) : null;
+  const prevSelection = transition?.prev ?? currentSelection;
+  if (sameSelection(prevSelection, selection)) return substantive;
+  return [...substantive, makeSelectionHistoryEntry(prevSelection, selection)];
+}
+
+function withTerminalRedoSelection(history: unknown[], currentSelection: CellRC[], selection: CellRC[]): unknown[] {
+  const normalized = normalizeRedoSelectionHistory(history);
+  const { substantive, selection: trailing } = splitTrailingSelectionHistory(normalized);
+  if (!substantive.length) return [];
+  const transition = trailing ? selectionOnlyTransition(trailing) : null;
+  const prevSelection = transition?.prev ?? currentSelection;
+  if (sameSelection(prevSelection, selection)) return substantive;
+  return [...substantive, makeSelectionHistoryEntry(prevSelection, selection)];
 }
 
 function normalizeSelectionHistories(data: PersistedPuzzle): PersistedPuzzle {
-  return {
-    ...data,
-    undo: coalesceSelectionHistory(data.undo, "undo"),
-    redo: coalesceSelectionHistory(data.redo, "redo"),
-  };
+  const normalizedUndo = normalizeUndoSelectionHistory(data.undo);
+  const normalizedRedo = normalizeRedoSelectionHistory(data.redo);
+  const undoParts = splitTrailingSelectionHistory(normalizedUndo);
+  const redoParts = splitTrailingSelectionHistory(normalizedRedo);
+
+  // There is only one selection-only history snapshot in the entire history.
+  // While substantive redo actions exist it belongs at the terminal end of the
+  // redo sequence; otherwise it may trail the undo sequence as current state.
+  if (redoParts.substantive.length) {
+    const terminalSelection = redoParts.selection ?? undoParts.selection;
+    return {
+      ...data,
+      undo: undoParts.substantive,
+      redo: [...redoParts.substantive, ...(terminalSelection ? [terminalSelection] : [])],
+    };
+  }
+  if (redoParts.selection) {
+    return { ...data, undo: undoParts.substantive, redo: [redoParts.selection] };
+  }
+  return { ...data, undo: normalizedUndo, redo: [] };
 }
 
 function normalizeComparisonSymbol(symbol: string | undefined): string {
@@ -561,10 +601,12 @@ export function PuzzlePage(props: { editor?: boolean }) {
     // surface/card can contain white fitting space, and tapping that space should
     // clear the selection just like any other area outside the grid.
     if (target.closest(".sphenpad-sudokupad-renderer, .sphenpad-board-interaction")) return;
-    // Solver keypad/tool controls need the current selection in order to apply
-    // their action. Everything else outside the board (rules, page chrome,
-    // top bar, blank space, video area, etc.) deselects the grid.
-    if (target.closest(".controlStack, .overlayBackdrop")) return;
+    // Controls must not clear selection before their own action runs. In
+    // particular, Back/navigation must preserve the current selection so it is
+    // still selected when the puzzle is reopened. Plain whitespace, rules text,
+    // board fitting space, and other non-interactive background areas still
+    // deselect the grid.
+    if (target.closest(".controlStack, .overlayBackdrop, button, a, input, select, textarea, [role=button], [role=link]")) return;
 
     setSelection([]);
   }
@@ -1014,6 +1056,13 @@ export function PuzzlePage(props: { editor?: boolean }) {
     if (!requestedCreatorPlaytest) await upsertPuzzle(key, next, { sync });
   }
 
+  useEffect(() => () => {
+    // Selection is device-local, but the exact current session state must survive
+    // leaving and reopening the puzzle. Queue one final local-only write on exit.
+    const current = latestDataRef.current;
+    if (current && !requestedCreatorPlaytest) void upsertPuzzle(key, current, { sync: false });
+  }, [key, requestedCreatorPlaytest]);
+
   useEffect(() => { latestDataRef.current = data; }, [data]);
   const hasLoadedPuzzle = data !== null;
 
@@ -1152,11 +1201,14 @@ export function PuzzlePage(props: { editor?: boolean }) {
 
     nextProgress = maybePromoteToInProgress(nextProgress, { onEdit: recordHistory });
 
-    const nextUndo = [...data.undo];
-    let nextRedo = data.redo;
+    let nextUndo = normalizeUndoSelectionHistory(data.undo);
+    let nextRedo = normalizeRedoSelectionHistory(data.redo);
 
     if (recordHistory) {
-      if (nextUndo.length > 0 && isSelectionOnlyHistoryEntry(nextUndo[nextUndo.length - 1])) nextUndo.pop();
+      // Selection is not an undoable action. Drop the single trailing selection
+      // snapshot before appending a substantive action so a selection-only entry
+      // can never sit between two non-selection history entries.
+      nextUndo = splitTrailingSelectionHistory(nextUndo).substantive;
       nextUndo.push({ patches: [...patches], selection: data.progress.selection });
       nextRedo = [];
     }
@@ -1194,46 +1246,87 @@ export function PuzzlePage(props: { editor?: boolean }) {
   function undo() {
     const current = latestDataRef.current;
     if (!current) return;
-    const normalizedUndo = coalesceSelectionHistory(current.undo, "undo");
-    const normalizedRedo = coalesceSelectionHistory(current.redo, "redo");
-    if (!normalizedUndo.length) return;
-    const historyEntry = toHistoryEntry(normalizedUndo[normalizedUndo.length - 1]);
+    const normalizedUndo = normalizeUndoSelectionHistory(current.undo);
+    const normalizedRedo = normalizeRedoSelectionHistory(current.redo);
+    const undoParts = splitTrailingSelectionHistory(normalizedUndo);
+    if (!undoParts.substantive.length) return;
+
+    // Undo always targets the latest NON-selection event. The current selection
+    // is kept only as one terminal restoration step for the end of the redo
+    // sequence; it is never itself consumed by Undo.
+    const historyEntry = toHistoryEntry(undoParts.substantive[undoParts.substantive.length - 1]);
     if (!historyEntry.patches.length) return;
-    const selectionOnly = isSelectionOnlyHistoryEntry(historyEntry);
     let nextProgress = current.progress;
     for (let i = historyEntry.patches.length - 1; i >= 0; i--) nextProgress = applyPatch(nextProgress, invertPatch(historyEntry.patches[i]));
     if (historyEntry.selection) nextProgress = { ...nextProgress, selection: historyEntry.selection };
-    const nextRedo = coalesceSelectionHistory([...normalizedRedo, historyEntry], "redo");
+
+    const redoParts = splitTrailingSelectionHistory(normalizedRedo);
+    let terminalSelection = redoParts.selection ?? undoParts.selection;
+    if (!terminalSelection && !redoParts.substantive.length) {
+      const selectionBeforeAction = historyEntry.selection ?? [];
+      if (!sameSelection(selectionBeforeAction, current.progress.selection)) {
+        terminalSelection = makeSelectionHistoryEntry(selectionBeforeAction, current.progress.selection);
+      }
+    }
+    const nextRedo = [
+      ...redoParts.substantive,
+      historyEntry,
+      ...(terminalSelection ? [terminalSelection] : []),
+    ];
 
     void persist({
       ...current,
       progress: nextProgress,
-      undo: normalizedUndo.slice(0, -1),
+      undo: undoParts.substantive.slice(0, -1),
       redo: nextRedo,
-      updatedAt: selectionOnly ? current.updatedAt : Date.now(),
-    }, !selectionOnly);
+      updatedAt: Date.now(),
+    }, true);
   }
 
   function redo() {
     const current = latestDataRef.current;
     if (!current) return;
-    const normalizedUndo = coalesceSelectionHistory(current.undo, "undo");
-    const normalizedRedo = coalesceSelectionHistory(current.redo, "redo");
-    if (!normalizedRedo.length) return;
-    const historyEntry = toHistoryEntry(normalizedRedo[normalizedRedo.length - 1]);
-    if (!historyEntry.patches.length) return;
-    const selectionOnly = isSelectionOnlyHistoryEntry(historyEntry);
-    let nextProgress = current.progress;
-    for (const p of historyEntry.patches) nextProgress = applyPatch(nextProgress, p);
-    if (historyEntry.selection) nextProgress = { ...nextProgress, selection: historyEntry.selection };
-    const nextUndo = coalesceSelectionHistory([...normalizedUndo, historyEntry], "undo");
+    const normalizedUndo = normalizeUndoSelectionHistory(current.undo);
+    const normalizedRedo = normalizeRedoSelectionHistory(current.redo);
+    const redoParts = splitTrailingSelectionHistory(normalizedRedo);
+
+    // Redo substantive actions first. The optional selection-only snapshot is a
+    // single terminal step and is reached only after every substantive redo.
+    if (redoParts.substantive.length) {
+      const historyEntry = toHistoryEntry(redoParts.substantive[redoParts.substantive.length - 1]);
+      if (!historyEntry.patches.length) return;
+      let nextProgress = current.progress;
+      for (const patch of historyEntry.patches) nextProgress = applyPatch(nextProgress, patch);
+      if (historyEntry.selection) nextProgress = { ...nextProgress, selection: historyEntry.selection };
+      const undoSubstantive = splitTrailingSelectionHistory(normalizedUndo).substantive;
+      void persist({
+        ...current,
+        progress: nextProgress,
+        undo: [...undoSubstantive, historyEntry],
+        redo: [
+          ...redoParts.substantive.slice(0, -1),
+          ...(redoParts.selection ? [redoParts.selection] : []),
+        ],
+        updatedAt: Date.now(),
+      }, true);
+      return;
+    }
+
+    if (!redoParts.selection) return;
+    const selectionTransition = selectionOnlyTransition(redoParts.selection);
+    if (!selectionTransition) return;
+    const nextSelection = selectionTransition.next;
+    const undoSubstantive = splitTrailingSelectionHistory(normalizedUndo).substantive;
+    const nextUndo = sameSelection(current.progress.selection, nextSelection)
+      ? undoSubstantive
+      : [...undoSubstantive, makeSelectionHistoryEntry(current.progress.selection, nextSelection)];
     void persist({
       ...current,
-      progress: nextProgress,
+      progress: { ...current.progress, selection: nextSelection },
       undo: nextUndo,
-      redo: normalizedRedo.slice(0, -1),
-      updatedAt: selectionOnly ? current.updatedAt : Date.now(),
-    }, !selectionOnly);
+      redo: [],
+      updatedAt: current.updatedAt,
+    }, false);
   }
 
   useEffect(() => {
@@ -1274,15 +1367,22 @@ export function PuzzlePage(props: { editor?: boolean }) {
   function setSelection(sel: CellRC[]) {
     const current = latestDataRef.current;
     if (!current || current.progress.activeTool === "line" || sameSelection(current.progress.selection, sel)) return;
-    const nextUndo = withTrailingSelectionHistoryEntry(current.undo, current.progress.selection, sel);
-    const nextRedo = coalesceSelectionHistory(dropSelectionOnlyHistory(current.redo), "redo");
+    const normalizedRedo = normalizeRedoSelectionHistory(current.redo);
+    const redoParts = splitTrailingSelectionHistory(normalizedRedo);
+    const nextUndo = redoParts.substantive.length
+      ? splitTrailingSelectionHistory(normalizeUndoSelectionHistory(current.undo)).substantive
+      : withTrailingSelectionHistoryEntry(current.undo, current.progress.selection, sel);
+    const nextRedo = redoParts.substantive.length
+      ? withTerminalRedoSelection(normalizedRedo, current.progress.selection, sel)
+      : [];
     void persist({
       ...current,
       progress: { ...current.progress, selection: sel },
       undo: nextUndo,
       redo: nextRedo,
-      // Selection is device-local. A new selection supersedes any undone
-      // selection-only branch but preserves substantive redo history.
+      // Selection is device-local. Exactly one selection-only snapshot may
+      // exist: trailing undo state normally, or the terminal redo restoration
+      // while substantive redo actions remain.
       updatedAt: current.updatedAt,
     }, false);
   }

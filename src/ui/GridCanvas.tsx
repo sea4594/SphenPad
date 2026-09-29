@@ -115,6 +115,81 @@ export function GridCanvas(props: GridCanvasProps) {
   const activeFitSize = previewMode || !svg ? null : fitSize;
 
   useEffect(() => {
+    if (!previewMode || !svg) return;
+    let rafId: number | null = null;
+    const timeoutIds: number[] = [];
+
+    const expandPreviewViewBox = () => {
+      const vb = svg.viewBox.baseVal;
+      if (!(vb.width > 0 && vb.height > 0)) return;
+      const rootScreen = svg.getScreenCTM();
+      if (!rootScreen) return;
+      let rootInverse: DOMMatrix;
+      try { rootInverse = rootScreen.inverse(); } catch { return; }
+
+      let contentLeft = Number.POSITIVE_INFINITY;
+      let contentTop = Number.POSITIVE_INFINITY;
+      let contentRight = Number.NEGATIVE_INFINITY;
+      let contentBottom = Number.NEGATIVE_INFINITY;
+      const layers = Array.from(svg.querySelectorAll(":scope > g:not(.defs)")) as SVGGElement[];
+      for (const layer of layers) {
+        const layerScreen = layer.getScreenCTM();
+        if (!layerScreen || typeof layer.getBBox !== "function") continue;
+        try {
+          const box = (layer.getBBox as unknown as (options?: { fill?: boolean; stroke?: boolean; markers?: boolean }) => DOMRect).call(
+            layer,
+            { fill: true, stroke: true, markers: true },
+          );
+          const corners = [
+            new DOMPoint(box.x, box.y),
+            new DOMPoint(box.x + box.width, box.y),
+            new DOMPoint(box.x, box.y + box.height),
+            new DOMPoint(box.x + box.width, box.y + box.height),
+          ];
+          for (const point of corners) {
+            const rootPoint = point.matrixTransform(layerScreen).matrixTransform(rootInverse);
+            contentLeft = Math.min(contentLeft, rootPoint.x);
+            contentTop = Math.min(contentTop, rootPoint.y);
+            contentRight = Math.max(contentRight, rootPoint.x);
+            contentBottom = Math.max(contentBottom, rootPoint.y);
+          }
+        } catch { /* ignore non-renderable layers */ }
+      }
+      if (!Number.isFinite(contentLeft)) return;
+
+      // Never crop the authored viewBox; previews may only zoom farther out.
+      // This is intentionally preview-only so live puzzle framing is untouched.
+      const pad = Math.max(2, Math.min(vb.width, vb.height) * 0.015);
+      const left = Math.min(vb.x, contentLeft - pad);
+      const top = Math.min(vb.y, contentTop - pad);
+      const right = Math.max(vb.x + vb.width, contentRight + pad);
+      const bottom = Math.max(vb.y + vb.height, contentBottom + pad);
+      const width = right - left;
+      const height = bottom - top;
+      if (Math.abs(left - vb.x) < 0.5 && Math.abs(top - vb.y) < 0.5 && Math.abs(width - vb.width) < 0.5 && Math.abs(height - vb.height) < 0.5) return;
+      svg.setAttribute("viewBox", `${left} ${top} ${width} ${height}`);
+      svg.querySelectorAll<SVGElement>(".viewboxsize").forEach((elem) => {
+        elem.setAttribute("x", String(left));
+        elem.setAttribute("y", String(top));
+        elem.setAttribute("width", String(width));
+        elem.setAttribute("height", String(height));
+      });
+    };
+
+    const schedule = () => {
+      if (rafId !== null) window.cancelAnimationFrame(rafId);
+      for (const id of timeoutIds.splice(0)) window.clearTimeout(id);
+      rafId = window.requestAnimationFrame(expandPreviewViewBox);
+      for (const delay of [80, 240, 500]) timeoutIds.push(window.setTimeout(expandPreviewViewBox, delay));
+    };
+    schedule();
+    return () => {
+      if (rafId !== null) window.cancelAnimationFrame(rafId);
+      for (const id of timeoutIds) window.clearTimeout(id);
+    };
+  }, [previewMode, svg, scene]);
+
+  useEffect(() => {
     if (previewMode || !svg) return;
     const surface = surfaceRef.current;
     if (!surface) return;
