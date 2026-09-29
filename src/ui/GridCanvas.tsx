@@ -7,6 +7,7 @@ import { SudokuPadBoard } from "./SudokuPadBoard";
 import { BoardInteractionLayer, type BoardLineKind, type BoardLineSegment } from "./BoardInteractionLayer";
 
 const EMPTY_CONFLICT_CELLS: CellRC[] = [];
+const EMPTY_CREATOR_OBJECT_IDS: string[] = [];
 
 function sceneProgressOnly(
   cells: PuzzleProgress["cells"],
@@ -55,6 +56,11 @@ export interface GridCanvasProps {
   conflictCheckerEnabled?: boolean;
   additionalConflictCells?: CellRC[];
   hideAuthoredEntries?: boolean;
+  creatorPathDrawing?: boolean;
+  onCreatorPath?: (path: CellRC[]) => void;
+  selectedCreatorObjectIds?: string[];
+  onCreatorObjectPointerDown?: (objectId: string, modifiers: { additive: boolean }) => boolean | void;
+  creatorObjectOnly?: boolean;
 }
 
 /**
@@ -62,7 +68,7 @@ export interface GridCanvasProps {
  * Every puzzle renders through the native SudokuPad-compatible SVG scene.
  */
 export function GridCanvas(props: GridCanvasProps) {
-  const { def, progress, interactive = true, previewMode = false, strictScale = false, requestedHeight, scalePuzzleStrokes = false, conflictCheckerEnabled, additionalConflictCells = EMPTY_CONFLICT_CELLS, hideAuthoredEntries = false } = props;
+  const { def, progress, interactive = true, previewMode = false, strictScale = false, requestedHeight, scalePuzzleStrokes = false, conflictCheckerEnabled, additionalConflictCells = EMPTY_CONFLICT_CELLS, hideAuthoredEntries = false, selectedCreatorObjectIds = EMPTY_CREATOR_OBJECT_IDS } = props;
   const interactionProgress = useMemo(() => previewMode ? { ...progress, selection: [], multiSelect: false } : progress, [previewMode, progress]);
   const { cells: sceneCells, lines: sceneLines, lineCenterMarks: sceneCenterMarks, lineEdgeMarks: sceneEdgeMarks, status: sceneStatus } = progress;
   // Scene rendering ignores timer/selection/tool/pause state. Keeping this
@@ -112,6 +118,21 @@ export function GridCanvas(props: GridCanvasProps) {
       },
     };
   }, [def.scene, def.logic, sceneProgress, hideAuthoredEntries, conflictCheckerEnabled, additionalConflictCells, explicitRender.outlineDigits, explicitRender.compactMarks, explicitRender.labelRowsCols, theme.outlineDigits, theme.compactMarks, theme.labelRowsCols, theme.conflictChecker]);
+
+  useEffect(() => {
+    if (!svg || previewMode) return;
+    const apply = () => {
+      svg.querySelectorAll(".sphenpad-creator-selected").forEach((element) => element.classList.remove("sphenpad-creator-selected"));
+      for (const id of selectedCreatorObjectIds) {
+        const escaped = CSS.escape(id);
+        svg.querySelectorAll(`[data-sphenpad-object-id="${escaped}"], [data-sphenpad-constraint="${escaped}"]`).forEach((element) => element.classList.add("sphenpad-creator-selected"));
+      }
+    };
+    apply();
+    const observer = new MutationObserver(apply);
+    observer.observe(svg, { childList: true, subtree: true });
+    return () => { observer.disconnect(); svg.querySelectorAll(".sphenpad-creator-selected").forEach((element) => element.classList.remove("sphenpad-creator-selected")); };
+  }, [svg, previewMode, selectedCreatorObjectIds, scene]);
 
   const activeFitSize = !svg ? null : (previewMode ? previewFitSize : fitSize);
 
@@ -345,6 +366,10 @@ export function GridCanvas(props: GridCanvasProps) {
         onLineGridTouch={props.onLineGridTouch}
         onNonCellPointerDown={props.onNonCellPointerDown}
         onDoubleCell={props.onDoubleCell}
+        creatorPathDrawing={props.creatorPathDrawing}
+        onCreatorPath={props.onCreatorPath}
+        onCreatorObjectPointerDown={props.onCreatorObjectPointerDown}
+        creatorObjectOnly={props.creatorObjectOnly}
       /> : null}
     </div>
   );

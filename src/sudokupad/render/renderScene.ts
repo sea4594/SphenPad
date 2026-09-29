@@ -60,6 +60,10 @@ function renderGenericGraphic(renderer: SvgRenderer, part: SudokuPadSourceGraphi
   }
 }
 
+function creatorDataAttrs(part: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(part).filter(([key]) => key.startsWith("data-sphenpad-")));
+}
+
 function renderCages(renderer: SvgRenderer, scene: SudokuPadScene): void {
   // Stock convertPuzzle/loadPuzzle keeps authored cages ahead of generated
   // region/box cages. Preserve that insertion order because same-layer SVG
@@ -74,6 +78,7 @@ function renderCages(renderer: SvgRenderer, scene: SudokuPadScene): void {
       cageValue: cageValue(cage),
       textColor: cage.textColor ?? cage.fontC,
       borderColor: cage.borderColor ?? cage.outlineC,
+      dataAttrs: creatorDataAttrs(cage as Record<string, unknown>),
     });
   });
   scene.regions.forEach((region) => renderer.renderCage({

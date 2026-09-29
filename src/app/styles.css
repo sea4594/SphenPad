@@ -4091,3 +4091,11 @@ input.url {
     padding: 3px 6px;
   }
 }
+
+/* Creator direct-manipulation selection. Editor-only; never serialized into puzzle data. */
+.creatorEditorShell .sphenpad-sudokupad-renderer .sphenpad-creator-selected {
+  filter: drop-shadow(0 0 1.5px var(--accent)) drop-shadow(0 0 3px var(--accent));
+}
+.creatorInteractionModes .danger.primary {
+  border-color: var(--danger);
+}

@@ -30,6 +30,7 @@ export interface CageRenderOptions {
   style?: string | null;
   textColor?: string;
   borderColor?: string;
+  dataAttrs?: SvgAttributes;
 }
 
 export interface ContentBounds {
@@ -42,6 +43,9 @@ export interface ContentBounds {
 }
 
 function clonePoint(point: SudokuPadPoint): SudokuPadPoint { return [point[0], point[1]]; }
+function creatorDataAttrs(input: Record<string, unknown>): SvgAttributes {
+  return Object.fromEntries(Object.entries(input).filter(([key]) => key.startsWith("data-sphenpad-")));
+}
 
 export class SvgRenderer {
   static readonly CellSize = CELL_SIZE;
@@ -190,7 +194,7 @@ export class SvgRenderer {
         d: pointsToPath(retracted),
       },
     });
-    const group = this.renderPart({ target, type: "g", attr: { stroke: color, opacity, "stroke-width": thickness } }) as SVGGElement;
+    const group = this.renderPart({ target, type: "g", attr: { ...creatorDataAttrs(opts), stroke: color, opacity, "stroke-width": thickness } }) as SVGGElement;
     group.appendChild(arrowHead);
     group.appendChild(arrowLine);
     return group;
@@ -312,6 +316,7 @@ export class SvgRenderer {
     while (opts.cells.some((cell) => cell.row === row - 1 && cell.col === col - 1 + ++widthCells)) { /* exact SudokuPad scan */ }
     return this.renderText({
       ...CAGE_VALUE_STYLE,
+      ...opts.dataAttrs,
       target: opts.target,
       className: `cage-${String(opts.style)} cage-label`,
       center: [row - 1 + 0.15, col - 1 + 0.035],
@@ -330,6 +335,7 @@ export class SvgRenderer {
         const edgePoints = getCellOutline(opts.cells, style.offset);
         const borderAttr: SvgAttributes = {
           ...style.border,
+          ...opts.dataAttrs,
           class: `cage-${opts.style}`,
           "shape-rendering": "geometricprecision",
           "vector-effect": "non-scaling-stroke",

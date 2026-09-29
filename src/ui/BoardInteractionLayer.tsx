@@ -29,6 +29,7 @@ type DragState = {
   longPressCycleIndex?: number;
   visited?: Set<string>;
   selectionDragActive?: boolean;
+  creatorPath?: boolean;
 };
 
 type TapState = { cellKey: string; timestamp: number; pointerType: string };
@@ -96,6 +97,10 @@ export interface BoardInteractionLayerProps {
   onLineGridTouch?: () => void;
   onNonCellPointerDown?: () => void;
   onDoubleCell: (rc: CellRC, selectionCycleIndex?: number) => void;
+  creatorPathDrawing?: boolean;
+  onCreatorPath?: (path: CellRC[]) => void;
+  onCreatorObjectPointerDown?: (objectId: string, modifiers: { additive: boolean }) => boolean | void;
+  creatorObjectOnly?: boolean;
 }
 
 export function BoardInteractionLayer(props: BoardInteractionLayerProps) {
@@ -413,14 +418,105 @@ export function BoardInteractionLayer(props: BoardInteractionLayerProps) {
     return ctm ? SUDOKUPAD_CELL_SIZE * Math.max(0.0001, Math.hypot(ctm.a, ctm.b)) : 64;
   }
 
+  function taggedCreatorObjectId(element: Element | null): string | null {
+    if (!svg || !element) return null;
+    let current: Element | null = element;
+    while (current && current !== svg) {
+      const objectId = current.getAttribute("data-sphenpad-object-id") ?? current.getAttribute("data-sphenpad-constraint");
+      if (objectId) return objectId;
+      current = current.parentElement;
+    }
+    return null;
+  }
+
+  function screenDistanceToRect(rect: DOMRect, x: number, y: number): number {
+    const dx = x < rect.left ? rect.left - x : x > rect.right ? x - rect.right : 0;
+    const dy = y < rect.top ? rect.top - y : y > rect.bottom ? y - rect.bottom : 0;
+    return Math.hypot(dx, dy);
+  }
+
+  function screenDistanceToGeometry(element: SVGGraphicsElement, x: number, y: number): number {
+    if (typeof SVGGeometryElement !== "undefined" && element instanceof SVGGeometryElement && typeof element.getTotalLength === "function") {
+      try {
+        const ctm = element.getScreenCTM();
+        if (ctm) {
+          const local = new DOMPoint(x, y).matrixTransform(ctm.inverse());
+          if (element.isPointInFill(local) || element.isPointInStroke(local)) return 0;
+        }
+        const length = element.getTotalLength();
+        if (ctm && Number.isFinite(length) && length > 0) {
+          const steps = Math.max(8, Math.min(80, Math.ceil(length / 12)));
+          let best = Number.POSITIVE_INFINITY;
+          let previous: DOMPoint | null = null;
+          for (let index = 0; index <= steps; index += 1) {
+            const source = element.getPointAtLength(length * index / steps);
+            const point = new DOMPoint(source.x, source.y).matrixTransform(ctm);
+            if (previous) {
+              const vx = point.x - previous.x, vy = point.y - previous.y;
+              const wx = x - previous.x, wy = y - previous.y;
+              const denom = vx * vx + vy * vy;
+              const t = denom > 0 ? Math.max(0, Math.min(1, (wx * vx + wy * vy) / denom)) : 0;
+              best = Math.min(best, Math.hypot(x - (previous.x + t * vx), y - (previous.y + t * vy)));
+            } else best = Math.min(best, Math.hypot(x - point.x, y - point.y));
+            previous = point;
+          }
+          return best;
+        }
+      } catch { /* fall through to the rendered bounds */ }
+    }
+    return screenDistanceToRect(element.getBoundingClientRect(), x, y);
+  }
+
+  function creatorObjectAt(clientX: number, clientY: number): string | null {
+    if (!svg || !props.onCreatorObjectPointerDown) return null;
+    for (const element of document.elementsFromPoint(clientX, clientY)) {
+      const id = taggedCreatorObjectId(element);
+      if (id && svg.contains(element)) return id;
+    }
+    const tagged = Array.from(svg.querySelectorAll<SVGGraphicsElement>("[data-sphenpad-object-id], [data-sphenpad-constraint]"));
+    let bestId: string | null = null, bestDistance = 11;
+    tagged.forEach((owner) => {
+      const geometries = typeof SVGGeometryElement !== "undefined" && owner instanceof SVGGeometryElement
+        ? [owner]
+        : Array.from(owner.querySelectorAll<SVGGraphicsElement>("path,rect,circle,ellipse,line,polyline,polygon,text")).filter((element) => !element.closest("defs"));
+      for (const geometry of geometries) {
+        const distance = screenDistanceToGeometry(geometry, clientX, clientY);
+        if (distance <= bestDistance) {
+          bestDistance = distance;
+          bestId = owner.getAttribute("data-sphenpad-object-id") ?? owner.getAttribute("data-sphenpad-constraint");
+        }
+      }
+    });
+    return bestId;
+  }
+
   function onPointerDown(event: React.PointerEvent<SVGSVGElement>) {
     if (!interactive) return;
     clearLongPress();
     captureDragTransform();
+    if (!props.creatorPathDrawing && props.onCreatorObjectPointerDown && event.button === 0) {
+      const objectId = creatorObjectAt(event.clientX, event.clientY);
+      if (objectId && props.onCreatorObjectPointerDown(objectId, { additive: event.shiftKey || event.ctrlKey || event.metaKey }) !== false) {
+        event.preventDefault();
+        dragTransformRef.current = null;
+        return;
+      }
+      if (props.creatorObjectOnly) { dragTransformRef.current = null; return; }
+    }
     const cell = cellAt(event.clientX, event.clientY);
     if (!cell) { props.onNonCellPointerDown?.(); return; }
     event.currentTarget.setPointerCapture(event.pointerId);
     const p = gridPoint(event.clientX, event.clientY)!;
+    if (props.creatorPathDrawing) {
+      const start = nearestCenter(event.clientX, event.clientY);
+      if (!start) return;
+      dragRef.current = {
+        last: start, path: [start], segments: [], moved: false, creatorPath: true,
+        startClientX: event.clientX, startClientY: event.clientY, lastClientX: event.clientX, lastClientY: event.clientY, visited: new Set([keyOf(start)]),
+      };
+      setPreview({ segments: [], kind: "center", action: "draw" });
+      return;
+    }
     if (progress.activeTool === "line") {
       props.onLineGridTouch?.();
       const kind = resolveLineKind(p);
@@ -463,6 +559,22 @@ export function BoardInteractionLayer(props: BoardInteractionLayerProps) {
   function onPointerMove(event: React.PointerEvent<SVGSVGElement>) {
     const drag = dragRef.current;
     if (!interactive || !drag) return;
+    if (drag.creatorPath) {
+      const hops = centerLineHopsFromPointer(drag.last, drag.lastClientX, drag.lastClientY, event.clientX, event.clientY, { hotZoneRadius: LINE_NODE_RADIUS, samplesPerCell: 24, maxHops: 12 });
+      drag.lastClientX = event.clientX; drag.lastClientY = event.clientY;
+      if (!hops.length) return;
+      for (const hop of hops) {
+        const previous = drag.path.at(-2);
+        if (previous && keyOf(previous) === keyOf(hop)) {
+          drag.path.pop(); drag.segments.pop(); drag.last = hop; drag.moved = true; continue;
+        }
+        if (keyOf(drag.last) === keyOf(hop)) continue;
+        drag.segments.push({ a: drag.last, b: hop });
+        drag.path.push(hop); drag.last = hop; drag.moved = true;
+      }
+      setPreview({ segments: [...drag.segments], kind: "center", action: "draw" });
+      return;
+    }
     if (progress.activeTool === "line") {
       const kind = drag.lineKind ?? "center";
       const previousCell = drag.path.at(-2) ?? null;
@@ -534,6 +646,11 @@ export function BoardInteractionLayer(props: BoardInteractionLayerProps) {
     const drag = dragRef.current;
     if (!interactive || !drag) return;
     clearLongPress();
+    if (drag.creatorPath) {
+      if (drag.path.length >= 2) props.onCreatorPath?.(drag.path.map((cell) => ({ ...cell })));
+      dragRef.current = null; dragTransformRef.current = null; setPreview(null);
+      return;
+    }
     if (progress.activeTool === "line") {
       const kind = drag.lineKind ?? "center";
       if (drag.moved && drag.segments.length && drag.lineAction) props.onLineStroke(drag.segments, kind, drag.lineAction);
@@ -596,7 +713,7 @@ export function BoardInteractionLayer(props: BoardInteractionLayerProps) {
       className="sphenpad-board-interaction"
       viewBox={`${viewBox.x} ${viewBox.y} ${viewBox.width} ${viewBox.height}`}
       preserveAspectRatio="xMidYMid meet"
-      style={{ gridArea: "1 / 1", display: "block", width: `var(--sphenpad-board-fit-width, ${viewBox.width}px)`, height: `var(--sphenpad-board-fit-height, ${viewBox.height}px)`, maxWidth: "100%", maxHeight: "100%", margin: 0, touchAction: interactive ? "none" : "auto", pointerEvents: interactive ? "auto" : "none", overflow: "visible" }}
+      style={{ gridArea: "1 / 1", display: "block", width: `var(--sphenpad-board-fit-width, ${viewBox.width}px)`, height: `var(--sphenpad-board-fit-height, ${viewBox.height}px)`, maxWidth: "100%", maxHeight: "100%", margin: 0, touchAction: interactive ? "none" : "auto", pointerEvents: interactive ? "auto" : "none", cursor: props.creatorPathDrawing ? "crosshair" : props.creatorObjectOnly ? "not-allowed" : undefined, overflow: "visible" }}
       onPointerDown={interactive ? onPointerDown : undefined}
       onPointerMove={interactive ? onPointerMove : undefined}
       onPointerUp={interactive ? onPointerUp : undefined}
@@ -611,7 +728,7 @@ export function BoardInteractionLayer(props: BoardInteractionLayerProps) {
         const y1 = (segment.a.r + (center ? 0.5 : 0)) * 64;
         const x2 = (segment.b.c + (center ? 0.5 : 0)) * 64;
         const y2 = (segment.b.r + (center ? 0.5 : 0)) * 64;
-        return <line key={index} x1={x1} y1={y1} x2={x2} y2={y2} stroke={progress.linePaletteColor} strokeWidth={center ? 4.544 : 4.352} opacity={preview.action === "erase" ? 0.35 : 0.9} strokeLinecap="round" />;
+        return <line key={index} x1={x1} y1={y1} x2={x2} y2={y2} stroke={props.creatorPathDrawing ? "var(--accent)" : progress.linePaletteColor} strokeWidth={props.creatorPathDrawing ? 7 : center ? 4.544 : 4.352} opacity={preview.action === "erase" ? 0.35 : 0.9} strokeLinecap="round" />;
       })}
     </svg>
   );

@@ -208,6 +208,7 @@ export function PuzzleEditorPage() {
   const [elementKind, setElementKind] = useState<ElementKind>("given");
   const [constraintValue, setConstraintValue] = useState("");
   const [addingElement, setAddingElement] = useState(false);
+  const [creatorDeleteMode, setCreatorDeleteMode] = useState(false);
   const [authoringOpen, setAuthoringOpen] = useState(false);
   const [catalogOpen, setCatalogOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -500,6 +501,7 @@ export function PuzzleEditorPage() {
   }
 
   function selectCreatorObject(objectId: string, additive = false) {
+    setCreatorDeleteMode(false);
     setSelectedObjectId(objectId);
     setSelectedPathPointIndex(null);
     setSelectedObjectIds((current) => {
@@ -511,6 +513,51 @@ export function PuzzleEditorPage() {
       }
       return [...current, objectId];
     });
+  }
+
+  function setCreatorInteractionMode(mode: "add" | "edit" | "delete") {
+    setCreatorDeleteMode(mode === "delete");
+    setAddingElement(mode === "add");
+    setObjectContextMenu(null);
+    if (mode === "add") { setSelectedObjectId(null); setSelectedObjectIds([]); setSelectedPathPointIndex(null); }
+  }
+
+  function selectCreatorObjectFromBoard(objectId: string, modifiers: { additive: boolean }) {
+    if (!data || testPlay || creatorTab !== "elements") return false;
+    const object = listCreatorObjects(data.def).find((entry) => entry.id === objectId);
+    if (!object) return false;
+    if (creatorDeleteMode) {
+      if (activeCatalogElement && object.elementId === activeCatalogElement) deleteObject(objectId);
+      return true;
+    }
+    const element = CATALOG.find((entry) => entry.id === object.elementId);
+    if (element) {
+      setActiveCatalogElement(element.id);
+      if (element.elementKind) setElementKind(element.elementKind);
+      setAuthoringOpen(true);
+      setCreatorControlView("element");
+    }
+    setAddingElement(false);
+    setCreatorDeleteMode(false);
+    selectCreatorObject(objectId, modifiers.additive);
+    setMessage(`${object.name} selected.`);
+    return true;
+  }
+
+  function addCreatorPathFromBoard(path: CellRC[]) {
+    if (!data || !activeCatalogElement || path.length < 2) return;
+    let next = data.def, objectId: string | null = null;
+    if (isCreatorLineElementId(activeCatalogElement)) {
+      const created = addCreatorLineConstraint(data.def, activeCatalogElement, path);
+      next = applyToolDefaults(created.def, created.constraintId, activeCatalogElement); objectId = created.constraintId;
+    } else if (activeCatalogElement === "cosmetic-lines") {
+      const created = addCreatorCosmetic(data.def, activeCatalogElement, { lines: [{ wayPoints: path.map((cell): [number, number] => [cell.r + 0.5, cell.c + 0.5]), color: "#555555", thickness: 4 }] }, { name: "Cosmetic lines" });
+      next = applyToolDefaults(created.def, created.objectId, activeCatalogElement); objectId = created.objectId;
+    } else return;
+    save(next);
+    setSelectedObjectId(objectId); setSelectedObjectIds(objectId ? [objectId] : []);
+    setAddingElement(false); setCreatorDeleteMode(false); setConstraintValue("");
+    setMessage(`${CATALOG.find((entry) => entry.id === activeCatalogElement)?.name ?? "Line"} drawn.`);
   }
 
   function selectAllCatalogObjects() {
@@ -881,6 +928,7 @@ export function PuzzleEditorPage() {
     const editable = Boolean(element.elementKind || VISUAL_EDITOR_IDS.has(element.id));
     setAuthoringOpen(true);
     setCreatorControlView("element");
+    setCreatorDeleteMode(false);
     setAddingElement(editable && !selectedConstraintId);
     if (element.elementKind) setElementKind(element.elementKind);
   }
@@ -896,6 +944,7 @@ export function PuzzleEditorPage() {
     setSelectedObjectId(null);
     setSelectedObjectIds([]);
     setAddingElement(false);
+    setCreatorDeleteMode(false);
     setAuthoringOpen(true);
     setCreatorControlView("element");
     const stored = data.def.meta.creatorToolDefaults?.[element.id]?.constraintValue;
@@ -921,6 +970,7 @@ export function PuzzleEditorPage() {
     save({ ...next, meta: { ...next.meta, creatorElements, creatorElementNames } });
     setActiveCatalogElement(null);
     setSelectedObjectId(null);
+    setCreatorDeleteMode(false);
     setMessage(`${element.name} removed.`);
   }
 
@@ -1029,6 +1079,7 @@ export function PuzzleEditorPage() {
     setActiveCatalogElement(elementId);
     setAuthoringOpen(false);
     setAddingElement(false);
+    setCreatorDeleteMode(false);
     setCreatorControlView("solver");
     setEditorTool("value");
   }
@@ -1040,6 +1091,7 @@ export function PuzzleEditorPage() {
     setSelectedObjectIds([]);
     setAuthoringOpen(false);
     setAddingElement(false);
+    setCreatorDeleteMode(false);
     setCreatorControlView("solver");
     setEditorTool("value");
   }
@@ -1463,7 +1515,7 @@ export function PuzzleEditorPage() {
         return;
       }
       if (solverControlsActive && !event.altKey && !event.ctrlKey && !event.metaKey && keyToTool[key]) { event.preventDefault(); setActiveTool(keyToTool[key]); return; }
-      if (key === "escape") { setObjectContextMenu(null); setAddingElement(false); setSelectedObjectIds([]); setSelectedObjectId(null); return; }
+      if (key === "escape") { setObjectContextMenu(null); setAddingElement(false); setCreatorDeleteMode(false); setSelectedObjectIds([]); setSelectedObjectId(null); return; }
       if (solverControlsActive && !event.altKey && !event.metaKey && (key === " " || key === "pagedown")) { event.preventDefault(); cycleTool(1); return; }
       if (solverControlsActive && !event.altKey && !event.metaKey && ((event.ctrlKey && key === " ") || key === "pageup")) { event.preventDefault(); cycleTool(-1); return; }
       if (solverControlsActive && !event.altKey && !event.metaKey && ["arrowup", "arrowdown", "arrowleft", "arrowright"].includes(key)) {
@@ -1656,7 +1708,24 @@ export function PuzzleEditorPage() {
         <div className="gridLayout creatorGridLayout">
           <section className="boardColumn creatorBoardColumn">
             <div className="card boardCard creatorCanvasViewport" onWheel={(event) => { if (!(event.ctrlKey || event.metaKey)) return; event.preventDefault(); setCanvasZoom((value) => Math.max(0.5, Math.min(2.5, value + (event.deltaY < 0 ? 0.1 : -0.1)))); }}>
-              <div className="creatorCanvasTransform" style={{ transform: `translate(${canvasPan.x}px, ${canvasPan.y}px) scale(${canvasZoom})` }}><GridCanvas def={data.def} progress={controlProgress} conflictCheckerEnabled={activeCatalogElement === "regions" ? false : theme.conflictChecker} additionalConflictCells={activeCatalogElement === "regions" ? [] : liveCreatorConflictCells} hideAuthoredEntries={activeCatalogElement === "regions"} onSelection={testPlay ? (next) => setTestProgress((current) => current ? { ...current, selection: next } : current) : setSelection} onLineStroke={testPlay ? NOOP : onCreatorLineStroke} onLineTapCell={testPlay ? NOOP : onCreatorLineTapCell} onLineTapEdge={testPlay ? NOOP : onCreatorLineTapEdge} onLineGridTouch={() => { if (!testPlay && activeCatalogElement === null && editorTool === "line") setSelection([]); }} onDoubleCell={NOOP} /></div>
+              <div className="creatorCanvasTransform" style={{ transform: `translate(${canvasPan.x}px, ${canvasPan.y}px) scale(${canvasZoom})` }}><GridCanvas
+                def={data.def}
+                progress={controlProgress}
+                conflictCheckerEnabled={activeCatalogElement === "regions" ? false : theme.conflictChecker}
+                additionalConflictCells={activeCatalogElement === "regions" ? [] : liveCreatorConflictCells}
+                hideAuthoredEntries={activeCatalogElement === "regions"}
+                onSelection={testPlay ? (next) => setTestProgress((current) => current ? { ...current, selection: next } : current) : setSelection}
+                onLineStroke={testPlay ? NOOP : onCreatorLineStroke}
+                onLineTapCell={testPlay ? NOOP : onCreatorLineTapCell}
+                onLineTapEdge={testPlay ? NOOP : onCreatorLineTapEdge}
+                onLineGridTouch={() => { if (!testPlay && activeCatalogElement === null && editorTool === "line") setSelection([]); }}
+                onDoubleCell={NOOP}
+                creatorPathDrawing={!testPlay && creatorTab === "elements" && creatorControlView === "element" && addingElement && Boolean(activeCatalogElement && (isCreatorLineElementId(activeCatalogElement) || activeCatalogElement === "cosmetic-lines"))}
+                onCreatorPath={addCreatorPathFromBoard}
+                selectedCreatorObjectIds={!testPlay ? selectedObjectIds : []}
+                onCreatorObjectPointerDown={!testPlay && creatorTab === "elements" && !addingElement ? selectCreatorObjectFromBoard : undefined}
+                creatorObjectOnly={creatorDeleteMode}
+              /></div>
             </div>
           </section>
           <div className="kbdPanel">
@@ -1670,7 +1739,7 @@ export function PuzzleEditorPage() {
           </div>
           <div className="creatorInspectorBody">
             {selectedCatalog ? <div className="creatorSelectedElement"><div><span>{selectedCatalog.description}</span></div>{CHECKABLE_ELEMENT_IDS.has(selectedCatalog.id) ? <label className="creatorToggle"><input type="checkbox" checked={data.def.meta.creatorConstraintChecks?.[selectedCatalog.id] !== false} onChange={(event) => setConstraintChecking(selectedCatalog, event.target.checked)} />Constraint checking</label> : null}</div> : <div className="muted">Select an active element above the puzzle to edit it.</div>}
-            {selectedCatalog && (selectedCatalog.elementKind || VISUAL_EDITOR_IDS.has(selectedCatalog.id)) ? <div className="creatorObjectToolbar"><div className="creatorObjectToolbarButtons">{!SINGLETON_GLOBAL_IDS.has(selectedCatalog.id) ? <button className={addingElement ? "btn primary" : "btn"} onClick={() => { setAddingElement((value) => !value); setSelectedObjectId(null); setSelectedObjectIds([]); }} type="button">{addingElement ? "Cancel add" : `Add ${displayElementName(selectedCatalog)}`}</button> : null}<button className="btn" disabled={!catalogObjects.length} onClick={selectAllCatalogObjects} type="button">Select all</button><button className="btn" disabled={!selectedObjectIds.length} onClick={() => void copySelectedObjects()} type="button">Copy</button><button className="btn" onClick={() => void pasteSelectedObjects()} type="button">Paste</button></div><span>{catalogObjects.length} authored object{catalogObjects.length === 1 ? "" : "s"}</span></div> : null}
+            {selectedCatalog && (selectedCatalog.elementKind || VISUAL_EDITOR_IDS.has(selectedCatalog.id)) ? <div className="creatorObjectToolbar"><div className="creatorObjectToolbarButtons creatorInteractionModes">{!SINGLETON_GLOBAL_IDS.has(selectedCatalog.id) ? <button className={addingElement ? "btn primary" : "btn"} onClick={() => setCreatorInteractionMode("add")} type="button">Add</button> : null}<button className={!addingElement && !creatorDeleteMode ? "btn primary" : "btn"} onClick={() => setCreatorInteractionMode("edit")} type="button">Edit</button><button className={creatorDeleteMode ? "btn primary danger" : "btn danger"} disabled={!catalogObjects.length} onClick={() => setCreatorInteractionMode("delete")} type="button">Delete</button><button className="btn" disabled={!catalogObjects.length} onClick={selectAllCatalogObjects} type="button">Select all</button><button className="btn" disabled={!selectedObjectIds.length} onClick={() => void copySelectedObjects()} type="button">Copy</button><button className="btn" onClick={() => void pasteSelectedObjects()} type="button">Paste</button></div><span>{catalogObjects.length} authored object{catalogObjects.length === 1 ? "" : "s"}</span></div> : null}
             {addingElement && selectedCatalog && (selectedCatalog.elementKind || VISUAL_EDITOR_IDS.has(selectedCatalog.id)) ? <div className="creatorAddElementForm">
               {(selectedCatalog.id === "cosmetic-text" || selectedCatalog.id === "cosmetic-symbols") ? <label>{selectedCatalog.id === "cosmetic-text" ? "Text" : "Symbol"}<input className="url" value={constraintValue} onChange={(event) => setConstraintValue(event.target.value)} placeholder={selectedCatalog.id === "cosmetic-text" ? "Label text" : "★"} /></label> : null}
               {(selectedCatalog.id === "cosmetic-images" || selectedCatalog.id === "cosmetic-backgrounds") ? <label>Image URL or data URL<input className="url" value={constraintValue} onChange={(event) => setConstraintValue(event.target.value)} placeholder="https://…" /></label> : null}
@@ -1688,7 +1757,7 @@ export function PuzzleEditorPage() {
               {selectedCatalog.id === "custom-fog-clearing" ? <div className="creatorHelp">The current selection becomes both the trigger and initial reveal set; edit the two sets separately after creation.</div> : null}
               {selectedCatalog.id !== "cosmetic-backgrounds" ? <div className="creatorSelection">Selected: {selection.length ? selection.map(cellLabel).join(", ") : "none"}</div> : null}
               <button className="btn primary" onClick={selectedCatalog.elementKind ? addElement : () => addVisualElement(selectedCatalog)} type="button">Add object</button>
-              <div className="creatorHelp">Select or change cells on the board while this panel is open, then choose Add object. Path objects use the selection order. Appearance can be edited after creation.</div>
+              {(isCreatorLineElementId(selectedCatalog.id) || selectedCatalog.id === "cosmetic-lines") ? <div className="creatorHelp">Draw this path directly on the grid by pressing and dragging through cells. You can also use an existing ordered cell selection with Add object.</div> : <div className="creatorHelp">Select or change cells on the board while this panel is open, then choose Add object. Appearance can be edited after creation.</div>}
             </div> : null}
             {catalogObjects.length ? <div className="creatorObjectList"><div className="creatorInspectorSubheading">Objects</div>{catalogObjects.map((object) => <div className={selectedObjectIds.includes(object.id) ? "creatorObjectRow active" : "creatorObjectRow"} key={object.id} onContextMenu={(event) => { event.preventDefault(); selectCreatorObject(object.id, selectedObjectIds.length > 1); setObjectContextMenu({ id: object.id, x: event.clientX, y: event.clientY }); }}><input aria-label={`Select ${object.name}`} type="checkbox" checked={selectedObjectIds.includes(object.id)} onChange={() => { selectCreatorObject(object.id, true); setAddingElement(false); }} /><button className="creatorObjectRowMain" onClick={(event) => { selectCreatorObject(object.id, event.metaKey || event.ctrlKey || event.shiftKey || multiSelect); setAddingElement(false); }} type="button"><div><strong>{object.name}</strong><span>{objectDetail(object)}</span></div><small>{object.enabled ? object.kind : `${object.kind} · disabled`}</small></button><PopupMenuButton className="btn creatorObjectMore" ariaLabel={`Object actions for ${object.name}`} title="Object actions" items={[{ label: "Copy", onSelect: () => { selectCreatorObject(object.id); void copyObjectById(object.id); } }, { label: "Duplicate", onSelect: () => duplicateObject(object.id), disabled: object.kind === "background" || SINGLETON_GLOBAL_IDS.has(object.elementId) }, { label: object.enabled ? "Disable" : "Enable", onSelect: () => editObject(object.id, { enabled: !object.enabled }) }, { label: "Delete", onSelect: () => deleteObject(object.id), tone: "danger" }]} /></div>)}</div> : selectedCatalog && !addingElement ? <div className="muted">No authored objects of this type yet.</div> : null}
             {selectedObjectIds.length > 1 ? <div className="creatorBulkInspector"><div className="creatorInspectorSubheading">Bulk edit · {selectedObjectIds.length} objects</div><div className="creatorFileActions"><button className="btn" onClick={() => bulkEditSelected({ enabled: true })} type="button">Enable</button><button className="btn" onClick={() => bulkEditSelected({ enabled: false })} type="button">Disable</button><button className="btn" onClick={duplicateSelectedObjects} type="button">Duplicate</button><button className="btn" onClick={() => moveSelectedToEdge("back")} type="button">Send to back</button><button className="btn" onClick={() => moveSelectedToEdge("front")} type="button">Bring to front</button><button className="btn danger" onClick={deleteSelectedObjects} type="button">Delete</button></div><div className="creatorPropertyGrid"><label>Color<input className="url" placeholder="#555555" onChange={(event) => { if (event.target.value) bulkEditSelected({ color: event.target.value }); }} /></label><label>Opacity<input className="url" type="number" min="0" max="1" step="0.05" defaultValue="1" onBlur={(event) => bulkEditSelected({ opacity: Number(event.target.value) })} /></label></div>{selectedCosmetics.length >= 2 ? <><div className="creatorFileActions creatorAlignActions"><button className="btn" onClick={() => alignSelected("left")} type="button">Align left</button><button className="btn" onClick={() => alignSelected("center-x")} type="button">Center X</button><button className="btn" onClick={() => alignSelected("right")} type="button">Align right</button><button className="btn" onClick={() => alignSelected("top")} type="button">Align top</button><button className="btn" onClick={() => alignSelected("center-y")} type="button">Center Y</button><button className="btn" onClick={() => alignSelected("bottom")} type="button">Align bottom</button></div><div className="creatorFileActions"><button className="btn" onClick={() => snapSelected("cell-center")} type="button">Snap to cell centers</button><button className="btn" onClick={() => snapSelected("cell-edge")} type="button">Snap to grid</button></div></> : null}</div> : null}

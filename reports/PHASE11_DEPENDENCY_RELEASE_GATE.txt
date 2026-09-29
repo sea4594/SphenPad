@@ -1,4 +1,4 @@
-Phase 11 dependency-backed release gate — 2026-09-29T19:58:41Z
+Phase 11 dependency-backed release gate — 2026-09-29T20:51:19Z
 Node: v20.20.2
 npm: 10.8.2
 
@@ -38,7 +38,7 @@ found 0 vulnerabilities
   103:6  warning  React Hook useEffect has a missing dependency: 'positionMenu'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
 
 /Users/sea/Desktop/SphenPad/src/ui/PuzzleEditorPage.tsx
-  1406:6  warning  React Hook useEffect has a missing dependency: 'selectedObjectIds'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  1458:6  warning  React Hook useEffect has a missing dependency: 'selectedObjectIds'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
 
 /Users/sea/Desktop/SphenPad/src/ui/SelectControl.tsx
   51:9  warning  The 'selectedValues' conditional could make the dependencies of useMemo Hook (at line 53) change on every render. Move it inside the useMemo callback. Alternatively, wrap the initialization of 'selectedValues' in its own useMemo() Hook  react-hooks/exhaustive-deps
@@ -56,14 +56,14 @@ transforming...
 rendering chunks...
 computing gzip size...
 dist/index.html                     1.12 kB │ gzip:   0.50 kB
-dist/assets/index-Dv8v-xOz.css     84.30 kB │ gzip:  14.98 kB
-dist/assets/index-DSpBdu0M.js   1,274.62 kB │ gzip: 384.49 kB
+dist/assets/index-BHgm27iR.css     84.52 kB │ gzip:  15.04 kB
+dist/assets/index-BAmFsxNU.js   1,280.34 kB │ gzip: 386.16 kB
 
 (!) Some chunks are larger than 500 kB after minification. Consider:
 - Using dynamic import() to code-split the application
 - Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
 - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
-✓ built in 2.86s
+✓ built in 2.83s
 [5/11] Complete Phase 11 creator regression matrix
 
 > sphenpad@0.0.0 test-creator-phase11
@@ -193,6 +193,6 @@ SudokuPad compatibility manifest: PASS (67 JS/CSS assets, 13 fonts)
 > node scripts/write-phase11-release-hashes.mjs
 
 Phase 11 release hash manifest: PASS (4259 production inputs, 15 creator tests, 4123 built files)
-releaseContentSha256=bb34a36e746bcc9060bbf870674bb80a655f42a75896ed6949d16b4ea76b95f0
+releaseContentSha256=c465e064db41a6ad3ca3bef6334e97a0ce7b6d59bd4f687c9cba8a82cae33561
 
 PHASE 11 DEPENDENCY-BACKED RELEASE GATE PASSED
