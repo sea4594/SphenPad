@@ -9,7 +9,7 @@ import type { BoardLineKind, BoardLineSegment, CreatorBoardPoint, CreatorDirectM
 import { getViewportLayoutKind, type ViewportLayoutKind } from "../app/viewportLayout";
 import { Keyboard } from "./Keyboard";
 import { highlightPalettePages, linePalette } from "./toolPalettes";
-import { IconRedo, IconSelectMode, IconSettings, IconToolBig, IconToolCenter, IconToolCorner, IconToolHighlight, IconToolLine, IconUndo, IconZoomPan } from "./icons";
+import { IconRedo, IconSelectMode, IconSettings, IconToolBig, IconToolCenter, IconToolCorner, IconToolHighlight, IconToolLine, IconUndo, IconFitView } from "./icons";
 import { PopupMenuButton } from "./PopupMenuButton";
 import { SettingsOverlay } from "./SettingsOverlay";
 import { useTheme } from "../app/theme";
@@ -215,7 +215,9 @@ function isInBounds(cell: CellRC, rows: number, cols: number) {
 function regionNumberAt(def: PuzzleDefinition, cell: CellRC) {
   const regions = getCreatorRegions(def);
   const index = regions.findIndex((region) => region.cells.some((item) => sameCell(item, cell)));
-  return index >= 0 ? String(index + 1) : "";
+  if (index < 0) return "";
+  const label = String(regions[index].label ?? "").trim();
+  return label || String(index + 1);
 }
 
 function sanitizeDefinition(input: PuzzleDefinition): PuzzleDefinition {
@@ -283,6 +285,7 @@ export function PuzzleEditorPage() {
   const [pathDragIndex, setPathDragIndex] = useState<number | null>(null);
   const [canvasZoom, setCanvasZoom] = useState(1);
   const [canvasPan, setCanvasPan] = useState({ x: 0, y: 0 });
+  const regionDigitEntryRef = useRef<{ selectionKey: string; value: string; at: number } | null>(null);
   const beforePinchRef = useRef<{ selection: CellRC[]; selectedId: string | null; selectedIds: string[] } | null>(null);
   const creatorNavigation = useCreatorBoardNavigation(canvasZoom, canvasPan, setCanvasZoom, setCanvasPan,
     () => { beforePinchRef.current = { selection: selection.map((cell) => ({ ...cell })), selectedId: selectedObjectId, selectedIds: [...selectedObjectIds] }; },
@@ -1508,11 +1511,21 @@ export function PuzzleEditorPage() {
       return;
     }
     if (activeCatalogElement === "regions") {
-      const currentLabel = selection.length === 1 ? regionNumberAt(data.def, selection[0]) : "";
-      const nextLabel = value ? `${currentLabel}${value}`.slice(-2) : "";
-      if (nextLabel && (!/^\d{1,2}$/.test(nextLabel) || Number(nextLabel) < 1 || Number(nextLabel) > 64)) {
-        setMessage("Region numbers must be from 1 to 64.");
-        return;
+      const selectionKey = selection.map(rcKey).sort().join("|");
+      const now = Date.now();
+      const previous = regionDigitEntryRef.current;
+      let nextLabel = "";
+      if (value) {
+        const canAppend = Boolean(previous && previous.selectionKey === selectionKey && now - previous.at <= 900);
+        const appended = canAppend ? `${previous!.value}${value}` : value;
+        nextLabel = /^\d{1,2}$/.test(appended) && Number(appended) >= 1 && Number(appended) <= 64 ? appended : value;
+        if (!/^\d{1,2}$/.test(nextLabel) || Number(nextLabel) < 1 || Number(nextLabel) > 64) {
+          setMessage("Region numbers must be from 1 to 64.");
+          return;
+        }
+        regionDigitEntryRef.current = { selectionKey, value: nextLabel, at: now };
+      } else {
+        regionDigitEntryRef.current = null;
       }
       const regions = getCreatorRegions(data.def)
         .map((region) => ({ ...region, cells: region.cells.filter((cell) => !selection.some((selected) => sameCell(selected, cell))) }))
@@ -2068,15 +2081,6 @@ export function PuzzleEditorPage() {
       {kind === "undo" ? <IconUndo /> : <IconRedo />}
     </button>;
   };
-  const creatorViewMenuItems = [
-    { label: "Zoom in", onSelect: () => setCanvasZoom((value) => Math.min(4, Math.round((value + 0.1) * 10) / 10)) },
-    { label: "Zoom out", onSelect: () => setCanvasZoom((value) => Math.max(0.5, Math.round((value - 0.1) * 10) / 10)) },
-    { label: "Reset view", onSelect: () => { setCanvasZoom(1); setCanvasPan({ x: 0, y: 0 }); } },
-    { label: "Pan up", onSelect: () => setCanvasPan((value) => ({ ...value, y: value.y + 24 })) },
-    { label: "Pan down", onSelect: () => setCanvasPan((value) => ({ ...value, y: value.y - 24 })) },
-    { label: "Pan left", onSelect: () => setCanvasPan((value) => ({ ...value, x: value.x + 24 })) },
-    { label: "Pan right", onSelect: () => setCanvasPan((value) => ({ ...value, x: value.x - 24 })) },
-  ];
 
   function appearancePartSample(elementId: string, collection: CreatorVisualCollection): Record<string, unknown> {
     if (!data) return {};
@@ -2143,8 +2147,7 @@ export function PuzzleEditorPage() {
           <button className={creatorTab === "tools" ? "btn primary" : "btn"} onClick={() => { setCreatorTab("tools"); setAuthoringOpen(false); }} type="button">Tools</button>
         </nav>
         <div className="creatorTopbarActions">
-          {creatorTab !== "file" ? <button type="button" className={"btn creatorNavigationButton" + (creatorNavigation.navigate ? " primary" : "")} aria-pressed={creatorNavigation.navigate} title="Toggle direct pan/zoom without editing the puzzle" onClick={() => creatorNavigation.setNavigate((value) => !value)}>{creatorNavigation.navigate ? "Edit" : "Pan"}</button> : null}
-          {creatorTab !== "file" ? <PopupMenuButton className="btn creatorCanvasViewButton creatorTopbarIconButton" ariaLabel={`Zoom and pan controls. Current zoom ${Math.round(canvasZoom * 100)} percent`} title={`Zoom and pan · ${Math.round(canvasZoom * 100)}%`} triggerLabel={<IconZoomPan />} items={creatorViewMenuItems} /> : null}
+          {creatorTab !== "file" ? <button type="button" className="btn creatorCanvasViewButton creatorTopbarIconButton" aria-label="Fit puzzle to available space" title="Fit puzzle to available space" onClick={() => { creatorNavigation.setNavigate(false); setCanvasZoom(1); setCanvasPan({ x: 0, y: 0 }); }}><IconFitView /></button> : null}
           <button className="btn topbarSettingsButton" onClick={() => setSettingsOpen(true)} title="Settings" type="button"><IconSettings /></button>
         </div>
       </header>
@@ -2167,7 +2170,7 @@ export function PuzzleEditorPage() {
       <main className={"page puzzlePage creatorPuzzlePage" + (creatorTab === "elements" ? " creatorElementsPage" : "")}>
         <div className="creatorElementsPageLayout">
           {creatorTab === "elements" ? <div className="creatorActiveElements">
-            <div className="creatorActiveElementStrip">{activeCatalog.map((element) => <div className={activeCatalogElement === element.id ? "creatorActiveElementEntry active" : "creatorActiveElementEntry"} key={element.id}><button className="creatorActiveElement" onClick={() => activateCatalogElement(element)} type="button" aria-pressed={activeCatalogElement === element.id} title={displayElementName(element)}><span>{element.icon}</span>{displayElementName(element)}</button>{!element.core && activeCatalogElement === element.id ? <PopupMenuButton className="btn creatorElementMoreButton" ariaLabel={`More actions for ${displayElementName(element)}`} title={`More actions for ${displayElementName(element)}`} items={[{ label: "Rename", onSelect: () => renameCatalogElement(element) }, { label: "Delete", onSelect: () => removeCatalogElement(element), tone: "danger" }]} /> : null}</div>)}</div>
+            <div className="creatorActiveElementStrip">{activeCatalog.map((element) => <div className={activeCatalogElement === element.id ? "creatorActiveElementEntry active" : "creatorActiveElementEntry"} key={element.id}><button className="creatorActiveElement" onClick={() => activateCatalogElement(element)} type="button" aria-pressed={activeCatalogElement === element.id} title={displayElementName(element)}><span className="creatorActiveElementIcon">{element.icon}</span><span className="creatorActiveElementName">{displayElementName(element)}</span></button>{!element.core && activeCatalogElement === element.id ? <PopupMenuButton className="btn creatorElementMoreButton" ariaLabel={`More actions for ${displayElementName(element)}`} title={`More actions for ${displayElementName(element)}`} items={[{ label: "Rename", onSelect: () => renameCatalogElement(element) }, { label: "Delete", onSelect: () => removeCatalogElement(element), tone: "danger" }]} /> : null}</div>)}</div>
             <button className="btn primary creatorAddElement" onClick={() => setCatalogOpen(true)} type="button" title="Add element">+</button>
           </div> : null}
           {creatorTab === "tools" ? <div className="creatorToolStrip"><button className="btn" onClick={() => runWorkerValidation("givens")} type="button">Check validity</button><button className="btn" onClick={runLogicalSolver} type="button">Logical solve</button><button className="btn" onClick={runSolutionSearch} type="button">Find solutions</button><button className="btn" onClick={selectCellsSeen} disabled={!selection.length} type="button">Select cells seen</button><button className="btn" onClick={() => { setCreatorTab("file"); setMessage(`${workerComponents.length} registered worker components; expand Worker components to inspect them.`); }} type="button">Inspect components</button>{solutionSearch?.solutions[0] ? <button className="btn primary" onClick={useFoundSolution} type="button">Use solution</button> : null}</div> : null}

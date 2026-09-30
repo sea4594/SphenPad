@@ -16,7 +16,7 @@ echo "[1/11] Clean dependency install"
 npm ci
 
 echo "[2/11] Production dependency security audit"
-npm audit --omit=dev --audit-level=high
+node scripts/audit-production-dependencies.mjs
 
 echo "[3/11] Lint"
 npm run lint

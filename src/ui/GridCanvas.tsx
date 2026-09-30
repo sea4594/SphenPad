@@ -174,7 +174,7 @@ export function GridCanvas(props: GridCanvasProps) {
           filter.setAttribute("id", filterId);
           filter.setAttribute("filterUnits", "userSpaceOnUse");
           filter.setAttribute("color-interpolation-filters", "sRGB");
-          const radius = 4;
+          const radius = 2.8;
           filter.setAttribute("x", String(bbox.x - radius * 4));
           filter.setAttribute("y", String(bbox.y - radius * 4));
           filter.setAttribute("width", String(Math.max(1, bbox.width) + radius * 8));
@@ -186,7 +186,7 @@ export function GridCanvas(props: GridCanvasProps) {
           };
           add("feMorphology", { in: "SourceAlpha", operator: "dilate", radius: String(radius), result: "expanded" });
           add("feComposite", { in: "expanded", in2: "SourceAlpha", operator: "out", result: "perimeter" });
-          add("feFlood", { "flood-color": outlineColor, "flood-opacity": "1", result: "ink" });
+          add("feFlood", { "flood-color": outlineColor, "flood-opacity": "0.65", result: "ink" });
           add("feComposite", { in: "ink", in2: "perimeter", operator: "in", result: "outline" });
           const merge = add("feMerge", {});
           for (const result of ["outline", "SourceGraphic"]) {

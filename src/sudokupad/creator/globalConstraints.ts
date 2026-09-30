@@ -53,8 +53,10 @@ function diagonalCells(def: PuzzleDefinition, positive: boolean) {
   return Array.from({ length }, (_, index) => ({ r: index, c: positive ? def.cols - 1 - index : index })).filter((cell) => inBounds(cell, def));
 }
 function diagonalVisual(def: PuzzleDefinition, positive: boolean): Visuals {
-  const cells = diagonalCells(def, positive);
-  return { lines: [{ wayPoints: cells.map(center), color: "#34BBE6", thickness: 2, target: "overlay" }] };
+  const wayPoints: SudokuPadPoint[] = positive
+    ? [[0, def.cols], [def.rows, 0]]
+    : [[0, 0], [def.rows, def.cols]];
+  return { lines: [{ wayPoints, color: "#34BBE6", thickness: 2, target: "overlay" }] };
 }
 function orthogonalRay(def: PuzzleDefinition, start: CellRC): CellRC[] | null {
   if (!inBounds(start, def)) return null;

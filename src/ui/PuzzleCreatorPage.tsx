@@ -100,10 +100,6 @@ export function PuzzleCreatorPage() {
 
   function projectDefinition(row: StoredPuzzle) { return definitionFromCreatorProject(row.project); }
 
-  const recentRows = rows.filter((row) => row.lastOpenedAt > 0).slice(0, 5);
-  const recentKeys = new Set(recentRows.map((row) => row.key));
-  const otherRows = rows.filter((row) => !recentKeys.has(row.key));
-
   const projectRow = (row: StoredPuzzle) => {
     const def = projectDefinition(row);
     return <div key={row.key} className="card menuPuzzleRow" onClick={() => openPuzzle(row)}>
@@ -122,9 +118,7 @@ export function PuzzleCreatorPage() {
         <div className="mainMenuWrap">
           <button className="btn primary creatorEntryButton" onClick={() => setDimensionsOpen(true)} type="button">New puzzle</button>
           <div className="card">
-            {recentRows.length ? <><div className="menuSectionTitle">Recent projects</div><div className="menuPuzzleList">{recentRows.map(projectRow)}</div></> : null}
-            <div className="menuSectionTitle">All creator projects</div>
-            <div className="menuPuzzleList">{otherRows.map(projectRow)}{!rows.length ? <div className="muted">No created puzzles yet.</div> : null}{rows.length > 0 && !otherRows.length ? <div className="muted">All projects are shown above.</div> : null}</div>
+            <div className="menuPuzzleList">{rows.map(projectRow)}{!rows.length ? <div className="muted">No created puzzles yet.</div> : null}</div>
           </div>
         </div>
       </div>

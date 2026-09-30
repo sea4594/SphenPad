@@ -1026,6 +1026,8 @@ input.url {
 }
 .creatorInlineAuthoringPanel .creatorInspectorBody {
   overflow-y: auto;
+  overflow-x: hidden;
+  min-width: 0;
 }
 .creatorInlineAuthoringPanel .creatorSelectedElement,
 .creatorInlineAuthoringPanel .creatorObjectEditor { min-width: 0; }
@@ -1059,13 +1061,19 @@ input.url {
   display: flex;
   flex: 0 0 auto;
   align-items: center;
+  min-width: 0;
 }
+.creatorActiveElement { overflow: hidden; }
+.creatorActiveElementName { min-width: 0; max-width: 165px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .creatorActiveElement {
   display: inline-flex;
   align-items: center;
   gap: 5px;
+  min-width: max-content;
+  max-width: 230px;
   min-height: 34px;
+  white-space: nowrap;
   padding: 5px 8px;
   color: var(--text);
   border: 1px solid var(--ui-border);
@@ -1076,7 +1084,7 @@ input.url {
   cursor: pointer;
 }
 
-.creatorActiveElement > span,
+.creatorActiveElement > .creatorActiveElementIcon,
 .creatorCatalogOption > span {
   display: grid;
   place-items: center;
@@ -4275,3 +4283,18 @@ input.url {
 .creatorCanvasViewport.navigating .sphenpad-board-interaction { pointer-events: none !important; }
 .creatorTopbarActions .creatorNavigationButton { min-width: 46px; height: 44px; padding: 5px 8px; touch-action: manipulation; }
 .creatorCanvasTransform { transition: none; }
+
+/* Creator inspector width hardening: settings must never create a horizontal scroller. */
+.creatorEditorShell .creatorInlineAuthoringPanel,
+.creatorEditorShell .creatorInlineAuthoringPanel .creatorInspector,
+.creatorEditorShell .creatorInlineAuthoringPanel .creatorInspectorBody,
+.creatorEditorShell .creatorInlineAuthoringPanel .creatorAppearanceSection,
+.creatorEditorShell .creatorInlineAuthoringPanel .creatorPropertyGrid,
+.creatorEditorShell .creatorInlineAuthoringPanel .creatorLineProperties,
+.creatorEditorShell .creatorInlineAuthoringPanel label { min-width: 0; max-width: 100%; box-sizing: border-box; }
+.creatorEditorShell .creatorInlineAuthoringPanel .creatorInspectorBody { overflow-x: hidden; }
+.creatorEditorShell .creatorInlineAuthoringPanel input:not([type="color"]):not([type="checkbox"]):not([type="radio"]),
+.creatorEditorShell .creatorInlineAuthoringPanel select,
+.creatorEditorShell .creatorInlineAuthoringPanel textarea,
+.creatorEditorShell .creatorInlineAuthoringPanel .url { min-width: 0; max-width: 100%; width: 100%; box-sizing: border-box; }
+.creatorEditorShell .creatorInlineAuthoringPanel .creatorColorControl { min-width: 0; max-width: 100%; }
