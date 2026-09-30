@@ -66,4 +66,23 @@ for (const token of [
   '.creatorPaneResizeHandle', '[data-layout-mode="phone-landscape"] .creatorGridLayout', 'grid-column: 3', 'drop-shadow(1.6px 0 0 var(--accent))'
 ]) if (!styles.includes(token)) throw new Error(`missing creator UX hardening style: ${token}`);
 
+// Creator usability regressions: transient input state, mobile splitter clearance,
+// repeatable history controls, cosmetic line-node editing, hidden cell selection.
+for (const token of [
+  'function CreatorDraftInput(', 'if (draft !== String(props.value)) props.onCommit(draft)',
+  'event.key === "Enter"', 'onKeyDownCapture=', 'target.blur(); // Dismiss',
+  'startCreatorHistoryHold(', 'creatorHoldIntervalRef', 'runCreatorHistoryHold(',
+  'setCreatorLineMode("draw")', 'setCreatorLineMode("nodes")', 'Select nodes',
+  'creatorEditPathSnapped={creatorEditPathSnapped}',
+  'creatorCellsRelevant', 'controlProgress = { ...controlProgress, selection: [] }',
+]) if (!editor.includes(token)) throw new Error(`missing creator usability token: ${token}`);
+for (const token of [
+  'creatorEditPathSnapped?: boolean', 'props.creatorEditPathSnapped ? creatorSnappedPoint',
+  'props.creatorEditPathSnapped ? 0 : 0.5',
+]) if (!board.includes(token)) throw new Error(`missing line node snapping token: ${token}`);
+for (const token of [
+  'const creatorBoard = Boolean(boardCard?.closest(".creatorEditorShell"))',
+  'boardCard!.clientHeight', 'const margin = creatorBoard ? 10',
+  'creatorEditPathSnapped={props.creatorEditPathSnapped}',
+]) if (!grid.includes(token)) throw new Error(`missing creator splitter clearance token: ${token}`);
 console.log('creator 11K editor integration checks passed');

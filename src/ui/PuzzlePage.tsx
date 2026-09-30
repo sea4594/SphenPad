@@ -1483,11 +1483,12 @@ export function PuzzlePage(props: { editor?: boolean }) {
   }, [restartPromptOpen]);
 
   function onDoubleSelectCell(rc: CellRC, selectionCycleIndex?: number) {
-    if (!data || data.progress.activeTool === "line") return;
-    const cell = data.progress.cells[rc.r][rc.c];
+    const current = latestDataRef.current;
+    if (!current || current.progress.activeTool === "line") return;
+    const cell = current.progress.cells[rc.r][rc.c];
     if (!cell) return;
 
-    const tool = data.progress.activeTool;
+    const tool = current.progress.activeTool;
     const targetValue = cell.value ?? null;
     const targetCenter = new Set(cell.notes.center);
     const targetCorner = new Set(cell.notes.corner);
@@ -1524,9 +1525,9 @@ export function PuzzlePage(props: { editor?: boolean }) {
 
     const matchesForKind = (kind: DoubleSelectKind): CellRC[] => {
       const matches: CellRC[] = [];
-      for (let r = 0; r < data.progress.cells.length; r++) {
-        for (let c = 0; c < data.progress.cells.length; c++) {
-          const cur = data.progress.cells[r][c];
+      for (let r = 0; r < current.progress.cells.length; r++) {
+        for (let c = 0; c < current.progress.cells[r].length; c++) {
+          const cur = current.progress.cells[r][c];
           let match = false;
           if (kind === "value") match = Boolean(targetValue) && cur.value === targetValue;
           if (kind === "highlight") match = targetHighlights.size > 0 && hasAll(cur.highlights ?? [], targetHighlights);
@@ -1546,12 +1547,12 @@ export function PuzzlePage(props: { editor?: boolean }) {
       ? matchGroups[0]
       : matchGroups[selectionCycleIndex % matchGroups.length];
 
-    if (!data.progress.multiSelect || selectionCycleIndex !== undefined) {
+    if (!current.progress.multiSelect || selectionCycleIndex !== undefined) {
       setSelection(matches);
       return;
     }
 
-    const merged = new Set(data.progress.selection.map(rcKey));
+    const merged = new Set(current.progress.selection.map(rcKey));
     for (const m of matches) merged.add(rcKey(m));
     setSelection(Array.from(merged).map((k) => {
       const [r, c] = k.split(",").map(Number);

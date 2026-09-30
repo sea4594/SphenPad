@@ -1,4 +1,4 @@
-Phase 11 dependency-backed release gate — 2026-09-29T23:57:50Z
+Phase 11 dependency-backed release gate — 2026-09-30T16:14:02Z
 Node: v20.20.2
 npm: 10.8.2
 
@@ -38,7 +38,7 @@ found 0 vulnerabilities
   103:6  warning  React Hook useEffect has a missing dependency: 'positionMenu'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
 
 /Users/sea/Desktop/SphenPad/src/ui/PuzzleEditorPage.tsx
-  1741:6  warning  React Hook useEffect has a missing dependency: 'selectedObjectIds'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  1826:6  warning  React Hook useEffect has a missing dependency: 'selectedObjectIds'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
 
 /Users/sea/Desktop/SphenPad/src/ui/SelectControl.tsx
   51:9  warning  The 'selectedValues' conditional could make the dependencies of useMemo Hook (at line 53) change on every render. Move it inside the useMemo callback. Alternatively, wrap the initialization of 'selectedValues' in its own useMemo() Hook  react-hooks/exhaustive-deps
@@ -57,13 +57,13 @@ rendering chunks...
 computing gzip size...
 dist/index.html                     1.12 kB │ gzip:   0.50 kB
 dist/assets/index-CvNBt78Z.css     89.45 kB │ gzip:  15.67 kB
-dist/assets/index-mfnU8FLN.js   1,310.04 kB │ gzip: 393.89 kB
+dist/assets/index-D5-LxfM4.js   1,314.52 kB │ gzip: 395.33 kB
 
 (!) Some chunks are larger than 500 kB after minification. Consider:
 - Using dynamic import() to code-split the application
 - Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
 - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
-✓ built in 2.83s
+✓ built in 2.94s
 [5/11] Complete Phase 11 creator regression matrix
 
 > sphenpad@0.0.0 test-creator-phase11
@@ -145,6 +145,7 @@ Phase 11 release UI/workflow audit passed: 47/47 inventory rows exposed and crit
 > node scripts/test-phase11-playtest-regressions.mjs
 
 Phase 11 playtest rendering/selection regression checks passed
+Cell matching: value/highlight/marks/blank/cycle/multi-select and pointer-release regressions passed
 
 > sphenpad@0.0.0 test-phase11-reported-puzzles
 > tsx scripts/test-phase11-reported-puzzles.ts
@@ -166,7 +167,7 @@ Production smoke: PASS (2 built asset references checked)
 > sphenpad@0.0.0 verify-production-bundle-clean
 > node scripts/verify-production-bundle-clean.mjs
 
-Production bundle cleanliness: PASS (4081 files, no test/debug/conformance leakage)
+Production bundle cleanliness: PASS (4184 files, no test/debug/conformance leakage)
 [8/11] Built-app browser smoke
 
 > sphenpad@0.0.0 verify-production-browser
@@ -192,7 +193,7 @@ SudokuPad compatibility manifest: PASS (67 JS/CSS assets, 13 fonts)
 > sphenpad@0.0.0 write-phase11-release-hashes
 > node scripts/write-phase11-release-hashes.mjs
 
-Phase 11 release hash manifest: PASS (4219 production inputs, 15 creator tests, 4081 built files)
-releaseContentSha256=bc2d6512663a8c3d6ee31ac0f524fd7d7ac14a2d1ca437205911a7f83c9aa469
+Phase 11 release hash manifest: PASS (4322 production inputs, 15 creator tests, 4184 built files)
+releaseContentSha256=10a16b18e89f415aafbb32dbfdf6bfec7ff4a4ffe4b8983296a479aa0f2e1841
 
 PHASE 11 DEPENDENCY-BACKED RELEASE GATE PASSED

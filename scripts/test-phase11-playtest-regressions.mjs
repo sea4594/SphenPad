@@ -95,3 +95,6 @@ expect(gridCanvas.includes("additionalConflictCells") && gridCanvas.includes("hi
 expect(youtubePlayer.includes("youtube-nocookie.com/embed") && youtubePlayer.includes("window.setTimeout(fallBack, 8000)") && youtubePlayer.includes("host.replaceChildren(mount)"), "video player must recover from black/stalled YouTube API embeds");
 
 console.log("Phase 11 playtest rendering/selection regression checks passed");
+
+// Exercise original SphenPad matching-cell gestures against the current pointer-up path.
+await import("./test-matching-cell-selection.cjs");
