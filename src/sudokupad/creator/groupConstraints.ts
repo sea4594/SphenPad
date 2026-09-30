@@ -92,6 +92,23 @@ function visualsFor(constraint: PuzzleLogicConstraint): Visuals {
 
 export function addCreatorGroupConstraint(def: PuzzleDefinition, elementId: CreatorGroupElementId, cells: CellRC[], value?: string): { def: PuzzleDefinition; constraintId: string } {
   const input = defaultConstraint(def, elementId, cells, value);
+  // Single-location markers cannot stack duplicates. Kropki variants share
+  // an edge location; other families remain independently editable.
+  const uniqueFamilies: Record<string, string> = {
+    even: "parity", odd: "parity", minimum: "minimum", maximum: "maximum",
+    "counting-circles": "counting", "difference-kropki": "kropki", "ratio-kropki": "kropki",
+    xv: "xv", quadruples: "quadruple",
+  };
+  const family = uniqueFamilies[elementId];
+  if (family) {
+    const location = (items: CellRC[]) => items.map((item) => `${item.r},${item.c}`).sort().join("|");
+    const target = location(cells);
+    const existing = creatorConstraints(def).find((constraint) => {
+      const existingType = String(constraint.sourceElementId ?? ({ difference: "difference-kropki", ratio: "ratio-kropki", quadruple: "quadruples" } as Record<string, string>)[constraint.type] ?? constraint.type);
+      return uniqueFamilies[existingType] === family && location((constraint.cells ?? []) as CellRC[]) === target;
+    });
+    if (existing) return { def, constraintId: existing.id };
+  }
   const before = new Set(creatorConstraints(def).map((constraint) => constraint.id));
   const next = addCreatorConstraint(def, input as PuzzleLogicConstraint & { type: string }, visualsFor(input));
   const added = creatorConstraints(next).find((constraint) => !before.has(constraint.id));

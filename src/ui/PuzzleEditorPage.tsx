@@ -1,3 +1,4 @@
+import { useCreatorBoardNavigation } from "./useCreatorBoardNavigation";
 import { startTransition, useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { getCreatorProject, saveCreatorProject, setCreatorProjectPublished } from "../core/storage";
@@ -282,6 +283,16 @@ export function PuzzleEditorPage() {
   const [pathDragIndex, setPathDragIndex] = useState<number | null>(null);
   const [canvasZoom, setCanvasZoom] = useState(1);
   const [canvasPan, setCanvasPan] = useState({ x: 0, y: 0 });
+  const beforePinchRef = useRef<{ selection: CellRC[]; selectedId: string | null; selectedIds: string[] } | null>(null);
+  const creatorNavigation = useCreatorBoardNavigation(canvasZoom, canvasPan, setCanvasZoom, setCanvasPan,
+    () => { beforePinchRef.current = { selection: selection.map((cell) => ({ ...cell })), selectedId: selectedObjectId, selectedIds: [...selectedObjectIds] }; },
+    () => {
+      if (!beforePinchRef.current) return;
+      setSelection(beforePinchRef.current.selection);
+      setSelectedObjectId(beforePinchRef.current.selectedId);
+      setSelectedObjectIds(beforePinchRef.current.selectedIds);
+    },
+  );
   const [objectContextMenu, setObjectContextMenu] = useState<{ id: string; x: number; y: number } | null>(null);
   const [message, setMessage] = useState("");
   const testPlay = false;
@@ -360,7 +371,7 @@ export function PuzzleEditorPage() {
       setEditorHighlightPage(restored?.editorHighlightPage ?? 0);
       setEditorLineColor(restored?.editorLineColor ?? "#ff08ff");
       setEditorLineDouble(restored?.editorLineDouble ?? false);
-      setCanvasZoom(Math.max(0.5, Math.min(2.5, restored?.canvasZoom ?? 1)));
+      setCanvasZoom(Math.max(0.5, Math.min(4, restored?.canvasZoom ?? 1)));
       setCanvasPan(restored?.canvasPan ?? { x: 0, y: 0 });
       const restoredUndo = normalizeCreatorProjectHistory(stored.undo);
       const restoredRedo = normalizeCreatorProjectHistory(stored.redo);
@@ -777,6 +788,7 @@ export function PuzzleEditorPage() {
         return;
       }
       const created = addCreatorGroupConstraint(data.def, elementId, cells, constraintValue);
+      if (created.def === data.def) { setAddingElement(false); finishDirectObject(created.constraintId, "A mark already occupies this location; selected the existing mark."); return; }
       save(applyToolDefaults(created.def, created.constraintId, elementId));
       finishDirectObject(created.constraintId, `${CATALOG.find((entry) => entry.id === elementId)?.name ?? "Element"} added.`);
       return;
@@ -1934,7 +1946,7 @@ export function PuzzleEditorPage() {
         else applyCreatorDigit(symbol, "value");
         return;
       }
-      if (key === "+" || key === "=") { event.preventDefault(); setCanvasZoom((value) => Math.min(2.5, Math.round((value + 0.1) * 10) / 10)); return; }
+      if (key === "+" || key === "=") { event.preventDefault(); setCanvasZoom((value) => Math.min(4, Math.round((value + 0.1) * 10) / 10)); return; }
       if (key === "-") { event.preventDefault(); setCanvasZoom((value) => Math.max(0.5, Math.round((value - 0.1) * 10) / 10)); }
     };
     window.addEventListener("keydown", onKeyDown);
@@ -2057,7 +2069,7 @@ export function PuzzleEditorPage() {
     </button>;
   };
   const creatorViewMenuItems = [
-    { label: "Zoom in", onSelect: () => setCanvasZoom((value) => Math.min(2.5, Math.round((value + 0.1) * 10) / 10)) },
+    { label: "Zoom in", onSelect: () => setCanvasZoom((value) => Math.min(4, Math.round((value + 0.1) * 10) / 10)) },
     { label: "Zoom out", onSelect: () => setCanvasZoom((value) => Math.max(0.5, Math.round((value - 0.1) * 10) / 10)) },
     { label: "Reset view", onSelect: () => { setCanvasZoom(1); setCanvasPan({ x: 0, y: 0 }); } },
     { label: "Pan up", onSelect: () => setCanvasPan((value) => ({ ...value, y: value.y + 24 })) },
@@ -2131,6 +2143,7 @@ export function PuzzleEditorPage() {
           <button className={creatorTab === "tools" ? "btn primary" : "btn"} onClick={() => { setCreatorTab("tools"); setAuthoringOpen(false); }} type="button">Tools</button>
         </nav>
         <div className="creatorTopbarActions">
+          {creatorTab !== "file" ? <button type="button" className={"btn creatorNavigationButton" + (creatorNavigation.navigate ? " primary" : "")} aria-pressed={creatorNavigation.navigate} title="Toggle direct pan/zoom without editing the puzzle" onClick={() => creatorNavigation.setNavigate((value) => !value)}>{creatorNavigation.navigate ? "Edit" : "Pan"}</button> : null}
           {creatorTab !== "file" ? <PopupMenuButton className="btn creatorCanvasViewButton creatorTopbarIconButton" ariaLabel={`Zoom and pan controls. Current zoom ${Math.round(canvasZoom * 100)} percent`} title={`Zoom and pan · ${Math.round(canvasZoom * 100)}%`} triggerLabel={<IconZoomPan />} items={creatorViewMenuItems} /> : null}
           <button className="btn topbarSettingsButton" onClick={() => setSettingsOpen(true)} title="Settings" type="button"><IconSettings /></button>
         </div>
@@ -2161,7 +2174,7 @@ export function PuzzleEditorPage() {
 
         <div ref={creatorGridLayoutRef} className="gridLayout creatorGridLayout" style={creatorGridStyle}>
           <section className="boardColumn creatorBoardColumn">
-            <div className="card boardCard creatorCanvasViewport" onWheel={(event) => { if (!(event.ctrlKey || event.metaKey)) return; event.preventDefault(); setCanvasZoom((value) => Math.max(0.5, Math.min(2.5, value + (event.deltaY < 0 ? 0.1 : -0.1)))); }}>
+            <div ref={creatorNavigation.viewportRef} className={"card boardCard creatorCanvasViewport" + (creatorNavigation.navigate ? " navigating" : "")} {...creatorNavigation.handlers}>
               <div className="creatorCanvasTransform" style={{ transform: `translate(${canvasPan.x}px, ${canvasPan.y}px) scale(${canvasZoom})` }}><GridCanvas
                 def={data.def}
                 progress={controlProgress}
@@ -2176,8 +2189,9 @@ export function PuzzleEditorPage() {
                 onDoubleCell={NOOP}
                 creatorPathDrawing={creatorLineMode === "draw" && !testPlay && creatorTab === "elements" && creatorControlView === "element" && Boolean(activeCatalogElement && isCreatorLineElementId(activeCatalogElement)) && (addingElement || (!creatorDeleteMode && selectedObject?.elementId === activeCatalogElement))}
                 onCreatorPath={addCreatorPathFromBoard}
+                interactive={!creatorNavigation.navigate}
                 creatorDirectMode={(activeCatalogElement !== "cosmetic-lines" || creatorLineMode === "draw") && !testPlay && creatorTab === "elements" && creatorControlView === "element" && activeCatalogElement && creatorDirectModeForElement(activeCatalogElement) && (addingElement || (!creatorDeleteMode && selectedObject?.elementId === activeCatalogElement)) ? creatorDirectModeForElement(activeCatalogElement) : undefined}
-                creatorSnapMode={activeCatalogElement === "cosmetic-lines" ? "corners" : creatorSnapMode}
+                creatorSnapMode={activeCatalogElement === "cosmetic-lines" ? "centers" : creatorSnapMode}
                 creatorGridResolution={creatorGridResolution}
                 creatorShowGrid={creatorShowGrid}
                 creatorPaintBaseCells={selectedPaintBaseCells}

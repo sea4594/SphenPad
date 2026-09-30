@@ -98,3 +98,4 @@ console.log("Phase 11 playtest rendering/selection regression checks passed");
 
 // Exercise original SphenPad matching-cell gestures against the current pointer-up path.
 await import("./test-matching-cell-selection.cjs");
+await import("./test-creator-gesture-polish.cjs");

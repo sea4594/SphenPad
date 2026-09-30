@@ -230,6 +230,12 @@ export function BoardInteractionLayer(props: BoardInteractionLayerProps) {
       if (dragRef.current !== drag || drag.moved) { clearLongPress(); return; }
       drag.longPressTriggered = true;
       tapRef.current = null;
+      // The single-cell preview otherwise masks the new matching selection
+      // until pointer-up. Reveal progress.selection on every hold cycle.
+      if (selectionPreviewRafRef.current !== null) window.cancelAnimationFrame(selectionPreviewRafRef.current);
+      selectionPreviewRafRef.current = null;
+      pendingSelectionPreviewRef.current = null;
+      setSelectionPreview(null);
       props.onDoubleCell(rc, drag.longPressCycleIndex ?? 0);
       drag.longPressCycleIndex = (drag.longPressCycleIndex ?? 0) + 1;
     }, LONG_PRESS_DELAY_MS);
@@ -368,6 +374,46 @@ export function BoardInteractionLayer(props: BoardInteractionLayerProps) {
       r = Math.max(half, Math.min(rows - half, r));
     } else { c = Math.max(0, Math.min(cols, c)); r = Math.max(0, Math.min(rows, r)); }
     return { r, c };
+  }
+
+  // Sweep the pointer path through fractional cell-center nodes just as the
+  // solver's line tool sweeps across ordinary cell centers. In particular,
+  // a fast touch move cannot skip intermediate nodes at resolution > 1.
+  function creatorFreeLineHops(fromX: number, fromY: number, toX: number, toY: number): CreatorBoardPoint[] {
+    const a = pointerGridPoint(fromX, fromY), b = pointerGridPoint(toX, toY);
+    if (!a || !b) return [];
+    const resolution = creatorGridResolution();
+    const steps = Math.max(1, Math.min(1600, Math.ceil(Math.hypot(b.gx - a.gx, b.gy - a.gy) * 32 * resolution)));
+    const hops: CreatorBoardPoint[] = [];
+    const snap = (v: number) => (Math.round(v * resolution - 0.5) + 0.5) / resolution;
+    for (let i = 1; i <= steps; i++) {
+      const gx = a.gx + (b.gx - a.gx) * i / steps, gy = a.gy + (b.gy - a.gy) * i / steps;
+      const c = snap(gx), r = snap(gy);
+      if (r <= 0 || c <= 0 || r >= rows || c >= cols) continue;
+      // Match the solver's generous node hot zone, scaled to the subgrid.
+      if (Math.hypot(gx - c, gy - r) > LINE_NODE_RADIUS / resolution) continue;
+      const previous = hops.at(-1);
+      if (!previous || previous.r !== r || previous.c !== c) hops.push({ r, c });
+    }
+    return hops;
+  }
+
+  function extendCreatorFreeLine(drag: DragState, clientX: number, clientY: number) {
+    const points = drag.creatorFreePoints ?? [];
+    let changed = false;
+    for (const hop of creatorFreeLineHops(drag.lastClientX, drag.lastClientY, clientX, clientY)) {
+      const last = points.at(-1);
+      if (!last || (last.r === hop.r && last.c === hop.c)) continue;
+      if (Math.abs(last.r - hop.r) > 1.001 / creatorGridResolution() || Math.abs(last.c - hop.c) > 1.001 / creatorGridResolution()) continue;
+      const before = points.at(-2);
+      if (before && before.r === hop.r && before.c === hop.c) points.pop();
+      else points.push(hop);
+      changed = true;
+      drag.moved = true;
+    }
+    drag.lastClientX = clientX; drag.lastClientY = clientY;
+    drag.creatorFreePoints = points;
+    if (changed) setCreatorPointPreview([...points]);
   }
 
   function creatorOutsideStartAt(clientX: number, clientY: number): CreatorOutsideStart | null {
@@ -767,12 +813,7 @@ export function BoardInteractionLayer(props: BoardInteractionLayerProps) {
         return;
       }
       if (mode === "free-line") {
-        const point = creatorSnappedPoint(event.clientX, event.clientY);
-        drag.lastClientX = event.clientX; drag.lastClientY = event.clientY;
-        if (!point) return;
-        const points = drag.creatorFreePoints ?? [];
-        const previous = points.at(-1);
-        if (!previous || previous.r !== point.r || previous.c !== point.c) { points.push(point); drag.creatorFreePoints = points; drag.moved = true; setCreatorPointPreview([...points]); }
+        extendCreatorFreeLine(drag, event.clientX, event.clientY);
         return;
       }
       if (mode === "point" || mode === "corner") {
@@ -882,7 +923,7 @@ export function BoardInteractionLayer(props: BoardInteractionLayerProps) {
       else if (mode === "edge") { const cells = drag.creatorCells ?? []; if (cells.length === 2) props.onCreatorEdge?.(cells[0], cells[1]); }
       else if (mode === "corner") { if (drag.creatorPoint) props.onCreatorCorner?.({ ...drag.creatorPoint }); }
       else if (mode === "point") { if (drag.creatorPoint) props.onCreatorPoint?.({ ...drag.creatorPoint }); }
-      else if (mode === "free-line") { const points = drag.creatorFreePoints ?? []; if (points.length >= 2) props.onCreatorFreePath?.(points.map((point) => ({ ...point }))); }
+      else if (mode === "free-line") { extendCreatorFreeLine(drag, event.clientX, event.clientY); const points = drag.creatorFreePoints ?? []; if (points.length >= 2) props.onCreatorFreePath?.(points.map((point) => ({ ...point }))); }
       else if (mode === "outside") { const cells = drag.creatorCells ?? []; if (cells.length >= 2) props.onCreatorOutsideRay?.(cells.map((cell) => ({ ...cell }))); }
       dragRef.current = null; dragTransformRef.current = null; setCreatorPointPreview(null); setSelectionPreview(null);
       return;
@@ -930,6 +971,25 @@ export function BoardInteractionLayer(props: BoardInteractionLayerProps) {
     setSelectionPreview(null);
   }
 
+  function abortForNavigation() {
+    // A second touch cancels a pending edit without committing selection,
+    // a partial line, or an object relocation.
+    clearLongPress();
+    dragRef.current = null;
+    dragTransformRef.current = null;
+    if (selectionPreviewRafRef.current !== null) window.cancelAnimationFrame(selectionPreviewRafRef.current);
+    selectionPreviewRafRef.current = null;
+    pendingSelectionPreviewRef.current = null;
+    setSelectionPreview(null); setCreatorPointPreview(null); setCreatorEditPathPreview(null); setPreview(null);
+  }
+
+  useEffect(() => {
+    const overlay = overlayRef.current;
+    if (!overlay) return;
+    overlay.addEventListener("sphenpad:cancel-interaction", abortForNavigation);
+    return () => overlay.removeEventListener("sphenpad:cancel-interaction", abortForNavigation);
+  });
+
   function cancel() {
     clearLongPress();
     const drag = dragRef.current;
@@ -973,8 +1033,8 @@ export function BoardInteractionLayer(props: BoardInteractionLayerProps) {
         {(creatorEditPathPreview ?? props.creatorEditPath).map((cell, index) => <circle key={`${index}-${cell.r}-${cell.c}`} cx={(cell.c + (props.creatorEditPathSnapped ? 0 : 0.5)) * SUDOKUPAD_CELL_SIZE} cy={(cell.r + (props.creatorEditPathSnapped ? 0 : 0.5)) * SUDOKUPAD_CELL_SIZE} r={6.5} />)}
       </g> : null}
       {props.creatorShowGrid && props.creatorDirectMode && (props.creatorDirectMode === "point" || props.creatorDirectMode === "free-line") ? <g className="sphenpad-creator-drawing-grid" pointerEvents="none">
-        {Array.from({ length: cols * creatorGridResolution() + 1 }, (_, index) => index / creatorGridResolution()).map((c) => <line key={`v-${c}`} x1={c * SUDOKUPAD_CELL_SIZE} y1={0} x2={c * SUDOKUPAD_CELL_SIZE} y2={rows * SUDOKUPAD_CELL_SIZE} />)}
-        {Array.from({ length: rows * creatorGridResolution() + 1 }, (_, index) => index / creatorGridResolution()).map((r) => <line key={`h-${r}`} x1={0} y1={r * SUDOKUPAD_CELL_SIZE} x2={cols * SUDOKUPAD_CELL_SIZE} y2={r * SUDOKUPAD_CELL_SIZE} />)}
+        {Array.from({ length: cols * creatorGridResolution() }, (_, index) => (index + 0.5) / creatorGridResolution()).map((c) => <line key={`v-${c}`} x1={c * SUDOKUPAD_CELL_SIZE} y1={0} x2={c * SUDOKUPAD_CELL_SIZE} y2={rows * SUDOKUPAD_CELL_SIZE} />)}
+        {Array.from({ length: rows * creatorGridResolution() }, (_, index) => (index + 0.5) / creatorGridResolution()).map((r) => <line key={`h-${r}`} x1={0} y1={r * SUDOKUPAD_CELL_SIZE} x2={cols * SUDOKUPAD_CELL_SIZE} y2={r * SUDOKUPAD_CELL_SIZE} />)}
       </g> : null}
       {selectionPath ? <path d={selectionPath} fill="none" stroke={stroke} strokeWidth={selectionStrokeWidth} vectorEffect="non-scaling-stroke" strokeLinejoin="miter" strokeMiterlimit={4} strokeLinecap="butt" /> : null}
       {creatorPointPreview?.length ? <g className="sphenpad-creator-point-preview" pointerEvents="none">

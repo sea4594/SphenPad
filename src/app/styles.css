@@ -4267,3 +4267,11 @@ input.url {
   max-height: 100%;
   min-height: 0;
 }
+
+/* Creator navigation is separate from authored-object editing. */
+.creatorCanvasViewport { position: relative; }
+.creatorCanvasViewport.navigating { cursor: grab; }
+.creatorCanvasViewport.navigating:active { cursor: grabbing; }
+.creatorCanvasViewport.navigating .sphenpad-board-interaction { pointer-events: none !important; }
+.creatorTopbarActions .creatorNavigationButton { min-width: 46px; height: 44px; padding: 5px 8px; touch-action: manipulation; }
+.creatorCanvasTransform { transition: none; }

@@ -8,6 +8,11 @@ import { BoardInteractionLayer, type BoardLineKind, type BoardLineSegment, type 
 
 const EMPTY_CONFLICT_CELLS: CellRC[] = [];
 const EMPTY_CREATOR_OBJECT_IDS: string[] = [];
+const CREATOR_OUTLINE_COLORS = {
+  blue: "#2e78ff", green: "#10a34d", yellow: "#d6a600", orange: "#e67900",
+  red: "#dc2d37", purple: "#7b45d9", pink: "#d43b82",
+} as const;
+const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
 
 function sceneProgressOnly(
   cells: PuzzleProgress["cells"],
@@ -136,18 +141,76 @@ export function GridCanvas(props: GridCanvasProps) {
 
   useEffect(() => {
     if (!svg || previewMode) return;
+    const selected = new Set(selectedCreatorObjectIds);
+    const defsMarker = "data-sphenpad-creator-outline-defs";
+    const reset = () => svg.querySelectorAll<SVGGraphicsElement>(".sphenpad-creator-selected").forEach((node) => {
+      node.classList.remove("sphenpad-creator-selected"); node.style.removeProperty("filter");
+    });
     const apply = () => {
-      svg.querySelectorAll(".sphenpad-creator-selected").forEach((element) => element.classList.remove("sphenpad-creator-selected"));
-      for (const id of selectedCreatorObjectIds) {
+      reset();
+      svg.querySelector(`[${defsMarker}]`)?.remove();
+      if (!selected.size) return;
+      const defs = document.createElementNS(SVG_NAMESPACE, "defs");
+      defs.setAttribute(defsMarker, "true");
+      const outlineColor = CREATOR_OUTLINE_COLORS[theme.selectionColor] ?? CREATOR_OUTLINE_COLORS.blue;
+      let index = 0;
+      for (const id of selected) {
         const escaped = CSS.escape(id);
-        svg.querySelectorAll(`[data-sphenpad-object-id="${escaped}"], [data-sphenpad-constraint="${escaped}"]`).forEach((element) => element.classList.add("sphenpad-creator-selected"));
+        const tagged = svg.querySelectorAll<SVGGraphicsElement>(`[data-sphenpad-object-id="${escaped}"], [data-sphenpad-constraint="${escaped}"]`);
+        tagged.forEach((node) => {
+          // Only outline outermost parts for this object, otherwise a tagged
+          // group plus its tagged descendants draw duplicate inner outlines.
+          let ancestor: Element | null = node.parentElement, nested = false;
+          while (ancestor && ancestor !== svg) {
+            if (ancestor.getAttribute("data-sphenpad-object-id") === id || ancestor.getAttribute("data-sphenpad-constraint") === id) { nested = true; break; }
+            ancestor = ancestor.parentElement;
+          }
+          if (nested || node.closest(`[${defsMarker}]`)) return;
+          let bbox: DOMRect | SVGRect;
+          try { bbox = node.getBBox(); } catch { return; }
+          if (![bbox.x, bbox.y, bbox.width, bbox.height].every(Number.isFinite)) return;
+          const filterId = `sphenpad-creator-perimeter-${index++}`;
+          const filter = document.createElementNS(SVG_NAMESPACE, "filter");
+          filter.setAttribute("id", filterId);
+          filter.setAttribute("filterUnits", "userSpaceOnUse");
+          filter.setAttribute("color-interpolation-filters", "sRGB");
+          const radius = 4;
+          filter.setAttribute("x", String(bbox.x - radius * 4));
+          filter.setAttribute("y", String(bbox.y - radius * 4));
+          filter.setAttribute("width", String(Math.max(1, bbox.width) + radius * 8));
+          filter.setAttribute("height", String(Math.max(1, bbox.height) + radius * 8));
+          const add = (name: string, attrs: Record<string, string>) => {
+            const part = document.createElementNS(SVG_NAMESPACE, name);
+            Object.entries(attrs).forEach(([key, value]) => part.setAttribute(key, value));
+            filter.append(part); return part;
+          };
+          add("feMorphology", { in: "SourceAlpha", operator: "dilate", radius: String(radius), result: "expanded" });
+          add("feComposite", { in: "expanded", in2: "SourceAlpha", operator: "out", result: "perimeter" });
+          add("feFlood", { "flood-color": outlineColor, "flood-opacity": "1", result: "ink" });
+          add("feComposite", { in: "ink", in2: "perimeter", operator: "in", result: "outline" });
+          const merge = add("feMerge", {});
+          for (const result of ["outline", "SourceGraphic"]) {
+            const entry = document.createElementNS(SVG_NAMESPACE, "feMergeNode"); entry.setAttribute("in", result); merge.append(entry);
+          }
+          defs.append(filter);
+          node.classList.add("sphenpad-creator-selected");
+          node.style.setProperty("filter", `url(#${filterId})`);
+        });
       }
+      if (defs.children.length) svg.append(defs);
     };
     apply();
-    const observer = new MutationObserver(apply);
+    const observer = new MutationObserver((records) => {
+      // Filter creation must not recursively reapply itself; only respond
+      // when the actual renderer re-creates geometry.
+      if (records.every((record) => record.target instanceof Element && (record.target.matches(`[${defsMarker}]`) || record.target.closest(`[${defsMarker}]`)))) return;
+      // Root insertion/removal of our defs also produces a record.
+      if (records.every((record) => [...record.addedNodes, ...record.removedNodes].every((node) => node instanceof Element && node.hasAttribute(defsMarker)))) return;
+      apply();
+    });
     observer.observe(svg, { childList: true, subtree: true });
-    return () => { observer.disconnect(); svg.querySelectorAll(".sphenpad-creator-selected").forEach((element) => element.classList.remove("sphenpad-creator-selected")); };
-  }, [svg, previewMode, selectedCreatorObjectIds, scene]);
+    return () => { observer.disconnect(); reset(); svg.querySelector(`[${defsMarker}]`)?.remove(); };
+  }, [svg, previewMode, selectedCreatorObjectIds, scene, theme.selectionColor]);
 
   const activeFitSize = !svg ? null : (previewMode ? previewFitSize : fitSize);
 
