@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-30T19:59:40.019Z",
+  "generatedAt": "2026-09-30T21:04:11.372Z",
   "phase": "11L",
   "target": "SphenPad Phase 11 / SudokuMaker creator parity on pinned SudokuPad 0.612.0",
   "productionInputs": [
@@ -20470,8 +20470,8 @@
     },
     {
       "path": "src/app/styles.css",
-      "bytes": 94254,
-      "sha256": "2f821ef4dbb3b7dc869cc904db704c004c592d34e3be4a6e0227831faed14fef"
+      "bytes": 96181,
+      "sha256": "1d258f664d1afd02f524887d2ac8738320481b95c97dadcccac2ed03ee5b97df"
     },
     {
       "path": "src/app/theme.tsx",
@@ -41593,14 +41593,14 @@
       "sha256": "bebaa50f7a5c47189579f4e54a7380036d9c27028916981271a4cfc99f952b7d"
     },
     {
-      "path": "dist/assets/index-BiJQvk9c.js",
+      "path": "dist/assets/index-C3mbVM9k.js",
       "bytes": 1322053,
-      "sha256": "3f1e267aadbed2e2ece0ab33f4f348facaec23f2fa995814c3e757927870a9dc"
+      "sha256": "8d76debd6e6e6f604431230fe22275118198d5d1a43a3ea5cd66e72a2ef5e487"
     },
     {
-      "path": "dist/assets/index-DP1Mx-j9.css",
-      "bytes": 91141,
-      "sha256": "ad5bd4d3f26d35964d55835906a89c6f3e98550bc2c514406a47e49cb7383034"
+      "path": "dist/assets/index-D78NvnXk.css",
+      "bytes": 92550,
+      "sha256": "cd6b6472e4b6e660a04d9e8ab41c84aa929ad19a3fb4bee6f8737a1c657b51fc"
     },
     {
       "path": "dist/assets/sudokupad-compatibility-manifest.json",
@@ -41615,7 +41615,7 @@
     {
       "path": "dist/index.html",
       "bytes": 1115,
-      "sha256": "9ed6dea2910ca5a4f45b11038b6055b33e5b885d35ea9170151fe38d150bfb45"
+      "sha256": "cba96cf5696f80e21cb842f576b340bf32aa10ab2c59e3a4b1db72e48a05981e"
     },
     {
       "path": "dist/manifest.json",
@@ -41639,5 +41639,5 @@
     }
   ],
   "bundleBuilt": true,
-  "releaseContentSha256": "3ff82a9c67dacb10f9d363e78d0f1a13621e4dc3ed95b0c80b7b149cd940a1bf"
+  "releaseContentSha256": "409ede23fd14475524e4f6101c26056a8b8a5cce17d5e45ceffaaf941377701f"
 }

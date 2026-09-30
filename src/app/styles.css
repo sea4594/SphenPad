@@ -4298,3 +4298,46 @@ input.url {
 .creatorEditorShell .creatorInlineAuthoringPanel textarea,
 .creatorEditorShell .creatorInlineAuthoringPanel .url { min-width: 0; max-width: 100%; width: 100%; box-sizing: border-box; }
 .creatorEditorShell .creatorInlineAuthoringPanel .creatorColorControl { min-width: 0; max-width: 100%; }
+
+/* Creator desktop invariant: a fine-pointer/hover computer always keeps the
+   puzzle on the left and the creator controls on the right. The shared viewport
+   classifier can intentionally label a short desktop browser window as a phone;
+   do not let those touch-layout grid rules rearrange the desktop creator. */
+@media (hover: hover) and (pointer: fine) {
+  .creatorEditorShell .creatorGridLayout,
+  .creatorEditorShell[data-layout-mode="phone-portrait"] .creatorGridLayout,
+  .creatorEditorShell[data-layout-mode="phone-landscape"] .creatorGridLayout,
+  .creatorEditorShell[data-layout-mode="tablet-portrait"] .creatorGridLayout,
+  .creatorEditorShell[data-layout-mode="tablet-landscape"] .creatorGridLayout {
+    grid-template-columns: minmax(0, 1fr) minmax(300px, 370px);
+    grid-template-rows: minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .creatorEditorShell .creatorBoardColumn,
+  .creatorEditorShell[data-layout-mode="phone-portrait"] .creatorBoardColumn,
+  .creatorEditorShell[data-layout-mode="phone-landscape"] .creatorBoardColumn,
+  .creatorEditorShell[data-layout-mode="tablet-portrait"] .creatorBoardColumn,
+  .creatorEditorShell[data-layout-mode="tablet-landscape"] .creatorBoardColumn {
+    grid-column: 1;
+    grid-row: 1;
+    width: 100%;
+    height: 100%;
+  }
+
+  .creatorEditorShell .creatorPaneResizeHandle { display: none; }
+
+  .creatorEditorShell .creatorGridLayout > .kbdPanel,
+  .creatorEditorShell[data-layout-mode="phone-portrait"] .creatorGridLayout > .kbdPanel,
+  .creatorEditorShell[data-layout-mode="phone-landscape"] .creatorGridLayout > .kbdPanel,
+  .creatorEditorShell[data-layout-mode="tablet-portrait"] .creatorGridLayout > .kbdPanel,
+  .creatorEditorShell[data-layout-mode="tablet-landscape"] .creatorGridLayout > .kbdPanel {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: stretch;
+    width: 100%;
+    height: 100%;
+    max-height: none;
+    grid-template-rows: minmax(0, 1fr);
+  }
+}
