@@ -7,12 +7,51 @@
     <link rel="manifest" href="./manifest.json" />
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content" />
     <meta name="theme-color" content="#191c22" />
+    <script>
+      (() => {
+        const root = document.documentElement;
+        let mode = "light";
+        let color = "ocean";
+        try {
+          const saved = JSON.parse(localStorage.getItem("sphenpad-theme-v1") || "null");
+          if (saved?.mode === "light" || saved?.mode === "dark") mode = saved.mode;
+          const mappedColor = saved?.color === "sunset" || saved?.color === "sepia" ? "clay" : saved?.color;
+          if (["bw", "ocean", "forest", "clay", "berry"].includes(mappedColor)) color = mappedColor;
+          if (color !== "bw" && color !== "ocean") mode = "light";
+        } catch {}
+        const backgrounds = {
+          "bw:dark": "#1b1b1b", "bw:light": "#f2f2f2",
+          "ocean:dark": "#151d25", "ocean:light": "#edf2f7",
+          "forest:light": "#eef2ed", "clay:light": "#f5f1ee", "berry:light": "#f8f2f5",
+        };
+        const bg = backgrounds[`${color}:${mode}`] || "#edf2f7";
+        root.dataset.mode = mode;
+        root.dataset.theme = color;
+        root.style.setProperty("--sphenpad-launch-bg", bg);
+        root.style.backgroundColor = bg;
+        root.style.colorScheme = mode;
+        document.querySelector('meta[name="theme-color"]')?.setAttribute("content", bg);
+        if (window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true) {
+          root.dataset.sphenpadStandalone = "true";
+        }
+      })();
+    </script>
+    <style>
+      html, body { background-color: var(--sphenpad-launch-bg, #edf2f7); }
+      #sphenpad-statusbar-sampler { display: none; }
+      html[data-sphenpad-standalone="true"] #sphenpad-statusbar-sampler {
+        display: block; position: fixed; top: 0; left: 50%; width: 32px; height: 8px;
+        transform: translateX(-50%); background: var(--bg, var(--sphenpad-launch-bg, #edf2f7));
+        pointer-events: none; z-index: 2147483647;
+      }
+    </style>
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <title>SphenPad</title>
   </head>
   <body>
+    <div id="sphenpad-statusbar-sampler" aria-hidden="true"></div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
