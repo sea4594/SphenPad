@@ -1,10 +1,10 @@
-Phase 11 dependency-backed release gate — 2026-10-07T11:08:30Z
+Phase 11 dependency-backed release gate — 2026-10-07T11:22:55Z
 Node: v20.20.2
 npm: 10.8.2
 
 [1/11] Clean dependency install
 
-added 274 packages, and audited 275 packages in 4s
+added 274 packages, and audited 275 packages in 5s
 
 51 packages are looking for funding
   run `npm fund` for details
@@ -55,18 +55,18 @@ npm audit: only the known Firebase/Firestore browser-only grpc advisories are pr
 
 vite v7.3.1 building client environment for production...
 transforming...
-✓ 174 modules transformed.
+✓ 173 modules transformed.
 rendering chunks...
 computing gzip size...
-dist/index.html                     2.88 kB │ gzip:   1.21 kB
+dist/index.html                     2.12 kB │ gzip:   0.91 kB
 dist/assets/index-D78NvnXk.css     92.55 kB │ gzip:  16.00 kB
-dist/assets/index-CnRIQE1u.js   1,322.38 kB │ gzip: 398.15 kB
+dist/assets/index-Qd7GGh8O.js   1,322.38 kB │ gzip: 398.15 kB
 
 (!) Some chunks are larger than 500 kB after minification. Consider:
 - Using dynamic import() to code-split the application
 - Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
 - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
-✓ built in 2.90s
+✓ built in 2.93s
 [5/11] Complete Phase 11 creator regression matrix
 
 > sphenpad@0.0.0 test-creator-phase11
@@ -198,6 +198,6 @@ SudokuPad compatibility manifest: PASS (67 JS/CSS assets, 13 fonts)
 > node scripts/write-phase11-release-hashes.mjs
 
 Phase 11 release hash manifest: PASS (4245 production inputs, 15 creator tests, 4106 built files)
-releaseContentSha256=332d82ac7f955088e09a7f79e411fb9c4c4903164dd661053ad1145069aafb99
+releaseContentSha256=df746b2256e2f99083a1698e1e93ee4bca5e62a42f2bb0f56bf09b61d38ab582
 
 PHASE 11 DEPENDENCY-BACKED RELEASE GATE PASSED

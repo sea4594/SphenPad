@@ -27,31 +27,17 @@
         const bg = backgrounds[`${color}:${mode}`] || "#edf2f7";
         root.dataset.mode = mode;
         root.dataset.theme = color;
-        root.style.setProperty("--sphenpad-launch-bg", bg);
         root.style.backgroundColor = bg;
         root.style.colorScheme = mode;
         document.querySelector('meta[name="theme-color"]')?.setAttribute("content", bg);
-        if (window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true) {
-          root.dataset.sphenpadStandalone = "true";
-        }
       })();
     </script>
-    <style>
-      html, body { background-color: var(--sphenpad-launch-bg, #edf2f7); }
-      #sphenpad-statusbar-sampler { display: none; }
-      html[data-sphenpad-standalone="true"] #sphenpad-statusbar-sampler {
-        display: block; position: fixed; top: 0; left: 50%; width: 32px; height: 8px;
-        transform: translateX(-50%); background: var(--bg, var(--sphenpad-launch-bg, #edf2f7));
-        pointer-events: none; z-index: 2147483647;
-      }
-    </style>
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <title>SphenPad</title>
   </head>
   <body>
-    <div id="sphenpad-statusbar-sampler" aria-hidden="true"></div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
