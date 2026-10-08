@@ -1,7 +1,7 @@
 import Dexie from "dexie";
 import type { Table } from "dexie";
 import { markLocalDataChanged } from "./localDataState";
-import { acknowledgeSyncDirty, isSyncDirty, markSyncDirty, readSyncDirtyRecords, type SyncDirtyRecord } from "./syncJournal";
+import { acknowledgeSyncDirty, markSyncDirty, readSyncDirtyRecords, type SyncDirtyRecord } from "./syncJournal";
 import { puzzleFromCloudPayload, type CloudPuzzlePayload } from "./puzzleSync";
 import type { PersistedPuzzle, PuzzleDefinition } from "./model";
 import { creatorProjectFromDefinition, definitionFromCreatorProject, parseCreatorProject, type CreatorProject } from "../sudokupad/creator/project";
@@ -639,14 +639,17 @@ export async function applyRemoteStorageChanges(changes: {
   await db.transaction("rw", db.creatorProjects, db.puzzles, db.folders, async () => {
     for (const change of changes.creatorProjects) {
       const local = await db.creatorProjects.get(change.key) ?? null;
-      const dirty = isSyncDirty("creatorProject", change.key);
+      const dirty = dirtyFor("creatorProject", change.key);
+      const localUpdatedAt = local?.updatedAt ?? 0;
       if (!change.data) {
+        if (dirty?.deletedAt && dirty.deletedAt > change.updatedAt) continue;
+        if (dirty && !dirty.deletedAt && local && localUpdatedAt > change.updatedAt) continue;
         if (local) await db.creatorProjects.put({ ...local, updatedAt: Math.max(local.updatedAt, change.updatedAt), deletedAt: Math.max(local.deletedAt ?? 0, change.updatedAt) });
         await db.puzzles.delete(change.key);
-        supersede("creatorProject", change.key);
-        supersede("puzzle", change.key);
+        supersede("creatorProject", change.key); supersede("puzzle", change.key);
         continue;
       }
+      if (dirty?.deletedAt) continue;
       const remote = normalizeCreatorProjectStorageRow({ ...change.data, lastOpenedAt: local?.lastOpenedAt ?? 0 });
       if (!local || !dirty) {
         await db.creatorProjects.put({ ...remote, lastOpenedAt: local?.lastOpenedAt ?? 0 });
@@ -660,16 +663,19 @@ export async function applyRemoteStorageChanges(changes: {
 
     for (const change of changes.puzzles) {
       const local = await db.puzzles.get(change.key);
-      const dirty = isSyncDirty("puzzle", change.key);
-      if (!change.data) {
-        await db.puzzles.delete(change.key);
-        supersede("puzzle", change.key);
-        continue;
-      }
+      const dirty = dirtyFor("puzzle", change.key);
       const localUpdatedAt = local?.data.updatedAt ?? 0;
+      if (!change.data) {
+        if (dirty?.deletedAt && dirty.deletedAt > change.updatedAt) continue;
+        if (dirty && !dirty.deletedAt && local && localUpdatedAt > change.updatedAt) continue;
+        await db.puzzles.delete(change.key); supersede("puzzle", change.key); continue;
+      }
+      if (dirty?.deletedAt && dirty.deletedAt >= change.updatedAt) continue;
       const creatorKey = change.data.creatorProjectKey;
       const creatorProject = creatorKey ? (await db.creatorProjects.get(creatorKey) ?? null) : null;
-      const materialized = puzzleFromCloudPayload(change.data, local?.data ?? null, creatorProject);
+      let materialized: PersistedPuzzle;
+      try { materialized = puzzleFromCloudPayload(change.data, local?.data ?? null, creatorProject); }
+      catch (error) { console.warn(`Skipping cloud puzzle ${change.key} because its definition dependency is unavailable`, error); continue; }
       if (local && dirty && localUpdatedAt > change.updatedAt) {
         if (materialized.progress.totalMillis > local.data.progress.totalMillis) {
           await db.puzzles.put({ key: change.key, data: forPersistence({ ...local.data, progress: { ...local.data.progress, totalMillis: materialized.progress.totalMillis } }) });
@@ -685,17 +691,22 @@ export async function applyRemoteStorageChanges(changes: {
 
     for (const change of changes.folders) {
       const local = await db.folders.get(change.key) ?? null;
-      const dirty = isSyncDirty("folder", change.key);
+      const dirty = dirtyFor("folder", change.key);
+      const localUpdatedAt = local?.updatedAt ?? 0;
       if (!change.data) {
-        await db.folders.delete(change.key);
-        supersede("folder", change.key);
-        continue;
+        if (dirty?.deletedAt && dirty.deletedAt > change.updatedAt) continue;
+        if (dirty && !dirty.deletedAt && local && localUpdatedAt > change.updatedAt) continue;
+        await db.folders.delete(change.key); supersede("folder", change.key); continue;
       }
+      if (dirty?.deletedAt) continue;
       if (!local || !dirty) {
         await db.folders.put(change.data);
         if (dirty) supersede("folder", change.key);
       } else {
         await db.folders.put(mergeFolderRecords(local, change.data));
+        // A field-wise merge can contain local membership/name edits even when
+        // the remote row has the newer overall timestamp; keep it dirty so the
+        // merged result is written back instead of silently dropping one side.
       }
     }
   });

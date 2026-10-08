@@ -75,4 +75,17 @@ assert.match(themeSource, /setSyncedLocalStorageItem\(STORAGE_KEY/, "highlight t
 
 const appStateSource = readFileSync(new URL("../src/core/appState.ts", import.meta.url), "utf8");
 assert.match(appStateSource, /localStorage: \{\}/, "theme and view preferences must remain device-local");
+
+assert.match(accountSource, /LOCAL_MUTATION_CHECKPOINT_KEY_PREFIX/, "sync must recover if the localStorage dirty journal disappears");
+assert.match(accountSource, /recoverMissingDirtyJournal/, "missing dirty journal must be rebuilt from IndexedDB keys");
+assert.match(accountSource, /recoverMissingDirtyJournal\(uid, true\)/, "login with local data must protect every IndexedDB record before cloud replay");
+assert.match(accountSource, /cloudRevisionRef\.current = 0; saveRevision\(uid, 0\);[\s\S]*await applyIncrementalCloud/, "login with local data must reconcile from revision zero instead of trusting a stale cursor");
+assert.match(accountSource, /queueCreatorDependencyRepairs/, "login should republish creator projects and creator puzzle progress to heal old orphans");
+assert.match(accountSource, /payload\.creatorProjectKey[\s\S]*kind: "creatorProject"/, "creator puzzle progress must upload its creator-project dependency");
+assert.match(accountSource, /payload\.def = row!\.data\.def/, "creator puzzles need an inline definition fallback if their project row is missing");
+assert.match(firebaseSource, /readCreatorProjectDependency/, "cloud pulls must repair missing creator dependencies from current or legacy storage");
+assert.match(firebaseSource, /Skipping cloud puzzle .*definition dependency is unavailable/, "one orphan puzzle must not abort the entire cloud restore");
+assert.match(storageSource, /dirty\?\.deletedAt && dirty\.deletedAt >= change\.updatedAt/, "newer local puzzle deletes must survive stale remote updates");
+assert.match(storageSource, /localUpdatedAt > change\.updatedAt/, "newer dirty local progress must survive stale remote deletes");
+assert.match(storageSource, /Skipping cloud puzzle \$\{change\.key\}/, "an orphan incremental puzzle must be quarantined instead of aborting all sync");
 console.log("Account sync regression checks passed.");

@@ -178,15 +178,36 @@ async function pullLegacyCloudState(userId: string): Promise<CloudAppSnapshot | 
   for (const entry of puzzleDocs.docs) {
     const payload = entry.data().payload;
     if (typeof payload !== "string") continue;
-    try { puzzles.push({ key: keyForDocId(entry.id), data: deserialize<PersistedPuzzle>(payload) }); } catch { throw new Error(`Malformed legacy cloud puzzle: ${keyForDocId(entry.id)}`); }
+    try { puzzles.push({ key: keyForDocId(entry.id), data: deserialize<PersistedPuzzle>(payload) }); } catch (error) { console.warn(`Skipping malformed legacy cloud puzzle ${keyForDocId(entry.id)}`, error); }
   }
   const creatorProjects: CreatorProjectStorageRow[] = [];
   for (const entry of creatorDocs.docs) {
     const payload = entry.data().payload;
     if (typeof payload !== "string") continue;
-    try { creatorProjects.push(cleanCreatorProject(deserialize<CreatorProjectStorageRow>(payload))); } catch { throw new Error(`Malformed legacy creator project: ${keyForDocId(entry.id)}`); }
+    try { creatorProjects.push(cleanCreatorProject(deserialize<CreatorProjectStorageRow>(payload))); } catch (error) { console.warn(`Skipping malformed legacy creator project ${keyForDocId(entry.id)}`, error); }
   }
   return { version: 1, updatedAt: typeof state.updatedAt === "number" ? state.updatedAt : 0, localStorage: {}, folders: parseLegacyFolders(state.folders), puzzles, creatorProjects };
+}
+
+async function readCreatorProjectDependency(userId: string, key: string): Promise<CreatorProjectStorageRow | null> {
+  if (!db) return null;
+  const current = await getDoc(doc(db, "users", userId, "syncCreatorProjects", docIdForKey(key)));
+  if (current.exists()) {
+    const data = current.data();
+    if (data.syncDeleted === true) return null;
+    if (typeof data.syncPayload === "string") {
+      try { return cleanCreatorProject(decodeSyncPayload<CreatorProjectStorageRow>(data)); }
+      catch (error) { console.warn(`Could not decode cloud creator project dependency ${key}`, error); }
+    }
+  }
+  const legacy = await getDoc(doc(db, "users", userId, "creatorProjects", docIdForKey(key)));
+  if (!legacy.exists()) return null;
+  const data = legacy.data();
+  try {
+    if (typeof data.syncPayload === "string") return cleanCreatorProject(decodeSyncPayload<CreatorProjectStorageRow>(data));
+    if (typeof data.payload === "string") return cleanCreatorProject(deserialize<CreatorProjectStorageRow>(data.payload));
+  } catch (error) { console.warn(`Could not decode legacy creator project dependency ${key}`, error); }
+  return null;
 }
 
 export async function pullCloudState(userId: string): Promise<CloudAppSnapshot | null> {
@@ -206,29 +227,38 @@ export async function pullCloudState(userId: string): Promise<CloudAppSnapshot |
   const creatorProjects: CreatorProjectStorageRow[] = [];
   const creatorByKey = new Map<string, CreatorProjectStorageRow>();
   for (const entry of creatorDocs.docs) {
-    const data = entry.data();
-    if (typeof data.syncRevision !== "number") continue;
+    const data = entry.data(); const key = keyForDocId(entry.id);
     if (data.syncDeleted === true) continue;
-    if (typeof data.syncPayload !== "string") throw new Error(`Malformed cloud creator project: ${keyForDocId(entry.id)}`);
-    const row = cleanCreatorProject(decodeSyncPayload<CreatorProjectStorageRow>(data)); creatorProjects.push(row); creatorByKey.set(row.key, row);
+    if (typeof data.syncPayload !== "string") { console.warn(`Skipping malformed cloud creator project ${key}`); continue; }
+    try {
+      const row = cleanCreatorProject(decodeSyncPayload<CreatorProjectStorageRow>(data)); creatorProjects.push(row); creatorByKey.set(row.key, row); creatorByKey.set(key, row);
+    } catch (error) { console.warn(`Skipping malformed cloud creator project ${key}`, error); }
   }
   const folders: PuzzleFolder[] = [];
   for (const entry of folderDocs.docs) {
-    const data = entry.data();
-    if (typeof data.syncRevision !== "number") continue;
+    const data = entry.data(); const key = keyForDocId(entry.id);
     if (data.syncDeleted === true) continue;
-    if (typeof data.syncPayload !== "string") throw new Error(`Malformed cloud folder: ${keyForDocId(entry.id)}`);
-    folders.push(decodeSyncPayload<PuzzleFolder>(data));
+    if (typeof data.syncPayload !== "string") { console.warn(`Skipping malformed cloud folder ${key}`); continue; }
+    try { folders.push(decodeSyncPayload<PuzzleFolder>(data)); }
+    catch (error) { console.warn(`Skipping malformed cloud folder ${key}`, error); }
   }
   const puzzles: { key: string; data: PersistedPuzzle }[] = [];
   for (const entry of puzzleDocs.docs) {
-    const data = entry.data();
-    if (typeof data.syncRevision !== "number") continue;
+    const data = entry.data(); const key = keyForDocId(entry.id);
     if (data.syncDeleted === true) continue;
-    if (typeof data.syncPayload !== "string") throw new Error(`Malformed cloud puzzle: ${keyForDocId(entry.id)}`);
-    const key = keyForDocId(entry.id);
-    const payload = decodeSyncPayload<CloudPuzzlePayload>(data);
-    puzzles.push({ key, data: puzzleFromCloudPayload(payload, null, payload.creatorProjectKey ? creatorByKey.get(payload.creatorProjectKey) : null) });
+    if (typeof data.syncPayload !== "string") { console.warn(`Skipping malformed cloud puzzle ${key}`); continue; }
+    try {
+      const payload = decodeSyncPayload<CloudPuzzlePayload>(data);
+      let creatorProject = payload.creatorProjectKey ? creatorByKey.get(payload.creatorProjectKey) : undefined;
+      if (payload.creatorProjectKey && !creatorProject) {
+        creatorProject = await readCreatorProjectDependency(userId, payload.creatorProjectKey) ?? undefined;
+        if (creatorProject) {
+          creatorByKey.set(payload.creatorProjectKey, creatorProject); creatorByKey.set(creatorProject.key, creatorProject); creatorProjects.push(creatorProject);
+        }
+      }
+      try { puzzles.push({ key, data: puzzleFromCloudPayload(payload, null, creatorProject ?? null) }); }
+      catch (error) { console.warn(`Skipping cloud puzzle ${key} because its definition dependency is unavailable`, error); }
+    } catch (error) { console.warn(`Skipping malformed cloud puzzle ${key}`, error); }
   }
   return { version: 1, updatedAt: metadata.updatedAt, localStorage: {}, folders, puzzles, creatorProjects };
 }
@@ -247,20 +277,36 @@ export async function pullCloudChanges(userId: string, afterRevision: number): P
     changedDocs(userId, "syncPuzzles", afterRevision), changedDocs(userId, "syncFolders", afterRevision), changedDocs(userId, "syncCreatorProjects", afterRevision),
   ]);
   const changes: CloudChange[] = [];
+  const includedCreators = new Set<string>();
   for (const entry of creators) {
     const data = entry.data(); const key = keyForDocId(entry.id); const updatedAt = typeof data.syncUpdatedAt === "number" ? data.syncUpdatedAt : 0;
-    if (data.syncDeleted !== true && typeof data.syncPayload !== "string") throw new Error(`Malformed v2 creator project: ${key}`);
-    changes.push({ kind: "creatorProject", key, updatedAt, payload: data.syncDeleted === true ? null : cleanCreatorProject(decodeSyncPayload<CreatorProjectStorageRow>(data)) });
+    if (data.syncDeleted === true) { changes.push({ kind: "creatorProject", key, updatedAt, payload: null }); includedCreators.add(key); continue; }
+    if (typeof data.syncPayload !== "string") { console.warn(`Skipping malformed cloud creator project change ${key}`); continue; }
+    try { changes.push({ kind: "creatorProject", key, updatedAt, payload: cleanCreatorProject(decodeSyncPayload<CreatorProjectStorageRow>(data)) }); includedCreators.add(key); }
+    catch (error) { console.warn(`Skipping malformed cloud creator project change ${key}`, error); }
   }
   for (const entry of folders) {
     const data = entry.data(); const key = keyForDocId(entry.id); const updatedAt = typeof data.syncUpdatedAt === "number" ? data.syncUpdatedAt : 0;
-    if (data.syncDeleted !== true && typeof data.syncPayload !== "string") throw new Error(`Malformed v2 folder: ${key}`);
-    changes.push({ kind: "folder", key, updatedAt, payload: data.syncDeleted === true ? null : decodeSyncPayload<PuzzleFolder>(data) });
+    if (data.syncDeleted === true) { changes.push({ kind: "folder", key, updatedAt, payload: null }); continue; }
+    if (typeof data.syncPayload !== "string") { console.warn(`Skipping malformed cloud folder change ${key}`); continue; }
+    try { changes.push({ kind: "folder", key, updatedAt, payload: decodeSyncPayload<PuzzleFolder>(data) }); }
+    catch (error) { console.warn(`Skipping malformed cloud folder change ${key}`, error); }
   }
   for (const entry of puzzles) {
     const data = entry.data(); const key = keyForDocId(entry.id); const updatedAt = typeof data.syncUpdatedAt === "number" ? data.syncUpdatedAt : 0;
-    if (data.syncDeleted !== true && typeof data.syncPayload !== "string") throw new Error(`Malformed v2 cloud puzzle: ${key}`);
-    changes.push({ kind: "puzzle", key, updatedAt, payload: data.syncDeleted === true ? null : decodeSyncPayload<CloudPuzzlePayload>(data) });
+    if (data.syncDeleted === true) { changes.push({ kind: "puzzle", key, updatedAt, payload: null }); continue; }
+    if (typeof data.syncPayload !== "string") { console.warn(`Skipping malformed cloud puzzle change ${key}`); continue; }
+    try {
+      const payload = decodeSyncPayload<CloudPuzzlePayload>(data);
+      if (payload.creatorProjectKey && !includedCreators.has(payload.creatorProjectKey)) {
+        const dependency = await readCreatorProjectDependency(userId, payload.creatorProjectKey);
+        if (dependency) {
+          changes.push({ kind: "creatorProject", key: dependency.key, updatedAt: dependency.updatedAt, payload: dependency });
+          includedCreators.add(payload.creatorProjectKey); includedCreators.add(dependency.key);
+        }
+      }
+      changes.push({ kind: "puzzle", key, updatedAt, payload });
+    } catch (error) { console.warn(`Skipping malformed cloud puzzle change ${key}`, error); }
   }
   return { version: metadata.version, revision: metadata.revision, updatedAt: metadata.updatedAt, changes };
 }

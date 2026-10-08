@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-07T11:23:25.737Z",
+  "generatedAt": "2026-10-08T20:48:51.458Z",
   "phase": "11L",
   "target": "SphenPad Phase 11 / SudokuMaker creator parity on pinned SudokuPad 0.612.0",
   "productionInputs": [
@@ -50,8 +50,8 @@
     },
     {
       "path": "public/archive/archive-manifest.json",
-      "bytes": 3911516,
-      "sha256": "562af03cb191d2b2bb5be8592c0ba4304dc29d4d62914fd81198280411b84140"
+      "bytes": 4852124,
+      "sha256": "80fe6ac868e5699d027eb25f6ef7839827ab3cdffb58e775448a5c28977729f8"
     },
     {
       "path": "public/archive/puzzles/00r3q84657.json",
@@ -4094,6 +4094,16 @@
       "sha256": "e3d876ce97d8283f5fa376c292cc9513a8e0d0a2895828bddf76146e70754bec"
     },
     {
+      "path": "public/archive/puzzles/ctcN4SwJgXA5ADgpgOxgQwEYHYAsA2AHAVh1QEZliAmffAZnIGNk7VrllcAGRt5AMygBo6AZwjZMguBADaU_nPlyAuv1kL5y1Wv4atSlbu37dO40a0nzZtRetWFN_3fVO9m68oCu04HXLQAxABiwSHs7AJ0AC7SuPyYAHT4ygDuEACc_AAWEMTYAL78PsQQAMKBZWWCf.json",
+      "bytes": 8237,
+      "sha256": "a1cc8092a490c94e1818c8cc8c6f39824079427bbac27ddd3716d735d1f81576"
+    },
+    {
+      "path": "public/archive/puzzles/ctcN4SwJgXA5ADgpgOxgQwEyrAZgOwDZkAMBWqAHAIy7kBmqARtXNgKwHICcqc7y1BUAGgDGAZwi4ALMLgQA2rIGKlSgLoCFy5Wo2bF23avUG9R4_rOmD5q5d0q1AVznAhqaAGIAYt59FBQgBc5ZgFmNQB3CHICAQALKIIAXwEXN28AYXTSGMC5cgA6ENwIiCl4zGTUi.json",
+      "bytes": 10481,
+      "sha256": "21492eb175f1af7382f0daa516763c22af3bbadca70a44d0e3a310f418d350dc"
+    },
+    {
       "path": "public/archive/puzzles/ctcN4SwJgXA5ADgpgOxgQzgNgCwEYBmPkDMBcWmA7AKwBMADFcmslhgcwRWABwDGWUANNwDOETILgQA2pP7AA5iABuiCABd_iiBQC_PfvlKV6zVV0BdfpMPKEajRCy6bxhwV2yFt_5s4eXdiYQAJz_Xq6aGM7hgQ5o2pYyBjE_oh56ifpZ_JmeRrGa7lkBqWQeudk5Vs.json",
       "bytes": 4841,
       "sha256": "975d0d9cc4e8bbe414a2072e63630c4a6a0c47956c13fe672360b8a3ad742815"
@@ -5144,9 +5154,144 @@
       "sha256": "603a02ae10b0907f6aa0f9fbc3afbf61e3757f6564d94953ecbf6b769e23dbf4"
     },
     {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcA2ANCALhNAbO8SIHoBGABhFQEMBXNACwHsAnBEACQoHcBrAQQDcKaCs1SMqOMDDQsAKrQhgABAAcqUKDkVVJSxIvoAzRXRiKAJhADmmJSQC0ATmP1FAI1NmpMRgFsIAOxgzNwBPY1pTMHosPm8AOgAdfwAFLAoAY1N6QMV0_2BmUww0UYDNpzK.json",
+      "bytes": 2984,
+      "sha256": "2d5a14c117b44a422c9c609d7d38094aeb2e92ed9d69b6ea24cc6f7ed001b98f"
+    },
+    {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBGATAGhAFwhgNneIAsjAE4kCeABAMICGAtjDpRgPaUCarArgIQjpa3DAAtWJBCAAKtAHajStASBLc8YGBkkBJMjADma2iQD0JAxFazKlMNwAmrANbdKq9ZVoAHLznIA6SgAVERhPc0oAFkoANgAPGMp9Egh7MEoACg0vY1oMGHtKACMqBUoAY1.json",
+      "bytes": 13232,
+      "sha256": "facb8e27a440a8ddce29c67ad34eefead147a5bc30c0af8e45a59a7cbbb4d93f"
+    },
+    {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBGRAaEAXC6A2d4gCkA3gJwFsBXAOwHMBDKgExJDTovQAsB7F_2FAugE8ABABFBMFmhIVcYGOgQgAwtyro6EKjEbCA7lk5bhXGMJokIuuiTNUtdtQFpuAN0nY6ABy9aawgGYADwDhMABHChszWxoINTAUfSMAY05hSjB0YQAjM2xuFLp0HQA6YQ.json",
+      "bytes": 8336,
+      "sha256": "cc0a3e5ef2cf6d4fbf2a125a2458fc3e65fe750c9afed763639ed27a1e20061e"
+    },
+    {
       "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QA0A1AAgAoBaASmIGUBXAEwHsBrOkVAQzrQAsmATghAAhCFizEAsnQEAHXgE8OIAXRxgYaYQDlBAW06SwjVnWJqNxTnLlZFAOmIBBBgCtOAYxgA7NMW8JMGJ9OjB_2FHyZ_2FE31iNCZiAFZiQWIARgAGBwAdHxUAcwEIBgQA.json",
       "bytes": 3998,
       "sha256": "a4d762e9ab066dd4cf1fe01f818dec94e353d5695a8c230fac16a68e2150690e"
+    },
+    {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QAkBBASQBkACAeQFUAlcgOQFEB1ckqgNSdtMtoAiAZRCoAhgFc0ACwD2AJwQgAQhCxZyAWQnyADtICeokPIk4wMNEoYKAtmI1gJAE1kBrCeVPnyY3bqwDADoAHQA7YwBzeQhnBABteNBIiAA3GDCABQyAYzVNMXk3MAQwsywA.json",
+      "bytes": 3890,
+      "sha256": "b3b883992e6c89ab350ae9f97a611d9760d2f4e36733274ec36e88cb5f69a9e1"
+    },
+    {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QAkBDAB2IE8ACAFkTQAsRVCBXegewCcEQAhLNgEZRGIDsxxgYabgDlOAW0JYKYZgBM2Aa2YUxEiiWJYyAOgoARCAHNMYA_2FwB2VivRgu6MDvLbypnigAUADogVCEAlBTyzGBoFBAOAMYcMISSFABmHD7ubgLiAhQwDmpmACo.json",
+      "bytes": 5792,
+      "sha256": "6f3d5190ff517ec88db87bb93e7e2a019ce51e8a175d95505556f92189b53585"
+    },
+    {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QAkBDAB2IE8ACAIQgCc0ALAE0MoGVDbCGBCEVQgFdGAe1oIQAYQa0IYDIQB21QbUVh_2BIWoJxgYaCQDkxAW0JYKbQUxEBrQRW26KJYljIA6CocEmARjC0FBCKAMa0MIR6LlgiigDmFIyBJiIm_2BoFgFPKcGAkuaEkMMBR_2.json",
+      "bytes": 3086,
+      "sha256": "8ff5e67108927d018cb3d370a1e6368d1107ba3e0fe35c018bd250639254f578"
+    },
+    {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QAkBDAB2IE8ACAIQgCc0ALAE0MsF4NwPh2KAKAaRjJg0AewB2MAJQhUhAK6NhtBCADqZWgFsKAMgoAlQqIDmYANbSQtWTjAw0ygLQA5RRsJYKYWU2GnZFKxsKEmIsMgA6CgAFLEIAYxgKRkSmCCNMMAoARiThCkQKGAAPeOxK.json",
+      "bytes": 3302,
+      "sha256": "f98bae970a71d8f202b476e7e879fda21486738ff935dfc8894fee58a3fdceef"
+    },
+    {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QAkBDAB2IE8ACAVgHY0ALEVQgVwYHsAnBEAIS3YAjKExCcWOMDDQ8AclwC2hLBTAsAJuwDWLCuMkUSxLGQB0FACr0YFAOacYlLBAB2MMIYcViy1_2Bs7sCu4UDIRoejCE6iHWqoRBFK4UguwMFOoQDgDGGOwuYOYAIhC2mB5J.json",
+      "bytes": 5696,
+      "sha256": "b991b19c799d81813676feb7502964481584a7a89b558f5ecae9a156983c02d9"
+    },
+    {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QAkYBDNGAEwAIBBAJxoHsB3CgIROzlSIFc0ALejQQgAKnxgAlCGTI4hqGtxxgYaYQDlBAWyJYKYbmXoBrbhUXKKRAA7WsATwB0AHQB2AEQgBzTGCtZ6Vy8rVys6JgotbjA0fW4tCjR6RPEKAGMIGjScSjJvTBcPfLQ_2FQKsU.json",
+      "bytes": 2870,
+      "sha256": "2c8843689758127024c5cdabc813a1617bcd592afe329cb02b4743e7f85d9ba8"
+    },
+    {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QAsA7ATwAIAmABnPJFQEMBXNfAewCcEQB1VgWwBG9NACF2MYfjoh2jHGBhouAOQ596WUmEYATVgGtGpWfNL0ADuazEAdKVIARCAHNMYUurKFWaYzHMSvhCExqwA7mDIpADGrFiMfISRMfTOMO4cfq6sSTYAOoROrmjuwaREZG.json",
+      "bytes": 6128,
+      "sha256": "140b22113bd733b96ab5501dc15364168092d574f8c2f2087514ef2f6ea6674d"
+    },
+    {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QAUIBaAYQCcB7MMGAExFQEMBXNACwrIRACkKYABAFkKAa_qoyzHDTTcAcpwC2jLAIDKzWhQDWzAVJkDGABxNYAngDoAOgDt7AEQgBzTGAEQ7A9oIDGFFgUzGR0AjYgZF4uYBECSsxgaAIAZso_bIIpEGRJAjCubMm0ru4CFCk.json",
+      "bytes": 3416,
+      "sha256": "9aa2ad55f455e91173b7ad2a8774eff11a921285bea4228404622e376f9be7e6"
+    },
+    {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QAUYA7AYwiwFsBDAJwGsACAZQFcATAezpZFSpbQALDjQQgAQuSwMAsixoAHQQE9eIGixxgYaMQDkR1aa07cGAJU0wwDAIIKFWZQDoGAEQgBzTDYhEGQjAMJDBYWDa0QVRhDAocaMQY0cFURGwQbFQJNgBmIgGCWcGhWM5qnjQ.json",
+      "bytes": 4028,
+      "sha256": "7b9710abb893ed73d7903ee5a962876c1973247dac5ae81e54b0f6790232869e"
+    },
+    {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QBEB7NAAgE1CBXEgdQEMA7UgWTlTsrQAtCAnBEACEIWLCWaVeABy4BPEKl6UcYGGgEA5PgFs6YgMqUAJoQDW1AErKYYEgEEpUrLIB0JAMIxRt1VLq86NBgjEgAjWRI6EgB3LkwYEhNSAHMIADcE7gSjCAAzXJheGAYAYwTQtW.json",
+      "bytes": 5210,
+      "sha256": "57197481b8494d83464390d27f8de4e9860a9424cfd5e9705c29fae7b523f9fa"
+    },
+    {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QBEYBjAAgBZkSAmABioEZ4SAVAJwgAcc0SBlAVwC2IVAEN_2BaABYB7VghC9RgkgGFRHLjEGiAdgFoAMgE8dMMCJCt_2BOMDDTyAcrO1Y_2B_2FACbSA1vxJWbJOpcRgB0JACSAGaBJERY_2FDAkEGAkAOYQAG4wOiTSEpDui.json",
+      "bytes": 5150,
+      "sha256": "c17aa88dd133b5d4df8bf36e975550cdb7cdfe39dd72115f347440535e4bf668"
+    },
+    {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QBEYBjAAgCYAWZcgBjIEZ4SAVACxgCcBbAdwiNYhUAQwCuaVgHsOCEESySAbpwCEQkB1E4wMNLIBy0rsKwkwogCaSA1qJKbtJYQAdnWAJ4A6EgB0Adv74EADmmGBOCn7BTiQSnFySXLqcJFyiYGhmaBz82O4kEH5EHDDCOtQZ.json",
+      "bytes": 4898,
+      "sha256": "fcb1be46d56ed7030a620cd4a8d70caa0ae9776134bdc3e4c6a36a90c4eebf45"
+    },
+    {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QBEYBjAAgEYUSAmABirPhIBUALGAJwFsB7EgaQhYc7EKgCGAVzQtuIvAGUxnEgGExAB3U5OYgHYBaADIBPXTDCiQ7CTjAw0CEADlZOrCXkSAJtwDWEkmtbEg0tYwA6EnwIAHNMMBIIXRCSIjEYmFS9XW40QJh1GDE8vS8STgk.json",
+      "bytes": 3806,
+      "sha256": "2f33c936b2fbad8171ea6d807b14b899b07f2600d10f2681149fb1c86e3a6f0b"
+    },
+    {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QBEYBjAAhRICYAGCgRnhIGkAnAewAcBrCAEzYFs4qAIYBXNAAtWzBCCJZWANxjMAhCFTNROMDDSyActP7CsJMKJ6tOoklp0lh7dlgCeAOhIAdAHa_2BAKhIw5jAAjqIwPkTBrABmJDwQAOaYYI4KPkmOJEnMMK4kWBA_2BwbH.json",
+      "bytes": 5438,
+      "sha256": "fbe47f2d4154e50f175ebedeb0d6a122323415cbefc58235068bd1f51f66ed69"
+    },
+    {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QBEYBjAOgAIAWZMgJgAYab4yBRADzQCcBDMgJRgBzCAHsAdmBCpuAVzQALEZwQgiWEQDcYnAIRSQnGTjAw0KgHJKAttyxkwMgCYiA1jLKHjZbgAcfWAE9yFm4ieTJBHgD7eW5HGEcPIVExMisZMDQyInE0bghUhRgyRwhhNDA.json",
+      "bytes": 4898,
+      "sha256": "8b70872dc726b8d1c8ae0bdf556dd7c0e0c8844271e96890066694e559ed9a59"
+    },
+    {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QBEYBjAOgAIBGAFmTICYAGOi_2BMgVSwwFsBDNAewB2IVDwCuaABb8ATghAAFSRCwQADmQByMAO69hqGWJxgYaeZtm8sZMGIAm_2FANZiyRk2R5q1WAJ7l8CABzTDAyCEEyIh4gmDDowUF_2BNDcYNRg_2BT0F7Mi4xMBS7Lj.json",
+      "bytes": 5624,
+      "sha256": "04802e4beaca2936a41778e75f874b185d60707428ec5b7393a5e0ae683f9b60"
+    },
+    {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QBEYBjAOgAIBGFMgJgAYab4yAhGAMwHsAnGMxMgGUArgBNOAa2EhUAQ2FoAFjwQgiWTgDcY3AIQyQ3YTjAw0qgHI8AtrKxkwYycLJGTZWQAdPWAJ7kAYSxhGDAyTgVIUT5Odg9XTgB3cO4yIk5g6wA7MjQYLHtfCNzFPkdrcL.json",
+      "bytes": 5978,
+      "sha256": "ef9b9e2797139b3699a51d90c763365e831d9b4d2e33af01afa2c1d9609653d4"
+    },
+    {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QBEYBjGAWwCMYAnAAgCYV6AGOgRnhoHUALCKrAO4QAdgBMQqAIYBXNNwD2VBCAAKvLBAAONAHIwBpScIkgq0nGBhplOxYaw0w00fIDW0mmYs1JmzVgBPADoaAEExGjlJNAByMBpMAEITAHMqCHF4AG0s0BSIADcYYRVioggsA.json",
+      "bytes": 3476,
+      "sha256": "95d5c0a513e9b14907c71881feada80ce61e45b7b76a976e6f83a009c88757c0"
+    },
+    {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QBkB7SAOwHMACAWQE8KAlGLCMiQkkVAQwFc0ALQgCcEIALZc0NLmE4ghPHGBhpRgazIKAFX6SA5GAoChMGBQglD_2FUwGNhJGEIpqAOiQ3a9BoybMWBpsAAHQmwWfjQnV1cAOWEJLAowHgATQgBrHgoFJQouQMCsGgA6GLiuB.json",
+      "bytes": 4082,
+      "sha256": "d0d0a380ea50a47d02b13e86ead59cbfaf95d9f600a91ae1a76c00e0eab37c34"
+    },
+    {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QBkBDNGAAgBZSAVACzIAVCAnNATxFUIFc0aB7JghAAhPmkIBrLhxBMuOMDDRCAqmC6EspdQBM_2BU0nIWlCAB1NZWAOlIB5AHakYhAMY1SfAGaleZT3y4mUhcsPnsYMFIACjAaQh0YHVIAcyYYVgBKZB86bUIAWzIdCGTMSL4.json",
+      "bytes": 3326,
+      "sha256": "40a55950284466f07ced21273bdd6dcb712d1b60e84b7e1ba370ca17ef962cf5"
+    },
+    {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QBlNsYACAaQixwCcSBZAQwBMA7GMMEVBgVzQAsA9tQQgAIjGowA1hkEsG1AJ5cQ1HjjAw0ogHLCAtgywkwPJoOk8S6zSQYAHB1iUA6Erp4GARpLAlBPkgmUgFSAHNqCCYScIgAN1D_2BUjMDAIAzEjCSJgg4tH9jeXCs5JIIF.json",
+      "bytes": 3482,
+      "sha256": "d89cc8c73ef0187193c6226ed1e0b70a51b311bd2180deb6987d0bd14585fd30"
+    },
+    {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QBUALGAAgCEB7ADxFQEMBXNQigJwQOJIDk2IA7PiQDiDAJ60QrBjjAw0HAMpo6_2FACZ1WakooZqKAawYlpsknQAOFrGIB0JAJL8SAYzoBzGGGQk1Ed5hgJAC2DGBoJGAMwSRoFLFcYMF0WFiuWAykAgmkcRYkOABmES5s_2F.json",
+      "bytes": 3428,
+      "sha256": "ccbac2fa7619ff1a55bf1fdcc025bbd8d8ff74380b4dc3836877174c332612c0"
+    },
+    {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QBUALGAAgCUBDANxgDsRUKBXNQgewCcEQBBDt2iQAyEACYBLkgAoeYAA4UOaCgHMAxkzABKBiA5McYGGm4BaEgGVltUYtEkwTUWwDWTEvsMkKcuVgCeAHQAOrTmRKRoAO5sJFgQtDBg3hykMACOTBRYDkwAtnEJSYEkEbkFbA.json",
+      "bytes": 7892,
+      "sha256": "8e0fa3ed7362c982d57202ce4d8191603b17f495a94741bf1edfae4522d4553c"
+    },
+    {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QBUALGAAgEEBHAVwEMAnCKgWxFRqrUIHs6EQ6qAIxgA7MAGMhcVAJxgYaPgDkeTGlhIBlKgBMuAayolZMMCRoAHC1gCeAOgA6IpwBEIAc0xn1XEe5KcMHRMXEwKQWYQIuJ0MDTyJGBo9Bh_2BJABmdKEBxCSCVFiCJKI6js4i.json",
+      "bytes": 4940,
+      "sha256": "ea03e9ade0a210614487b3dde6520e3ad71a6bb3c7797d4d8cb82bbd2369783d"
     },
     {
       "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QBUALGAAgFkIATSnEVAQwFc1CB7AJwRACEIstyjdgAdCATzoh2jHGBhouAOQ4BbegIDKjSqwDWjEgCUZMMCQCCw4VjEA6EgBEIAc0xm17XTEokIAOxIAYxh_M3p2UnUBYVYwSAAjHCD6P0oqejRTEgAzDhIWDKCQrFtJZ3YqB.json",
@@ -5154,14 +5299,79 @@
       "sha256": "c88759008ffa06614e20a06b3622a4318b6686566b5138365b719e4a38890651"
     },
     {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QBUALGAAgHEAnAQwDcYBPKigExIHkAzEgSWZirAhUVAK5pCAewoIQHAFZUAtkJAUROMDDQyAtCQByUxVSwkAyiOYSA1iJJqNJKgAdnWegDoAOgDs93HxIAc2o6MBIACgBjKiCYMABKZBJmCCDMcMURMDQSMBFFEjQJIuIUqnp.json",
+      "bytes": 6344,
+      "sha256": "93f98c5a408bfc494b423dbf1353d17e37403b83756fbfb85dd31c9f4477204b"
+    },
+    {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QBUALGAJwFsB7AAgCEKKw0RUBDAVzUIpIRAAUYaGFQDCJFhADmzECTY4wg3gDluZFlioBlNgBMKAazbIqRUpRMsAdrqoBFNi11yADjipyFVFi7cBPADoAHSsdfSN4KgBRFgBjQg8KAHcTWIosNjIrSxsqAGYADzyqACMKAqo0.json",
+      "bytes": 4922,
+      "sha256": "99a5124c0174aab516454e7c2c89dd3dcae0792bca9e5563cd3c1e3d104bca66"
+    },
+    {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QBUALGAJwFsB7AMwEMBjNCkkVGgVzUKYRAFE6sARgAOYGABMWIEmxxi0PAHJMyNLAAIwbcRQDWbdTLnqaw4VgCeAOgA6AOyKlKZGGlLx1AEQgBzTGHUyNjA0TTQSCAZLdQg7OhIYGjETLAo7HxN1TicKFzcSZDCaEgx09SoSX.json",
+      "bytes": 5936,
+      "sha256": "29309b7f4a48cdb45e3bff77e3234a5492b18b27d3246599d57f6bc6d7b51797"
+    },
+    {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QBUAnCABxwAIBpCLLEVAQwFc0ALAe0IXVaYDsAJjEJg0hJgGMA1jD70Q4nGBhpuAOU4BbBlnJgmA9lKblFMMOQYkyATwB05ACIQA5pgsQ_2B5CQ2V6mmuRo7EGsMHratN5YTOGeoeHBJOQ4AGZo3px8wuTsqQneDC4wDs5uaB.json",
+      "bytes": 4052,
+      "sha256": "b74d001fe711a36eb9d16d12b13a3414424df69f0fd23891f020f063f833ec30"
+    },
+    {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QBUB3AQzAAI0ALGMgaQDsIBzStMgIRgDMB7AJxoANALakQqYgFcq_2FBCAAKlCFggAHMgDkYhUfXEg_2BknGBho5G_2FqKxkwkgCY8A1pLKHjZYqtVYAngDoyAGEYLCxyE1ViPmI0GDsyACMfDzIACgBjajAwAEoyR0YWNABy.json",
+      "bytes": 2720,
+      "sha256": "daec21934c5657563e38191cf28e8d56013c4cd7bb13103f0edd9fdf802010a5"
+    },
+    {
       "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QBUB7AEwEMIsBPEVUgVzQAtCAnBEAJQgDNuBjLIQDuAOxogWdHGBhp2AOVYBbUlgAEAZTrFCAazprJ0taQAOpqgDoAOiMUsV6gNIUcLNQGFSAcxhhDUn4m5lZqACIQ3pj_2BKpRqIoRohjCmMKRJECJqfD5BpCLEamB0Smpoh.json",
       "bytes": 2978,
       "sha256": "4d84fdb36ae6530d423aa6f114f7296f2581efdd3ea88577ddb418d73cccff69"
     },
     {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QBUB7QgAgFkBXAYwAsA6BkVAQwrRsICcEQApQgHYCAniQDSrAGYBbZgKYhOFHGBhoeARjokAcl1lYSAZQoATQgGsKJJSpLMADg6zC6AHQEAmbQFFmtEgAjQgAPEipBNGYIATASTAByOMIAdwEbGDA0TmiBNBIUzBoSLLlTZk5.json",
+      "bytes": 3680,
+      "sha256": "4db235ec851d2187162c969f3e824e5dd6491cf6c401394f2a6aee94e0043776"
+    },
+    {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QBYAGQgawAIBbCHMNAewDsZKYATHATxFQEMBXNAAs6AJwQg6WCBR7cQIvjRhpxAOVEysZAMp9WdEnzIKaZHgAdzWDgDoyAHQYB5AZFbMGfCgCMYIsGYizELMYF5kdABmZCFkrBAA5pgBvmgA7jAwDDGCzACMZgysZIhkENlCP.json",
+      "bytes": 5114,
+      "sha256": "afdddf3906f55ae32d9507068638d2f91c1d27bf2b8ab930f5529b820c5927b4"
+    },
+    {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QCEAnAewHcA7AAnxgENCRVaBXNAC2IbwBFbSA5GN0oAySgGUADjABmjEIWY4wMNAhD9OAW1pZKYZgBNiAa2aVFyyrUmSsATwB0lfsy0AjGITDWsxcgDmlOwwwWxeWsRaql6UWsxgaPpohBAAxtj2lBDkaYR0KtY_2BIVmRAG6.json",
+      "bytes": 3218,
+      "sha256": "f525600ada9ab83b438f55270b30871af18caa4599701350ca18eaddb2a392be"
+    },
+    {
       "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QCEB7AJxgEMsIwACAETIDsBjCBgcxFTIFc0ALEggIQsWagFluxAA58AnpxDFuOMDDRCACr2r8Y1ACYQ2mGgEYAtImqtq5Jn2oAjQgA9k1YoQDu1RgeomQixuAFsGADpqABU_2BMjQAchpMAEJFNmIIAwQAbRzQEwA3GAZNEpY.json",
       "bytes": 3482,
       "sha256": "9a04842702709d2f0e39f766ab69f93bb003f26a98821e3e60e20163e4e8948a"
+    },
+    {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QCkBDAI2JgCcB3AewGMBrATxFUIFc0ALa8hEAEUIATfNXowwLEOTY4wMNHwAKOQvIAEAJQCiAQX7qAYgFUAMqa1ntAZXVkAZjxjrCaNDAC2ABwwA7AOYAdOrqACqchL70YC6_2BQuowvgBW1IwAhAA6vlnWaJFChOTxMnIuXl.json",
+      "bytes": 10916,
+      "sha256": "9c08e2fcaa4299906c87c1a257794ff576c96a9cce35ea8386c5d7762190f47d"
+    },
+    {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QCkBDAOwAIAmADmQoAZyBGeUgYQHtiwYBjUgBUIQATmBCpCAVzQALNkIQgAyoQC2rQgAcNOFSQC0AGQCexGKNRCJOLmgUA5ObqylFEgCZsA1hNKXrpTW0jADpSABEIAHNMMFIAd2kIbmkAoRhSLg1CIUI0GDdSACMjAPjEvNI.json",
+      "bytes": 4802,
+      "sha256": "8cf55f0ab61477734c57beb04d0aa32e663fe57f64a6a9a395a0a3b492f85f1a"
+    },
+    {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QCkBDAOwAIBGADmVICYAGW2_2BUgYQHsAnYmTgegCiAEwDmcVIQCuaABZcEIAMZZ2AN14BCEKk6ScYGGgUA5LgFtCWUmElD2Aa0mld_2B0oQAO7rAE8AdKQAdYiCAQWtDUnYAM1IhCBFMMFIeQk43UgBmAA8M5xgE9jJo0lkY.json",
+      "bytes": 5696,
+      "sha256": "7998e1bfc4d5522a3e2addf93e976613cabd0aafefbbbd59fb3d4264fe519850"
+    },
+    {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QCkBDAOwAIBGAZmVICYAGW2_2BUgaQixwCdSBlAVwAmAewDW_2FEKkL80AC2FcEIXoQC2pAMKEADtpyqSAWgAyAT2IwwkkF344wMNEoByCg1j5Cx_2FUrfukdPVMAOlIAEQgAc0wwUggyQlIAY0JImGSSYmE0XxhtGEIckkFS.json",
+      "bytes": 4946,
+      "sha256": "0d11908fe91d9a9cf26037b83ff2ed1f505b548ad1e01a66937795c0dff2235a"
+    },
+    {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QCkBDAOwFdCAnATwAIAOZGgJgAYmBmeGgQQooHsA7gBMqxQgFsIAYzAhUhUmgAW_2FCghAAFZRCwQADjQByMQRJLyQFUjjAw0Go2vNYaYUsP4BrUjWu2aQn19LCoAOhoAEQgAc0wwQKx_2BYhjAviEEiVIwNDdSCRo0fkLlGB.json",
+      "bytes": 3092,
+      "sha256": "a1e5646006c417f0100b2cbe54ceea7475bcc481023ba815ba98b24fe228ff5a"
     },
     {
       "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QCkBXAOxgAIAmC5SgBgoGZ4yBhAe2LBgGMA6MgAoBDCACcwIVEMJoAFm1EIQ3LGwBuMUQEJJIUYRxc0SgHIKAtkKxkwhACZsA1oTL7DZIQAdPWAJ78AQSwwNho7CABzTDAbGE8hUSE0GDsyACNfDzIAd1lMcgc0D1Fybg4ubh.json",
@@ -5174,6 +5384,16 @@
       "sha256": "a28126f1fb0006ab50d93d54ec7871164a8a36e84db1007e90edf945926e2593"
     },
     {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QCkBXLAAgCYzlyAGC_2BEgcQCcYBDNGJkgZUIBMA9gGtCIVK0JoAFgKYIQ3VgFsSAYVYAHDTiWsAdgFoAMgE89MMGJBNiFmGnkA5WbtK9BIkjZxgSm7SYAdCQAgiR6hEoARpwkEHp_2BJADuUpgwJADGEEwZOHF6fBAZ7BYk0.json",
+      "bytes": 6170,
+      "sha256": "b15492d8ad864db6bb9aee9a9d87056607b91bc914c5515f5def60015948f5a5"
+    },
+    {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QCkBXLATwAIAmC5SgBgoEZ4yAhAQwBMBzOVNwtAAsA9gCcEIAAqCIWCAAcyAORgB3ALZsAdiFSjiMMDDQSlYzVjJhCHYQGtCZfTjBk28_2BaQB0ZACIQuTFcILTIAYzYeVwitLWE0Jxh5GDY0Gm0OMnVCMATrdTI0YULBGEL4.json",
+      "bytes": 3728,
+      "sha256": "d4089d142d9bb4092c58d09590a00a50f8dbac7f6b04cd5373951e5e103a2555"
+    },
+    {
       "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QCkBXLATwAIAmC5SgBgoGZ4yAlGAOwCMBDdsgZUIATAPYBrQiFTdCaABYiATghABjLCIBuMRQEIpIRcRhgYaFQDklAW25YyYYeMJkjOMGW4AHL6QB0ZACi3KpyZF4Q7GJkWJEwZKoi7GjckR7cDmZkIgBmCUmmqrIQ2mRCEAD.json",
       "bytes": 6686,
       "sha256": "1adfd44c5d5438d88c58ea6f97979bbef785cd3dc7906729cbea2c49ff849815"
@@ -5184,14 +5404,114 @@
       "sha256": "139c44f5cefc2a4df6a3f97342acef021d2aa54e7af48a7c06ce8ca19088cfdd"
     },
     {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QCUBDCAOwCMB7AdwAJ8JISBzEVQgVzQAsKAnBEABMYMQRRgARQgE8xXViF7scYGGgEA5PgFtCWGmHZiA1uxpKVNQgAdrWaQDoaNCRCaYwVrBWZWSV3l5qGm12MDQDdm0aNAoYrhgaQTdMGlJ4xMJA6gByTwBjCF58nCcaABUE.json",
+      "bytes": 5708,
+      "sha256": "9173d100ba74c866e3e11b3fd7f0e8b5d3ca185a10609d5da867e3dc4050c393"
+    },
+    {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QCUIATGAAgHsAzUtACzP3NogCcWIBbEVAQwFc65FghAAVAO7k0UmADs63ECz44wMNCIByQjjyykAynyLkA1n1LLVpHgAdbWAJ4A6UgElZpAMY8A5jDBkUiIIX0wwUg4_2BMDQbIiIachp6RLQ9UjCANzlSCE86MmlbUhxKWK8.json",
+      "bytes": 3218,
+      "sha256": "2e6a282434696b633a08db738e879b748a470c2e733b763fd53f55256f99e048"
+    },
+    {
       "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QCUIBzACzQAIBXAB3LQHs6SZzr6IA7NEVAQ0rQl6AJwQgAKs3L8MYDAGNyAa15cIqniGGUcYGNzwA5EQFteWcmEoATeksrltu6dWpYAngDoAOhwAixJhg0lj0HETS5ETCMO5MMMIm9Cb6CeSc8jG8euQAZsLJ8eQARjrF5DAc.json",
       "bytes": 3368,
       "sha256": "44fbdafc0f20db2598e9f18ea15fe712b49b3a8ec3da084d93ffa93c1d8eab71"
     },
     {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QCYAGffAAgGUBXAEwHsBrSkVAQ0rQAtaAnBEAKRYBbGGFIBpWgAcpzEN0o4wMNHwByPISyykwNBpVIKlpFjKwBPAHSk1lIQCMY3MRAB2AY24wWy0gDNuWiFSThhSB0UHUNpQjnCYN2oACjAASlJafzjwsO4hYJVnMBsAYRgsL.json",
+      "bytes": 2846,
+      "sha256": "8f85863a793a2849ecb45a9e790d5110cb0fef29daad8b4025bd51b2583898d9"
+    },
+    {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QCYB6AdngAIB1AQwGsIA7AczIFUAHMiMMgCSoCcAJmTQB7MgBFRIVFQCuaABaj_2BCEAAVFELBA4A5GAHcAtlXoyQ_2FOTjAw0avStNYyYOYNE05ZKzbJU2NiwATwA6MkcRQ3EAYxgsLG4Y0Xo0KgYGZhgANxh6MkEIRkwks1.json",
+      "bytes": 2468,
+      "sha256": "3e29f6637b35f55cde55226734b2cd99a89942f154f9f1b49a20691f86be4d6d"
+    },
+    {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QCZ8B6Yw_2BAAgGkAnAewAcA7WyMEVAQwFc0ALW6ghAAFXhCwR65AHIwA7gFsOjdiGpccYGGiHSBSrOTBcAJrQDWXcus3kO9elgCeAOnIARCAHNMYchEZyAGMYLCw_2FLXoOag40GBNyACMnO3I5MTjyMzRyBS4wHMSYYNpGL.json",
+      "bytes": 4748,
+      "sha256": "a995b2d3d069d8abdc7de3e1bb4e6ca4d579eb5818f6f718fbbab063322c8fe1"
+    },
+    {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QDEAnGAOxgFsBPEVAQwFc0ALAe0IRAEEtbCIBjAAQAVWgEcIgzgDpBACgDChemFoATGIQCMAdgCsAShohlOMDDQcAcm3K0sgsPTUsA1vUGmYYQbQAOfliUskQQpGpBgvwwWFg_2B5CpoUSwkaLQQJIJqEADmmD4A7kwCTIJ2a.json",
+      "bytes": 5282,
+      "sha256": "8501d65cb51ee7e969f2ad5f4fa6fe0518702541047a2a65930d8379baae9d18"
+    },
+    {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QDEB7AVwCc1jMSwRUBDYtAC0NIRAFkYBbGUiMGla0QpYjjAw07AHKtudLAAIwxACaEA1sSViJSugAdDWAJ4A6ADoA7ACIQA5pjAGshaw6XMYSgEZZiHywIaxgXbmJBJSY6ADcfOmslGABHYkUVYm4lAHdMJhDkugBjJj9CAA8.json",
+      "bytes": 4166,
+      "sha256": "2d307301c78be478c42a0c27640a3520199d3874fa4222b54c1c4d066820d56f"
+    },
+    {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QDEB7AVwCcBafCAMzQE8RUBDYtAC0NIRAHVCBbAEZM0AIVIwRbRiFLEcYGGm4A5TvyZYABGGIATQgGtiWuQq1MADpax0AdFq0ARCAHNMYLRrpaAdoTRTGEtJQIhfU0IAdzBkLQBjQixifl9YoPdCNLj4plcYT04tLK12GAt_2.json",
+      "bytes": 5348,
+      "sha256": "663b38a6fbcfc037ad1d41c85c78de8c2d1dda2148eeb4913d01b8cf7b934ed0"
+    },
+    {
       "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QDEBDANwHsAnEVQgVzQAsKEQAhCLLAAgFkbyAHegE8qIcjRxgYaZgDkKAW0JcwNACakA1jU7jJnQv35YhAOk4ARCAHNMYThAB2na_2BRhDOAYxgd7CmmBonABGMC5uhGgw5JwMhM4UDKTWpI7KJgZqAFaE3o5BAO70mGHevqa.json",
       "bytes": 4454,
       "sha256": "b892f7fea46b5caab0029e10e6cdfc436e7267584780e51649ff55563ca04c83"
+    },
+    {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QDEIwALAAgAkB7SgaxFQEMBXNYygJwRABViZSAwsQjtKAB3YMAxmg70Q7JjjAw0XAHIcAtgyykwTACa0mpRctIMxYrAE8AdKQAiEAOaYwpSgDtLvhuyiAO6kWkxgaPpMWqSysXykhm6YpBC_2BrPwMaGjSfIakUiJSOI4u7mi.json",
+      "bytes": 2810,
+      "sha256": "9e6c8f7957450ceac761726234d2374a6c088251f526490bd0b1d8dfaf1dda74"
+    },
+    {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QDEYAjAAgCYB2ZcgBjLPhIAUAnAewBMBXAYzRICCLdgHcQqAIZc0ACzYsEIAMoSAtiQDCEgA7acqiQDsAtABkAnoZhhxIFlxxgYaRQDl5BrCSVcObANZcJPaOJDp65gB0JAAiEADmmGBhWGyG8SQwEjwyYcJsIiSqXGD8APrF.json",
+      "bytes": 2954,
+      "sha256": "a2b7e5d515edd5f8b995799816536a2638972771026c47c20dee5b4ffe832756"
+    },
+    {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QDEYAjAAgCZlyAGMgZnhIEYBWREgZQFcATAewGtOIVAENOaABa8ATgnASAnnFTTOOMDDRyAcjIC2IrBx4DOJVepIiADtawKAdCQCC3bpgi8AdofuUYIgDGEiTuAOaYJBBeJIG8WJx6MYxRXu6BImgwYCQA7hIQwbHxiTGSMEx.json",
+      "bytes": 3008,
+      "sha256": "8e24a7165ecbb25db4cb8b7dbdf721196b8604289a61164e38349d32dfff5ae1"
+    },
+    {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QDEYAjAAgCZlyAGMs_2BEgBQHsdGnIMmA7EVAQwCuaABZMATghABjLEwBuMMQEJeIMQJxgYaSQDlxAWz5YSYAQBMmAawEl1mknwAOTrAE8AdCQA6XXwBVhGBIcADM0A3Y0EnMIAHNMEgguEhg_2BKWE7JgB3EjQYLCwwEjcmW.json",
+      "bytes": 4076,
+      "sha256": "fd1d3a5e02c5dc5815faf57577509bffd9e3a396aa93d654814bfbae7ff8a0c6"
+    },
+    {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QDEYAjAJwFcBDEgTwAIB2ZWgJgAZnn5aAhMrLMDGpxUFMmgAWAexIIQABQkQsEAA60AcjADuAWwoA7EKnI5BaORpn6stMGQAmUgNZlapmGFoVVqrNQA6WgARCABzTC8KLCkDMO8SEiltL10yMDQ7Ml1aNClciRhaAGMIEmKcB.json",
+      "bytes": 4712,
+      "sha256": "5d9e458af7e7426ab1d746d510221ec36a376273d76d8c297dd7b103a0097985"
+    },
+    {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QDEYAjAOgAIBGAJmTKoAYqr4yBRADzQCcBDMgJRgBzCAHsAdmBCoeAVzQALUVwQgAyjwC2ZAMI8ADvpyae4gLQAZAJ7iYU1F1k4wMNKoByyk1jJrZAE1EAa1kyR2cyAyMrcgBBf39MMXEeLCwrWhgeAGMFMjAFHn8YfzDhZLJ.json",
+      "bytes": 4496,
+      "sha256": "6fe8636b81f518af034dc1c057cc829d8ededd88b75bbbe7588744b4bc6fed44"
+    },
+    {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QDkB7ANwAIAmAFmQoAZyBGeUgRQFcBDAE1IFkOAHiFQc2aABaEATghABjLCRhSAhMJBS2OMDDSyiUgLYcspMGy6EA1m1KbtpDgAcnWAJ4A6UgEEpUwgDuYKROhBAAdmikaITR4jCkWBxSAOYwYFFcECmYpBFxCQBmhGxSZqX_.json",
+      "bytes": 6680,
+      "sha256": "cff9020d48184b87d7bc6a118525285ed51767a01dacfdc056fc2bd55865db0d"
+    },
+    {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QDkB7ANwAIAWZUgJgAZqBGeUgBQEMAnTAT1IBkIAOxhgQqNgFc0AC0IcEIAMZYSMDgEIxIDhJxgYaBUQ4BbNllJgJAE0IBrCaR17SbAA5us3AHSkAOoIBACIQAOaYYKSEgqQyMJZsJvFYQvHSbMTxcQlJpG6cPKQAFDJsaKQQ.json",
+      "bytes": 5192,
+      "sha256": "4f52e25a2f00f51ae56c8c2fd806afb660187d69208fdef2f53f784b2271c069"
+    },
+    {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QDkB7ANwAIVSAmABkoEZ5SBlATwFs2Y0AnCAY1IBVAHYwAjgFcAhlhCopEtAAtC3BCD5YSMbgEI5IbhJxgu6otzYzSYCQBNCAawmkjJ0lIAOnrCwB0pAAiEADmmGCkylJoHtwwpITehJBo8TBSfEoJyjqkABRS3IQSwnaRSvF.json",
+      "bytes": 4100,
+      "sha256": "3d10516d2c29476ebf9a229754026a0d28d7fbc28ad7f973e2ce3c90607c9d89"
+    },
+    {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QDkB7ANwDoACAJgBZkqAGSy_2BcgcUICMOc3Pu5UAQwCuaABaEATghAAFMRCwQADuXwwA7gFtBAOxCpJwnGBhoZRSTqzkwwgCaEA1sPJGT5QcuVYAnhQARCABzTDBPLEJdYPJxGHIIXXsIAGNBNBh7cmTBYKjBLHCtYTA0W2E.json",
+      "bytes": 4898,
+      "sha256": "71c4d3d82147d7bdc3b120b55ed02e89717d67bb4607cc5e0faed12503bca3f6"
+    },
+    {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QDkB7ANwDoACAJhSoAZKBGecgBQEMBPCAOwHNyASjDAAHGAGM0IVGwCuaABaEATghAsFELBBHl8MAO4BbNt2khlsnGBhS8RZSazkwsgCaEA1rPKXr5NhERLA4KABEIXkwwch5ycTZeYXjTbkI0XxgxNgzTN3IjWTAM1yNyNEJ.json",
+      "bytes": 4406,
+      "sha256": "7e09e10f65b75d3ec9293544356cc8a0c4f4d4448547243699cf5b79ea3e43d3"
+    },
+    {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QDkB7ANwDoACARkXICYAGW2_2BcgJRgHMJCA7cgZQCuAW3IAZCDxhgQqAIaC0AC0IAnBCADGWEjFUBCWSFWCcYGGg1FVwuVnJhBAE0IBrQeRNnycgA6_2BsAE8KAEEdHg5yGDlNJXIAIyxBGHIsSRhkcmUUx1FCADMspRSnCC.json",
+      "bytes": 6752,
+      "sha256": "e5cafb008724a74644d98398fadc65b71d1c3e7041032a01d2332648266ed3db"
     },
     {
       "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QDkB7AQwAsByMAAgEEAnAaxFWIFc1TC6EQBZYgMZUAKgDpmIOqxxgYaHkToBbYliphWAE0INWVKTKrEADsawBPUVQAiEAOaZqs48TrE0MTVQBG5o1QB3UkwYKm00IzpQgUIAO1kBdggANxgrAHlY_28sQQYwwjRkKjjQiGptV.json",
@@ -5224,19 +5544,34 @@
       "sha256": "7780736abf7b669b32880275a82357a065e67b531bbe500221547ee36046a717"
     },
     {
-      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QEEA7DARwFcJCBzEVAQzLQAsB7AJwRACEIssACALJk2AByYBPWiDZkcYGGk4A5dgFs6AsGQAmLANZl_2Bs_2BfzqjRWCQDp_2BAYRh8w_2FZnTRm2MM_2FwDGTGGDO_2BpRUAOTOaiwAbl7mdGzuamRg7oQs7j4sxHSULv78Y.json",
-      "bytes": 4094,
-      "sha256": "abe4f68348542cb67cee58de6aac0d446ef4abb1eb07608c9ba2b739e4236943"
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QEE00BDAYwGsACAewDNK0ALGSgaQixwCdKBlYgHYATAO4RSjEKmIBXJtS4IQAeSFCsATxgA3GAKkguMnGBholAOQUBbYlj4yh1cjMpGTlYgAcvmgHQAOgIAwjCcYJSmXsRcxGgwQpQARhqeyVhkVE5onlwsEAJpsRjUNPTUAi.json",
+      "bytes": 3470,
+      "sha256": "ddb57c584550180528e3c31d6bae317bab85fd7a493a570ad76b7ebb899faf2c"
     },
     {
-      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QEEAHAJwiwAIAmADmSoAZKBmecgMQHti1iYwwQqAIYBXNAAsuCEAGMsHAG4xiAQkEhiInGBhppAOS4BbIRTAiAJhwDWI8pu3khhQlgCeAOnL4sYDnQsIAHNMMHIIADtyIOIhN3IZGCxfciMRMDRyACMYaN4hNGVyCSEo0woOA.json",
-      "bytes": 4724,
-      "sha256": "c4ab4d7d544a68ede74e6d84621d2e7842d42683d76f5905b041701076dff6fd"
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QEEA7DAEwgEMBzAe0PKwAIAVACxgCcBbakVcgVzQtq7BCABSIkgE9CDABLSScVO344wMNGIByIzvQZh_2BJagGt_2BDNRobkADnazSAdAB1CAUXIBjFgwPsZjAkDGRUtIbetGjkEIRgDELsMDChEGAYhN5oaZSYYG6E_2BFi0.json",
+      "bytes": 2618,
+      "sha256": "1eba4e0058d29b02148eb8a229a8992226abe81aab667a459706384da5971a5a"
+    },
+    {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QEEACAdQgDsATAewHdDy0rC0ALGQgJXIHMRUBDAK6sqAJwQgAygAcYWLBX4UKATz4hRgnGBhoJAOTEBbflkJhB1ANaDCm7YX7TpWFQDpCAEQjdMYemSEAMb83DD_2BRoJgaOaCRsxMrOxgJvKEZHEARjCiAcxsCdKEOABmMUF.json",
+      "bytes": 2750,
+      "sha256": "4bb5482256bed73a14d7505f3643b942529607676713b430a45fd947d9596655"
+    },
+    {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QEEACAEQgDMyYAnGAOzUIGkJaATQgezMIFkBDAOYQAxiFR8ArmgAWHKghA8AngA8OYkFQk4wMNAoBycgLZ8shAJJUaA7XyqEAyhNYcA1hMJadhPgAc_LCUAOkIABSw_YRhCGRjWCCE0MEIARgBaREIYFSjsJU5aaMIWbKjpLw.json",
+      "bytes": 7412,
+      "sha256": "fccae22f6904c7f3da3f58155149c198b6e90042754ebb48553fedbcd27b5e61"
     },
     {
       "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QEEAHAJwiwAIBGADmXICYAGegZnnIGUBXAYx5jCQA9gDsQqAIZc0ACyHEEIAAoyyEQuQByMAO4BbCWNTEuOMDDSLN8gxTBcAJkIDWXcibPkJhQlgCeAHQAOiL4IhjOECIA5uwAwjBYWGDk5oQSxBJoMA7kAEZ_2BXuQAFDwyA.json",
       "bytes": 4064,
-      "sha256": "b8d650e9785ae61cdf6e6686431f4afed029dfd6f811d88d7ab714aa57996c41"
+      "sha256": "0ce199de84bd6e6d24a2712db6a72090fe05c88bf8afacc72b9ae5c4218d3924"
+    },
+    {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QEEBXAc0LDQAIA2ZCgJgAY6BGeCgZQAtvOBCEVAENCaTgHsATghAAFThCwQADhQByMAO4BbQQDsBICYRxgYaaask6sFMIQAmYgNaEKRkxUFKlWAJ4A6CnwsMV1iCmIJGBhdCkVdGDBaewhiTDAKFIAzLJgJCiyJMS0KURgIfI.json",
+      "bytes": 7106,
+      "sha256": "51e8084c340d3b528b6f901c7e1bdb60f66692f3d47ef6c9c9256c8b0246c1b5"
     },
     {
       "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QEEBXAc0LDQAIA2ZCgJgAY6BmeCgIRjQHcYYA7CgBkI_2FGGBCoAhoTQALAPYAnBCADGWBQDcYSgISSQSwjjBdVAOWUBbKVgphCAEwUBrQhWOmKUgA6_2BsAE8AOgoAEQhiTDAKBUEsUXEKazJKACMYCgyePkF5TKdI6IpRCn.json",
@@ -5244,9 +5579,19 @@
       "sha256": "49c1c29f3c553a426a9bc7db1b0ce552cafa21da0b430d96c6ed4d2fedad7be6"
     },
     {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QEEBXAc0LDQAIAmANmWoAYqr4KAtAewDsYKBlQgBMOAa0IhUAQ0JoAFhwBOCEAGMsHAG4wFAQgkgFhHGBhplAOUUBbSVgpghowhUPGKkgA4esATwB0FAAqsrxgNlh2ghDEmGAUEFxRKpJoMILxXBRyvGgcHhQ4AGaUKoo8ChQ.json",
+      "bytes": 5558,
+      "sha256": "e307a79faa26cdb6802e924bb90c15ef059e524c3ebbce9c473d1c7767b2e14b"
+    },
+    {
       "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QEEBXAc0LDQAIAmARmWoAYqBmeCgYSwEMxIBjEKi6E0ACwD2AJwQg_2BWcQDcYkgISCQkwjjAw0MgHJSAtlywUwhACbiA1oQqbtFLgAcXWAJ4A6CvgB2lhRiXGgA5GAUmGqoxJIQlggA2omgxBBKfgAKMH58EFgAslySNmAIf.json",
       "bytes": 3896,
       "sha256": "2e3620c0f5103cafb550070a65cdc452f4b068b8a0bf210da455ba2b5b54ab18"
+    },
+    {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QEEBXAc0LDQAIBGANmQoCYAGBq_2BCgZSwHtKBZAIYBjABYQAdnFQDCaEdwBOCEEJ4A3GAoCEIVAsI4wMNMoByigLYCsFMIQAm3ANaEK_2BwxQEAHL1gCeAHQUADriofhYYNz0MMIiFABGWIQwtmgKEF6pFmSUQtziaAISFHK.json",
+      "bytes": 4406,
+      "sha256": "07dcd7a2f1f1af0beb3bc3d8d8b7a4bc7c3dc333c23da30d857164f6438baf70"
     },
     {
       "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QEEBXAc0LDQAIBGK5CgJgAZ6BmeCgdQAsBDSgORgAPNAH4QqHoTRcA9gCcEIAApcIWCAAcKggO4BbHgDsJIeYRxgYaJfwWGsFMIQAmsgNaEK5yxR6bNLABPADoAHSNBEQo0WR0IIxh2AGEsQhgwCllpSBcYGK584nkIFwpiCA.json",
@@ -5254,9 +5599,19 @@
       "sha256": "8ad034f8eef80ea62ad70f460e85b03064225aa547fe32960ec286555a4d30e6"
     },
     {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QEEBXAcwAIBGc5UgJgAYbz5SBhAewEMw1S03XO3EKg6E0ACzYAnBCADKHALasOAB1U5FHAHYBaADIBPbTDDCQUwjjAw0sgHLStWUnMIATNgGtCpS9dI1DUMAOlIASQAzXgB3fncIYkwwQKkYUiSANxhtUjYxSHd0iXTiKQh3a.json",
+      "bytes": 4862,
+      "sha256": "089df9fcececf2785be89462720bfa269e21a3b041e35cb1d8e01b3cbf303579"
+    },
+    {
       "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QEEBXAcwDoACAJgDZkqAGSgZnnIAUY0ZyBDAOwAm5AEowADjB5oQqHoTQALAPYAnBCDYKIWCGPIA5GAHcAtvxkgVhHGE7r9qs1nJhCApQGtC5Kzd5ixLABPUgAdPnw_2BDAEIHmIlPh4sVgBRHgBjBXIzFQ8YIRi4hKTyBODy.json",
       "bytes": 3140,
       "sha256": "ac3e1ec084c101fd3e92f347a933525bce5b931ca85f787ebfc2c25bbaf36356"
+    },
+    {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QEEssACAOQEM0BXAJ3JIAUaB7AYxjDA5FXKrQAWzGghAAhCEWIBZWgAcBATx4gaVHFzSjSwgLb1iAZSoATZgGsqxAErqOxfHLlZFAOmIARCAHNMYYoKUxOROMOQ0xBAAdsTMUTDEcuFosQBmwcSszFjMtDAmxDQwvnHEulRgK.json",
+      "bytes": 5780,
+      "sha256": "9c544c8d1a2e85fcec36286f38f49f1215808c35343709e2ad4b0e958844ca39"
     },
     {
       "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QEkA7AYxgAcMB7QkVAQwFc0ALSgJwRAGUGBbOwmjoACABQBBQgwCUtEGwY4wMNJwBy7flmFgGAE0oBrBsIVLhdMmSwBPAHQAdQkWEsYr5jDa9KvFV51mSxgwZGE9CABzTDBhXgYwNB00NghibBthCBI2GDplYQAzNl9hACNFM.json",
@@ -5264,24 +5619,69 @@
       "sha256": "ad9369df821e199989bdfb3b5abacde9a73a5d81301c3f8d8e7914f3b8e077ed"
     },
     {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QEkA7QmAJwAIBlAQ0IGM0BXAWxFWsbQAsB7UhEJR5oYAazYhSjHGBhoBAOT7NqWKowAmPUY3JSZ5agAcjWAJ4AdQktIq1AaQhYcFfTDCGT5gHTkAFAAiEADmmB4QhOR01MHu5MyMYGjkYCzkaDzpXDDkAG6qjDkRWTmMJmTkO.json",
+      "bytes": 5180,
+      "sha256": "885ceba835fed7ff49eed4fc5224a89da19f5e60c8a21278492c1d134f605c7b"
+    },
+    {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QEYAGAegGYSAmC_2BAAgFkBDAJwGsBaAewHI2sGA7NDCb8QqBgFc0ACw5MEIAArSIWCAAcaAORgB3ALYCxIJhJxgYaBVrmGsNMBIAmHFhJqnzNBuvVYAngB0NACC_2FE40MgxoXGA0mACExgDmTBBOCADamaAAbgxYErj4qMk.json",
+      "bytes": 4790,
+      "sha256": "0102bd2a33d0cadf736d1e4490fa84002fffd3b47f9239f31e9004a167ad66e1"
+    },
+    {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QEYAGAeiOICZz4ARCAMzpgCcYA7AYxgAIB7JrgOIsAhmmYhUwgK5oAFnwQh2WHgDdmAQgkgmUnGBhpFAOT4BbYVi5gpAEx4BrKV136uwgA4esATwB0XACCWGA8yNY8ZtwewhBMYLx0XJxYIe4s1jAxTKIwtlwARj7uXADuspj.json",
+      "bytes": 9230,
+      "sha256": "dc095a042c8ab82dc3a6f755bb18638285629f4d990b3c90b29c420ef4215118"
+    },
+    {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QEYAmAekXgAIB1AewDsATGAJwDMBXLcgYQAsmIwaALYBDMAAd_2BQuKhFs0PakwQgACjwhYI48gDkYAd1G0QqJhxhgYaFbqWjOYNvWoBrNuXM4w5EePFYAJ4AdOQAoiIAxjzk9BAA5pjkELTkkdRYbEKphMkMEJEiaJbkCjDk.json",
+      "bytes": 4262,
+      "sha256": "01145f2e829d0cab54b7eb1d6faf7cde4b8283a919d2e89ee1e218e86388895e"
+    },
+    {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QFEBHAVwEMsACAYQHssaAnCgZWIFswRVTi0ALRghAAlGgBMGEAOY0KAWVJ9iXEA2I4wMNEIByjNuQphiYmgGtiFNRoqkADnawBPAHQV8pAMZ8KnmgDsMf2IaYjAKLAh_2FGCMYKTYYQIoaADMKfhiwUgTfOkZcwNIomDEKKNs.json",
+      "bytes": 3494,
+      "sha256": "91f672eef3236046bdc8d59548347f2fc5a1542e9c15b3622c4fa0de62e93039"
+    },
+    {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QFEBHAVwEMsACAZWIFswRVTi0ALAewCcEQAlUgHYBzMAGtGITsRxgYaHgDkutctWIATdqOIUpMiqQAOhrAE8AdAB0B1gGJcKMUgGNWFLBAExkFdRCGYYBSspABuMAYCjiSqYHQUAO6YrJ6OLm4ARuwAHhSYFIakYLJBbJzsxE.json",
+      "bytes": 4598,
+      "sha256": "6d61c958fe41186426c1681857347f5b84ba0f5699ba2b4052beb8a8566f87f7"
+    },
+    {
       "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QFkBDAJwEcBXGNNOVQ8tACwHtiEQAhCLLAAn3LEADowCeIVMXI4wVdgDlWAW0J8w5ACbMA1uV5SZvQkKFZRAOl4BhGDzC8IAO16smzAObNHqs0Y0ArQgBjGEc0XhC7CMJHR2ZwgCMYB2dCXgBGeAAmfUIMZnMAHUcJEHdiCA0.json",
       "bytes": 3932,
       "sha256": "86881243ceacf1979df26cfedf247b3d8448ba4dd39c9393c6dfe3128c004f69"
     },
     {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QFkBDAJwGMALAAgBZlKAmABnvvkoGliB7ABzQHcYMAHYhUhAK5pyXYghCksXAG4xiAQjEhiEnGBhp5AOVkBbQlkpgJAEy4BrCZR17KhHjywBPAHSUAOsKBAIJYYFx0NhAA5phgbkrC0W6UWBDCMJSmEmBolOSEqpTKFhIw8em.json",
+      "bytes": 5654,
+      "sha256": "945f3b8b3b635694903e23ce8a859674ab044cda0bdd9cdb2ba52aab80159893"
+    },
+    {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QFkBDAJwGMALAAgCYAWZGgBmuvkoAkIGjiBrAQhCpCAVzTkA9sQQgACuQhYIAB0oA5GAHcAtoQB2QkMRE4wMNDLVTdWSmBEATCbxGVjpyoWXKsATwB0lAAiEADmmGCUEHqUpFJ6MMSxEGQe2iJgaJ7eMCRRMeIwdiLExBIieg.json",
+      "bytes": 5126,
+      "sha256": "ec2c741e30be006e59d0878394893eecc376d0db1873c4dc16b8caab21a17dfa"
+    },
+    {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QFkBDAJwGMALAAgEYVKAmABnvvkvwFcsMAHLCUoQwB7AHYhUhDmnLDiCEKSzCAbjGIBCCSGJcYYGGgUA5OQFtCWSmA4ATYQGsOlXTjCVCPPgE8AdJQBJUUoYQgpKQQBzGGQXUNtKGRhEgHdhSlsISMx3CGCkygAjYTQ0YTNU9.json",
+      "bytes": 6578,
+      "sha256": "db618f8b65cc84a454c5a61dc53200ae55730d4d426a537cb218d34daf79fd85"
+    },
+    {
       "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QFYB6ARgA5CAmAZngAIAVCGAJzFoHsAzWtACxloBpCADsA5gBN2AWxCoAhgFc_2B7ZghAAFXhCwQADrQByMAO7T5IuSGaKcYGGnWHV5rLTCKpAa0W0bd2nk9PSwATwA6AB0RQWZ2PS8IWg15CFZkBn5maXYMgCUYEQAjCwyAc.json",
       "bytes": 8384,
-      "sha256": "ac8dbfa4ea89043eafdb92debc19d201c96fdab81e98c64552d449ff8e223c44"
+      "sha256": "94d6b35ad34b3939a12753f32148302b4bbebb4631ec738aee8f8af511c0fb50"
     },
     {
-      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QFYB6ARgGZCAmU_2BAAgGkA7AQwAcWaARJhmAIxgb0IWHACcQqJgFc0ACwD24vAGMs8gG4xRAQgkhRUnGBhoEIAHKKAtkyw0wUgCbyA1lJoGjNViywBPADpOCABzTDAaCEFlJhCYCOcaBnk0DxgWGCZU7kcaKykwVIcrGjR5G.json",
-      "bytes": 5954,
-      "sha256": "21f6aa84ff05f9e0c670f190f53616a9848cfd58b4807a166795606c06e93425"
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QGEAnTCAYwEMsACAWXLDBFXIFc0ALAe0IRABVKWCmiYhCLHGBgi8AOW4BbSlQDKLACacA1iyoAlCTDBVyAB1NYAngB0AdnYBC0gO4wYtqgBkIto_2FCr4MFhYxpSctgDmVFg_2BRlQARi5uHmjOnFQAZhDBMOpUpBCEpJJUCi.json",
+      "bytes": 5858,
+      "sha256": "32ff565181d13f6019720878ae018438d9ea16ebbcae704f80b9687f582bf0aa"
     },
     {
-      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QFYB6AZkICZj4ACAFQAsYqBRAT0YHsAzKtBqgZTTsATgFsQqAIYBXXiIQgACnQhYIAByoA5GAHdRkgHYSQw6TjAw0CrSINYqYaQBN2Aa2lUzFqpPXqsFgA6AB1DAEFhYXZdagARCABzTDBfLHZDRN8omNTRaTA0R2lRHnYePg.json",
-      "bytes": 4220,
-      "sha256": "56e337835340af35a9717cdd05e8d2419f4429ad5718a96f922cee2fcbfb6ff7"
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QGEB7AJwgDs0ALCAQzIAIAFCLLG4kVGgVypIRAAhFlnoBZbsQAOlAJ6cQxbjjAw0AgHIkAtjVEBlbgBNCAa270ASsphh6AQSlSssgHT0AIhADmmO3sIyb3osclt6bW4wNHoAMx16KT1yI2JCbVt3L180O3J6AHdqNBh6AGMIY.json",
+      "bytes": 3572,
+      "sha256": "62fa85d6747f76122c61faf67f79e6ab0b9a1a3d7b053c740537fabda77c5514"
     },
     {
       "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QGEB7AWxgCMBDAYwGsACAaQgBMRUKBXNAC0ICcEIAEIQsWOgFkOfAA7cAnmxB8OOMDDSCAcv2IVxYDs0I0OdFWroUZMrPIB0dfDDFgrWQgDsA5lbozpWxg6LAhPYKovNAowv3U0OkIAMzpIz3UqLggANxhkOk8vAFo_2BGBkY.json",
@@ -5294,9 +5694,64 @@
       "sha256": "8591fba44d3bbe9458ec87089b9d3105953d0d4e9e227b9129fe65fdfe3685f0"
     },
     {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QGEBDAJxgDMBXLAAgHdMALatBwtahge04GtlqAogFshMNGhCpCFFp2IICDYhDBpOFAHZjJIYlRhhteAHJyhhLCqZgKAE14VqenGGqEADu6wBPeIIBuMMTeTpy01ADGnFgUQhpuGrbUAEacAB6RnBpohBAariww1LYQAOaYrgA.json",
+      "bytes": 9560,
+      "sha256": "34dd0ce01d14556e4c4b97ad2be597f40ebd0d15c18bf665e48dae01be7d3f13"
+    },
+    {
       "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QGEYA7NAJwEMsACAEQgDN6ZTiBjGKgWRjQAsB7ACYhU5AK59_pBCABSnfuTQBGAMwiQpMTjA8ZAOSkBbSlQDKYwfwDWYqlp1VyAB2dYAngDoAOkQCCggBW5OwkVIIQAOaYYFS6zuQUaDCCVABG7k7hEORG_ESpEYzM6ZneIAA.json",
       "bytes": 6872,
       "sha256": "912896a3a2262d9e13f026402ed4eb06e180f257062f5ce961020caf9e154e01"
+    },
+    {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QGEYBjCAAgDsByGMNUgBwEMxSBXc0orCIgCxgB0IVI1ZpeAewBOCEACEIWLKQCyrKfV4BPYSCmscYGGlkA5aQFtGygMqsAJhIDWrUgCUDNUgEF69LFoCpLoA5lIQ9ggA2lGgAG7WrLgA7KghEHEw5Aho_2BjBpGVkAClkkWCq.json",
+      "bytes": 3842,
+      "sha256": "2ad190f5aaa2022c6a96886a406fa1b3be4339a3dd2b4f44fb23f7728a048b6a"
+    },
+    {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QGIB3AQwDcBPEVYgVzQAsB7AJwRACEIssACAWRrMADvUqpmNHGBho2AORYBbYrzA0AJowDWNHhKk9iQoVnIA6ADoA7KiADmzCOoQBtF6DsRSMKwAUfAMZcfMTMWmAIVpJYAL7IoKQqNLgATKie3jbwaBIw6V4_2B_2FlZBWCF.json",
+      "bytes": 3938,
+      "sha256": "e8aa7fd3814f800628b20b4dbe745d6b585e09de4eb3c30cce2312c88d941033"
+    },
+    {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QGkBDMACwFsIAnEVQgVzRIHtq8dLKmBPLmkSujjAw0CEADkWZQlgAEYOgBMmAazqyBQ2YQAOOrFwB0AHQB2AEQgBzTGFnSus00zQaYOmIVcRTsgMaEVjB2hKaK9nRgrgpksmhMcSQwTnRkAEYwlLI_2BicnxOrI4AGaufiymm.json",
+      "bytes": 2606,
+      "sha256": "6005b32812680bcf4281179278cda0799fdef49f42c90a07ef956377f3fcee13"
+    },
+    {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QGU0AnGAQwFssIA7GAExFVIFc0ALAeyIRACVTqAczABrZAAJ8zAEYZsMCbDQVS7CTDTjSWAHSMQRZjjAaeAOS7lt4sMzocRzcYeNaADm6wBPHQB1q_2FgCS1HQwAB40guIAgkREHADuYPDiACIQgphg4hzUWnmkcYk2zOTiaB.json",
+      "bytes": 5426,
+      "sha256": "4d6de3d826729823d5fb05f9418192afb4f36a7c2db7d53ae34682bcd0dc7269"
+    },
+    {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QGUALAewCc1IBzQtGAEwAIANAWnwFcBbMBju4gNbsQqAIbs0JUghAApAHQMAiuwgA7AMYBPBgFlRlYsREhS7HGBhoZAYSyiwkDQzDt_QhmYsNRAB19YWooA8hKQdDAMGljsMDxgJADuDJKRrpwMxABmKYSRajCipHFozJmkDA.json",
+      "bytes": 3116,
+      "sha256": "7b258b7f1c3edd6ef208f6eef479a24abc86d2080d14685d54404083982c794d"
+    },
+    {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QGUB7LANxgCcByMAAgCEBDAEwHM5UGBXNAC0PIQEKMAHYhU5TjjAw0ggHL8Atgyw0wnJoQDWnGpOk0GAB2NYAngDoaAUTLlzNFuUKdjNQgDMaAZhoBjQhEZf24IMgCYLCxaVSCWIxosCBEYGiVOMDQAoLQGFJomCBZMWl4GbI.json",
+      "bytes": 3698,
+      "sha256": "5dab60422abf320e107921ea154eee4e7a46a17776ddc98c11d8a4d178fca3c9"
+    },
+    {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QGUBDAVwCcB7AOwHIwACAERgFsIw5US0ALc0hEAA0YVAEpsAjiFSliOdmgEA5Ps0JY6YYgBNyAa2J1Z8uoQAOZrAE8AdAB1KS4swBGMUvXVUA5qcqnSCgB3OmZiMDRNZzo0chjuGDpKZzdSTV4g_2Fwh_2FHkSAYwhSPJxtOj.json",
+      "bytes": 4562,
+      "sha256": "e7fffaac5ce98cee0c17268105227b7df18b0b7d225696927c7fe979cfbcfea0"
+    },
+    {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QGUBjCGAOwwDMJCACAWRjQAsB7AExFQEMBXZlgE4IQAFS5YshLmk4gBPHGEbCAcoIC24mvh5sWAax415imlwAO5rAE8AOqXsBpCBJgD4NACIQA5pjA0EKQ0Uj4wAeo8YGg0YDzqNGgsiUwwiSxoWkEpaUnmNDgUMYSCpG4AdF.json",
+      "bytes": 4304,
+      "sha256": "a6a9d560b39a06e0b17d2d47a0789984c26d3f832338fa01c80a436540c99d0d"
+    },
+    {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QGUBXCAYwgBMYACfAR0IENyRUHC0ALAewCcFw0DHgHchEAOYMAthBYgehHGBhp_2BAOV5SGWKgGkIWHDxqFyXANaEqCpVQYAHe1gCeAHQB2HgKIMSHKu6EUgBGMMYQ7nZUZDwkOFRShGBoVKFUnNRoXII6XABmdik4DMlUXO7.json",
+      "bytes": 5420,
+      "sha256": "642aecaebb086de5136d740369146f4a3d01f67b97980e7e58b34dfb0c46e84b"
+    },
+    {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QGUYAHAAgFZkSAmABioEZ4SBZAVywyKwgGMBDDAHsAdiFR9WaABaCATggJ8AtiQDCfIlxhK_2BwgLQAZAJ7CYYMSFnszMNAoBycnVhL5WAE0EBrViSs4wEg0uIwA6EgBJYRIYPh4pEjApPncYd2oADyog2VjKaRgSNAB3QUSI.json",
+      "bytes": 2828,
+      "sha256": "71398af823d905f30c5958cbf08a550ea7237041acd8fe95e46d1ea5cb0bc562"
     },
     {
       "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QGUYAHNAOgAIAmAVmSoAZKBmecgRksXIAUIsswIVAEMArmgAWAewBOCENwl8IRcgDkYAdwC2wgHZCQM0TjAw08tbN1ZyYUQBMpAa1Hljp8sKJEsAT1IAHT0AQRkZKU1WABEIAHNMMC8sKT04r3DIpO1RMDQ7UW1yNCliiRhiq.json",
@@ -5309,14 +5764,39 @@
       "sha256": "9949f943d6695dad9931dfa039bb775f59f9a084b2780288c99f007089a4edb2"
     },
     {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QGUYAHNAOgAIBGAVmXICYAGe_2B_2Bc_2FAQwFtyBJcgII8AcgHs0IVBwCuaABaiATghAAFORCwQi5YTADuXDgDtJIRdJxgYEvGMVGs5MNIAmogNbTyFq_2BQ5ERFgAnhQAIhAA5phg_2FliixpH_2Bioqi_2BrFc0mBoztI8.json",
+      "bytes": 3278,
+      "sha256": "b3aa9996dadea81dc55767d50e9a84f261b9fcb6a1fe0535350453a24984a442"
+    },
+    {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QGUYAHNAOgAIBGAVmXICYAGey_2Bc_2FAVwFtyBZAewBOMcgEFBg_2FgHcQqAIYc0ACyEIQABSUQsEIuQByMKVzkA7WSEEccYGGjX6hJrOTAcAJvwDWHclZvkckREWACeFAAiEADmmGCBWPym0YES0vFcHGBortzkaPz5SiIA.json",
+      "bytes": 4664,
+      "sha256": "60d85aff11a1b922f9742067d676f59fa08fa6b09df0f81451c83c4c488e3ca9"
+    },
+    {
       "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QGUYAHNAOgAIBWZcgcgCYBmecgJRgDsAjAQw_2FIDqACwhgiMAE5gQqHgFc0QgPYSEIAMZYlAN0kBCGSAlycYGGjUA5FQFseWcmDkATJQGs55Y6fI8iRLABPCgBRHnUhci4lLGdyIggON3IsRJhyAAoJTl4OAEpydSUONB5Es.json",
       "bytes": 7352,
       "sha256": "1680ec684349725009191ab7d52f7562b95a4cf0e04d9e072503c2f320eb7c6e"
     },
     {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QGYB6ReAAgAUsBXMUgYQHIYw1SsBDUgWQCuBbGPQAWAezBxU7KmlEAnBCHJCIWCAAdSAORgB3PuwB2IVLKo5xaBZpGz9WUmCoATEQGsqpU_2BdLs1arACeAHQAOgYA0io4smQAIhAA5pi0EAakAMbsCcwZhgYirLIwajDsrIZ.json",
+      "bytes": 2696,
+      "sha256": "c793bb6a2eebf6871772c058e9c9d58410c5b0b20c768e7fa4d1cb93c9f3be80"
+    },
+    {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QGYB6RQgJlPgAIBNAewFdKBhAQwDtmG21KB5DgKpgQqFvTQALWgCcEIAAoSIWCAAdKAORgB3ALbsRIafRxgYaORpn6slMPQAmtANaNjpyi1WqsATwB0lACCbA6UkixoAORglJgAhIYA5tIQDggA2hmgAG4sWPS4AKyoSRA5MG.json",
+      "bytes": 3488,
+      "sha256": "3a211f8fcb71582866ab39a50c4e03e7b44878d8bb312444275c1ab06dabd2dc"
+    },
+    {
       "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QHEB7QgEwAIAKAawEoA5CAcwAs0yBZCLKiEVAQwCuaZoQBOCEAEkyAGUIA3GGQDKOGAAcIAO0Z8QYwTjAw0kgCrMIYMmEElCVQWQDu_2FGwFt_2BJZTrIeYD3EATzJCADN_2FUIAjGCxFGHIHRg4uHgA6VO4IV3cyaPFtMj8A.json",
       "bytes": 7754,
       "sha256": "d646ec202088e6fb7b134be078c03b34d30c375dc5b9c12154235982e123da19"
+    },
+    {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QHEYA7GDAYzBFQEMBXNACwHsAnBEAQSIHMYsmqIFrRxhS7ALQACAHKsAttSxSAyrQAmTANa0pw0VOoAHI1gCeAOgA6RaYRLkw8KQFFqZBlPURumKQ2owKTQAdyYpIxYmIxgWDBgwCykAFQYYKQAzCBYwNAiomLizKQgggCMYC.json",
+      "bytes": 9098,
+      "sha256": "b55fd6706937b60956703324fce17d306ea78627f8ca8c7a0fd9a8c9b5367d1b"
     },
     {
       "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QHkA7GAAgAoBrCQgcwEoS0B7EgOWtMsIhoAs0wdEKgCGAVzS8mAJwQgAEgBEYAN2EhpYnGBho5rGQFsRWEmDEATJhTElN2kiIAOTrAE8AdCUU9MYEkyEjiQ00iJujLww0oYs1ADG0jAiOiQAZtJMhpGkAEZauSQwhBZeRMG5W.json",
@@ -5334,14 +5814,29 @@
       "sha256": "92c141df1976b350b719877f0ba9293dc06262733b3f7afe70de081753f19118"
     },
     {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QHkwBDAayJFSIFc0ALAewCcEQAxLJiIgOwAIB1JmgC2PbhRCMqOMDDQsAck1FZeAZSoATeiSq8pMgHQAdbqYAiEAOaYwvbb2700_2BmAAcYRF_2FT50YvUUYSGE17LisfIiwTM25LGzQ7CD4AYyIrGDsHJxdGd08XHlCwKmFe.json",
+      "bytes": 4214,
+      "sha256": "d526b4682dfcf4ec575eb02e33c959fc0a3b35e3ca6e73e998df54282802ec37"
+    },
+    {
       "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QHUALAQzQHIwACAORgA80B_2BEVYgVzUIHsAnBEAEIQsWSgFk2PAA6EAnixA82OMDDT9qvALbFRYNgBMuAazaUlKysSlSssgHSUAIhADmmKhAB2lAMbFXGCotNjA0Si8ucJ4YKRhSKy8DShCwyn0tSjQuLMIYdJ0RP14vGB4s.json",
       "bytes": 5264,
       "sha256": "6d0a233bdf544eb2a3c3c2e4b1a972a0dace543f0fd525b6c54e2431741ed7fe"
     },
     {
-      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QHUAnAewHMA7AAgDEzyRUBDAVzQAtjCEQApRgWxhhKAZQjkAxlkYQuqQsxxgYabgDlO_2FRlkphmAE2IBrZpQVLKjAA5WsATwB0lAIJYdU5kMuEYutI3J9RkJ9ZEtAyzdKDy9g3wB3EnJSJ2dorE9KCGEAHRBE4mS8rIAzLLQ.json",
-      "bytes": 14720,
-      "sha256": "458da6c98e5adcad29d24f00f56b16d4a2eda798e172855571182305c6043d2a"
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QHUALCAJywE8BzCSkVAQwFc1CB7EhEAFXqywGN6aOiBKMcYGMLwA5dgFteAAgDKjACasA1oyViJS_2BgAcjFADoA7SwCUYFgEb0L8JQAUIFrUqweYYJfKMYGhK_2FKwWaPQehkqSIawAZqHhkvzMEABuMMhKFuEAtCQwRjBCH.json",
+      "bytes": 6464,
+      "sha256": "c2054ebe4fe62aafeea0d41c717976397a239e0204ff1b96f31e528d7d50f495"
+    },
+    {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QHUALCMABxgCcwACAQyyzooHsBXAOwBMRVbW1CzCghAAxLEIi121fELQBbaex4gKrHGBhoRAOSFLGAZVadmAa1bV1mgHQAddo4AiEAOaYaEGQGNabmBozanZmNGsYclpw6U5qMFYFajRmZMIYeMNGdkSAI0pqbzSMlNJqHAAz.json",
+      "bytes": 4556,
+      "sha256": "d5eb4c66746141ee80c0a46c5b7a7b9d912b758ea24cc2922cc85367f3a0c0d4"
+    },
+    {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QHUYATIiAOwHMACcqgMXIjDQAuAnOVAQwFc0ALAPZsEIAEIQsWKgFkebAA78AniFRseOMDDSiAcsIC2XaWB5FBAax5UNWqlwUKsygHRUAIhAqYwVQWRUWOQwfgDGAWQwYRiUVGEQbGH2hjzMQRAwVABGOgDuMDCBAlkJSThEV.json",
+      "bytes": 4970,
+      "sha256": "73d75a5b08a94bd98240133e40b4bf94f28ddeb2b410b1749731010b9223bcb4"
     },
     {
       "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QHYB6AJn3gAIAVACxnIGEBDMbOgQUc4CceeBzPtWohUjAK5pqAey4IQABWoQsEAA7kAcjADuAW0YA7ESC5icYGGjkaZ_2BrOTBiAJlIDWY8qfPlGq1VgBPADoAHQMAMRk0LhgwMAoAEQg_2BTDByCANyPhiA8gBjGCwsNN0xF.json",
@@ -5357,6 +5852,16 @@
       "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8SIHoAmABmIGZ4ACAeQFc1IATGKgZTqYHsBrOkVAEMGACy4AnBCADGWLgDcY4gIQCQ4ujjAw0UgHISAtoKxUwnXnSoatVQQAd7WAJ4A6KgGEsdGGCpcGZlYuADMqNBFWAHNxCCY7cVYmCCjMPwjBNCpDOjAsh3sYQXEqCAA7cM.json",
       "bytes": 5738,
       "sha256": "935d36bd9d2aa551f9db1198df25925b09d8f0c86f123a46bad18dd9f5371ad8"
+    },
+    {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8SIHoBmABgICZz4ACAMQHsAnagaQDkAVagQwDsATagCt6ANwgB9blhCpuAVzQALJghAAFJRCwQADtTYwA7gFs_2BskI3k4wMNGrZMzWamHn96Aa3nUrNnrq6WACeAHTUACIQAOaYYDxY9LzRPIyM9EbxJvJgaK7yJtRo9EVKMN.json",
+      "bytes": 3116,
+      "sha256": "a11bfac300ccee0a83a3282e6397563a9f0501ac5b3839c9d9917f71e7a11f6b"
+    },
+    {
+      "path": "public/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8SIHpCAmARhFQEMBXNACwHsAnBEAZTYHEKQnqcwMNKwByzALaUsAAjDUAJgwDW1aXwHTKABy1YAngDppACgASDAO7SAxg37zp9GHukA7BmmkNX0gJKu0GCZXSgxvKWk2BWVVABFKPQB_2BAEoAHVd0gGkILBwmeGlYiABzTDBp.json",
+      "bytes": 3608,
+      "sha256": "de22b344fc22a69c2c14eeb58a3ae70ad8d9111b77003c75e09e343ec8d97d9e"
     },
     {
       "path": "public/archive/puzzles/frb3c5cxkr.json",
@@ -9304,16 +9809,6 @@
       "sha256": "d5e888643ce9c52f2e17a0af850d28d7702605c03e202e054aac8fc65fa3a0e0"
     },
     {
-      "path": "public/archive/puzzles/sclN4SwJgXA5ADgpgOxgQwBwDNUCYCsBmAI2QE48BjOLA9YgsYrVMHAggFlQAYB2AzgNigAaALZwALsjDJJEYAQDmIEcgVxoAC3HiYAZwgB6A8tVxdAOl0BHAK7IATmZQUAtGTAJzZAPYiDPhHFEcQMANwBGAxx0Nk5wllYycLwcTk4EnFisZBwDcOQCKm5sl34uOBcO.json",
-      "bytes": 10457,
-      "sha256": "a5b89591a213876c1cdb83c3bad16c53b78ceed1e1cc1e8d4245bc4754a8e932"
-    },
-    {
-      "path": "public/archive/puzzles/sclN4SwJgXA5ADgpgOxgQwBxwJxgEwEYxjK4DsAZgKwBGqAzHAAzEO73IVjunZQA0AxgGcIANgAs_OBADaUnnJ7AA5iABuiCABceKiMQC_8ngF0eshcrUJN2iNgNLV6rTtQG5Dy9Z3C3J2R6cbXDdDAKtnCHIDP3kwrwhg9wtAnSikx3CbUWjTOIjE8wz4_VDkzJ0aNz.json",
-      "bytes": 7517,
-      "sha256": "ef178b38e6c1f1bb1b5ca557efd2a3cc2a508177494352ab3df38e99fffd2b02"
-    },
-    {
       "path": "public/archive/puzzles/sclN4SwJgXA5ADgpgOxgQwEYHY4AYsGMCcAbAEzEAsc6Z66q_5AjDuQMzL64BmYLUANAGc4AF2EgEAcwERgCAPYSATuAgMAvn1zTCZTXAgBtA3xOmTAXT7Gzpy9Zt87Di1eePXzp548OvvywCuhsC4ADbIAtJQqHLIimAAtDByAiBicgj8uMTQAMQAYoVFOFnChmQAdA.json",
       "bytes": 6994,
       "sha256": "cd33c19b8a7dad056b071ccdc4ed8b422ea143fd0b85886e4e71a725279fd96b"
@@ -9347,11 +9842,6 @@
       "path": "public/archive/puzzles/sclN4SwJgXA5AzgHjAtgfQMoEMB2YBO6By6ANusgAwAsApgJwBGAbGQGbMDs6YdAzM1RdzYBGBlSF0AxgFYq3blSkUoAGgnoIAbWAA3aABcQeolQgACALIgYMEJgDmp1AAsA9lRimAtKcIkAhAD8UAC_yjrQ6ACueq44ZhjYeKYAZD7E6KYhYbpQOJHGMGa_GU7oHhl6.json",
       "bytes": 8921,
       "sha256": "d92b9cf1c07be3cf066c5e4991e12df05d386ca1a17d870ed8294c94c7f22092"
-    },
-    {
-      "path": "public/archive/puzzles/sclN4SwJgXA5AzgHjAtgfQMoEMB2YBO6By6ANusgEwDGApgKwBsA7AIyUU0UBmADAwCwBGdABxl_ZXly5V_9XkzBQANBXQQA2sABu0AC4gdRKhAAEAGQD2MHcYAq5gJ7GAFOgDm6EJgCUUAL6KtaHQAVx0AC3McEwxsPGMAMmNCEj8A7SgcYMMYE2T0YyJLazCqHFsHY.json",
-      "bytes": 7493,
-      "sha256": "e0db5cef0dc1956d74abdeb11b15b73ed6581fc76d49c770aecdc81316629c30"
     },
     {
       "path": "public/archive/puzzles/sclN4SwJgXA5AzgHjAtgfQMoEMB2YBO6By6ANusgGwDsArAIxkAsATAAwAcARgMb0CcPApvQBm6KlX5hGPemXatONKvSgAaTuggBtYADdoAFxD6i_CAAIAMgHsrAaxCYA5maFWcZ9GYBiOEP2xQAL4qutDoAK76ABZu5hjYeGYAZGaEJEEhelA44SYw5gCCQvr87kZmj.json",
@@ -20555,8 +21045,8 @@
     },
     {
       "path": "src/app/accountSync.tsx",
-      "bytes": 20450,
-      "sha256": "3e4bd3f9916fc9401ca7000939c38cf3072691ed9c1340d352b11ef88d8d8ac3"
+      "bytes": 24023,
+      "sha256": "2afece7f51671042633bdc7472b35166a867cec2acf51eba9701184e6e6af241"
     },
     {
       "path": "src/app/App.tsx",
@@ -20635,8 +21125,8 @@
     },
     {
       "path": "src/core/storage.ts",
-      "bytes": 34134,
-      "sha256": "581a909ba2b47b170cf249eae1981dab3a5ef874846d295eaaf625170c19c698"
+      "bytes": 35274,
+      "sha256": "cf1212e8ea91390b98792d0cf04ea26802299fcc42d297aa397bccd01835f645"
     },
     {
       "path": "src/core/sudokupad.ts",
@@ -20665,8 +21155,8 @@
     },
     {
       "path": "src/firebase/client.ts",
-      "bytes": 23551,
-      "sha256": "ee1ec82f5a6c338262ffffc41ba1bb449ce57fd0419af52857b2c125b87f5bad"
+      "bytes": 26662,
+      "sha256": "3f36aa602f7c0a6549ebea4eef255345f0f79c0e4e6bca9fdfd44f7cab4c65f3"
     },
     {
       "path": "src/main.tsx",
@@ -21324,8 +21814,8 @@
     },
     {
       "path": "dist/archive/archive-manifest.json",
-      "bytes": 3911516,
-      "sha256": "562af03cb191d2b2bb5be8592c0ba4304dc29d4d62914fd81198280411b84140"
+      "bytes": 4852124,
+      "sha256": "80fe6ac868e5699d027eb25f6ef7839827ab3cdffb58e775448a5c28977729f8"
     },
     {
       "path": "dist/archive/puzzles/00r3q84657.json",
@@ -25368,6 +25858,16 @@
       "sha256": "e3d876ce97d8283f5fa376c292cc9513a8e0d0a2895828bddf76146e70754bec"
     },
     {
+      "path": "dist/archive/puzzles/ctcN4SwJgXA5ADgpgOxgQwEYHYAsA2AHAVh1QEZliAmffAZnIGNk7VrllcAGRt5AMygBo6AZwjZMguBADaU_nPlyAuv1kL5y1Wv4atSlbu37dO40a0nzZtRetWFN_3fVO9m68oCu04HXLQAxABiwSHs7AJ0AC7SuPyYAHT4ygDuEACc_AAWEMTYAL78PsQQAMKBZWWCf.json",
+      "bytes": 8237,
+      "sha256": "a1cc8092a490c94e1818c8cc8c6f39824079427bbac27ddd3716d735d1f81576"
+    },
+    {
+      "path": "dist/archive/puzzles/ctcN4SwJgXA5ADgpgOxgQwEyrAZgOwDZkAMBWqAHAIy7kBmqARtXNgKwHICcqc7y1BUAGgDGAZwi4ALMLgQA2rIGKlSgLoCFy5Wo2bF23avUG9R4_rOmD5q5d0q1AVznAhqaAGIAYt59FBQgBc5ZgFmNQB3CHICAQALKIIAXwEXN28AYXTSGMC5cgA6ENwIiCl4zGTUi.json",
+      "bytes": 10481,
+      "sha256": "21492eb175f1af7382f0daa516763c22af3bbadca70a44d0e3a310f418d350dc"
+    },
+    {
       "path": "dist/archive/puzzles/ctcN4SwJgXA5ADgpgOxgQzgNgCwEYBmPkDMBcWmA7AKwBMADFcmslhgcwRWABwDGWUANNwDOETILgQA2pP7AA5iABuiCABd_iiBQC_PfvlKV6zVV0BdfpMPKEajRCy6bxhwV2yFt_5s4eXdiYQAJz_Xq6aGM7hgQ5o2pYyBjE_oh56ifpZ_JmeRrGa7lkBqWQeudk5Vs.json",
       "bytes": 4841,
       "sha256": "975d0d9cc4e8bbe414a2072e63630c4a6a0c47956c13fe672360b8a3ad742815"
@@ -26418,9 +26918,144 @@
       "sha256": "603a02ae10b0907f6aa0f9fbc3afbf61e3757f6564d94953ecbf6b769e23dbf4"
     },
     {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcA2ANCALhNAbO8SIHoBGABhFQEMBXNACwHsAnBEACQoHcBrAQQDcKaCs1SMqOMDDQsAKrQhgABAAcqUKDkVVJSxIvoAzRXRiKAJhADmmJSQC0ATmP1FAI1NmpMRgFsIAOxgzNwBPY1pTMHosPm8AOgAdfwAFLAoAY1N6QMV0_2BmUww0UYDNpzK.json",
+      "bytes": 2984,
+      "sha256": "2d5a14c117b44a422c9c609d7d38094aeb2e92ed9d69b6ea24cc6f7ed001b98f"
+    },
+    {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBGATAGhAFwhgNneIAsjAE4kCeABAMICGAtjDpRgPaUCarArgIQjpa3DAAtWJBCAAKtAHajStASBLc8YGBkkBJMjADma2iQD0JAxFazKlMNwAmrANbdKq9ZVoAHLznIA6SgAVERhPc0oAFkoANgAPGMp9Egh7MEoACg0vY1oMGHtKACMqBUoAY1.json",
+      "bytes": 13232,
+      "sha256": "facb8e27a440a8ddce29c67ad34eefead147a5bc30c0af8e45a59a7cbbb4d93f"
+    },
+    {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBGRAaEAXC6A2d4gCkA3gJwFsBXAOwHMBDKgExJDTovQAsB7F_2FAugE8ABABFBMFmhIVcYGOgQgAwtyro6EKjEbCA7lk5bhXGMJokIuuiTNUtdtQFpuAN0nY6ABy9aawgGYADwDhMABHChszWxoINTAUfSMAY05hSjB0YQAjM2xuFLp0HQA6YQ.json",
+      "bytes": 8336,
+      "sha256": "cc0a3e5ef2cf6d4fbf2a125a2458fc3e65fe750c9afed763639ed27a1e20061e"
+    },
+    {
       "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QA0A1AAgAoBaASmIGUBXAEwHsBrOkVAQzrQAsmATghAAhCFizEAsnQEAHXgE8OIAXRxgYaYQDlBAW06SwjVnWJqNxTnLlZFAOmIBBBgCtOAYxgA7NMW8JMGJ9OjB_2FHyZ_2FE31iNCZiAFZiQWIARgAGBwAdHxUAcwEIBgQA.json",
       "bytes": 3998,
       "sha256": "a4d762e9ab066dd4cf1fe01f818dec94e353d5695a8c230fac16a68e2150690e"
+    },
+    {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QAkBBASQBkACAeQFUAlcgOQFEB1ckqgNSdtMtoAiAZRCoAhgFc0ACwD2AJwQgAQhCxZyAWQnyADtICeokPIk4wMNEoYKAtmI1gJAE1kBrCeVPnyY3bqwDADoAHQA7YwBzeQhnBABteNBIiAA3GDCABQyAYzVNMXk3MAQwsywA.json",
+      "bytes": 3890,
+      "sha256": "b3b883992e6c89ab350ae9f97a611d9760d2f4e36733274ec36e88cb5f69a9e1"
+    },
+    {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QAkBDAB2IE8ACAFkTQAsRVCBXegewCcEQAhLNgEZRGIDsxxgYabgDlOAW0JYKYZgBM2Aa2YUxEiiWJYyAOgoARCAHNMYA_2FwB2VivRgu6MDvLbypnigAUADogVCEAlBTyzGBoFBAOAMYcMISSFABmHD7ubgLiAhQwDmpmACo.json",
+      "bytes": 5792,
+      "sha256": "6f3d5190ff517ec88db87bb93e7e2a019ce51e8a175d95505556f92189b53585"
+    },
+    {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QAkBDAB2IE8ACAIQgCc0ALAE0MoGVDbCGBCEVQgFdGAe1oIQAYQa0IYDIQB21QbUVh_2BIWoJxgYaCQDkxAW0JYKbQUxEBrQRW26KJYljIA6CocEmARjC0FBCKAMa0MIR6LlgiigDmFIyBJiIm_2BoFgFPKcGAkuaEkMMBR_2.json",
+      "bytes": 3086,
+      "sha256": "8ff5e67108927d018cb3d370a1e6368d1107ba3e0fe35c018bd250639254f578"
+    },
+    {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QAkBDAB2IE8ACAIQgCc0ALAE0MsF4NwPh2KAKAaRjJg0AewB2MAJQhUhAK6NhtBCADqZWgFsKAMgoAlQqIDmYANbSQtWTjAw0ygLQA5RRsJYKYWU2GnZFKxsKEmIsMgA6CgAFLEIAYxgKRkSmCCNMMAoARiThCkQKGAAPeOxK.json",
+      "bytes": 3302,
+      "sha256": "f98bae970a71d8f202b476e7e879fda21486738ff935dfc8894fee58a3fdceef"
+    },
+    {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QAkBDAB2IE8ACAVgHY0ALEVQgVwYHsAnBEAIS3YAjKExCcWOMDDQ8AclwC2hLBTAsAJuwDWLCuMkUSxLGQB0FACr0YFAOacYlLBAB2MMIYcViy1_2Bs7sCu4UDIRoejCE6iHWqoRBFK4UguwMFOoQDgDGGOwuYOYAIhC2mB5J.json",
+      "bytes": 5696,
+      "sha256": "b991b19c799d81813676feb7502964481584a7a89b558f5ecae9a156983c02d9"
+    },
+    {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QAkYBDNGAEwAIBBAJxoHsB3CgIROzlSIFc0ALejQQgAKnxgAlCGTI4hqGtxxgYaYQDlBAWyJYKYbmXoBrbhUXKKRAA7WsATwB0AHQB2AEQgBzTGCtZ6Vy8rVys6JgotbjA0fW4tCjR6RPEKAGMIGjScSjJvTBcPfLQ_2FQKsU.json",
+      "bytes": 2870,
+      "sha256": "2c8843689758127024c5cdabc813a1617bcd592afe329cb02b4743e7f85d9ba8"
+    },
+    {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QAsA7ATwAIAmABnPJFQEMBXNfAewCcEQB1VgWwBG9NACF2MYfjoh2jHGBhouAOQ596WUmEYATVgGtGpWfNL0ADuazEAdKVIARCAHNMYUurKFWaYzHMSvhCExqwA7mDIpADGrFiMfISRMfTOMO4cfq6sSTYAOoROrmjuwaREZG.json",
+      "bytes": 6128,
+      "sha256": "140b22113bd733b96ab5501dc15364168092d574f8c2f2087514ef2f6ea6674d"
+    },
+    {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QAUIBaAYQCcB7MMGAExFQEMBXNACwrIRACkKYABAFkKAa_qoyzHDTTcAcpwC2jLAIDKzWhQDWzAVJkDGABxNYAngDoAOgDt7AEQgBzTGAEQ7A9oIDGFFgUzGR0AjYgZF4uYBECSsxgaAIAZso_bIIpEGRJAjCubMm0ru4CFCk.json",
+      "bytes": 3416,
+      "sha256": "9aa2ad55f455e91173b7ad2a8774eff11a921285bea4228404622e376f9be7e6"
+    },
+    {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QAUYA7AYwiwFsBDAJwGsACAZQFcATAezpZFSpbQALDjQQgAQuSwMAsixoAHQQE9eIGixxgYaMQDkR1aa07cGAJU0wwDAIIKFWZQDoGAEQgBzTDYhEGQjAMJDBYWDa0QVRhDAocaMQY0cFURGwQbFQJNgBmIgGCWcGhWM5qnjQ.json",
+      "bytes": 4028,
+      "sha256": "7b9710abb893ed73d7903ee5a962876c1973247dac5ae81e54b0f6790232869e"
+    },
+    {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QBEB7NAAgE1CBXEgdQEMA7UgWTlTsrQAtCAnBEACEIWLCWaVeABy4BPEKl6UcYGGgEA5PgFs6YgMqUAJoQDW1AErKYYEgEEpUrLIB0JAMIxRt1VLq86NBgjEgAjWRI6EgB3LkwYEhNSAHMIADcE7gSjCAAzXJheGAYAYwTQtW.json",
+      "bytes": 5210,
+      "sha256": "57197481b8494d83464390d27f8de4e9860a9424cfd5e9705c29fae7b523f9fa"
+    },
+    {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QBEYBjAAgBZkSAmABioEZ4SAVAJwgAcc0SBlAVwC2IVAEN_2BaABYB7VghC9RgkgGFRHLjEGiAdgFoAMgE8dMMCJCt_2BOMDDTyAcrO1Y_2B_2FACbSA1vxJWbJOpcRgB0JACSAGaBJERY_2FDAkEGAkAOYQAG4wOiTSEpDui.json",
+      "bytes": 5150,
+      "sha256": "c17aa88dd133b5d4df8bf36e975550cdb7cdfe39dd72115f347440535e4bf668"
+    },
+    {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QBEYBjAAgCYAWZcgBjIEZ4SAVACxgCcBbAdwiNYhUAQwCuaVgHsOCEESySAbpwCEQkB1E4wMNLIBy0rsKwkwogCaSA1qJKbtJYQAdnWAJ4A6EgB0Adv74EADmmGBOCn7BTiQSnFySXLqcJFyiYGhmaBz82O4kEH5EHDDCOtQZ.json",
+      "bytes": 4898,
+      "sha256": "fcb1be46d56ed7030a620cd4a8d70caa0ae9776134bdc3e4c6a36a90c4eebf45"
+    },
+    {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QBEYBjAAgEYUSAmABirPhIBUALGAJwFsB7EgaQhYc7EKgCGAVzQtuIvAGUxnEgGExAB3U5OYgHYBaADIBPXTDCiQ7CTjAw0CEADlZOrCXkSAJtwDWEkmtbEg0tYwA6EnwIAHNMMBIIXRCSIjEYmFS9XW40QJh1GDE8vS8STgk.json",
+      "bytes": 3806,
+      "sha256": "2f33c936b2fbad8171ea6d807b14b899b07f2600d10f2681149fb1c86e3a6f0b"
+    },
+    {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QBEYBjAAhRICYAGCgRnhIGkAnAewAcBrCAEzYFs4qAIYBXNAAtWzBCCJZWANxjMAhCFTNROMDDSyActP7CsJMKJ6tOoklp0lh7dlgCeAOhIAdAHa_2BAKhIw5jAAjqIwPkTBrABmJDwQAOaYYI4KPkmOJEnMMK4kWBA_2BwbH.json",
+      "bytes": 5438,
+      "sha256": "fbe47f2d4154e50f175ebedeb0d6a122323415cbefc58235068bd1f51f66ed69"
+    },
+    {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QBEYBjAOgAIAWZMgJgAYab4yBRADzQCcBDMgJRgBzCAHsAdmBCpuAVzQALEZwQgiWEQDcYnAIRSQnGTjAw0KgHJKAttyxkwMgCYiA1jLKHjZbgAcfWAE9yFm4ieTJBHgD7eW5HGEcPIVExMisZMDQyInE0bghUhRgyRwhhNDA.json",
+      "bytes": 4898,
+      "sha256": "8b70872dc726b8d1c8ae0bdf556dd7c0e0c8844271e96890066694e559ed9a59"
+    },
+    {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QBEYBjAOgAIBGAFmTICYAGOi_2BMgVSwwFsBDNAewB2IVDwCuaABb8ATghAAFSRCwQADmQByMAO69hqGWJxgYaeZtm8sZMGIAm_2FANZiyRk2R5q1WAJ7l8CABzTDAyCEEyIh4gmDDowUF_2BNDcYNRg_2BT0F7Mi4xMBS7Lj.json",
+      "bytes": 5624,
+      "sha256": "04802e4beaca2936a41778e75f874b185d60707428ec5b7393a5e0ae683f9b60"
+    },
+    {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QBEYBjAOgAIBGFMgJgAYab4yAhGAMwHsAnGMxMgGUArgBNOAa2EhUAQ2FoAFjwQgiWTgDcY3AIQyQ3YTjAw0qgHI8AtrKxkwYycLJGTZWQAdPWAJ7kAYSxhGDAyTgVIUT5Odg9XTgB3cO4yIk5g6wA7MjQYLHtfCNzFPkdrcL.json",
+      "bytes": 5978,
+      "sha256": "ef9b9e2797139b3699a51d90c763365e831d9b4d2e33af01afa2c1d9609653d4"
+    },
+    {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QBEYBjGAWwCMYAnAAgCYV6AGOgRnhoHUALCKrAO4QAdgBMQqAIYBXNNwD2VBCAAKvLBAAONAHIwBpScIkgq0nGBhplOxYaw0w00fIDW0mmYs1JmzVgBPADoaAEExGjlJNAByMBpMAEITAHMqCHF4AG0s0BSIADcYYRVioggsA.json",
+      "bytes": 3476,
+      "sha256": "95d5c0a513e9b14907c71881feada80ce61e45b7b76a976e6f83a009c88757c0"
+    },
+    {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QBkB7SAOwHMACAWQE8KAlGLCMiQkkVAQwFc0ALQgCcEIALZc0NLmE4ghPHGBhpRgazIKAFX6SA5GAoChMGBQglD_2FUwGNhJGEIpqAOiQ3a9BoybMWBpsAAHQmwWfjQnV1cAOWEJLAowHgATQgBrHgoFJQouQMCsGgA6GLiuB.json",
+      "bytes": 4082,
+      "sha256": "d0d0a380ea50a47d02b13e86ead59cbfaf95d9f600a91ae1a76c00e0eab37c34"
+    },
+    {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QBkBDNGAAgBZSAVACzIAVCAnNATxFUIFc0aB7JghAAhPmkIBrLhxBMuOMDDRCAqmC6EspdQBM_2BU0nIWlCAB1NZWAOlIB5AHakYhAMY1SfAGaleZT3y4mUhcsPnsYMFIACjAaQh0YHVIAcyYYVgBKZB86bUIAWzIdCGTMSL4.json",
+      "bytes": 3326,
+      "sha256": "40a55950284466f07ced21273bdd6dcb712d1b60e84b7e1ba370ca17ef962cf5"
+    },
+    {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QBlNsYACAaQixwCcSBZAQwBMA7GMMEVBgVzQAsA9tQQgAIjGowA1hkEsG1AJ5cQ1HjjAw0ogHLCAtgywkwPJoOk8S6zSQYAHB1iUA6Erp4GARpLAlBPkgmUgFSAHNqCCYScIgAN1D_2BUjMDAIAzEjCSJgg4tH9jeXCs5JIIF.json",
+      "bytes": 3482,
+      "sha256": "d89cc8c73ef0187193c6226ed1e0b70a51b311bd2180deb6987d0bd14585fd30"
+    },
+    {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QBUALGAAgCEB7ADxFQEMBXNQigJwQOJIDk2IA7PiQDiDAJ60QrBjjAw0HAMpo6_2FACZ1WakooZqKAawYlpsknQAOFrGIB0JAJL8SAYzoBzGGGQk1Ed5hgJAC2DGBoJGAMwSRoFLFcYMF0WFiuWAykAgmkcRYkOABmES5s_2F.json",
+      "bytes": 3428,
+      "sha256": "ccbac2fa7619ff1a55bf1fdcc025bbd8d8ff74380b4dc3836877174c332612c0"
+    },
+    {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QBUALGAAgCUBDANxgDsRUKBXNQgewCcEQBBDt2iQAyEACYBLkgAoeYAA4UOaCgHMAxkzABKBiA5McYGGm4BaEgGVltUYtEkwTUWwDWTEvsMkKcuVgCeAHQAOrTmRKRoAO5sJFgQtDBg3hykMACOTBRYDkwAtnEJSYEkEbkFbA.json",
+      "bytes": 7892,
+      "sha256": "8e0fa3ed7362c982d57202ce4d8191603b17f495a94741bf1edfae4522d4553c"
+    },
+    {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QBUALGAAgEEBHAVwEMAnCKgWxFRqrUIHs6EQ6qAIxgA7MAGMhcVAJxgYaPgDkeTGlhIBlKgBMuAayolZMMCRoAHC1gCeAOgA6IpwBEIAc0xn1XEe5KcMHRMXEwKQWYQIuJ0MDTyJGBo9Bh_2BJABmdKEBxCSCVFiCJKI6js4i.json",
+      "bytes": 4940,
+      "sha256": "ea03e9ade0a210614487b3dde6520e3ad71a6bb3c7797d4d8cb82bbd2369783d"
     },
     {
       "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QBUALGAAgFkIATSnEVAQwFc1CB7AJwRACEIstyjdgAdCATzoh2jHGBhouAOQ4BbegIDKjSqwDWjEgCUZMMCQCCw4VjEA6EgBEIAc0xm17XTEokIAOxIAYxh_M3p2UnUBYVYwSAAjHCD6P0oqejRTEgAzDhIWDKCQrFtJZ3YqB.json",
@@ -26428,14 +27063,79 @@
       "sha256": "c88759008ffa06614e20a06b3622a4318b6686566b5138365b719e4a38890651"
     },
     {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QBUALGAAgHEAnAQwDcYBPKigExIHkAzEgSWZirAhUVAK5pCAewoIQHAFZUAtkJAUROMDDQyAtCQByUxVSwkAyiOYSA1iJJqNJKgAdnWegDoAOgDs93HxIAc2o6MBIACgBjKiCYMABKZBJmCCDMcMURMDQSMBFFEjQJIuIUqnp.json",
+      "bytes": 6344,
+      "sha256": "93f98c5a408bfc494b423dbf1353d17e37403b83756fbfb85dd31c9f4477204b"
+    },
+    {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QBUALGAJwFsB7AAgCEKKw0RUBDAVzUIpIRAAUYaGFQDCJFhADmzECTY4wg3gDluZFlioBlNgBMKAazbIqRUpRMsAdrqoBFNi11yADjipyFVFi7cBPADoAHSsdfSN4KgBRFgBjQg8KAHcTWIosNjIrSxsqAGYADzyqACMKAqo0.json",
+      "bytes": 4922,
+      "sha256": "99a5124c0174aab516454e7c2c89dd3dcae0792bca9e5563cd3c1e3d104bca66"
+    },
+    {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QBUALGAJwFsB7AMwEMBjNCkkVGgVzUKYRAFE6sARgAOYGABMWIEmxxi0PAHJMyNLAAIwbcRQDWbdTLnqaw4VgCeAOgA6AOyKlKZGGlLx1AEQgBzTGHUyNjA0TTQSCAZLdQg7OhIYGjETLAo7HxN1TicKFzcSZDCaEgx09SoSX.json",
+      "bytes": 5936,
+      "sha256": "29309b7f4a48cdb45e3bff77e3234a5492b18b27d3246599d57f6bc6d7b51797"
+    },
+    {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QBUAnCABxwAIBpCLLEVAQwFc0ALAe0IXVaYDsAJjEJg0hJgGMA1jD70Q4nGBhpuAOU4BbBlnJgmA9lKblFMMOQYkyATwB05ACIQA5pgsQ_2B5CQ2V6mmuRo7EGsMHratN5YTOGeoeHBJOQ4AGZo3px8wuTsqQneDC4wDs5uaB.json",
+      "bytes": 4052,
+      "sha256": "b74d001fe711a36eb9d16d12b13a3414424df69f0fd23891f020f063f833ec30"
+    },
+    {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QBUB3AQzAAI0ALGMgaQDsIBzStMgIRgDMB7AJxoANALakQqYgFcq_2FBCAAKlCFggAHMgDkYhUfXEg_2BknGBho5G_2FqKxkwkgCY8A1pLKHjZYqtVYAngDoyAGEYLCxyE1ViPmI0GDsyACMfDzIACgBjajAwAEoyR0YWNABy.json",
+      "bytes": 2720,
+      "sha256": "daec21934c5657563e38191cf28e8d56013c4cd7bb13103f0edd9fdf802010a5"
+    },
+    {
       "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QBUB7AEwEMIsBPEVUgVzQAtCAnBEAJQgDNuBjLIQDuAOxogWdHGBhp2AOVYBbUlgAEAZTrFCAazprJ0taQAOpqgDoAOiMUsV6gNIUcLNQGFSAcxhhDUn4m5lZqACIQ3pj_2BKpRqIoRohjCmMKRJECJqfD5BpCLEamB0Smpoh.json",
       "bytes": 2978,
       "sha256": "4d84fdb36ae6530d423aa6f114f7296f2581efdd3ea88577ddb418d73cccff69"
     },
     {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QBUB7QgAgFkBXAYwAsA6BkVAQwrRsICcEQApQgHYCAniQDSrAGYBbZgKYhOFHGBhoeARjokAcl1lYSAZQoATQgGsKJJSpLMADg6zC6AHQEAmbQFFmtEgAjQgAPEipBNGYIATASTAByOMIAdwEbGDA0TmiBNBIUzBoSLLlTZk5.json",
+      "bytes": 3680,
+      "sha256": "4db235ec851d2187162c969f3e824e5dd6491cf6c401394f2a6aee94e0043776"
+    },
+    {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QBYAGQgawAIBbCHMNAewDsZKYATHATxFQEMBXNAAs6AJwQg6WCBR7cQIvjRhpxAOVEysZAMp9WdEnzIKaZHgAdzWDgDoyAHQYB5AZFbMGfCgCMYIsGYizELMYF5kdABmZCFkrBAA5pgBvmgA7jAwDDGCzACMZgysZIhkENlCP.json",
+      "bytes": 5114,
+      "sha256": "afdddf3906f55ae32d9507068638d2f91c1d27bf2b8ab930f5529b820c5927b4"
+    },
+    {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QCEAnAewHcA7AAnxgENCRVaBXNAC2IbwBFbSA5GN0oAySgGUADjABmjEIWY4wMNAhD9OAW1pZKYZgBNiAa2aVFyyrUmSsATwB0lfsy0AjGITDWsxcgDmlOwwwWxeWsRaql6UWsxgaPpohBAAxtj2lBDkaYR0KtY_2BIVmRAG6.json",
+      "bytes": 3218,
+      "sha256": "f525600ada9ab83b438f55270b30871af18caa4599701350ca18eaddb2a392be"
+    },
+    {
       "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QCEB7AJxgEMsIwACAETIDsBjCBgcxFTIFc0ALEggIQsWagFluxAA58AnpxDFuOMDDRCACr2r8Y1ACYQ2mGgEYAtImqtq5Jn2oAjQgA9k1YoQDu1RgeomQixuAFsGADpqABU_2BMjQAchpMAEJFNmIIAwQAbRzQEwA3GAZNEpY.json",
       "bytes": 3482,
       "sha256": "9a04842702709d2f0e39f766ab69f93bb003f26a98821e3e60e20163e4e8948a"
+    },
+    {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QCkBDAI2JgCcB3AewGMBrATxFUIFc0ALa8hEAEUIATfNXowwLEOTY4wMNHwAKOQvIAEAJQCiAQX7qAYgFUAMqa1ntAZXVkAZjxjrCaNDAC2ABwwA7AOYAdOrqACqchL70YC6_2BQuowvgBW1IwAhAA6vlnWaJFChOTxMnIuXl.json",
+      "bytes": 10916,
+      "sha256": "9c08e2fcaa4299906c87c1a257794ff576c96a9cce35ea8386c5d7762190f47d"
+    },
+    {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QCkBDAOwAIAmADmQoAZyBGeUgYQHtiwYBjUgBUIQATmBCpCAVzQALNkIQgAyoQC2rQgAcNOFSQC0AGQCexGKNRCJOLmgUA5ObqylFEgCZsA1hNKXrpTW0jADpSABEIAHNMMFIAd2kIbmkAoRhSLg1CIUI0GDdSACMjAPjEvNI.json",
+      "bytes": 4802,
+      "sha256": "8cf55f0ab61477734c57beb04d0aa32e663fe57f64a6a9a395a0a3b492f85f1a"
+    },
+    {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QCkBDAOwAIBGADmVICYAGW2_2BUgYQHsAnYmTgegCiAEwDmcVIQCuaABZcEIAMZZ2AN14BCEKk6ScYGGgUA5LgFtCWUmElD2Aa0mld_2B0oQAO7rAE8AdKQAdYiCAQWtDUnYAM1IhCBFMMFIeQk43UgBmAA8M5xgE9jJo0lkY.json",
+      "bytes": 5696,
+      "sha256": "7998e1bfc4d5522a3e2addf93e976613cabd0aafefbbbd59fb3d4264fe519850"
+    },
+    {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QCkBDAOwAIBGAZmVICYAGW2_2BUgaQixwCdSBlAVwAmAewDW_2FEKkL80AC2FcEIXoQC2pAMKEADtpyqSAWgAyAT2IwwkkF344wMNEoByCg1j5Cx_2FUrfukdPVMAOlIAEQgAc0wwUggyQlIAY0JImGSSYmE0XxhtGEIckkFS.json",
+      "bytes": 4946,
+      "sha256": "0d11908fe91d9a9cf26037b83ff2ed1f505b548ad1e01a66937795c0dff2235a"
+    },
+    {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QCkBDAOwFdCAnATwAIAOZGgJgAYmBmeGgQQooHsA7gBMqxQgFsIAYzAhUhUmgAW_2FCghAAFZRCwQADjQByMQRJLyQFUjjAw0Go2vNYaYUsP4BrUjWu2aQn19LCoAOhoAEQgAc0wwQKx_2BYhjAviEEiVIwNDdSCRo0fkLlGB.json",
+      "bytes": 3092,
+      "sha256": "a1e5646006c417f0100b2cbe54ceea7475bcc481023ba815ba98b24fe228ff5a"
     },
     {
       "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QCkBXAOxgAIAmC5SgBgoGZ4yBhAe2LBgGMA6MgAoBDCACcwIVEMJoAFm1EIQ3LGwBuMUQEJJIUYRxc0SgHIKAtkKxkwhACZsA1oTL7DZIQAdPWAJ78AQSwwNho7CABzTDAbGE8hUSE0GDsyACNfDzIAd1lMcgc0D1Fybg4ubh.json",
@@ -26448,6 +27148,16 @@
       "sha256": "a28126f1fb0006ab50d93d54ec7871164a8a36e84db1007e90edf945926e2593"
     },
     {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QCkBXLAAgCYzlyAGC_2BEgcQCcYBDNGJkgZUIBMA9gGtCIVK0JoAFgKYIQ3VgFsSAYVYAHDTiWsAdgFoAMgE89MMGJBNiFmGnkA5WbtK9BIkjZxgSm7SYAdCQAgiR6hEoARpwkEHp_2BJADuUpgwJADGEEwZOHF6fBAZ7BYk0.json",
+      "bytes": 6170,
+      "sha256": "b15492d8ad864db6bb9aee9a9d87056607b91bc914c5515f5def60015948f5a5"
+    },
+    {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QCkBXLATwAIAmC5SgBgoEZ4yAhAQwBMBzOVNwtAAsA9gCcEIAAqCIWCAAcyAORgB3ALZsAdiFSjiMMDDQSlYzVjJhCHYQGtCZfTjBk28_2BaQB0ZACIQuTFcILTIAYzYeVwitLWE0Jxh5GDY0Gm0OMnVCMATrdTI0YULBGEL4.json",
+      "bytes": 3728,
+      "sha256": "d4089d142d9bb4092c58d09590a00a50f8dbac7f6b04cd5373951e5e103a2555"
+    },
+    {
       "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QCkBXLATwAIAmC5SgBgoGZ4yAlGAOwCMBDdsgZUIATAPYBrQiFTdCaABYiATghABjLCIBuMRQEIpIRcRhgYaFQDklAW25YyYYeMJkjOMGW4AHL6QB0ZACi3KpyZF4Q7GJkWJEwZKoi7GjckR7cDmZkIgBmCUmmqrIQ2mRCEAD.json",
       "bytes": 6686,
       "sha256": "1adfd44c5d5438d88c58ea6f97979bbef785cd3dc7906729cbea2c49ff849815"
@@ -26458,14 +27168,114 @@
       "sha256": "139c44f5cefc2a4df6a3f97342acef021d2aa54e7af48a7c06ce8ca19088cfdd"
     },
     {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QCUBDCAOwCMB7AdwAJ8JISBzEVQgVzQAsKAnBEABMYMQRRgARQgE8xXViF7scYGGgEA5PgFtCWGmHZiA1uxpKVNQgAdrWaQDoaNCRCaYwVrBWZWSV3l5qGm12MDQDdm0aNAoYrhgaQTdMGlJ4xMJA6gByTwBjCF58nCcaABUE.json",
+      "bytes": 5708,
+      "sha256": "9173d100ba74c866e3e11b3fd7f0e8b5d3ca185a10609d5da867e3dc4050c393"
+    },
+    {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QCUIATGAAgHsAzUtACzP3NogCcWIBbEVAQwFc65FghAAVAO7k0UmADs63ECz44wMNCIByQjjyykAynyLkA1n1LLVpHgAdbWAJ4A6UgElZpAMY8A5jDBkUiIIX0wwUg4_2BMDQbIiIachp6RLQ9UjCANzlSCE86MmlbUhxKWK8.json",
+      "bytes": 3218,
+      "sha256": "2e6a282434696b633a08db738e879b748a470c2e733b763fd53f55256f99e048"
+    },
+    {
       "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QCUIBzACzQAIBXAB3LQHs6SZzr6IA7NEVAQ0rQl6AJwQgAKs3L8MYDAGNyAa15cIqniGGUcYGNzwA5EQFteWcmEoATeksrltu6dWpYAngDoAOhwAixJhg0lj0HETS5ETCMO5MMMIm9Cb6CeSc8jG8euQAZsLJ8eQARjrF5DAc.json",
       "bytes": 3368,
       "sha256": "44fbdafc0f20db2598e9f18ea15fe712b49b3a8ec3da084d93ffa93c1d8eab71"
     },
     {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QCYAGffAAgGUBXAEwHsBrSkVAQ0rQAtaAnBEAKRYBbGGFIBpWgAcpzEN0o4wMNHwByPISyykwNBpVIKlpFjKwBPAHSk1lIQCMY3MRAB2AY24wWy0gDNuWiFSThhSB0UHUNpQjnCYN2oACjAASlJafzjwsO4hYJVnMBsAYRgsL.json",
+      "bytes": 2846,
+      "sha256": "8f85863a793a2849ecb45a9e790d5110cb0fef29daad8b4025bd51b2583898d9"
+    },
+    {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QCYB6AdngAIB1AQwGsIA7AczIFUAHMiMMgCSoCcAJmTQB7MgBFRIVFQCuaABaj_2BCEAAVFELBA4A5GAHcAtlXoyQ_2FOTjAw0avStNYyYOYNE05ZKzbJU2NiwATwA6MkcRQ3EAYxgsLG4Y0Xo0KgYGZhgANxh6MkEIRkwks1.json",
+      "bytes": 2468,
+      "sha256": "3e29f6637b35f55cde55226734b2cd99a89942f154f9f1b49a20691f86be4d6d"
+    },
+    {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QCZ8B6Yw_2BAAgGkAnAewAcA7WyMEVAQwFc0ALW6ghAAFXhCwR65AHIwA7gFsOjdiGpccYGGiHSBSrOTBcAJrQDWXcus3kO9elgCeAOnIARCAHNMYchEZyAGMYLCw_2FLXoOag40GBNyACMnO3I5MTjyMzRyBS4wHMSYYNpGL.json",
+      "bytes": 4748,
+      "sha256": "a995b2d3d069d8abdc7de3e1bb4e6ca4d579eb5818f6f718fbbab063322c8fe1"
+    },
+    {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QDEAnGAOxgFsBPEVAQwFc0ALAe0IRAEEtbCIBjAAQAVWgEcIgzgDpBACgDChemFoATGIQCMAdgCsAShohlOMDDQcAcm3K0sgsPTUsA1vUGmYYQbQAOfliUskQQpGpBgvwwWFg_2B5CpoUSwkaLQQJIJqEADmmD4A7kwCTIJ2a.json",
+      "bytes": 5282,
+      "sha256": "8501d65cb51ee7e969f2ad5f4fa6fe0518702541047a2a65930d8379baae9d18"
+    },
+    {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QDEB7AVwCc1jMSwRUBDYtAC0NIRAFkYBbGUiMGla0QpYjjAw07AHKtudLAAIwxACaEA1sSViJSugAdDWAJ4A6ADoA7ACIQA5pjAGshaw6XMYSgEZZiHywIaxgXbmJBJSY6ADcfOmslGABHYkUVYm4lAHdMJhDkugBjJj9CAA8.json",
+      "bytes": 4166,
+      "sha256": "2d307301c78be478c42a0c27640a3520199d3874fa4222b54c1c4d066820d56f"
+    },
+    {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QDEB7AVwCcBafCAMzQE8RUBDYtAC0NIRAHVCBbAEZM0AIVIwRbRiFLEcYGGm4A5TvyZYABGGIATQgGtiWuQq1MADpax0AdFq0ARCAHNMYLRrpaAdoTRTGEtJQIhfU0IAdzBkLQBjQixifl9YoPdCNLj4plcYT04tLK12GAt_2.json",
+      "bytes": 5348,
+      "sha256": "663b38a6fbcfc037ad1d41c85c78de8c2d1dda2148eeb4913d01b8cf7b934ed0"
+    },
+    {
       "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QDEBDANwHsAnEVQgVzQAsKEQAhCLLAAgFkbyAHegE8qIcjRxgYaZgDkKAW0JcwNACakA1jU7jJnQv35YhAOk4ARCAHNMYThAB2na_2BRhDOAYxgd7CmmBonABGMC5uhGgw5JwMhM4UDKTWpI7KJgZqAFaE3o5BAO70mGHevqa.json",
       "bytes": 4454,
       "sha256": "b892f7fea46b5caab0029e10e6cdfc436e7267584780e51649ff55563ca04c83"
+    },
+    {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QDEIwALAAgAkB7SgaxFQEMBXNYygJwRABViZSAwsQjtKAB3YMAxmg70Q7JjjAw0XAHIcAtgyykwTACa0mpRctIMxYrAE8AdKQAiEAOaYwpSgDtLvhuyiAO6kWkxgaPpMWqSysXykhm6YpBC_2BrPwMaGjSfIakUiJSOI4u7mi.json",
+      "bytes": 2810,
+      "sha256": "9e6c8f7957450ceac761726234d2374a6c088251f526490bd0b1d8dfaf1dda74"
+    },
+    {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QDEYAjAAgCYB2ZcgBjLPhIAUAnAewBMBXAYzRICCLdgHcQqAIZc0ACzYsEIAMoSAtiQDCEgA7acqiQDsAtABkAnoZhhxIFlxxgYaRQDl5BrCSVcObANZcJPaOJDp65gB0JAAiEADmmGBhWGyG8SQwEjwyYcJsIiSqXGD8APrF.json",
+      "bytes": 2954,
+      "sha256": "a2b7e5d515edd5f8b995799816536a2638972771026c47c20dee5b4ffe832756"
+    },
+    {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QDEYAjAAgCZlyAGMgZnhIEYBWREgZQFcATAewGtOIVAENOaABa8ATgnASAnnFTTOOMDDRyAcjIC2IrBx4DOJVepIiADtawKAdCQCC3bpgi8AdofuUYIgDGEiTuAOaYJBBeJIG8WJx6MYxRXu6BImgwYCQA7hIQwbHxiTGSMEx.json",
+      "bytes": 3008,
+      "sha256": "8e24a7165ecbb25db4cb8b7dbdf721196b8604289a61164e38349d32dfff5ae1"
+    },
+    {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QDEYAjAAgCZlyAGMs_2BEgBQHsdGnIMmA7EVAQwCuaABZMATghABjLEwBuMMQEJeIMQJxgYaSQDlxAWz5YSYAQBMmAawEl1mknwAOTrAE8AdCQA6XXwBVhGBIcADM0A3Y0EnMIAHNMEgguEhg_2BKWE7JgB3EjQYLCwwEjcmW.json",
+      "bytes": 4076,
+      "sha256": "fd1d3a5e02c5dc5815faf57577509bffd9e3a396aa93d654814bfbae7ff8a0c6"
+    },
+    {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QDEYAjAJwFcBDEgTwAIB2ZWgJgAZnn5aAhMrLMDGpxUFMmgAWAexIIQABQkQsEAA60AcjADuAWwoA7EKnI5BaORpn6stMGQAmUgNZlapmGFoVVqrNQA6WgARCABzTC8KLCkDMO8SEiltL10yMDQ7Ml1aNClciRhaAGMIEmKcB.json",
+      "bytes": 4712,
+      "sha256": "5d9e458af7e7426ab1d746d510221ec36a376273d76d8c297dd7b103a0097985"
+    },
+    {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QDEYAjAOgAIBGAJmTKoAYqr4yBRADzQCcBDMgJRgBzCAHsAdmBCoeAVzQALUVwQgAyjwC2ZAMI8ADvpyae4gLQAZAJ7iYU1F1k4wMNKoByyk1jJrZAE1EAa1kyR2cyAyMrcgBBf39MMXEeLCwrWhgeAGMFMjAFHn8YfzDhZLJ.json",
+      "bytes": 4496,
+      "sha256": "6fe8636b81f518af034dc1c057cc829d8ededd88b75bbbe7588744b4bc6fed44"
+    },
+    {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QDkB7ANwAIAmAFmQoAZyBGeUgRQFcBDAE1IFkOAHiFQc2aABaEATghABjLCRhSAhMJBS2OMDDSyiUgLYcspMGy6EA1m1KbtpDgAcnWAJ4A6UgEEpUwgDuYKROhBAAdmikaITR4jCkWBxSAOYwYFFcECmYpBFxCQBmhGxSZqX_.json",
+      "bytes": 6680,
+      "sha256": "cff9020d48184b87d7bc6a118525285ed51767a01dacfdc056fc2bd55865db0d"
+    },
+    {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QDkB7ANwAIAWZUgJgAZqBGeUgBQEMAnTAT1IBkIAOxhgQqNgFc0AC0IcEIAMZYSMDgEIxIDhJxgYaBUQ4BbNllJgJAE0IBrCaR17SbAA5us3AHSkAOoIBACIQAOaYYKSEgqQyMJZsJvFYQvHSbMTxcQlJpG6cPKQAFDJsaKQQ.json",
+      "bytes": 5192,
+      "sha256": "4f52e25a2f00f51ae56c8c2fd806afb660187d69208fdef2f53f784b2271c069"
+    },
+    {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QDkB7ANwAIVSAmABkoEZ5SBlATwFs2Y0AnCAY1IBVAHYwAjgFcAhlhCopEtAAtC3BCD5YSMbgEI5IbhJxgu6otzYzSYCQBNCAawmkjJ0lIAOnrCwB0pAAiEADmmGCkylJoHtwwpITehJBo8TBSfEoJyjqkABRS3IQSwnaRSvF.json",
+      "bytes": 4100,
+      "sha256": "3d10516d2c29476ebf9a229754026a0d28d7fbc28ad7f973e2ce3c90607c9d89"
+    },
+    {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QDkB7ANwDoACAJgBZkqAGSy_2BcgcUICMOc3Pu5UAQwCuaABaEATghAAFMRCwQADuXwwA7gFtBAOxCpJwnGBhoZRSTqzkwwgCaEA1sPJGT5QcuVYAnhQARCABzTDBPLEJdYPJxGHIIXXsIAGNBNBh7cmTBYKjBLHCtYTA0W2E.json",
+      "bytes": 4898,
+      "sha256": "71c4d3d82147d7bdc3b120b55ed02e89717d67bb4607cc5e0faed12503bca3f6"
+    },
+    {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QDkB7ANwDoACAJhSoAZKBGecgBQEMBPCAOwHNyASjDAAHGAGM0IVGwCuaABaEATghAsFELBBHl8MAO4BbNt2khlsnGBhS8RZSazkwsgCaEA1rPKXr5NhERLA4KABEIXkwwch5ycTZeYXjTbkI0XxgxNgzTN3IjWTAM1yNyNEJ.json",
+      "bytes": 4406,
+      "sha256": "7e09e10f65b75d3ec9293544356cc8a0c4f4d4448547243699cf5b79ea3e43d3"
+    },
+    {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QDkB7ANwDoACARkXICYAGW2_2BcgJRgHMJCA7cgZQCuAW3IAZCDxhgQqAIaC0AC0IAnBCADGWEjFUBCWSFWCcYGGg1FVwuVnJhBAE0IBrQeRNnycgA6_2BsAE8KAEEdHg5yGDlNJXIAIyxBGHIsSRhkcmUUx1FCADMspRSnCC.json",
+      "bytes": 6752,
+      "sha256": "e5cafb008724a74644d98398fadc65b71d1c3e7041032a01d2332648266ed3db"
     },
     {
       "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QDkB7AQwAsByMAAgEEAnAaxFWIFc1TC6EQBZYgMZUAKgDpmIOqxxgYaHkToBbYliphWAE0INWVKTKrEADsawBPUVQAiEAOaZqs48TrE0MTVQBG5o1QB3UkwYKm00IzpQgUIAO1kBdggANxgrAHlY_28sQQYwwjRkKjjQiGptV.json",
@@ -26498,19 +27308,34 @@
       "sha256": "7780736abf7b669b32880275a82357a065e67b531bbe500221547ee36046a717"
     },
     {
-      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QEEA7DARwFcJCBzEVAQzLQAsB7AJwRACEIssACALJk2AByYBPWiDZkcYGGk4A5dgFs6AsGQAmLANZl_2Bs_2BfzqjRWCQDp_2BAYRh8w_2FZnTRm2MM_2FwDGTGGDO_2BpRUAOTOaiwAbl7mdGzuamRg7oQs7j4sxHSULv78Y.json",
-      "bytes": 4094,
-      "sha256": "abe4f68348542cb67cee58de6aac0d446ef4abb1eb07608c9ba2b739e4236943"
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QEE00BDAYwGsACAewDNK0ALGSgaQixwCdKBlYgHYATAO4RSjEKmIBXJtS4IQAeSFCsATxgA3GAKkguMnGBholAOQUBbYlj4yh1cjMpGTlYgAcvmgHQAOgIAwjCcYJSmXsRcxGgwQpQARhqeyVhkVE5onlwsEAJpsRjUNPTUAi.json",
+      "bytes": 3470,
+      "sha256": "ddb57c584550180528e3c31d6bae317bab85fd7a493a570ad76b7ebb899faf2c"
     },
     {
-      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QEEAHAJwiwAIAmADmSoAZKBmecgMQHti1iYwwQqAIYBXNAAsuCEAGMsHAG4xiAQkEhiInGBhppAOS4BbIRTAiAJhwDWI8pu3khhQlgCeAOnL4sYDnQsIAHNMMHIIADtyIOIhN3IZGCxfciMRMDRyACMYaN4hNGVyCSEo0woOA.json",
-      "bytes": 4724,
-      "sha256": "c4ab4d7d544a68ede74e6d84621d2e7842d42683d76f5905b041701076dff6fd"
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QEEA7DAEwgEMBzAe0PKwAIAVACxgCcBbakVcgVzQtq7BCABSIkgE9CDABLSScVO344wMNGIByIzvQZh_2BJagGt_2BDNRobkADnazSAdAB1CAUXIBjFgwPsZjAkDGRUtIbetGjkEIRgDELsMDChEGAYhN5oaZSYYG6E_2BFi0.json",
+      "bytes": 2618,
+      "sha256": "1eba4e0058d29b02148eb8a229a8992226abe81aab667a459706384da5971a5a"
+    },
+    {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QEEACAdQgDsATAewHdDy0rC0ALGQgJXIHMRUBDAK6sqAJwQgAygAcYWLBX4UKATz4hRgnGBhoJAOTEBbflkJhB1ANaDCm7YX7TpWFQDpCAEQjdMYemSEAMb83DD_2BRoJgaOaCRsxMrOxgJvKEZHEARjCiAcxsCdKEOABmMUF.json",
+      "bytes": 2750,
+      "sha256": "4bb5482256bed73a14d7505f3643b942529607676713b430a45fd947d9596655"
+    },
+    {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QEEACAEQgDMyYAnGAOzUIGkJaATQgezMIFkBDAOYQAxiFR8ArmgAWHKghA8AngA8OYkFQk4wMNAoBycgLZ8shAJJUaA7XyqEAyhNYcA1hMJadhPgAc_LCUAOkIABSw_YRhCGRjWCCE0MEIARgBaREIYFSjsJU5aaMIWbKjpLw.json",
+      "bytes": 7412,
+      "sha256": "fccae22f6904c7f3da3f58155149c198b6e90042754ebb48553fedbcd27b5e61"
     },
     {
       "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QEEAHAJwiwAIBGADmXICYAGegZnnIGUBXAYx5jCQA9gDsQqAIZc0ACyHEEIAAoyyEQuQByMAO4BbCWNTEuOMDDSLN8gxTBcAJkIDWXcibPkJhQlgCeAHQAOiL4IhjOECIA5uwAwjBYWGDk5oQSxBJoMA7kAEZ_2BXuQAFDwyA.json",
       "bytes": 4064,
-      "sha256": "b8d650e9785ae61cdf6e6686431f4afed029dfd6f811d88d7ab714aa57996c41"
+      "sha256": "0ce199de84bd6e6d24a2712db6a72090fe05c88bf8afacc72b9ae5c4218d3924"
+    },
+    {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QEEBXAc0LDQAIA2ZCgJgAY6BGeCgZQAtvOBCEVAENCaTgHsATghAAFThCwQADhQByMAO4BbQQDsBICYRxgYaaask6sFMIQAmYgNaEKRkxUFKlWAJ4A6CnwsMV1iCmIJGBhdCkVdGDBaewhiTDAKFIAzLJgJCiyJMS0KURgIfI.json",
+      "bytes": 7106,
+      "sha256": "51e8084c340d3b528b6f901c7e1bdb60f66692f3d47ef6c9c9256c8b0246c1b5"
     },
     {
       "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QEEBXAc0LDQAIA2ZCgJgAY6BmeCgIRjQHcYYA7CgBkI_2FGGBCoAhoTQALAPYAnBCADGWBQDcYSgISSQSwjjBdVAOWUBbKVgphCAEwUBrQhWOmKUgA6_2BsAE8AOgoAEQhiTDAKBUEsUXEKazJKACMYCgyePkF5TKdI6IpRCn.json",
@@ -26518,9 +27343,19 @@
       "sha256": "49c1c29f3c553a426a9bc7db1b0ce552cafa21da0b430d96c6ed4d2fedad7be6"
     },
     {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QEEBXAc0LDQAIAmANmWoAYqr4KAtAewDsYKBlQgBMOAa0IhUAQ0JoAFhwBOCEAGMsHAG4wFAQgkgFhHGBhplAOUUBbSVgpghowhUPGKkgA4esATwB0FAAqsrxgNlh2ghDEmGAUEFxRKpJoMILxXBRyvGgcHhQ4AGaUKoo8ChQ.json",
+      "bytes": 5558,
+      "sha256": "e307a79faa26cdb6802e924bb90c15ef059e524c3ebbce9c473d1c7767b2e14b"
+    },
+    {
       "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QEEBXAc0LDQAIAmARmWoAYqBmeCgYSwEMxIBjEKi6E0ACwD2AJwQg_2BWcQDcYkgISCQkwjjAw0MgHJSAtlywUwhACbiA1oQqbtFLgAcXWAJ4A6CvgB2lhRiXGgA5GAUmGqoxJIQlggA2omgxBBKfgAKMH58EFgAslySNmAIf.json",
       "bytes": 3896,
       "sha256": "2e3620c0f5103cafb550070a65cdc452f4b068b8a0bf210da455ba2b5b54ab18"
+    },
+    {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QEEBXAc0LDQAIBGANmQoCYAGBq_2BCgZSwHtKBZAIYBjABYQAdnFQDCaEdwBOCEEJ4A3GAoCEIVAsI4wMNMoByigLYCsFMIQAm3ANaEK_2BwxQEAHL1gCeAHQUADriofhYYNz0MMIiFABGWIQwtmgKEF6pFmSUQtziaAISFHK.json",
+      "bytes": 4406,
+      "sha256": "07dcd7a2f1f1af0beb3bc3d8d8b7a4bc7c3dc333c23da30d857164f6438baf70"
     },
     {
       "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QEEBXAc0LDQAIBGK5CgJgAZ6BmeCgdQAsBDSgORgAPNAH4QqHoTRcA9gCcEIAApcIWCAAcKggO4BbHgDsJIeYRxgYaJfwWGsFMIQAmsgNaEK5yxR6bNLABPADoAHSNBEQo0WR0IIxh2AGEsQhgwCllpSBcYGK584nkIFwpiCA.json",
@@ -26528,9 +27363,19 @@
       "sha256": "8ad034f8eef80ea62ad70f460e85b03064225aa547fe32960ec286555a4d30e6"
     },
     {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QEEBXAcwAIBGc5UgJgAYbz5SBhAewEMw1S03XO3EKg6E0ACzYAnBCADKHALasOAB1U5FHAHYBaADIBPbTDDCQUwjjAw0sgHLStWUnMIATNgGtCpS9dI1DUMAOlIASQAzXgB3fncIYkwwQKkYUiSANxhtUjYxSHd0iXTiKQh3a.json",
+      "bytes": 4862,
+      "sha256": "089df9fcececf2785be89462720bfa269e21a3b041e35cb1d8e01b3cbf303579"
+    },
+    {
       "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QEEBXAcwDoACAJgDZkqAGSgZnnIAUY0ZyBDAOwAm5AEowADjB5oQqHoTQALAPYAnBCDYKIWCGPIA5GAHcAtvxkgVhHGE7r9qs1nJhCApQGtC5Kzd5ixLABPUgAdPnw_2BDAEIHmIlPh4sVgBRHgBjBXIzFQ8YIRi4hKTyBODy.json",
       "bytes": 3140,
       "sha256": "ac3e1ec084c101fd3e92f347a933525bce5b931ca85f787ebfc2c25bbaf36356"
+    },
+    {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QEEssACAOQEM0BXAJ3JIAUaB7AYxjDA5FXKrQAWzGghAAhCEWIBZWgAcBATx4gaVHFzSjSwgLb1iAZSoATZgGsqxAErqOxfHLlZFAOmIARCAHNMYYoKUxOROMOQ0xBAAdsTMUTDEcuFosQBmwcSszFjMtDAmxDQwvnHEulRgK.json",
+      "bytes": 5780,
+      "sha256": "9c544c8d1a2e85fcec36286f38f49f1215808c35343709e2ad4b0e958844ca39"
     },
     {
       "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QEkA7AYxgAcMB7QkVAQwFc0ALSgJwRAGUGBbOwmjoACABQBBQgwCUtEGwY4wMNJwBy7flmFgGAE0oBrBsIVLhdMmSwBPAHQAdQkWEsYr5jDa9KvFV51mSxgwZGE9CABzTDBhXgYwNB00NghibBthCBI2GDplYQAzNl9hACNFM.json",
@@ -26538,24 +27383,69 @@
       "sha256": "ad9369df821e199989bdfb3b5abacde9a73a5d81301c3f8d8e7914f3b8e077ed"
     },
     {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QEkA7QmAJwAIBlAQ0IGM0BXAWxFWsbQAsB7UhEJR5oYAazYhSjHGBhoBAOT7NqWKowAmPUY3JSZ5agAcjWAJ4AdQktIq1AaQhYcFfTDCGT5gHTkAFAAiEADmmB4QhOR01MHu5MyMYGjkYCzkaDzpXDDkAG6qjDkRWTmMJmTkO.json",
+      "bytes": 5180,
+      "sha256": "885ceba835fed7ff49eed4fc5224a89da19f5e60c8a21278492c1d134f605c7b"
+    },
+    {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QEYAGAegGYSAmC_2BAAgFkBDAJwGsBaAewHI2sGA7NDCb8QqBgFc0ACw5MEIAArSIWCAAcaAORgB3ALYCxIJhJxgYaBVrmGsNMBIAmHFhJqnzNBuvVYAngB0NACC_2FE40MgxoXGA0mACExgDmTBBOCADamaAAbgxYErj4qMk.json",
+      "bytes": 4790,
+      "sha256": "0102bd2a33d0cadf736d1e4490fa84002fffd3b47f9239f31e9004a167ad66e1"
+    },
+    {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QEYAGAeiOICZz4ARCAMzpgCcYA7AYxgAIB7JrgOIsAhmmYhUwgK5oAFnwQh2WHgDdmAQgkgmUnGBhpFAOT4BbYVi5gpAEx4BrKV136uwgA4esATwB0XACCWGA8yNY8ZtwewhBMYLx0XJxYIe4s1jAxTKIwtlwARj7uXADuspj.json",
+      "bytes": 9230,
+      "sha256": "dc095a042c8ab82dc3a6f755bb18638285629f4d990b3c90b29c420ef4215118"
+    },
+    {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QEYAmAekXgAIB1AewDsATGAJwDMBXLcgYQAsmIwaALYBDMAAd_2BQuKhFs0PakwQgACjwhYI48gDkYAd1G0QqJhxhgYaFbqWjOYNvWoBrNuXM4w5EePFYAJ4AdOQAoiIAxjzk9BAA5pjkELTkkdRYbEKphMkMEJEiaJbkCjDk.json",
+      "bytes": 4262,
+      "sha256": "01145f2e829d0cab54b7eb1d6faf7cde4b8283a919d2e89ee1e218e86388895e"
+    },
+    {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QFEBHAVwEMsACAYQHssaAnCgZWIFswRVTi0ALRghAAlGgBMGEAOY0KAWVJ9iXEA2I4wMNEIByjNuQphiYmgGtiFNRoqkADnawBPAHQV8pAMZ8KnmgDsMf2IaYjAKLAh_2FGCMYKTYYQIoaADMKfhiwUgTfOkZcwNIomDEKKNs.json",
+      "bytes": 3494,
+      "sha256": "91f672eef3236046bdc8d59548347f2fc5a1542e9c15b3622c4fa0de62e93039"
+    },
+    {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QFEBHAVwEMsACAZWIFswRVTi0ALAewCcEQAlUgHYBzMAGtGITsRxgYaHgDkutctWIATdqOIUpMiqQAOhrAE8AdAB0B1gGJcKMUgGNWFLBAExkFdRCGYYBSspABuMAYCjiSqYHQUAO6YrJ6OLm4ARuwAHhSYFIakYLJBbJzsxE.json",
+      "bytes": 4598,
+      "sha256": "6d61c958fe41186426c1681857347f5b84ba0f5699ba2b4052beb8a8566f87f7"
+    },
+    {
       "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QFkBDAJwEcBXGNNOVQ8tACwHtiEQAhCLLAAn3LEADowCeIVMXI4wVdgDlWAW0J8w5ACbMA1uV5SZvQkKFZRAOl4BhGDzC8IAO16smzAObNHqs0Y0ArQgBjGEc0XhC7CMJHR2ZwgCMYB2dCXgBGeAAmfUIMZnMAHUcJEHdiCA0.json",
       "bytes": 3932,
       "sha256": "86881243ceacf1979df26cfedf247b3d8448ba4dd39c9393c6dfe3128c004f69"
     },
     {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QFkBDAJwGMALAAgBZlKAmABnvvkoGliB7ABzQHcYMAHYhUhAK5pyXYghCksXAG4xiAQjEhiEnGBhp5AOVkBbQlkpgJAEy4BrCZR17KhHjywBPAHSUAOsKBAIJYYFx0NhAA5phgbkrC0W6UWBDCMJSmEmBolOSEqpTKFhIw8em.json",
+      "bytes": 5654,
+      "sha256": "945f3b8b3b635694903e23ce8a859674ab044cda0bdd9cdb2ba52aab80159893"
+    },
+    {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QFkBDAJwGMALAAgCYAWZGgBmuvkoAkIGjiBrAQhCpCAVzTkA9sQQgACuQhYIAB0oA5GAHcAtoQB2QkMRE4wMNDLVTdWSmBEATCbxGVjpyoWXKsATwB0lAAiEADmmGCUEHqUpFJ6MMSxEGQe2iJgaJ7eMCRRMeIwdiLExBIieg.json",
+      "bytes": 5126,
+      "sha256": "ec2c741e30be006e59d0878394893eecc376d0db1873c4dc16b8caab21a17dfa"
+    },
+    {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QFkBDAJwGMALAAgEYVKAmABnvvkvwFcsMAHLCUoQwB7AHYhUhDmnLDiCEKSzCAbjGIBCCSGJcYYGGgUA5OQFtCWSmA4ATYQGsOlXTjCVCPPgE8AdJQBJUUoYQgpKQQBzGGQXUNtKGRhEgHdhSlsISMx3CGCkygAjYTQ0YTNU9.json",
+      "bytes": 6578,
+      "sha256": "db618f8b65cc84a454c5a61dc53200ae55730d4d426a537cb218d34daf79fd85"
+    },
+    {
       "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QFYB6ARgA5CAmAZngAIAVCGAJzFoHsAzWtACxloBpCADsA5gBN2AWxCoAhgFc_2B7ZghAAFXhCwQADrQByMAO7T5IuSGaKcYGGnWHV5rLTCKpAa0W0bd2nk9PSwATwA6AB0RQWZ2PS8IWg15CFZkBn5maXYMgCUYEQAjCwyAc.json",
       "bytes": 8384,
-      "sha256": "ac8dbfa4ea89043eafdb92debc19d201c96fdab81e98c64552d449ff8e223c44"
+      "sha256": "94d6b35ad34b3939a12753f32148302b4bbebb4631ec738aee8f8af511c0fb50"
     },
     {
-      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QFYB6ARgGZCAmU_2BAAgGkA7AQwAcWaARJhmAIxgb0IWHACcQqJgFc0ACwD24vAGMs8gG4xRAQgkhRUnGBhoEIAHKKAtkyw0wUgCbyA1lJoGjNViywBPADpOCABzTDAaCEFlJhCYCOcaBnk0DxgWGCZU7kcaKykwVIcrGjR5G.json",
-      "bytes": 5954,
-      "sha256": "21f6aa84ff05f9e0c670f190f53616a9848cfd58b4807a166795606c06e93425"
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QGEAnTCAYwEMsACAWXLDBFXIFc0ALAe0IRABVKWCmiYhCLHGBgi8AOW4BbSlQDKLACacA1iyoAlCTDBVyAB1NYAngB0AdnYBC0gO4wYtqgBkIto_2FCr4MFhYxpSctgDmVFg_2BRlQARi5uHmjOnFQAZhDBMOpUpBCEpJJUCi.json",
+      "bytes": 5858,
+      "sha256": "32ff565181d13f6019720878ae018438d9ea16ebbcae704f80b9687f582bf0aa"
     },
     {
-      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QFYB6AZkICZj4ACAFQAsYqBRAT0YHsAzKtBqgZTTsATgFsQqAIYBXXiIQgACnQhYIAByoA5GAHdRkgHYSQw6TjAw0CrSINYqYaQBN2Aa2lUzFqpPXqsFgA6AB1DAEFhYXZdagARCABzTDBfLHZDRN8omNTRaTA0R2lRHnYePg.json",
-      "bytes": 4220,
-      "sha256": "56e337835340af35a9717cdd05e8d2419f4429ad5718a96f922cee2fcbfb6ff7"
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QGEB7AJwgDs0ALCAQzIAIAFCLLG4kVGgVypIRAAhFlnoBZbsQAOlAJ6cQxbjjAw0AgHIkAtjVEBlbgBNCAa270ASsphh6AQSlSssgHT0AIhADmmO3sIyb3osclt6bW4wNHoAMx16KT1yI2JCbVt3L180O3J6AHdqNBh6AGMIY.json",
+      "bytes": 3572,
+      "sha256": "62fa85d6747f76122c61faf67f79e6ab0b9a1a3d7b053c740537fabda77c5514"
     },
     {
       "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QGEB7AWxgCMBDAYwGsACAaQgBMRUKBXNAC0ICcEIAEIQsWOgFkOfAA7cAnmxB8OOMDDSCAcv2IVxYDs0I0OdFWroUZMrPIB0dfDDFgrWQgDsA5lbozpWxg6LAhPYKovNAowv3U0OkIAMzpIz3UqLggANxhkOk8vAFo_2BGBkY.json",
@@ -26568,9 +27458,64 @@
       "sha256": "8591fba44d3bbe9458ec87089b9d3105953d0d4e9e227b9129fe65fdfe3685f0"
     },
     {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QGEBDAJxgDMBXLAAgHdMALatBwtahge04GtlqAogFshMNGhCpCFFp2IICDYhDBpOFAHZjJIYlRhhteAHJyhhLCqZgKAE14VqenGGqEADu6wBPeIIBuMMTeTpy01ADGnFgUQhpuGrbUAEacAB6RnBpohBAariww1LYQAOaYrgA.json",
+      "bytes": 9560,
+      "sha256": "34dd0ce01d14556e4c4b97ad2be597f40ebd0d15c18bf665e48dae01be7d3f13"
+    },
+    {
       "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QGEYA7NAJwEMsACAEQgDN6ZTiBjGKgWRjQAsB7ACYhU5AK59_pBCABSnfuTQBGAMwiQpMTjA8ZAOSkBbSlQDKYwfwDWYqlp1VyAB2dYAngDoAOkQCCggBW5OwkVIIQAOaYYFS6zuQUaDCCVABG7k7hEORG_ESpEYzM6ZneIAA.json",
       "bytes": 6872,
       "sha256": "912896a3a2262d9e13f026402ed4eb06e180f257062f5ce961020caf9e154e01"
+    },
+    {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QGEYBjCAAgDsByGMNUgBwEMxSBXc0orCIgCxgB0IVI1ZpeAewBOCEACEIWLKQCyrKfV4BPYSCmscYGGlkA5aQFtGygMqsAJhIDWrUgCUDNUgEF69LFoCpLoA5lIQ9ggA2lGgAG7WrLgA7KghEHEw5Aho_2BjBpGVkAClkkWCq.json",
+      "bytes": 3842,
+      "sha256": "2ad190f5aaa2022c6a96886a406fa1b3be4339a3dd2b4f44fb23f7728a048b6a"
+    },
+    {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QGIB3AQwDcBPEVYgVzQAsB7AJwRACEIssACAWRrMADvUqpmNHGBho2AORYBbYrzA0AJowDWNHhKk9iQoVnIA6ADoA7KiADmzCOoQBtF6DsRSMKwAUfAMZcfMTMWmAIVpJYAL7IoKQqNLgATKie3jbwaBIw6V4_2B_2FlZBWCF.json",
+      "bytes": 3938,
+      "sha256": "e8aa7fd3814f800628b20b4dbe745d6b585e09de4eb3c30cce2312c88d941033"
+    },
+    {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QGkBDMACwFsIAnEVQgVzRIHtq8dLKmBPLmkSujjAw0CEADkWZQlgAEYOgBMmAazqyBQ2YQAOOrFwB0AHQB2AEQgBzTGFnSus00zQaYOmIVcRTsgMaEVjB2hKaK9nRgrgpksmhMcSQwTnRkAEYwlLI_2BicnxOrI4AGaufiymm.json",
+      "bytes": 2606,
+      "sha256": "6005b32812680bcf4281179278cda0799fdef49f42c90a07ef956377f3fcee13"
+    },
+    {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QGU0AnGAQwFssIA7GAExFVIFc0ALAeyIRACVTqAczABrZAAJ8zAEYZsMCbDQVS7CTDTjSWAHSMQRZjjAaeAOS7lt4sMzocRzcYeNaADm6wBPHQB1q_2FgCS1HQwAB40guIAgkREHADuYPDiACIQgphg4hzUWnmkcYk2zOTiaB.json",
+      "bytes": 5426,
+      "sha256": "4d6de3d826729823d5fb05f9418192afb4f36a7c2db7d53ae34682bcd0dc7269"
+    },
+    {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QGUALAewCc1IBzQtGAEwAIANAWnwFcBbMBju4gNbsQqAIbs0JUghAApAHQMAiuwgA7AMYBPBgFlRlYsREhS7HGBhoZAYSyiwkDQzDt_QhmYsNRAB19YWooA8hKQdDAMGljsMDxgJADuDJKRrpwMxABmKYSRajCipHFozJmkDA.json",
+      "bytes": 3116,
+      "sha256": "7b258b7f1c3edd6ef208f6eef479a24abc86d2080d14685d54404083982c794d"
+    },
+    {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QGUB7LANxgCcByMAAgCEBDAEwHM5UGBXNAC0PIQEKMAHYhU5TjjAw0ggHL8Atgyw0wnJoQDWnGpOk0GAB2NYAngDoaAUTLlzNFuUKdjNQgDMaAZhoBjQhEZf24IMgCYLCxaVSCWIxosCBEYGiVOMDQAoLQGFJomCBZMWl4GbI.json",
+      "bytes": 3698,
+      "sha256": "5dab60422abf320e107921ea154eee4e7a46a17776ddc98c11d8a4d178fca3c9"
+    },
+    {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QGUBDAVwCcB7AOwHIwACAERgFsIw5US0ALc0hEAA0YVAEpsAjiFSliOdmgEA5Ps0JY6YYgBNyAa2J1Z8uoQAOZrAE8AdAB1KS4swBGMUvXVUA5qcqnSCgB3OmZiMDRNZzo0chjuGDpKZzdSTV4g_2Fwh_2FHkSAYwhSPJxtOj.json",
+      "bytes": 4562,
+      "sha256": "e7fffaac5ce98cee0c17268105227b7df18b0b7d225696927c7fe979cfbcfea0"
+    },
+    {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QGUBjCGAOwwDMJCACAWRjQAsB7AExFQEMBXZlgE4IQAFS5YshLmk4gBPHGEbCAcoIC24mvh5sWAax415imlwAO5rAE8AOqXsBpCBJgD4NACIQA5pjA0EKQ0Uj4wAeo8YGg0YDzqNGgsiUwwiSxoWkEpaUnmNDgUMYSCpG4AdF.json",
+      "bytes": 4304,
+      "sha256": "a6a9d560b39a06e0b17d2d47a0789984c26d3f832338fa01c80a436540c99d0d"
+    },
+    {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QGUBXCAYwgBMYACfAR0IENyRUHC0ALAewCcFw0DHgHchEAOYMAthBYgehHGBhp_2BAOV5SGWKgGkIWHDxqFyXANaEqCpVQYAHe1gCeAHQB2HgKIMSHKu6EUgBGMMYQ7nZUZDwkOFRShGBoVKFUnNRoXII6XABmdik4DMlUXO7.json",
+      "bytes": 5420,
+      "sha256": "642aecaebb086de5136d740369146f4a3d01f67b97980e7e58b34dfb0c46e84b"
+    },
+    {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QGUYAHAAgFZkSAmABioEZ4SBZAVywyKwgGMBDDAHsAdiFR9WaABaCATggJ8AtiQDCfIlxhK_2BwgLQAZAJ7CYYMSFnszMNAoBycnVhL5WAE0EBrViSs4wEg0uIwA6EgBJYRIYPh4pEjApPncYd2oADyog2VjKaRgSNAB3QUSI.json",
+      "bytes": 2828,
+      "sha256": "71398af823d905f30c5958cbf08a550ea7237041acd8fe95e46d1ea5cb0bc562"
     },
     {
       "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QGUYAHNAOgAIAmAVmSoAZKBmecgRksXIAUIsswIVAEMArmgAWAewBOCENwl8IRcgDkYAdwC2wgHZCQM0TjAw08tbN1ZyYUQBMpAa1Hljp8sKJEsAT1IAHT0AQRkZKU1WABEIAHNMMC8sKT04r3DIpO1RMDQ7UW1yNCliiRhiq.json",
@@ -26583,14 +27528,39 @@
       "sha256": "9949f943d6695dad9931dfa039bb775f59f9a084b2780288c99f007089a4edb2"
     },
     {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QGUYAHNAOgAIBGAVmXICYAGe_2B_2Bc_2FAQwFtyBJcgII8AcgHs0IVBwCuaABaiATghAAFORCwQi5YTADuXDgDtJIRdJxgYEvGMVGs5MNIAmogNbTyFq_2BQ5ERFgAnhQAIhAA5phg_2FliixpH_2Bioqi_2BrFc0mBoztI8.json",
+      "bytes": 3278,
+      "sha256": "b3aa9996dadea81dc55767d50e9a84f261b9fcb6a1fe0535350453a24984a442"
+    },
+    {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QGUYAHNAOgAIBGAVmXICYAGey_2Bc_2FAVwFtyBZAewBOMcgEFBg_2FgHcQqAIYc0ACyEIQABSUQsEIuQByMKVzkA7WSEEccYGGjX6hJrOTAcAJvwDWHclZvkckREWACeFAAiEADmmGCBWPym0YES0vFcHGBortzkaPz5SiIA.json",
+      "bytes": 4664,
+      "sha256": "60d85aff11a1b922f9742067d676f59fa08fa6b09df0f81451c83c4c488e3ca9"
+    },
+    {
       "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QGUYAHNAOgAIBWZcgcgCYBmecgJRgDsAjAQw_2FIDqACwhgiMAE5gQqHgFc0QgPYSEIAMZYlAN0kBCGSAlycYGGjUA5FQFseWcmDkATJQGs55Y6fI8iRLABPCgBRHnUhci4lLGdyIggON3IsRJhyAAoJTl4OAEpydSUONB5Es.json",
       "bytes": 7352,
       "sha256": "1680ec684349725009191ab7d52f7562b95a4cf0e04d9e072503c2f320eb7c6e"
     },
     {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QGYB6ReAAgAUsBXMUgYQHIYw1SsBDUgWQCuBbGPQAWAezBxU7KmlEAnBCHJCIWCAAdSAORgB3PuwB2IVLKo5xaBZpGz9WUmCoATEQGsqpU_2BdLs1arACeAHQAOgYA0io4smQAIhAA5pi0EAakAMbsCcwZhgYirLIwajDsrIZ.json",
+      "bytes": 2696,
+      "sha256": "c793bb6a2eebf6871772c058e9c9d58410c5b0b20c768e7fa4d1cb93c9f3be80"
+    },
+    {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QGYB6RQgJlPgAIBNAewFdKBhAQwDtmG21KB5DgKpgQqFvTQALWgCcEIAAoSIWCAAdKAORgB3ALbsRIafRxgYaORpn6slMPQAmtANaNjpyi1WqsATwB0lACCbA6UkixoAORglJgAhIYA5tIQDggA2hmgAG4sWPS4AKyoSRA5MG.json",
+      "bytes": 3488,
+      "sha256": "3a211f8fcb71582866ab39a50c4e03e7b44878d8bb312444275c1ab06dabd2dc"
+    },
+    {
       "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QHEB7QgEwAIAKAawEoA5CAcwAs0yBZCLKiEVAQwCuaZoQBOCEAEkyAGUIA3GGQDKOGAAcIAO0Z8QYwTjAw0kgCrMIYMmEElCVQWQDu_2FGwFt_2BJZTrIeYD3EATzJCADN_2FUIAjGCxFGHIHRg4uHgA6VO4IV3cyaPFtMj8A.json",
       "bytes": 7754,
       "sha256": "d646ec202088e6fb7b134be078c03b34d30c375dc5b9c12154235982e123da19"
+    },
+    {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QHEYA7GDAYzBFQEMBXNACwHsAnBEAQSIHMYsmqIFrRxhS7ALQACAHKsAttSxSAyrQAmTANa0pw0VOoAHI1gCeAOgA6RaYRLkw8KQFFqZBlPURumKQ2owKTQAdyYpIxYmIxgWDBgwCykAFQYYKQAzCBYwNAiomLizKQgggCMYC.json",
+      "bytes": 9098,
+      "sha256": "b55fd6706937b60956703324fce17d306ea78627f8ca8c7a0fd9a8c9b5367d1b"
     },
     {
       "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QHkA7GAAgAoBrCQgcwEoS0B7EgOWtMsIhoAs0wdEKgCGAVzS8mAJwQgAEgBEYAN2EhpYnGBho5rGQFsRWEmDEATJhTElN2kiIAOTrAE8AdCUU9MYEkyEjiQ00iJujLww0oYs1ADG0jAiOiQAZtJMhpGkAEZauSQwhBZeRMG5W.json",
@@ -26608,14 +27578,29 @@
       "sha256": "92c141df1976b350b719877f0ba9293dc06262733b3f7afe70de081753f19118"
     },
     {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QHkwBDAayJFSIFc0ALAewCcEQAxLJiIgOwAIB1JmgC2PbhRCMqOMDDQsAck1FZeAZSoATeiSq8pMgHQAdbqYAiEAOaYwvbb2700_2BmAAcYRF_2FT50YvUUYSGE17LisfIiwTM25LGzQ7CD4AYyIrGDsHJxdGd08XHlCwKmFe.json",
+      "bytes": 4214,
+      "sha256": "d526b4682dfcf4ec575eb02e33c959fc0a3b35e3ca6e73e998df54282802ec37"
+    },
+    {
       "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QHUALAQzQHIwACAORgA80B_2BEVYgVzUIHsAnBEAEIQsWSgFk2PAA6EAnixA82OMDDT9qvALbFRYNgBMuAazaUlKysSlSssgHSUAIhADmmKhAB2lAMbFXGCotNjA0Si8ucJ4YKRhSKy8DShCwyn0tSjQuLMIYdJ0RP14vGB4s.json",
       "bytes": 5264,
       "sha256": "6d0a233bdf544eb2a3c3c2e4b1a972a0dace543f0fd525b6c54e2431741ed7fe"
     },
     {
-      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QHUAnAewHMA7AAgDEzyRUBDAVzQAtjCEQApRgWxhhKAZQjkAxlkYQuqQsxxgYabgDlO_2FRlkphmAE2IBrZpQVLKjAA5WsATwB0lAIJYdU5kMuEYutI3J9RkJ9ZEtAyzdKDy9g3wB3EnJSJ2dorE9KCGEAHRBE4mS8rIAzLLQ.json",
-      "bytes": 14720,
-      "sha256": "458da6c98e5adcad29d24f00f56b16d4a2eda798e172855571182305c6043d2a"
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QHUALCAJywE8BzCSkVAQwFc1CB7EhEAFXqywGN6aOiBKMcYGMLwA5dgFteAAgDKjACasA1oyViJS_2BgAcjFADoA7SwCUYFgEb0L8JQAUIFrUqweYYJfKMYGhK_2FKwWaPQehkqSIawAZqHhkvzMEABuMMhKFuEAtCQwRjBCH.json",
+      "bytes": 6464,
+      "sha256": "c2054ebe4fe62aafeea0d41c717976397a239e0204ff1b96f31e528d7d50f495"
+    },
+    {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QHUALCMABxgCcwACAQyyzooHsBXAOwBMRVbW1CzCghAAxLEIi121fELQBbaex4gKrHGBhoRAOSFLGAZVadmAa1bV1mgHQAddo4AiEAOaYaEGQGNabmBozanZmNGsYclpw6U5qMFYFajRmZMIYeMNGdkSAI0pqbzSMlNJqHAAz.json",
+      "bytes": 4556,
+      "sha256": "d5eb4c66746141ee80c0a46c5b7a7b9d912b758ea24cc2922cc85367f3a0c0d4"
+    },
+    {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QHUYATIiAOwHMACcqgMXIjDQAuAnOVAQwFc0ALAPZsEIAEIQsWKgFkebAA78AniFRseOMDDSiAcsIC2XaWB5FBAax5UNWqlwUKsygHRUAIhAqYwVQWRUWOQwfgDGAWQwYRiUVGEQbGH2hjzMQRAwVABGOgDuMDCBAlkJSThEV.json",
+      "bytes": 4970,
+      "sha256": "73d75a5b08a94bd98240133e40b4bf94f28ddeb2b410b1749731010b9223bcb4"
     },
     {
       "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8QHYB6AJn3gAIAVACxnIGEBDMbOgQUc4CceeBzPtWohUjAK5pqAey4IQABWoQsEAA7kAcjADuAW0YA7ESC5icYGGjkaZ_2BrOTBiAJlIDWY8qfPlGq1VgBPADoAHQMAMRk0LhgwMAoAEQg_2BTDByCANyPhiA8gBjGCwsNN0xF.json",
@@ -26631,6 +27616,16 @@
       "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8SIHoAmABmIGZ4ACAeQFc1IATGKgZTqYHsBrOkVAEMGACy4AnBCADGWLgDcY4gIQCQ4ujjAw0UgHISAtoKxUwnXnSoatVQQAd7WAJ4A6KgGEsdGGCpcGZlYuADMqNBFWAHNxCCY7cVYmCCjMPwjBNCpDOjAsh3sYQXEqCAA7cM.json",
       "bytes": 5738,
       "sha256": "935d36bd9d2aa551f9db1198df25925b09d8f0c86f123a46bad18dd9f5371ad8"
+    },
+    {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8SIHoBmABgICZz4ACAMQHsAnagaQDkAVagQwDsATagCt6ANwgB9blhCpuAVzQALJghAAFJRCwQADtTYwA7gFs_2BskI3k4wMNGrZMzWamHn96Aa3nUrNnrq6WACeAHTUACIQAOaYYDxY9LzRPIyM9EbxJvJgaK7yJtRo9EVKMN.json",
+      "bytes": 3116,
+      "sha256": "a11bfac300ccee0a83a3282e6397563a9f0501ac5b3839c9d9917f71e7a11f6b"
+    },
+    {
+      "path": "dist/archive/puzzles/fpuzN4IgzglgXgpiBcBOANCALhNAbO8SIHpCAmARhFQEMBXNACwHsAnBEAZTYHEKQnqcwMNKwByzALaUsAAjDUAJgwDW1aXwHTKABy1YAngDppACgASDAO7SAxg37zp9GHukA7BmmkNX0gJKu0GCZXSgxvKWk2BWVVABFKPQB_2BAEoAHVd0gGkILBwmeGlYiABzTDBp.json",
+      "bytes": 3608,
+      "sha256": "de22b344fc22a69c2c14eeb58a3ae70ad8d9111b77003c75e09e343ec8d97d9e"
     },
     {
       "path": "dist/archive/puzzles/frb3c5cxkr.json",
@@ -30578,16 +31573,6 @@
       "sha256": "d5e888643ce9c52f2e17a0af850d28d7702605c03e202e054aac8fc65fa3a0e0"
     },
     {
-      "path": "dist/archive/puzzles/sclN4SwJgXA5ADgpgOxgQwBwDNUCYCsBmAI2QE48BjOLA9YgsYrVMHAggFlQAYB2AzgNigAaALZwALsjDJJEYAQDmIEcgVxoAC3HiYAZwgB6A8tVxdAOl0BHAK7IATmZQUAtGTAJzZAPYiDPhHFEcQMANwBGAxx0Nk5wllYycLwcTk4EnFisZBwDcOQCKm5sl34uOBcO.json",
-      "bytes": 10457,
-      "sha256": "a5b89591a213876c1cdb83c3bad16c53b78ceed1e1cc1e8d4245bc4754a8e932"
-    },
-    {
-      "path": "dist/archive/puzzles/sclN4SwJgXA5ADgpgOxgQwBxwJxgEwEYxjK4DsAZgKwBGqAzHAAzEO73IVjunZQA0AxgGcIANgAs_OBADaUnnJ7AA5iABuiCABceKiMQC_8ngF0eshcrUJN2iNgNLV6rTtQG5Dy9Z3C3J2R6cbXDdDAKtnCHIDP3kwrwhg9wtAnSikx3CbUWjTOIjE8wz4_VDkzJ0aNz.json",
-      "bytes": 7517,
-      "sha256": "ef178b38e6c1f1bb1b5ca557efd2a3cc2a508177494352ab3df38e99fffd2b02"
-    },
-    {
       "path": "dist/archive/puzzles/sclN4SwJgXA5ADgpgOxgQwEYHY4AYsGMCcAbAEzEAsc6Z66q_5AjDuQMzL64BmYLUANAGc4AF2EgEAcwERgCAPYSATuAgMAvn1zTCZTXAgBtA3xOmTAXT7Gzpy9Zt87Di1eePXzp548OvvywCuhsC4ADbIAtJQqHLIimAAtDByAiBicgj8uMTQAMQAYoVFOFnChmQAdA.json",
       "bytes": 6994,
       "sha256": "cd33c19b8a7dad056b071ccdc4ed8b422ea143fd0b85886e4e71a725279fd96b"
@@ -30621,11 +31606,6 @@
       "path": "dist/archive/puzzles/sclN4SwJgXA5AzgHjAtgfQMoEMB2YBO6By6ANusgAwAsApgJwBGAbGQGbMDs6YdAzM1RdzYBGBlSF0AxgFYq3blSkUoAGgnoIAbWAA3aABcQeolQgACALIgYMEJgDmp1AAsA9lRimAtKcIkAhAD8UAC_yjrQ6ACueq44ZhjYeKYAZD7E6KYhYbpQOJHGMGa_GU7oHhl6.json",
       "bytes": 8921,
       "sha256": "d92b9cf1c07be3cf066c5e4991e12df05d386ca1a17d870ed8294c94c7f22092"
-    },
-    {
-      "path": "dist/archive/puzzles/sclN4SwJgXA5AzgHjAtgfQMoEMB2YBO6By6ANusgEwDGApgKwBsA7AIyUU0UBmADAwCwBGdABxl_ZXly5V_9XkzBQANBXQQA2sABu0AC4gdRKhAAEAGQD2MHcYAq5gJ7GAFOgDm6EJgCUUAL6KtaHQAVx0AC3McEwxsPGMAMmNCEj8A7SgcYMMYE2T0YyJLazCqHFsHY.json",
-      "bytes": 7493,
-      "sha256": "e0db5cef0dc1956d74abdeb11b15b73ed6581fc76d49c770aecdc81316629c30"
     },
     {
       "path": "dist/archive/puzzles/sclN4SwJgXA5AzgHjAtgfQMoEMB2YBO6By6ANusgGwDsArAIxkAsATAAwAcARgMb0CcPApvQBm6KlX5hGPemXatONKvSgAaTuggBtYADdoAFxD6i_CAAIAMgHsrAaxCYA5maFWcZ9GYBiOEP2xQAL4qutDoAK76ABZu5hjYeGYAZGaEJEEhelA44SYw5gCCQvr87kZmj.json",
@@ -41788,14 +42768,14 @@
       "sha256": "bebaa50f7a5c47189579f4e54a7380036d9c27028916981271a4cfc99f952b7d"
     },
     {
+      "path": "dist/assets/index-B2-5JRMp.js",
+      "bytes": 1325760,
+      "sha256": "23f9ce88679dd2bf6dcf81cae49ed49c807c58bf9d910a2ab2fef9459bf6161f"
+    },
+    {
       "path": "dist/assets/index-D78NvnXk.css",
       "bytes": 92550,
       "sha256": "cd6b6472e4b6e660a04d9e8ab41c84aa929ad19a3fb4bee6f8737a1c657b51fc"
-    },
-    {
-      "path": "dist/assets/index-Qd7GGh8O.js",
-      "bytes": 1322378,
-      "sha256": "584e7cabf0313d2ab78e29eff6f25640d86c8e73feb64dc935f8e8ef45040265"
     },
     {
       "path": "dist/assets/sudokupad-compatibility-manifest.json",
@@ -41810,7 +42790,7 @@
     {
       "path": "dist/index.html",
       "bytes": 2121,
-      "sha256": "3b9e11ce48695735bb5160f0dea27285050dc9da358e5773086afc7e93800549"
+      "sha256": "ba4b02622737afee6913dc7b27824421203effdae5c596c6d604204d4913bfa0"
     },
     {
       "path": "dist/manifest.json",
@@ -41839,5 +42819,5 @@
     }
   ],
   "bundleBuilt": true,
-  "releaseContentSha256": "df746b2256e2f99083a1698e1e93ee4bca5e62a42f2bb0f56bf09b61d38ab582"
+  "releaseContentSha256": "854b175b9304e0e7eda7155d2c83c66bc473271f50e3e4ba28ace37b14ab321d"
 }
