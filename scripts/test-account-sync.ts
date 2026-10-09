@@ -42,7 +42,7 @@ assert.match(firebaseSource, /migrateCloudToCurrentSchema/);
 assert.match(firebaseSource, /deleteField\(\)/);
 assert.match(firebaseSource, /cloud-schema-migration-required/);
 const accountSource = readFileSync(new URL("../src/app/accountSync.tsx", import.meta.url), "utf8");
-assert.match(accountSource, /readSyncDirtyRecords/);
+assert.match(accountSource, /readDurableSyncDirtyRecords/, "IndexedDB outbox must be the authoritative dirty source");
 assert.match(accountSource, /authEpochRef/);
 assert.match(accountSource, /runExclusive/);
 assert.match(accountSource, /readLocalMutationRevision/);
@@ -52,12 +52,12 @@ assert.match(accountSource, /if \(switchingAccounts\) \{ readyRef\.current = fal
 assert.match(accountSource, /Logout cancelled because some local changes could not be synced/);
 
 const storageSource = readFileSync(new URL("../src/core/storage.ts", import.meta.url), "utf8");
-assert.match(storageSource, /markSyncDirty\("puzzle", key, updatedAt, false\)/, "normal puzzle deletion must leave a cloud tombstone");
+assert.match(storageSource, /markDirtyIntent\("puzzle", key, updatedAt\)/, "normal puzzle deletion must record an explicit durable delete intent");
 assert.match(storageSource, /options: \{ sync\?: boolean \} = \{\}/, "local autosave must be separable from cloud dirtying");
-assert.match(storageSource, /supersede\("puzzle", change.key\)/, "remote winners must clear only superseded dirty puzzle mutations");
+assert.match(storageSource, /acknowledgeDurableSyncDirty\(supersededDirty\)/, "remote winners must generation-check durable outbox acknowledgements");
 assert.match(storageSource, /updatePuzzleListCache\(key, data\)/, "single-puzzle autosaves must not invalidate the full puzzle-list cache");
 
-assert.match(storageSource, /Keep the hot puzzle-list cache intact/, "one remote puzzle must not invalidate the entire hydrated library");
+assert.match(storageSource, /puzzlesListCache && changes\.puzzles\.length/, "one remote puzzle must not invalidate the entire hydrated library");
 
 const puzzlePageSource = readFileSync(new URL("../src/ui/PuzzlePage.tsx", import.meta.url), "utf8");
 assert.match(puzzlePageSource, /5_000/, "active puzzle progress should autosave locally");
@@ -82,10 +82,38 @@ assert.match(accountSource, /recoverMissingDirtyJournal\(uid, true\)/, "login wi
 assert.match(accountSource, /cloudRevisionRef\.current = 0; saveRevision\(uid, 0\);[\s\S]*await applyIncrementalCloud/, "login with local data must reconcile from revision zero instead of trusting a stale cursor");
 assert.match(accountSource, /queueCreatorDependencyRepairs/, "login should republish creator projects and creator puzzle progress to heal old orphans");
 assert.match(accountSource, /payload\.creatorProjectKey[\s\S]*kind: "creatorProject"/, "creator puzzle progress must upload its creator-project dependency");
-assert.match(accountSource, /payload\.def = row!\.data\.def/, "creator puzzles need an inline definition fallback if their project row is missing");
+assert.match(accountSource, /payload\.def = row!?\.data\.def/, "creator puzzles need an inline definition fallback if their project row is missing");
 assert.match(firebaseSource, /readCreatorProjectDependency/, "cloud pulls must repair missing creator dependencies from current or legacy storage");
 assert.match(firebaseSource, /Skipping cloud puzzle .*definition dependency is unavailable/, "one orphan puzzle must not abort the entire cloud restore");
-assert.match(storageSource, /dirty\?\.deletedAt && dirty\.deletedAt >= change\.updatedAt/, "newer local puzzle deletes must survive stale remote updates");
-assert.match(storageSource, /localUpdatedAt > change\.updatedAt/, "newer dirty local progress must survive stale remote deletes");
+assert.match(storageSource, /if \(dirty\?\.deletedAt\) continue;/, "local explicit deletes must survive stale remote updates");
+assert.match(storageSource, /if \(local && dirty\)/, "dirty local progress must survive concurrent remote updates");
 assert.match(storageSource, /Skipping cloud puzzle \$\{change\.key\}/, "an orphan incremental puzzle must be quarantined instead of aborting all sync");
+
+assert.match(accountSource, /if \(!forceAll && await hasDurableSyncDirtyRecords\(\)\) return/, "ordinary saves must not expand into full-library uploads");
+assert.match(accountSource, /readSavedRevision\(uid\)/, "checkpointed devices should resume incrementally instead of replaying the whole account every launch");
+assert.match(accountSource, /archiveCloudConflicts/, "divergent multi-device branches must be archived before one branch becomes canonical");
+assert.match(accountSource, /deleteIntent: "manual"/, "only explicit local deletes may produce trusted cloud tombstones");
+assert.doesNotMatch(accountSource, /\(row \? 0 : Date\.now\(\)\)/, "missing local storage rows must never be inferred as deletes");
+assert.match(firebaseSource, /syncDeleteIntent/, "cloud tombstones must carry explicit manual-delete provenance");
+assert.match(firebaseSource, /syncRecovery/, "conflicting remote puzzle branches must be retained in a recovery archive");
+assert.doesNotMatch(firebaseSource, /addMissingTombstones/, "schema migration must never manufacture deletions from absence");
+assert.match(storageSource, /syncOutbox: "id,kind,key"/, "sync outbox must live in IndexedDB");
+assert.match(storageSource, /await db\.syncOutbox\.put\(row\)/, "sync intent must be persisted in IndexedDB before the data mutation");
+assert.match(storageSource, /current\?\.token === record\.token/, "outbox acknowledgement must never clear a newer mutation");
+assert.match(storageSource, /db\.transaction\("rw", db\.puzzles, db\.syncOutbox[\s\S]*markDirtyIntent\("puzzle", key\)[\s\S]*db\.puzzles\.put/, "puzzle outbox intent must precede IndexedDB puzzle mutation");
+assert.match(storageSource, /change\.deleteIntent !== "manual"/, "untrusted legacy tombstones must not erase local data");
+assert.match(storageSource, /if \(local && dirty\)/, "dirty local puzzle progress must remain active during a remote conflict");
+
+assert.match(accountSource, /markAllDurableSyncDirty/, "anonymous-device work must be queued durably before account merge");
+assert.match(accountSource, /owner === null[\s\S]*recoverMissingDirtyJournal\(uid, true\)/, "anonymous local data must be reconciled from a protected local branch");
+assert.match(storageSource, /this\.version\(4\)/, "database migration must add the durable outbox without replacing puzzle tables");
+assert.match(storageSource, /readSyncDirtyRecords\(\)/, "legacy localStorage dirty records must migrate into the durable outbox");
+assert.doesNotMatch(storageSource, /markSyncDirty\(/, "new mutations must not keep a second localStorage dirty source of truth");
+assert.match(storageSource, /clearSyncJournal\(\)/, "legacy dirty journal must be cleared after migration into IndexedDB");
+assert.match(storageSource, /history\?: CreatorProjectHistoryState/, "creator undo/redo history support must survive sync hardening");
+assert.match(accountSource, /SAFETY_RECONCILE_KEY_PREFIX/, "existing devices need a one-time full safety reconciliation after upgrading the sync model");
+assert.match(accountSource, /cloudChangesEquivalent/, "identical replayed records should not create unnecessary recovery backups");
+assert.match(accountSource, /archiveCloudConflicts\(uid, conflicts, "cloud"\)/, "remote conflict branches must be recoverable");
+assert.match(accountSource, /archiveCloudConflicts\(uid, localBranches, "local"\)/, "local conflict branches must be recoverable before a remote delete can remove them");
+assert.match(firebaseSource, /origin: "cloud" \| "local"/, "recovery archives must identify which branch they preserve");
 console.log("Account sync regression checks passed.");

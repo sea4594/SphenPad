@@ -1,4 +1,4 @@
-Phase 11 dependency-backed release gate — 2026-10-08T20:48:15Z
+Phase 11 dependency-backed release gate — 2026-10-09T12:54:11Z
 Node: v20.20.2
 npm: 10.8.2
 
@@ -27,10 +27,10 @@ npm audit: only the known Firebase/Firestore browser-only grpc advisories are pr
 
 
 /Users/sea/Desktop/SphenPad/src/app/accountSync.tsx
-  345:6    warning  React Hook useEffect has a missing dependency: 'initializeUser'. Either include it or remove the dependency array                  react-hooks/exhaustive-deps
-  347:121  warning  React Hook useEffect has a missing dependency: 'scheduleSync'. Either include it or remove the dependency array                    react-hooks/exhaustive-deps
-  378:6    warning  React Hook useEffect has missing dependencies: 'scheduleRetry' and 'syncOnce'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
-  397:7    warning  React Hook useMemo has a missing dependency: 'syncOnce'. Either include it or remove the dependency array                          react-hooks/exhaustive-deps
+  386:6    warning  React Hook useEffect has a missing dependency: 'initializeUser'. Either include it or remove the dependency array                  react-hooks/exhaustive-deps
+  388:121  warning  React Hook useEffect has a missing dependency: 'scheduleSync'. Either include it or remove the dependency array                    react-hooks/exhaustive-deps
+  419:6    warning  React Hook useEffect has missing dependencies: 'scheduleRetry' and 'syncOnce'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+  438:7    warning  React Hook useMemo has a missing dependency: 'syncOnce'. Either include it or remove the dependency array                          react-hooks/exhaustive-deps
 
 /Users/sea/Desktop/SphenPad/src/app/theme.tsx
   149:9  warning  The 'setMode' function makes the dependencies of useMemo Hook (at line 223) change on every render. Move it inside the useMemo callback. Alternatively, wrap the definition of 'setMode' in its own useCallback() Hook    react-hooks/exhaustive-deps
@@ -60,13 +60,13 @@ rendering chunks...
 computing gzip size...
 dist/index.html                     2.12 kB │ gzip:   0.91 kB
 dist/assets/index-D78NvnXk.css     92.55 kB │ gzip:  16.00 kB
-dist/assets/index-B2-5JRMp.js   1,325.76 kB │ gzip: 399.05 kB
+dist/assets/index-C5bFwKSE.js   1,329.81 kB │ gzip: 399.92 kB
 
 (!) Some chunks are larger than 500 kB after minification. Consider:
 - Using dynamic import() to code-split the application
 - Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
 - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
-✓ built in 3.07s
+✓ built in 2.85s
 [5/11] Complete Phase 11 creator regression matrix
 
 > sphenpad@0.0.0 test-creator-phase11
@@ -171,7 +171,7 @@ Production smoke: PASS (2 built asset references checked)
 > sphenpad@0.0.0 verify-production-bundle-clean
 > node scripts/verify-production-bundle-clean.mjs
 
-Production bundle cleanliness: PASS (4204 files, no test/debug/conformance leakage)
+Production bundle cleanliness: PASS (4175 files, no test/debug/conformance leakage)
 [8/11] Built-app browser smoke
 
 > sphenpad@0.0.0 verify-production-browser
@@ -197,7 +197,7 @@ SudokuPad compatibility manifest: PASS (67 JS/CSS assets, 13 fonts)
 > sphenpad@0.0.0 write-phase11-release-hashes
 > node scripts/write-phase11-release-hashes.mjs
 
-Phase 11 release hash manifest: PASS (4343 production inputs, 15 creator tests, 4204 built files)
-releaseContentSha256=854b175b9304e0e7eda7155d2c83c66bc473271f50e3e4ba28ace37b14ab321d
+Phase 11 release hash manifest: PASS (4314 production inputs, 15 creator tests, 4175 built files)
+releaseContentSha256=cbe39461ac84aa4bd6f1eda4e07c6857777383bc9aec89ab186fec0e4a66c778
 
 PHASE 11 DEPENDENCY-BACKED RELEASE GATE PASSED

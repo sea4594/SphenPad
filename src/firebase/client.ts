@@ -45,9 +45,10 @@ const MAX_RECORD_PAYLOAD_BYTES = 850 * 1024;
 
 export type CloudAppSnapshot = LocalAppSnapshot;
 export type CloudStateMetadata = { version: number; updatedAt: number; hasData: boolean; revision: number };
-export type CloudPuzzleChange = { kind: "puzzle"; key: string; updatedAt: number; payload: CloudPuzzlePayload | null };
-export type CloudFolderChange = { kind: "folder"; key: string; updatedAt: number; payload: PuzzleFolder | null };
-export type CloudCreatorProjectChange = { kind: "creatorProject"; key: string; updatedAt: number; payload: CreatorProjectStorageRow | null };
+type CloudChangeMeta = { deleteIntent?: "manual"; sourceRevision?: number };
+export type CloudPuzzleChange = { kind: "puzzle"; key: string; updatedAt: number; payload: CloudPuzzlePayload | null } & CloudChangeMeta;
+export type CloudFolderChange = { kind: "folder"; key: string; updatedAt: number; payload: PuzzleFolder | null } & CloudChangeMeta;
+export type CloudCreatorProjectChange = { kind: "creatorProject"; key: string; updatedAt: number; payload: CreatorProjectStorageRow | null } & CloudChangeMeta;
 export type CloudChange = CloudPuzzleChange | CloudFolderChange | CloudCreatorProjectChange;
 export type CloudChangesResult = { version: number; revision: number; updatedAt: number; changes: CloudChange[] };
 
@@ -273,39 +274,33 @@ export async function pullCloudChanges(userId: string, afterRevision: number): P
   if (!metadata) return { version: CLOUD_SCHEMA_VERSION, revision: 0, updatedAt: 0, changes: [] };
   if (metadata.version < CLOUD_SCHEMA_VERSION) return { version: metadata.version, revision: metadata.revision, updatedAt: metadata.updatedAt, changes: [] };
   if (metadata.revision <= afterRevision) return { version: metadata.version, revision: metadata.revision, updatedAt: metadata.updatedAt, changes: [] };
-  const [puzzles, folders, creators] = await Promise.all([
-    changedDocs(userId, "syncPuzzles", afterRevision), changedDocs(userId, "syncFolders", afterRevision), changedDocs(userId, "syncCreatorProjects", afterRevision),
-  ]);
-  const changes: CloudChange[] = [];
-  const includedCreators = new Set<string>();
+  const [puzzles, folders, creators] = await Promise.all([changedDocs(userId, "syncPuzzles", afterRevision), changedDocs(userId, "syncFolders", afterRevision), changedDocs(userId, "syncCreatorProjects", afterRevision)]);
+  const changes: CloudChange[] = []; const includedCreators = new Set<string>();
   for (const entry of creators) {
-    const data = entry.data(); const key = keyForDocId(entry.id); const updatedAt = typeof data.syncUpdatedAt === "number" ? data.syncUpdatedAt : 0;
-    if (data.syncDeleted === true) { changes.push({ kind: "creatorProject", key, updatedAt, payload: null }); includedCreators.add(key); continue; }
+    const data = entry.data(); const key = keyForDocId(entry.id); const updatedAt = typeof data.syncUpdatedAt === "number" ? data.syncUpdatedAt : 0; const sourceRevision = typeof data.syncRevision === "number" ? data.syncRevision : 0;
+    if (data.syncDeleted === true) { changes.push({ kind: "creatorProject", key, updatedAt, payload: null, sourceRevision, ...(data.syncDeleteIntent === "manual" ? { deleteIntent: "manual" as const } : {}) }); includedCreators.add(key); continue; }
     if (typeof data.syncPayload !== "string") { console.warn(`Skipping malformed cloud creator project change ${key}`); continue; }
-    try { changes.push({ kind: "creatorProject", key, updatedAt, payload: cleanCreatorProject(decodeSyncPayload<CreatorProjectStorageRow>(data)) }); includedCreators.add(key); }
+    try { changes.push({ kind: "creatorProject", key, updatedAt, payload: cleanCreatorProject(decodeSyncPayload<CreatorProjectStorageRow>(data)), sourceRevision }); includedCreators.add(key); }
     catch (error) { console.warn(`Skipping malformed cloud creator project change ${key}`, error); }
   }
   for (const entry of folders) {
-    const data = entry.data(); const key = keyForDocId(entry.id); const updatedAt = typeof data.syncUpdatedAt === "number" ? data.syncUpdatedAt : 0;
-    if (data.syncDeleted === true) { changes.push({ kind: "folder", key, updatedAt, payload: null }); continue; }
+    const data = entry.data(); const key = keyForDocId(entry.id); const updatedAt = typeof data.syncUpdatedAt === "number" ? data.syncUpdatedAt : 0; const sourceRevision = typeof data.syncRevision === "number" ? data.syncRevision : 0;
+    if (data.syncDeleted === true) { changes.push({ kind: "folder", key, updatedAt, payload: null, sourceRevision, ...(data.syncDeleteIntent === "manual" ? { deleteIntent: "manual" as const } : {}) }); continue; }
     if (typeof data.syncPayload !== "string") { console.warn(`Skipping malformed cloud folder change ${key}`); continue; }
-    try { changes.push({ kind: "folder", key, updatedAt, payload: decodeSyncPayload<PuzzleFolder>(data) }); }
+    try { changes.push({ kind: "folder", key, updatedAt, payload: decodeSyncPayload<PuzzleFolder>(data), sourceRevision }); }
     catch (error) { console.warn(`Skipping malformed cloud folder change ${key}`, error); }
   }
   for (const entry of puzzles) {
-    const data = entry.data(); const key = keyForDocId(entry.id); const updatedAt = typeof data.syncUpdatedAt === "number" ? data.syncUpdatedAt : 0;
-    if (data.syncDeleted === true) { changes.push({ kind: "puzzle", key, updatedAt, payload: null }); continue; }
+    const data = entry.data(); const key = keyForDocId(entry.id); const updatedAt = typeof data.syncUpdatedAt === "number" ? data.syncUpdatedAt : 0; const sourceRevision = typeof data.syncRevision === "number" ? data.syncRevision : 0;
+    if (data.syncDeleted === true) { changes.push({ kind: "puzzle", key, updatedAt, payload: null, sourceRevision, ...(data.syncDeleteIntent === "manual" ? { deleteIntent: "manual" as const } : {}) }); continue; }
     if (typeof data.syncPayload !== "string") { console.warn(`Skipping malformed cloud puzzle change ${key}`); continue; }
     try {
       const payload = decodeSyncPayload<CloudPuzzlePayload>(data);
       if (payload.creatorProjectKey && !includedCreators.has(payload.creatorProjectKey)) {
         const dependency = await readCreatorProjectDependency(userId, payload.creatorProjectKey);
-        if (dependency) {
-          changes.push({ kind: "creatorProject", key: dependency.key, updatedAt: dependency.updatedAt, payload: dependency });
-          includedCreators.add(payload.creatorProjectKey); includedCreators.add(dependency.key);
-        }
+        if (dependency) { changes.push({ kind: "creatorProject", key: dependency.key, updatedAt: dependency.updatedAt, payload: dependency, sourceRevision }); includedCreators.add(payload.creatorProjectKey); includedCreators.add(dependency.key); }
       }
-      changes.push({ kind: "puzzle", key, updatedAt, payload });
+      changes.push({ kind: "puzzle", key, updatedAt, payload, sourceRevision });
     } catch (error) { console.warn(`Skipping malformed cloud puzzle change ${key}`, error); }
   }
   return { version: metadata.version, revision: metadata.revision, updatedAt: metadata.updatedAt, changes };
@@ -353,6 +348,7 @@ export async function pushCloudChanges(userId: string, changes: CloudChange[], e
           syncRevision: nextRevision,
           syncUpdatedAt: entry.change.updatedAt,
           syncDeleted: entry.change.payload == null,
+          ...(entry.change.payload == null && entry.change.deleteIntent === "manual" ? { syncDeleteIntent: "manual" } : {}),
           ...(entry.payload == null ? {} : { syncPayload: entry.payload, syncEncoding: entry.encoding }),
         });
       }
@@ -364,6 +360,26 @@ export async function pushCloudChanges(userId: string, changes: CloudChange[], e
   return { revision, updatedAt: latestUpdatedAt };
 }
 
+export async function archiveCloudConflicts(userId: string, conflicts: CloudChange[], origin: "cloud" | "local" = "cloud") {
+  if (!firebaseEnabled || !db || conflicts.length === 0) return;
+  for (let offset = 0; offset < conflicts.length; offset += MAX_WRITES_PER_COMMIT) {
+    const batch = writeBatch(db);
+    for (const change of conflicts.slice(offset, offset + MAX_WRITES_PER_COMMIT)) {
+      const encoded = change.payload == null ? null : encodeSyncPayload(change.payload);
+      if (encoded && byteLength(encoded.payload) > MAX_RECORD_PAYLOAD_BYTES) throw new Error(`Cloud conflict backup is too large: ${change.kind} ${change.key}`);
+      const revision = change.sourceRevision ?? 0;
+      const recoveryKey = `${origin}:${change.kind}:${change.key}:${revision}:${change.updatedAt}`;
+      batch.set(doc(db, "users", userId, "syncRecovery", docIdForKey(recoveryKey)), {
+        origin, kind: change.kind, key: change.key, sourceRevision: revision, sourceUpdatedAt: change.updatedAt, archivedAt: Date.now(),
+        deleted: change.payload == null, ...(change.deleteIntent ? { deleteIntent: change.deleteIntent } : {}),
+        ...(encoded ? { syncPayload: encoded.payload, syncEncoding: encoded.encoding } : {}),
+      });
+    }
+    await batch.commit();
+    await yieldToBrowser();
+  }
+}
+
 /** Stage any older cloud schema into isolated v3 collections, then atomically publish v3. */
 export async function migrateCloudToCurrentSchema(
   userId: string,
@@ -373,26 +389,8 @@ export async function migrateCloudToCurrentSchema(
 ): Promise<{ revision: number; updatedAt: number }> {
   if (!firebaseEnabled || !db) return { revision: expectedSourceRevision, updatedAt: 0 };
   const targetRevision = expectedSourceRevision + 1;
-  const intended = {
-    puzzle: new Set(changes.filter((change) => change.kind === "puzzle").map((change) => change.key)),
-    folder: new Set(changes.filter((change) => change.kind === "folder").map((change) => change.key)),
-    creatorProject: new Set(changes.filter((change) => change.kind === "creatorProject").map((change) => change.key)),
-  };
-  const [existingPuzzles, existingFolders, existingCreators] = await Promise.all([
-    getDocs(collection(db, "users", userId, "syncPuzzles")),
-    getDocs(collection(db, "users", userId, "syncFolders")),
-    getDocs(collection(db, "users", userId, "syncCreatorProjects")),
-  ]);
+  // Migration is additive: absence from a staged snapshot is never interpreted as deletion.
   const stagedChanges = [...changes];
-  const addMissingTombstones = (kind: CloudChange["kind"], docs: typeof existingPuzzles.docs) => {
-    for (const entry of docs) {
-      const key = keyForDocId(entry.id);
-      if (!intended[kind].has(key)) stagedChanges.push({ kind, key, updatedAt: Date.now(), payload: null } as CloudChange);
-    }
-  };
-  addMissingTombstones("puzzle", existingPuzzles.docs);
-  addMissingTombstones("folder", existingFolders.docs);
-  addMissingTombstones("creatorProject", existingCreators.docs);
 
   const chunks = await chunkChangesYielding(stagedChanges);
   for (const chunk of chunks) {
@@ -403,6 +401,7 @@ export async function migrateCloudToCurrentSchema(
         syncRevision: targetRevision,
         syncUpdatedAt: entry.change.updatedAt,
         syncDeleted: entry.change.payload == null,
+        ...(entry.change.payload == null && entry.change.deleteIntent === "manual" ? { syncDeleteIntent: "manual" } : {}),
         ...(entry.payload == null ? {} : { syncPayload: entry.payload, syncEncoding: entry.encoding }),
       });
     }

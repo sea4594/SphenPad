@@ -1,11 +1,11 @@
 import Dexie from "dexie";
 import type { Table } from "dexie";
 import { markLocalDataChanged } from "./localDataState";
-import { acknowledgeSyncDirty, markSyncDirty, readSyncDirtyRecords, type SyncDirtyRecord } from "./syncJournal";
+import { clearSyncJournal, readSyncDirtyRecords, type SyncDirtyRecord } from "./syncJournal";
 import { puzzleFromCloudPayload, type CloudPuzzlePayload } from "./puzzleSync";
 import type { PersistedPuzzle, PuzzleDefinition } from "./model";
 import { creatorProjectFromDefinition, definitionFromCreatorProject, parseCreatorProject, type CreatorProject } from "../sudokupad/creator/project";
-import { cloneCreatorProjectForDuplicate, compareCreatorProjectStorageRows, mergeCreatorProjectStorageRows, normalizeCreatorProjectStorageRow, type CreatorProjectStorageRow } from "../sudokupad/creator/projectStorage";
+import { cloneCreatorProjectForDuplicate, compareCreatorProjectStorageRows, normalizeCreatorProjectStorageRow, type CreatorProjectStorageRow } from "../sudokupad/creator/projectStorage";
 import { normalizeCreatorProjectHistory, type CreatorProjectHistoryState } from "../sudokupad/creator/history";
 import { definitionForPersistence } from "../sudokupad/migration/puzzleDefinition";
 import { rebaseCreatorSolveState } from "../sudokupad/creator/playtest";
@@ -90,10 +90,23 @@ function updatePuzzleListCache(key: string, data: PersistedPuzzle) {
   puzzlesListCache = next;
 }
 
+export type DurableSyncDirtyRecord = SyncDirtyRecord & { id: string; token: string };
+function syncOutboxId(kind: SyncDirtyRecord["kind"], key: string) { return `${kind}:${key}`; }
+function newSyncToken() {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") return crypto.randomUUID();
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
+}
+async function markDirtyIntent(kind: SyncDirtyRecord["kind"], key: string, deletedAt?: number): Promise<DurableSyncDirtyRecord> {
+  const row: DurableSyncDirtyRecord = { id: syncOutboxId(kind, key), kind, key, mutationId: Date.now(), token: newSyncToken(), ...(deletedAt ? { deletedAt } : {}) };
+  await db.syncOutbox.put(row);
+  return row;
+}
+
 class SphenDB extends Dexie {
   puzzles!: Table<PuzzleSnapshotRow, string>;
   folders!: Table<PuzzleFolder, string>;
   creatorProjects!: Table<CreatorProjectStorageRow, string>;
+  syncOutbox!: Table<DurableSyncDirtyRecord, string>;
   constructor() {
     super("sphenpad");
     this.version(1).stores({
@@ -108,9 +121,68 @@ class SphenDB extends Dexie {
       folders: "id,parentId,updatedAt,name",
       creatorProjects: "key,updatedAt,lastOpenedAt,createdAt",
     });
+    this.version(4).stores({
+      puzzles: "key",
+      folders: "id,parentId,updatedAt,name",
+      creatorProjects: "key,updatedAt,lastOpenedAt,createdAt",
+      syncOutbox: "id,kind,key",
+    });
   }
 }
 export const db = new SphenDB();
+
+export async function readDurableSyncDirtyRecords(): Promise<DurableSyncDirtyRecord[]> {
+  const durable = await db.syncOutbox.toArray();
+  const byId = new Map(durable.map((row) => [row.id, row]));
+  const legacyRecords = readSyncDirtyRecords();
+  if (legacyRecords.length) {
+    const migrated: DurableSyncDirtyRecord[] = [];
+    for (const legacy of legacyRecords) {
+      const id = syncOutboxId(legacy.kind, legacy.key);
+      if (byId.has(id)) continue;
+      const row: DurableSyncDirtyRecord = { id, ...legacy, token: `legacy-${newSyncToken()}` };
+      migrated.push(row);
+      byId.set(id, row);
+    }
+    if (migrated.length) await db.syncOutbox.bulkPut(migrated);
+    clearSyncJournal();
+  }
+  return [...byId.values()].sort((a, b) => a.mutationId - b.mutationId);
+}
+
+export async function hasDurableSyncDirtyRecords() {
+  return (await readDurableSyncDirtyRecords()).length > 0;
+}
+
+export async function acknowledgeDurableSyncDirty(records: DurableSyncDirtyRecord[]) {
+  if (!records.length) return;
+  await db.transaction("rw", db.syncOutbox, async () => {
+    for (const record of records) {
+      const current = await db.syncOutbox.get(record.id);
+      if (current?.token === record.token) await db.syncOutbox.delete(record.id);
+    }
+  });
+}
+
+export async function clearDurableSyncJournal() {
+  await db.syncOutbox.clear();
+  clearSyncJournal();
+}
+
+export async function markAllDurableSyncDirty(input: { puzzleKeys: string[]; folderIds: string[]; creatorProjectKeys: string[] }) {
+  const existing = new Set((await db.syncOutbox.toArray()).map((row) => row.id));
+  const rows: DurableSyncDirtyRecord[] = [];
+  const add = (kind: SyncDirtyRecord["kind"], key: string) => {
+    const id = syncOutboxId(kind, key);
+    if (existing.has(id)) return;
+    existing.add(id);
+    rows.push({ id, kind, key, mutationId: Date.now(), token: newSyncToken() });
+  };
+  for (const key of input.puzzleKeys) add("puzzle", key);
+  for (const key of input.folderIds) add("folder", key);
+  for (const key of input.creatorProjectKeys) add("creatorProject", key);
+  if (rows.length) await db.syncOutbox.bulkPut(rows);
+}
 
 export async function exportStorageSnapshot() {
   await migrateLegacyCreatorProjects();
@@ -203,8 +275,10 @@ async function migrateLegacyCreatorProjects() {
     }
   }
   if (!migrated.length) return;
-  await db.creatorProjects.bulkPut(migrated);
-  for (const row of migrated) markSyncDirty("creatorProject", row.key, undefined, false);
+  await db.transaction("rw", db.creatorProjects, db.syncOutbox, async () => {
+    for (const row of migrated) await markDirtyIntent("creatorProject", row.key);
+    await db.creatorProjects.bulkPut(migrated);
+  });
   signalStorageMutation(true, Math.max(...migrated.map((row) => row.updatedAt)));
 }
 
@@ -222,12 +296,12 @@ export async function createCreatorProject(projectInput: CreatorProject, now = D
   if (await db.creatorProjects.get(key)) throw new Error("Creator project already exists.");
   const row: CreatorProjectStorageRow = { key, project, createdAt: now, updatedAt: now, savedAt: now, lastOpenedAt: now, undo: [], redo: [] };
   const existingPuzzle = (await db.puzzles.get(key))?.data ?? null;
-  await db.transaction("rw", db.creatorProjects, db.puzzles, async () => {
+  await db.transaction("rw", db.creatorProjects, db.puzzles, db.syncOutbox, async () => {
+    await markDirtyIntent("creatorProject", key);
+    await markDirtyIntent("puzzle", key);
     await db.creatorProjects.add(row);
     await db.puzzles.put({ key, data: forPersistence(creatorPuzzleData(project, existingPuzzle, now, now)) });
   });
-  markSyncDirty("creatorProject", key, undefined, false);
-  markSyncDirty("puzzle", key, undefined, false);
   signalStorageMutation(true, now);
   return row;
 }
@@ -253,12 +327,12 @@ export async function saveCreatorProject(key: string, projectInput: CreatorProje
     redo: normalizeCreatorProjectHistory(history?.redo ?? normalizedExisting?.redo),
   };
   const existingPuzzle = (await db.puzzles.get(key))?.data ?? null;
-  await db.transaction("rw", db.creatorProjects, db.puzzles, async () => {
+  await db.transaction("rw", db.creatorProjects, db.puzzles, db.syncOutbox, async () => {
+    await markDirtyIntent("creatorProject", key);
+    await markDirtyIntent("puzzle", key);
     await db.creatorProjects.put(row);
     await db.puzzles.put({ key, data: forPersistence(creatorPuzzleData(project, existingPuzzle, createdAt, now)) });
   });
-  markSyncDirty("creatorProject", key, undefined, false);
-  markSyncDirty("puzzle", key, undefined, false);
   signalStorageMutation(true, now);
   return row;
 }
@@ -271,21 +345,20 @@ export async function setCreatorProjectPublished(key: string, published: boolean
   project.settings.publishedToMyPuzzles = published;
   const row: CreatorProjectStorageRow = { ...stored, project, updatedAt: now, savedAt: now };
   const existingPuzzle = (await db.puzzles.get(key))?.data ?? null;
-  await db.transaction("rw", db.creatorProjects, db.puzzles, db.folders, async () => {
+  await db.transaction("rw", db.creatorProjects, db.puzzles, db.folders, db.syncOutbox, async () => {
+    const folders = published ? [] : await db.folders.toArray();
+    await markDirtyIntent("creatorProject", key);
+    await markDirtyIntent("puzzle", key);
+    for (const folder of folders) {
+      if (!folder.deletedAt && folder.puzzleKeys.includes(key)) await markDirtyIntent("folder", folder.id);
+    }
     await db.creatorProjects.put(row);
     await db.puzzles.put({ key, data: forPersistence(creatorPuzzleData(project, existingPuzzle, row.createdAt, now)) });
-    if (!published) {
-      const folders = await db.folders.toArray();
-      for (const folder of folders) {
-        if (!folder.puzzleKeys.includes(key)) continue;
-        await db.folders.put({ ...folder, puzzleKeys: folder.puzzleKeys.filter((entry) => entry !== key), updatedAt: now, membershipUpdatedAt: now, membershipState: { ...folder.membershipState, [key]: { present: false, updatedAt: now } } });
-      }
+    for (const folder of folders) {
+      if (folder.deletedAt || !folder.puzzleKeys.includes(key)) continue;
+      await db.folders.put({ ...folder, puzzleKeys: folder.puzzleKeys.filter((entry) => entry !== key), updatedAt: now, membershipUpdatedAt: now, membershipState: { ...folder.membershipState, [key]: { present: false, updatedAt: now } } });
     }
   });
-  markSyncDirty("creatorProject", key, undefined, false);
-  markSyncDirty("puzzle", key, undefined, false);
-  const changedFolders = (await db.folders.toArray()).filter((folder) => folder.membershipState?.[key]?.updatedAt === now);
-  for (const folder of changedFolders) markSyncDirty("folder", folder.id, undefined, false);
   signalStorageMutation(true, now);
   return normalizeCreatorProjectStorageRow(row);
 }
@@ -328,21 +401,22 @@ export async function duplicateCreatorProject(key: string, newKey = createCreato
 
 export async function deleteCreatorProject(key: string) {
   const updatedAt = Date.now();
-  await db.transaction("rw", db.creatorProjects, db.puzzles, db.folders, async () => {
+  await db.transaction("rw", db.creatorProjects, db.puzzles, db.folders, db.syncOutbox, async () => {
     const current = await db.creatorProjects.get(key);
     if (!current || current.deletedAt) throw new Error("Creator project not found.");
+    const folders = await db.folders.toArray();
+    await markDirtyIntent("creatorProject", key, updatedAt);
+    await markDirtyIntent("puzzle", key, updatedAt);
+    for (const folder of folders) {
+      if (!folder.deletedAt && folder.puzzleKeys.includes(key)) await markDirtyIntent("folder", folder.id);
+    }
     await db.creatorProjects.put({ ...current, updatedAt, deletedAt: updatedAt });
     await db.puzzles.delete(key);
-    const folders = await db.folders.toArray();
     for (const folder of folders) {
       if (folder.deletedAt || !folder.puzzleKeys.includes(key)) continue;
       await db.folders.put({ ...folder, puzzleKeys: folder.puzzleKeys.filter((entry) => entry !== key), updatedAt, membershipUpdatedAt: updatedAt, membershipState: { ...folder.membershipState, [key]: { present: false, updatedAt } } });
     }
   });
-  markSyncDirty("creatorProject", key, updatedAt, false);
-  markSyncDirty("puzzle", key, updatedAt, false);
-  const changedFolders = (await db.folders.toArray()).filter((folder) => folder.membershipState?.[key]?.updatedAt === updatedAt);
-  for (const folder of changedFolders) markSyncDirty("folder", folder.id, undefined, false);
   signalStorageMutation(true, updatedAt);
 }
 
@@ -354,8 +428,14 @@ export async function upsertPuzzle(key: string, data: PersistedPuzzle, options: 
 
   const previous = puzzleWriteTails.get(key) ?? Promise.resolve();
   const write = previous.catch(() => {}).then(async () => {
-    await db.puzzles.put({ key, data: forPersistence(data) });
-    if (sync) markSyncDirty("puzzle", key, undefined, false);
+    if (sync) {
+      await db.transaction("rw", db.puzzles, db.syncOutbox, async () => {
+        await markDirtyIntent("puzzle", key);
+        await db.puzzles.put({ key, data: forPersistence(data) });
+      });
+    } else {
+      await db.puzzles.put({ key, data: forPersistence(data) });
+    }
     signalStorageMutation(sync, data.updatedAt || Date.now(), { puzzles: false, folders: false, creatorProjects: false });
   });
   puzzleWriteTails.set(key, write);
@@ -434,19 +514,22 @@ export async function createFolder(name: string, parentId: string | null = null)
     membershipUpdatedAt: now,
     membershipState: {},
   };
-  await db.folders.add(folder);
-  markSyncDirty("folder", folder.id, undefined, false);
+  await db.transaction("rw", db.folders, db.syncOutbox, async () => {
+    await markDirtyIntent("folder", folder.id);
+    await db.folders.add(folder);
+  });
   signalStorageMutation(true, folder.updatedAt);
   return folder;
 }
 
 export async function addPuzzleToFolder(folderId: string, puzzleKey: string) {
   let updatedAt = Date.now();
-  await db.transaction("rw", db.folders, async () => {
+  await db.transaction("rw", db.folders, db.syncOutbox, async () => {
     const folder = await db.folders.get(folderId);
     if (!folder || folder.deletedAt) throw new Error("Folder not found.");
     if (folder.puzzleKeys.includes(puzzleKey)) return;
     updatedAt = Date.now();
+    await markDirtyIntent("folder", folderId);
     await db.folders.put({
       ...folder,
       puzzleKeys: [...folder.puzzleKeys, puzzleKey],
@@ -455,17 +538,17 @@ export async function addPuzzleToFolder(folderId: string, puzzleKey: string) {
       membershipState: { ...folder.membershipState, [puzzleKey]: { present: true, updatedAt } },
     });
   });
-  markSyncDirty("folder", folderId, undefined, false);
   signalStorageMutation(true, updatedAt);
 }
 
 export async function removePuzzleFromFolder(folderId: string, puzzleKey: string) {
   let updatedAt = Date.now();
-  await db.transaction("rw", db.folders, async () => {
+  await db.transaction("rw", db.folders, db.syncOutbox, async () => {
     const folder = await db.folders.get(folderId);
     if (!folder || folder.deletedAt) throw new Error("Folder not found.");
     if (!folder.puzzleKeys.includes(puzzleKey)) return;
     updatedAt = Date.now();
+    await markDirtyIntent("folder", folderId);
     await db.folders.put({
       ...folder,
       puzzleKeys: folder.puzzleKeys.filter((entry) => entry !== puzzleKey),
@@ -474,7 +557,6 @@ export async function removePuzzleFromFolder(folderId: string, puzzleKey: string
       membershipState: { ...folder.membershipState, [puzzleKey]: { present: false, updatedAt } },
     });
   });
-  markSyncDirty("folder", folderId, undefined, false);
   signalStorageMutation(true, updatedAt);
 }
 
@@ -483,10 +565,11 @@ export async function renameFolder(folderId: string, name: string) {
   if (!trimmed) throw new Error("Folder name is required.");
 
   let updatedAt = Date.now();
-  await db.transaction("rw", db.folders, async () => {
+  await db.transaction("rw", db.folders, db.syncOutbox, async () => {
     const folder = await db.folders.get(folderId);
     if (!folder || folder.deletedAt) throw new Error("Folder not found.");
     updatedAt = Date.now();
+    await markDirtyIntent("folder", folderId);
     await db.folders.put({
       ...folder,
       name: trimmed,
@@ -494,13 +577,12 @@ export async function renameFolder(folderId: string, name: string) {
       nameUpdatedAt: updatedAt,
     });
   });
-  markSyncDirty("folder", folderId, undefined, false);
   signalStorageMutation(true, updatedAt);
 }
 
 export async function deleteFolder(folderId: string) {
   const updatedAt = Date.now();
-  await db.transaction("rw", db.folders, async () => {
+  await db.transaction("rw", db.folders, db.syncOutbox, async () => {
     const folders = await db.folders.toArray();
     if (!folders.some((folder) => folder.id === folderId && !folder.deletedAt)) {
       throw new Error("Folder not found.");
@@ -524,6 +606,8 @@ export async function deleteFolder(folderId: string) {
       for (const child of children) stack.push(child.id);
     }
 
+    for (const id of toDelete) await markDirtyIntent("folder", id, updatedAt);
+
     for (const id of toDelete) {
       const folder = folders.find((entry) => entry.id === id);
       if (!folder) continue;
@@ -534,17 +618,18 @@ export async function deleteFolder(folderId: string) {
       });
     }
   });
-  const deletedFolders = (await db.folders.toArray()).filter((folder) => folder.deletedAt === updatedAt);
-  for (const folder of deletedFolders) markSyncDirty("folder", folder.id, updatedAt, false);
   signalStorageMutation(true, updatedAt);
 }
 
 export async function deletePuzzle(key: string) {
   const updatedAt = Date.now();
-  await db.transaction("rw", db.puzzles, db.folders, async () => {
-    await db.puzzles.delete(key);
-
+  await db.transaction("rw", db.puzzles, db.folders, db.syncOutbox, async () => {
     const folders = await db.folders.toArray();
+    await markDirtyIntent("puzzle", key, updatedAt);
+    for (const folder of folders) {
+      if (!folder.deletedAt && folder.puzzleKeys.includes(key)) await markDirtyIntent("folder", folder.id);
+    }
+    await db.puzzles.delete(key);
     for (const folder of folders) {
       if (folder.deletedAt) continue;
       if (!folder.puzzleKeys.includes(key)) continue;
@@ -557,17 +642,18 @@ export async function deletePuzzle(key: string) {
       });
     }
   });
-  markSyncDirty("puzzle", key, updatedAt, false);
-  const changedFolders = (await db.folders.toArray()).filter((folder) => folder.membershipState?.[key]?.updatedAt === updatedAt);
-  for (const folder of changedFolders) markSyncDirty("folder", folder.id, undefined, false);
   signalStorageMutation(true, updatedAt);
 }
 
-export type RemotePuzzleChange = { key: string; updatedAt: number; data: CloudPuzzlePayload | null };
-export type RemoteFolderChange = { key: string; updatedAt: number; data: PuzzleFolder | null };
-export type RemoteCreatorProjectChange = { key: string; updatedAt: number; data: CreatorProjectStorageRow | null };
+export type RemotePuzzleChange = { key: string; updatedAt: number; data: CloudPuzzlePayload | null; deleteIntent?: "manual" };
+export type RemoteFolderChange = { key: string; updatedAt: number; data: PuzzleFolder | null; deleteIntent?: "manual" };
+export type RemoteCreatorProjectChange = { key: string; updatedAt: number; data: CreatorProjectStorageRow | null; deleteIntent?: "manual" };
 
-export async function readPuzzleRowForSync(key: string) { return (await db.puzzles.get(key)) ?? null; }
+export async function readPuzzleRowForSync(key: string) {
+  const pending = puzzleWriteTails.get(key);
+  if (pending) await pending;
+  return (await db.puzzles.get(key)) ?? null;
+}
 export async function readFolderForSync(key: string) { return (await db.folders.get(key)) ?? null; }
 export async function readCreatorProjectForSync(key: string) {
   const row = await db.creatorProjects.get(key);
@@ -630,53 +716,57 @@ export async function applyRemoteStorageChanges(changes: {
     ...changes.folders.map((entry) => entry.updatedAt),
     ...changes.creatorProjects.map((entry) => entry.updatedAt),
   );
-  const dirtyAtStart = new Map<string, SyncDirtyRecord>();
-  for (const record of readSyncDirtyRecords()) dirtyAtStart.set(`${record.kind}:${record.key}`, record);
-  const supersededDirty: SyncDirtyRecord[] = [];
+  const dirtyAtStart = new Map<string, DurableSyncDirtyRecord>();
+  for (const record of await readDurableSyncDirtyRecords()) dirtyAtStart.set(`${record.kind}:${record.key}`, record);
+  const supersededDirty: DurableSyncDirtyRecord[] = [];
+  const repairAfter: Array<{ kind: SyncDirtyRecord["kind"]; key: string }> = [];
   const dirtyFor = (kind: SyncDirtyRecord["kind"], key: string) => dirtyAtStart.get(`${kind}:${key}`);
   const supersede = (kind: SyncDirtyRecord["kind"], key: string) => { const record = dirtyFor(kind, key); if (record) supersededDirty.push(record); };
 
-  await db.transaction("rw", db.creatorProjects, db.puzzles, db.folders, async () => {
+  await db.transaction("rw", db.creatorProjects, db.puzzles, db.folders, db.syncOutbox, async () => {
     for (const change of changes.creatorProjects) {
       const local = await db.creatorProjects.get(change.key) ?? null;
       const dirty = dirtyFor("creatorProject", change.key);
-      const localUpdatedAt = local?.updatedAt ?? 0;
       if (!change.data) {
-        if (dirty?.deletedAt && dirty.deletedAt > change.updatedAt) continue;
-        if (dirty && !dirty.deletedAt && local && localUpdatedAt > change.updatedAt) continue;
+        if (change.deleteIntent !== "manual") {
+          if (local && !local.deletedAt) repairAfter.push({ kind: "creatorProject", key: change.key });
+          continue;
+        }
         if (local) await db.creatorProjects.put({ ...local, updatedAt: Math.max(local.updatedAt, change.updatedAt), deletedAt: Math.max(local.deletedAt ?? 0, change.updatedAt) });
         await db.puzzles.delete(change.key);
-        supersede("creatorProject", change.key); supersede("puzzle", change.key);
+        supersede("creatorProject", change.key);
+        supersede("puzzle", change.key);
         continue;
       }
-      if (dirty?.deletedAt) continue;
       const remote = normalizeCreatorProjectStorageRow({ ...change.data, lastOpenedAt: local?.lastOpenedAt ?? 0 });
-      if (!local || !dirty) {
-        await db.creatorProjects.put({ ...remote, lastOpenedAt: local?.lastOpenedAt ?? 0 });
-        if (dirty) supersede("creatorProject", change.key);
+      if (local?.deletedAt) {
+        if (dirty?.deletedAt) continue;
+        await db.creatorProjects.put({ ...remote, lastOpenedAt: local.lastOpenedAt ?? 0 });
         continue;
       }
-      const merged = mergeCreatorProjectStorageRows([local], [remote])[0];
-      if (merged) await db.creatorProjects.put({ ...merged, lastOpenedAt: local.lastOpenedAt ?? 0 });
-      if (!local.deletedAt && remote.updatedAt >= local.updatedAt) supersede("creatorProject", change.key);
+      if (dirty) continue;
+      await db.creatorProjects.put({ ...remote, lastOpenedAt: local?.lastOpenedAt ?? 0 });
     }
 
     for (const change of changes.puzzles) {
       const local = await db.puzzles.get(change.key);
       const dirty = dirtyFor("puzzle", change.key);
-      const localUpdatedAt = local?.data.updatedAt ?? 0;
       if (!change.data) {
-        if (dirty?.deletedAt && dirty.deletedAt > change.updatedAt) continue;
-        if (dirty && !dirty.deletedAt && local && localUpdatedAt > change.updatedAt) continue;
-        await db.puzzles.delete(change.key); supersede("puzzle", change.key); continue;
+        if (change.deleteIntent !== "manual") {
+          if (local) repairAfter.push({ kind: "puzzle", key: change.key });
+          continue;
+        }
+        await db.puzzles.delete(change.key);
+        supersede("puzzle", change.key);
+        continue;
       }
-      if (dirty?.deletedAt && dirty.deletedAt >= change.updatedAt) continue;
+      if (dirty?.deletedAt) continue;
       const creatorKey = change.data.creatorProjectKey;
       const creatorProject = creatorKey ? (await db.creatorProjects.get(creatorKey) ?? null) : null;
       let materialized: PersistedPuzzle;
       try { materialized = puzzleFromCloudPayload(change.data, local?.data ?? null, creatorProject); }
       catch (error) { console.warn(`Skipping cloud puzzle ${change.key} because its definition dependency is unavailable`, error); continue; }
-      if (local && dirty && localUpdatedAt > change.updatedAt) {
+      if (local && dirty) {
         if (materialized.progress.totalMillis > local.data.progress.totalMillis) {
           await db.puzzles.put({ key: change.key, data: forPersistence({ ...local.data, progress: { ...local.data.progress, totalMillis: materialized.progress.totalMillis } }) });
         }
@@ -686,38 +776,40 @@ export async function applyRemoteStorageChanges(changes: {
         ? { ...materialized, progress: { ...materialized.progress, totalMillis: local.data.progress.totalMillis } }
         : materialized;
       await db.puzzles.put({ key: change.key, data: forPersistence(withMergedTimer) });
-      if (dirty) supersede("puzzle", change.key);
     }
 
     for (const change of changes.folders) {
       const local = await db.folders.get(change.key) ?? null;
       const dirty = dirtyFor("folder", change.key);
-      const localUpdatedAt = local?.updatedAt ?? 0;
       if (!change.data) {
-        if (dirty?.deletedAt && dirty.deletedAt > change.updatedAt) continue;
-        if (dirty && !dirty.deletedAt && local && localUpdatedAt > change.updatedAt) continue;
-        await db.folders.delete(change.key); supersede("folder", change.key); continue;
+        if (change.deleteIntent !== "manual") {
+          if (local && !local.deletedAt) repairAfter.push({ kind: "folder", key: change.key });
+          continue;
+        }
+        await db.folders.delete(change.key);
+        supersede("folder", change.key);
+        continue;
       }
-      if (dirty?.deletedAt) continue;
-      if (!local || !dirty) {
+      if (local?.deletedAt) {
+        if (dirty?.deletedAt) continue;
         await db.folders.put(change.data);
-        if (dirty) supersede("folder", change.key);
-      } else {
+        continue;
+      }
+      if (!local) {
+        await db.folders.put(change.data);
+      } else if (dirty) {
         await db.folders.put(mergeFolderRecords(local, change.data));
-        // A field-wise merge can contain local membership/name edits even when
-        // the remote row has the newer overall timestamp; keep it dirty so the
-        // merged result is written back instead of silently dropping one side.
+      } else {
+        await db.folders.put(change.data);
       }
     }
   });
 
-  acknowledgeSyncDirty(supersededDirty);
-  // Keep the hot puzzle-list cache intact when only a few remote puzzles change.
-  // Invalidating it forces every imported puzzle to be rehydrated on the next
-  // menu render, which is disproportionately expensive for large libraries.
+  await acknowledgeDurableSyncDirty(supersededDirty);
+  for (const repair of repairAfter) await markDirtyIntent(repair.kind, repair.key);
   if (puzzlesListCache && changes.puzzles.length) {
     for (const change of changes.puzzles) {
-      if (!change.data) {
+      if (!change.data && change.deleteIntent === "manual") {
         puzzlesListCache = puzzlesListCache.filter((row) => row.key !== change.key);
         continue;
       }
@@ -737,7 +829,5 @@ export async function applyRemoteStorageChanges(changes: {
   if (changes.folders.length) foldersListCache = null;
   if (changes.creatorProjects.length) creatorProjectsListCache = null;
   if (maxUpdatedAt) markLocalDataChanged(maxUpdatedAt, false);
-  if (notify) {
-    // UI refresh is dispatched by AccountSync after all cloud records are applied.
-  }
+  void notify;
 }
