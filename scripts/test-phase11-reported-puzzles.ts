@@ -33,6 +33,22 @@ const fogLive = sceneWithPuzzleProgress(fogImported.def.scene, makeInitialProgre
 expect(fogLive.fog, "search-and-surprise: fog state was lost in live progress rendering");
 expect(getSudokuPadLitCells(fogLive).length > 0, "search-and-surprise: initial fog state has no lit cells");
 
+// Brainwaves is an alphabet puzzle: its solution is lowercase, while solver
+// entry values are uppercase. Correct letters must still activate fog triggers.
+const brainwavesPayload = await archivedPayload("oj8y6yrx16.json");
+const brainwavesResult = await loadResolvedSudokuPadPayload(brainwavesPayload, { context: { sourceId: "oj8y6yrx16", urlSettings: emptySudokuPadUrlSettings() } });
+const brainwavesDef = definitionFromSudokuPadImport(brainwavesResult).def;
+expect(brainwavesDef.scene?.fog, "brainwaves: fog definition missing");
+const brainwavesProgress = makeInitialProgress(brainwavesDef);
+expect(getSudokuPadLitCells(sceneWithPuzzleProgress(brainwavesDef.scene, brainwavesProgress, brainwavesDef.logic)).length === 21, "brainwaves: wrong initial fog cells");
+const brainwavesSolution = brainwavesDef.scene.metadata.solution;
+expect(typeof brainwavesSolution === "string" && brainwavesSolution.length === 99, "brainwaves: expected 11x9 solution including notes area");
+for (let r = 0; r < brainwavesProgress.cells.length; r++) for (let c = 0; c < brainwavesProgress.cells[r].length; c++) {
+  const solutionChar = brainwavesSolution[r * 9 + c];
+  if (solutionChar && solutionChar !== ".") brainwavesProgress.cells[r][c].value = solutionChar.toUpperCase();
+}
+expect(getSudokuPadLitCells(sceneWithPuzzleProgress(brainwavesDef.scene, brainwavesProgress, brainwavesDef.logic)).length === 99, "brainwaves: completed uppercase letters did not lift every fog trigger");
+
 
 // User-drawn double lines share the same progress renderer in solving and creator mode.
 // Stored segment direction is intentionally inconsistent here: rendering must keep each
