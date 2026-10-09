@@ -6,6 +6,7 @@ import { sceneWithPuzzleProgress } from "../src/sudokupad/app/progressScene";
 import { makeInitialProgress } from "../src/core/scl";
 import { getSudokuPadLitCells } from "../src/sudokupad/fog/fogState";
 import { createAuthoredPuzzleDefinition } from "../src/sudokupad/creator/nativeAuthoring";
+import { computePuzzleConflictCells, computePuzzleConflictMarks } from "../src/sudokupad/app/conflicts";
 
 function expect(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
@@ -52,6 +53,41 @@ const fullyLitBrainwaves = getSudokuPadLitCells(sceneWithPuzzleProgress(brainwav
 expect(fullyLitBrainwaves > initialBrainwaves, "oj8y6yrx16: solved uppercase letters must reveal more fog");
 expect(fullyLitBrainwaves === brainwavesScene.rows * brainwavesScene.cols, "oj8y6yrx16: solved grid must reveal all cells");
 
+
+// Brainwaves has an 11x9 SVG canvas, but only rows 0..8 are playable
+// Sudoku cells. The last two rows are editable notes, not checker groups.
+{
+  const progress = makeInitialProgress(brainwavesDef);
+  progress.cells[0][0].value = "S";
+  progress.cells[9][0].value = "S";
+  progress.cells[10][0].value = "S";
+  progress.cells[9][1].notes.corner.add("S");
+  const check = () => computePuzzleConflictCells(progress, brainwavesDef.logic, brainwavesScene.rows, brainwavesScene.cols);
+  expect(check().size === 0, "oj8y6yrx16: exterior note rows must not trigger conflicts in the grid or with one another");
+  const marks = computePuzzleConflictMarks(progress, brainwavesDef.logic, brainwavesScene.rows, brainwavesScene.cols);
+  expect(marks.size === 0, "oj8y6yrx16: pencilmarks in exterior notes must not trigger conflicts");
+  expect(!sceneWithPuzzleProgress(brainwavesScene, progress, brainwavesDef.logic, true).cells[9][0].hasError, "oj8y6yrx16: exterior note must never render as an error");
+  progress.cells[0][1].value = "S";
+  expect(check().has("0:0") && check().has("0:1"), "oj8y6yrx16: duplicates within the real Sudoku grid must still be detected");
+  progress.cells[0][1].value = undefined;
+  progress.cells[9][0].value = "S";
+  expect(check().size === 0, "oj8y6yrx16: exterior edits must not produce false positives");
+}
+// A complete partition inside a larger canvas is sufficient; a partial,
+// overlapping or absent region system must retain the prior checker behavior.
+{
+  const progress = makeInitialProgress(brainwavesDef);
+  progress.cells[0][0].value = "T";
+  progress.cells[9][0].value = "T";
+  const allCells = computePuzzleConflictCells(progress, { regions: brainwavesDef.logic?.regions?.slice(0, 1) }, 11, 9);
+  expect(allCells.has("0:0") && allCells.has("9:0"), "partial regions must not be mistaken for a complete Sudoku grid");
+  const unpartitioned = computePuzzleConflictCells(progress, undefined, 11, 9);
+  expect(unpartitioned.has("0:0") && unpartitioned.has("9:0"), "regionless puzzles must preserve row/column checking");
+  const limited = computePuzzleConflictCells(progress, { rowColCells: [{ r: 0, c: 0 }] }, 11, 9);
+  expect(limited.size === 0, "explicit row/column checker domains must remain authoritative");
+  const solutionDomain = computePuzzleConflictCells(progress, { solution: brainwavesSolution }, 11, 9);
+  expect(solutionDomain.size === 0, "solution padding must identify exterior notes in regionless imports when fully unambiguous");
+}
 
 // User-drawn double lines share the same progress renderer in solving and creator mode.
 // Stored segment direction is intentionally inconsistent here: rendering must keep each
@@ -108,5 +144,7 @@ const stylesSource = await readFile(new URL("../src/app/styles.css", import.meta
 expect(stylesSource.includes(':not([transform*="scale("])'), "preview CSS must preserve non-scaling-stroke on internally scaled authored paths");
 const fogMaskSource = await readFile(new URL("../src/sudokupad/fog/fogMasks.ts", import.meta.url), "utf8");
 expect(fogMaskSource.includes('[mask="url(#fog-mask-fog)"]'), "authored fog-mask references must be scoped per board");
+expect(fogMaskSource.includes('fogEdge.setAttribute("clip-path", `url(#${fogInnerClipId})`)'), "fog soft edge must be clipped inside hidden cells");
+expect(fogMaskSource.indexOf('fogEdge.appendChild(shapeUse)') < fogMaskSource.indexOf('edgeUses(fogShapeId).forEach((use) => fogEdge.appendChild(use))'), "fog edge strokes must be drawn after the opaque hidden region, not outside the revealed border");
 
 console.log("Reported arrow/fog/preview puzzle import-to-play regressions passed");

@@ -60,6 +60,7 @@ export function applySudokuPadFogMasks(svg: SVGSVGElement, scene: SudokuPadScene
   const fogFadeOutId = sudokuPadScopedSvgId(svg, "fog-fadeout");
   const fogFadeInId = sudokuPadScopedSvgId(svg, "fog-fadein");
   const fogEdgeId = sudokuPadScopedSvgId(svg, "fog-edge");
+  const fogInnerClipId = sudokuPadScopedSvgId(svg, "fog-inner-clip");
   const fogMaskId = sudokuPadScopedSvgId(svg, "fog-mask-fog");
   const lightMaskId = sudokuPadScopedSvgId(svg, "fog-mask-light");
   const fogCoverId = sudokuPadScopedSvgId(svg, "fog-fogcover");
@@ -79,17 +80,26 @@ export function applySudokuPadFogMasks(svg: SVGSVGElement, scene: SudokuPadScene
   pathGroup.id = fogPathId;
   const path = createSvgElement("path");
   path.setAttribute("vector-effect", "non-scaling-stroke");
-  path.setAttribute("d", outlinePath(scene));
+  const fogOutline = outlinePath(scene);
+  path.setAttribute("d", fogOutline);
   pathGroup.appendChild(path);
   const fadeOut = createSvgElement("g"); fadeOut.id = fogFadeOutId; fadeOut.style.opacity = "0";
   const fadeIn = createSvgElement("g"); fadeIn.id = fogFadeInId; fadeIn.style.opacity = "1";
   fogShape.append(pathGroup, fadeOut, fadeIn);
 
+  // Keep the softened fog edge INSIDE hidden cells. Strokes drawn outside the
+  // fog path partially mask already-revealed artwork (notably exterior borders).
+  const fogInnerClip = createSvgElement("clipPath");
+  fogInnerClip.id = fogInnerClipId;
+  fogInnerClip.setAttribute("clipPathUnits", "userSpaceOnUse");
+  const clipPath = createSvgElement("path"); clipPath.setAttribute("d", fogOutline);
+  fogInnerClip.appendChild(clipPath);
   const fogEdge = createSvgElement("g");
   fogEdge.id = fogEdgeId;
   fogEdge.dataset.sphenpadFogEdge = "true";
-  edgeUses(fogShapeId).forEach((use) => fogEdge.appendChild(use));
+  fogEdge.setAttribute("clip-path", `url(#${fogInnerClipId})`);
   const shapeUse = createSvgElement("use"); shapeUse.setAttribute("href", `#${fogShapeId}`); fogEdge.appendChild(shapeUse);
+  edgeUses(fogShapeId).forEach((use) => fogEdge.appendChild(use));
 
   const maskFog = createSvgElement("mask");
   maskFog.id = fogMaskId;
@@ -113,7 +123,7 @@ export function applySudokuPadFogMasks(svg: SVGSVGElement, scene: SudokuPadScene
   lightBlack.setAttribute("x", String(left)); lightBlack.setAttribute("y", String(top)); lightBlack.setAttribute("width", String(width)); lightBlack.setAttribute("height", String(height));
   lightBlack.setAttribute("mask", `url(#${fogMaskId})`);
   maskLight.append(lightWhite, lightBlack);
-  defs.append(maskFog, maskLight, fogShape, fogEdge);
+  defs.append(maskFog, maskLight, fogShape, fogInnerClip, fogEdge);
 
   const cover = createSvgElement("g");
   cover.id = fogCoverId;
