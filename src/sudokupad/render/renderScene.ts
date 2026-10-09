@@ -100,10 +100,17 @@ function renderLine(renderer: SvgRenderer, line: SudokuPadSourceLine, plan: Retu
   else renderer.renderLine({ ...normalized, target: normalized.target ?? "arrows" });
 }
 
-export function renderSudokuPadScene(svg: SVGSVGElement, scene: SudokuPadScene): SvgRenderer {
+/** Retain identical SVG nodes across redraws. In particular, WebKit repaints
+ * embedded SVG emoji images when their <image> element is removed/recreated. */
+export interface SudokuPadRenderOptions { retainUnchanged?: boolean; beforeReconcile?: () => void }
+
+export function renderSudokuPadScene(svg: SVGSVGElement, scene: SudokuPadScene, options: SudokuPadRenderOptions = {}): SvgRenderer {
   ensureSudokuPadLayers(svg);
   const renderer = new SvgRenderer(svg);
-  renderer.clearAllLayers();
+  const layers = Array.from(svg.querySelectorAll<SVGGElement>(":scope > g:not(.defs)"));
+  const retained = options.retainUnchanged && layers.some((layer) => layer.children.length)
+    ? new Map(layers.map((layer) => [layer, Array.from(layer.children)])) : null;
+  if (!retained) renderer.clearAllLayers();
   applySudokuPadFogClueVisibility(scene);
   renderHistoricalSudokuPadBackground(renderer, scene);
   const plan = recognizeSudokuPadRenderFeatures(scene);
@@ -172,6 +179,20 @@ export function renderSudokuPadScene(svg: SVGSVGElement, scene: SudokuPadScene):
   // Stock experimental demo TmMBJj8jbr hides thermo-like graphics over its image.
   if (scene.renderSettings.experimentalMode && scene.puzzleId === "TmMBJj8jbr") {
     svg.querySelectorAll('.thermo-line, .thermo-bulb, rect[fill="#a0a0a0"]').forEach((part) => part.setAttribute("opacity", "0"));
+  }
+
+  if (retained) {
+    // Cached image and Twemoji replacements must happen before diffing; only
+    // genuinely changed elements are removed. Unchanged ones never detach.
+    options.beforeReconcile?.();
+    for (const [layer, previous] of retained) {
+      const next = Array.from(layer.children).slice(previous.length);
+      for (let i = 0; i < Math.min(previous.length, next.length); i++) {
+        if (previous[i].isEqualNode(next[i])) next[i].remove();
+        else previous[i].replaceWith(next[i]);
+      }
+      for (let i = next.length; i < previous.length; i++) previous[i].remove();
+    }
   }
 
   const viewBox = computeSudokuPadViewBox(renderer);

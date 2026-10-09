@@ -268,9 +268,11 @@ async function changedDocs(userId: string, name: string, afterRevision: number) 
   if (!db) return [];
   return (await getDocs(query(collection(db, "users", userId, name), where("syncRevision", ">", afterRevision)))).docs;
 }
-export async function pullCloudChanges(userId: string, afterRevision: number): Promise<CloudChangesResult> {
+export async function pullCloudChanges(userId: string, afterRevision: number, revisionHint?: CloudStateMetadata | null): Promise<CloudChangesResult> {
   if (!firebaseEnabled || !db) return { version: CLOUD_SCHEMA_VERSION, revision: afterRevision, updatedAt: 0, changes: [] };
-  const metadata = await pullCloudStateMetadata(userId);
+  // The live state-document listener already supplied this revision. Reusing it
+  // avoids another round trip before downloading the actual changed records.
+  const metadata = revisionHint && revisionHint.revision > afterRevision ? revisionHint : await pullCloudStateMetadata(userId);
   if (!metadata) return { version: CLOUD_SCHEMA_VERSION, revision: 0, updatedAt: 0, changes: [] };
   if (metadata.version < CLOUD_SCHEMA_VERSION) return { version: metadata.version, revision: metadata.revision, updatedAt: metadata.updatedAt, changes: [] };
   if (metadata.revision <= afterRevision) return { version: metadata.version, revision: metadata.revision, updatedAt: metadata.updatedAt, changes: [] };

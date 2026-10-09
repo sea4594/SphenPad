@@ -455,15 +455,22 @@ export class SvgRenderer {
   }
 
   adjustViewBox(left: number, top: number, width: number, height: number): void {
-    this.svg.style.width = `${width}px`;
-    this.svg.style.height = `${height}px`;
-    this.svg.style.margin = `${Math.round(top)}px 0 0 ${Math.round(left)}px`;
-    this.svg.setAttribute("viewBox", `${Math.round(left)} ${Math.round(top)} ${Math.round(width)} ${Math.round(height)}`);
+    // Safari may invalidate SVG image compositing even for redundant viewBox
+    // writes. Avoid changing any geometry attribute whose value is unchanged.
+    const setAttr = (elem: Element, name: string, value: string) => {
+      if (elem.getAttribute(name) !== value) elem.setAttribute(name, value);
+    };
+    const cssWidth = `${width}px`, cssHeight = `${height}px`;
+    const margin = `${Math.round(top)}px 0 0 ${Math.round(left)}px`;
+    if (this.svg.style.width !== cssWidth) this.svg.style.width = cssWidth;
+    if (this.svg.style.height !== cssHeight) this.svg.style.height = cssHeight;
+    if (this.svg.style.margin !== margin) this.svg.style.margin = margin;
+    setAttr(this.svg, "viewBox", `${Math.round(left)} ${Math.round(top)} ${Math.round(width)} ${Math.round(height)}`);
     this.svg.querySelectorAll(".viewboxsize").forEach((elem) => {
-      elem.setAttribute("x", String(Math.floor(left)));
-      elem.setAttribute("y", String(Math.floor(top)));
-      elem.setAttribute("width", String(Math.ceil(width)));
-      elem.setAttribute("height", String(Math.ceil(height)));
+      setAttr(elem, "x", String(Math.floor(left)));
+      setAttr(elem, "y", String(Math.floor(top)));
+      setAttr(elem, "width", String(Math.ceil(width)));
+      setAttr(elem, "height", String(Math.ceil(height)));
     });
   }
 }

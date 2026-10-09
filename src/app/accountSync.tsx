@@ -6,7 +6,7 @@ import { puzzleToCloudPayload } from "../core/puzzleSync";
 import { notifyStorageRefreshNeeded, onCloudSyncNeeded } from "../core/syncSignal";
 import { acknowledgeDurableSyncDirty, applyRemoteStorageChanges, clearDurableSyncJournal, hasDurableSyncDirtyRecords, markAllDurableSyncDirty, readAllSyncKeys, readCreatorProjectForSync, readDurableSyncDirtyRecords, readFolderForSync, readPuzzleRowForSync, type DurableSyncDirtyRecord } from "../core/storage";
 import {
-  CLOUD_SCHEMA_VERSION, type CloudChange, archiveCloudConflicts, firebaseEnabled, googleLogin, googleLogout, onCloudStateChanged, onGoogleAuthStateChanged, pullCloudChanges, pullCloudState,
+  CLOUD_SCHEMA_VERSION, type CloudChange, type CloudStateMetadata, archiveCloudConflicts, firebaseEnabled, googleLogin, googleLogout, onCloudStateChanged, onGoogleAuthStateChanged, pullCloudChanges, pullCloudState,
   migrateCloudToCurrentSchema, pullCloudStateMetadata, pushCloudChanges, resolveGoogleRedirectLogin, snapshotToCloudChanges,
 } from "../firebase/client";
 
@@ -168,9 +168,9 @@ export function AccountSyncProvider({ children }: { children: ReactNode }) {
     return [...changes.values()];
   }
 
-  async function applyIncrementalCloud(uid: string, epoch: number) {
+  async function applyIncrementalCloud(uid: string, epoch: number, revisionHint?: CloudStateMetadata | null) {
     assertSession(uid, epoch);
-    const result = await pullCloudChanges(uid, cloudRevisionRef.current);
+    const result = await pullCloudChanges(uid, cloudRevisionRef.current, revisionHint);
     assertSession(uid, epoch);
     if (result.version < CLOUD_SCHEMA_VERSION) return false;
     if (result.changes.length) {
@@ -266,13 +266,15 @@ export function AccountSyncProvider({ children }: { children: ReactNode }) {
     throw new Error("Cloud account changed repeatedly during migration. Local changes remain queued and will retry automatically.");
   }
 
-  async function syncOnce(activeUser = userRef.current) {
+  async function syncOnce(activeUser = userRef.current, revisionHint?: CloudStateMetadata | null) {
     if (!activeUser || !readyRef.current) return;
     const uid = activeUser.uid; const epoch = authEpochRef.current;
     setSyncError("");
     try {
       await recoverMissingDirtyJournal(uid); assertSession(uid, epoch);
-      const metadata = await pullCloudStateMetadata(uid); assertSession(uid, epoch);
+      const metadata = revisionHint && revisionHint.revision > cloudRevisionRef.current
+        ? revisionHint : await pullCloudStateMetadata(uid);
+      assertSession(uid, epoch);
       const needsMigration = Boolean(metadata?.version && metadata.version < CLOUD_SCHEMA_VERSION);
       const needsPull = !needsMigration && (metadata?.revision ?? 0) > cloudRevisionRef.current;
       const needsPush = await hasDurableSyncDirtyRecords();
@@ -285,7 +287,7 @@ export function AccountSyncProvider({ children }: { children: ReactNode }) {
       setSyncStatus("syncing");
       if (needsMigration) await migrateAccountSchema(uid, epoch);
       else {
-        if (needsPull) await applyIncrementalCloud(uid, epoch);
+        if (needsPull) await applyIncrementalCloud(uid, epoch, metadata);
         if (await hasDurableSyncDirtyRecords()) await pushDirty(uid, epoch);
       }
       assertSession(uid, epoch); await checkpointLocalMutation(uid); setSyncStatus("idle"); retryCountRef.current = 0; clearRetryTimer();
@@ -359,7 +361,7 @@ export function AccountSyncProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  function scheduleSync(delay = 800) {
+  function scheduleSync(delay = 75) {
     if (!userRef.current || !readyRef.current) return;
     clearSyncTimer();
     syncTimerRef.current = window.setTimeout(() => {
@@ -388,12 +390,12 @@ export function AccountSyncProvider({ children }: { children: ReactNode }) {
   useEffect(() => { if (!firebaseEnabled || !user || !ready) return; return onCloudSyncNeeded(() => scheduleSync()); }, [ready, user]);
   useEffect(() => {
     if (!firebaseEnabled || !user || !ready) return;
-    const reconcile = () => void runExclusive(() => syncOnce(user)).catch(() => {});
+    const reconcile = (revisionHint?: CloudStateMetadata | null) => void runExclusive(() => syncOnce(user, revisionHint)).catch(() => {});
     // Listen only to the tiny account state document. A revision change wakes
     // incremental sync immediately; the slow interval remains only as a fallback.
     const unsubscribeCloud = onCloudStateChanged(user.uid, (metadata) => {
       if (!metadata) return;
-      if (metadata.version < CLOUD_SCHEMA_VERSION || metadata.revision > cloudRevisionRef.current) reconcile();
+      if (metadata.version < CLOUD_SCHEMA_VERSION || metadata.revision > cloudRevisionRef.current) reconcile(metadata);
     }, () => { scheduleRetry(); });
     const online = () => reconcile();
     const focus = () => reconcile();

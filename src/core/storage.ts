@@ -78,7 +78,11 @@ function signalStorageMutation(notify = true, updatedAt = Date.now(), invalidate
   if (invalidate.puzzles !== false) puzzlesListCache = null;
   if (invalidate.folders !== false) foldersListCache = null;
   if (invalidate.creatorProjects !== false) creatorProjectsListCache = null;
-  markLocalDataChanged(updatedAt, notify);
+  // Device-only session saves (selection, tool, timer checkpoints) must not
+  // advance the cloud mutation revision: no outbox record was written for them.
+  // Otherwise crash-recovery treats them as a lost outbox and reuploads the
+  // entire library on the next reconciliation.
+  if (notify) markLocalDataChanged(updatedAt, true);
 }
 
 function updatePuzzleListCache(key: string, data: PersistedPuzzle) {

@@ -8,7 +8,7 @@ import { fmtHMS } from "../core/time";
 import { makeInitialProgress } from "../core/scl";
 import { loadFromSudokuPad, SUDOKUPAD_IMPORT_REVISION } from "../core/sudokupad";
 import type { Patch } from "../core/undo";
-import { applyPatch, invertPatch, patchAt } from "../core/undo";
+import { applyPatchShared, invertPatch, patchAt } from "../core/undo";
 import { PauseOverlay } from "./PauseOverlay";
 import { CompletionOverlay } from "./CompletionOverlay";
 import { CheckAnswersOverlay } from "./CheckAnswersOverlay";
@@ -1176,7 +1176,7 @@ export function PuzzlePage(props: { editor?: boolean }) {
     const sync = opts?.sync ?? true;
     const touchUpdatedAt = opts?.touchUpdatedAt ?? true;
     let nextProgress: PuzzleProgress = data.progress;
-    for (const p of patches) nextProgress = applyPatch(nextProgress, p);
+    for (const p of patches) nextProgress = applyPatchShared(nextProgress, p);
 
     // Editing after completion reopens the completion flow on re-solve, keeping timer paused until restart.
     const solvedNow = isSolved(nextProgress, puzzleSolution(data.def));
@@ -1247,7 +1247,7 @@ export function PuzzlePage(props: { editor?: boolean }) {
     const historyEntry = toHistoryEntry(undoParts.substantive[undoParts.substantive.length - 1]);
     if (!historyEntry.patches.length) return;
     let nextProgress = current.progress;
-    for (let i = historyEntry.patches.length - 1; i >= 0; i--) nextProgress = applyPatch(nextProgress, invertPatch(historyEntry.patches[i]));
+    for (let i = historyEntry.patches.length - 1; i >= 0; i--) nextProgress = applyPatchShared(nextProgress, invertPatch(historyEntry.patches[i]));
     if (historyEntry.selection) nextProgress = { ...nextProgress, selection: historyEntry.selection };
 
     const redoParts = splitTrailingSelectionHistory(normalizedRedo);
@@ -1286,7 +1286,7 @@ export function PuzzlePage(props: { editor?: boolean }) {
       const historyEntry = toHistoryEntry(redoParts.substantive[redoParts.substantive.length - 1]);
       if (!historyEntry.patches.length) return;
       let nextProgress = current.progress;
-      for (const patch of historyEntry.patches) nextProgress = applyPatch(nextProgress, patch);
+      for (const patch of historyEntry.patches) nextProgress = applyPatchShared(nextProgress, patch);
       if (historyEntry.selection) nextProgress = { ...nextProgress, selection: historyEntry.selection };
       const undoSubstantive = splitTrailingSelectionHistory(normalizedUndo).substantive;
       void persist({

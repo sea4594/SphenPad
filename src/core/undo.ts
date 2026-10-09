@@ -11,6 +11,23 @@ export function applyPatch<T extends object>(obj: T, p: Patch): T {
   return clone;
 }
 
+/** Copy only the patched path. Unchanged progress cells keep their identity,
+ * avoiding full SVG redraws when changing tool, selection or timer state. */
+export function applyPatchShared<T extends object>(obj: T, patch: Patch): T {
+  if (!patch.path.length) return obj;
+  const clone = (value: unknown): any => Array.isArray(value) ? [...value] : { ...(value as object) };
+  const root = clone(obj);
+  let source: any = obj, target: any = root;
+  for (let i = 0; i < patch.path.length - 1; i++) {
+    const key = patch.path[i];
+    const child = source[key];
+    target[key] = clone(child);
+    source = child; target = target[key];
+  }
+  target[patch.path[patch.path.length - 1]] = patch.next;
+  return root as T;
+}
+
 export function invertPatch(p: Patch): Patch {
   return { path: p.path, prev: p.next, next: p.prev };
 }

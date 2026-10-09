@@ -29,7 +29,13 @@ export const SudokuPadBoard = forwardRef<SVGSVGElement, SudokuPadBoardProps>(fun
     if (!svg) return;
     const controller = new AbortController();
     let cleanupAssets: (() => void) | undefined;
-    renderSudokuPadScene(svg, scene);
+    renderSudokuPadScene(svg, scene, {
+      retainUnchanged: true,
+      beforeReconcile: () => {
+        restoreCachedSudokuPadImages(svg, scene, assetResolver);
+        restoreCachedSudokuPadSvgEmoji(svg, assetResolver);
+      },
+    });
     // Restore previously resolved assets before paint; the asynchronous pass below
     // is still needed for first-load and for fonts/layout recomputation.
     const cleanupFog = applySudokuPadFogMasks(svg, scene);
