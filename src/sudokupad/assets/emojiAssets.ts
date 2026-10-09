@@ -59,25 +59,37 @@ function substitution(text: string): string | undefined {
 }
 
 
-function svgRelativeBounds(textEl: SVGTextElement, svg: SVGSVGElement): { x: number; y: number; width: number; height: number } {
-  const savedTransform = textEl.getAttribute("transform");
-  if (savedTransform !== null) textEl.setAttribute("transform", savedTransform.replace(/rotate\s*\([^)]*\)/, "rotate(0)"));
-  const rect = textEl.getBoundingClientRect();
-  if (savedTransform !== null) textEl.setAttribute("transform", savedTransform);
-  const svgRect = svg.getBoundingClientRect();
-  const viewBox = (svg.getAttribute("viewBox") ?? "0 0 1 1").split(/\s+/).map(Number);
-  const scaleX = viewBox[2] ? svgRect.width / viewBox[2] : 1;
-  const scaleY = viewBox[3] ? svgRect.height / viewBox[3] : scaleX;
-  const scale = Number.isFinite(scaleX) && scaleX > 0 ? scaleX : (Number.isFinite(scaleY) && scaleY > 0 ? scaleY : 1);
-  const left = svgRect.left - (viewBox[0] ?? 0) * scale;
-  const top = svgRect.top - (viewBox[1] ?? 0) * scale;
-  return {
-    x: (rect.x - left) / scale,
-    y: (rect.y - top) / scale,
-    width: rect.width / scale,
-    height: rect.height / scale,
-  };
+// getBBox uses the text element's own SVG coordinate system, before its
+// transform. The image is a sibling and inherits the same parent transform;
+// copying the text's transform once therefore preserves the intended position.
+function replaceEmojiText(textEl: SVGTextElement, href: string): boolean {
+  let bbox: DOMRect | SVGRect;
+  try { bbox = textEl.getBBox(); } catch { return false; }
+  if (![bbox.x, bbox.y, bbox.width, bbox.height].every(Number.isFinite) || bbox.width <= 0 || bbox.height <= 0) return false;
+  const image = document.createElementNS("http://www.w3.org/2000/svg", "image");
+  image.classList.add("twemoji");
+  image.setAttribute("alt", textEl.textContent?.trim() ?? "");
+  image.setAttribute("href", href);
+  for (const key of ["x", "y", "width", "height"] as const) image.setAttribute(key, String(+bbox[key].toFixed(3)));
+  for (const key of ["opacity", "transform"] as const) {
+    if (textEl.hasAttribute(key)) image.setAttribute(key, textEl.getAttribute(key)!);
+  }
+  textEl.after(image);
+  textEl.remove();
+  return true;
 }
+
+/** Synchronous pre-paint restoration for emojis whose object URL was resolved earlier. */
+export function restoreCachedSudokuPadSvgEmoji(svg: SVGSVGElement, resolver: SudokuPadAssetResolver = defaultSudokuPadAssetResolver): void {
+  if (!emojiObjectUrlCache.has(resolver)) return;
+  for (const textEl of svg.querySelectorAll<SVGTextElement>("text:not(:empty)")) {
+    const emojiUrl = parsedEmojiUrl(textEl.textContent?.trim() ?? "");
+    if (!emojiUrl) continue;
+    const href = cachedEmojiHref(resolver, emojiUrl);
+    if (href) replaceEmojiText(textEl, href);
+  }
+}
+
 function parsedEmojiUrl(text: string): string | undefined {
   const html = twemoji.parse(text, { ext: ".svg", folder: "svg", base: "https://sudokupad.app/assets/twemoji/", className: "emojireplacement" });
   const matches = html.match(/<img class="emojireplacement"/g) ?? [];
@@ -124,20 +136,7 @@ export async function replaceSudokuPadSvgEmoji(
     }
     if (signal?.aborted || !textEl.isConnected) continue;
 
-    let bbox: { x: number; y: number; width: number; height: number };
-    try { bbox = svgRelativeBounds(textEl, svg); } catch { continue; }
-    const image = document.createElementNS("http://www.w3.org/2000/svg", "image");
-    image.classList.add("twemoji");
-    image.setAttribute("alt", text);
-    image.setAttribute("href", href);
-    for (const [key, value] of Object.entries(bbox)) {
-      image.setAttribute(key, String(+value.toFixed(3)));
-    }
-    for (const key of ["opacity", "transform"] as const) {
-      if (textEl.hasAttribute(key)) image.setAttribute(key, textEl.getAttribute(key)!);
-    }
-    textEl.after(image);
-    textEl.remove();
+    replaceEmojiText(textEl, href);
   }
   return () => revokers.splice(0).forEach((revoke) => revoke());
 }
