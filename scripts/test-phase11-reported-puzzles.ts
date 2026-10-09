@@ -33,6 +33,25 @@ const fogLive = sceneWithPuzzleProgress(fogImported.def.scene, makeInitialProgre
 expect(fogLive.fog, "search-and-surprise: fog state was lost in live progress rendering");
 expect(getSudokuPadLitCells(fogLive).length > 0, "search-and-surprise: initial fog state has no lit cells");
 
+// RAT RUN 19: Brainwaves stores its solution as lowercase letters, but
+// SphenPad's letter input uses uppercase. Correct entries must light the fog.
+const brainwavesPayload = await archivedPayload("oj8y6yrx16.json");
+const brainwavesResult = await loadResolvedSudokuPadPayload(brainwavesPayload, { context: { sourceId: "oj8y6yrx16", urlSettings: emptySudokuPadUrlSettings() } });
+const brainwavesDef = definitionFromSudokuPadImport(brainwavesResult).def;
+expect(brainwavesDef.scene?.fog, "oj8y6yrx16: fog state missing");
+const brainwavesScene = brainwavesDef.scene;
+const brainwavesSolution = brainwavesScene.metadata.solution;
+expect(typeof brainwavesSolution === "string" && brainwavesSolution.length >= brainwavesScene.rows * brainwavesScene.cols, "oj8y6yrx16: solution unavailable");
+expect(brainwavesScene.fog?.triggerLinks?.length === 23, "oj8y6yrx16: expected 23 authored fog triggers");
+const brainwavesProgress = makeInitialProgress(brainwavesDef);
+const initialBrainwaves = getSudokuPadLitCells(sceneWithPuzzleProgress(brainwavesScene, brainwavesProgress, brainwavesDef.logic, true)).length;
+for (let r = 0; r < brainwavesScene.rows; r += 1) for (let c = 0; c < brainwavesScene.cols; c += 1) {
+  brainwavesProgress.cells[r][c].value = brainwavesSolution[r * brainwavesScene.cols + c].toUpperCase();
+}
+const fullyLitBrainwaves = getSudokuPadLitCells(sceneWithPuzzleProgress(brainwavesScene, brainwavesProgress, brainwavesDef.logic, true)).length;
+expect(fullyLitBrainwaves > initialBrainwaves, "oj8y6yrx16: solved uppercase letters must reveal more fog");
+expect(fullyLitBrainwaves === brainwavesScene.rows * brainwavesScene.cols, "oj8y6yrx16: solved grid must reveal all cells");
+
 
 // User-drawn double lines share the same progress renderer in solving and creator mode.
 // Stored segment direction is intentionally inconsistent here: rendering must keep each

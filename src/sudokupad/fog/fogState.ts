@@ -14,7 +14,7 @@ function isLamp(scene: SudokuPadScene, cell: SudokuPadSceneCell): boolean {
   if (value === undefined || value === "") return false;
   const solution = typeof scene.metadata.solution === "string" ? scene.metadata.solution : undefined;
   if (solution === undefined) return true;
-  return String(value) === solution[flatIndex(scene, cell.row, cell.col)];
+  return String(value).toUpperCase() === solution[flatIndex(scene, cell.row, cell.col)]?.toUpperCase();
 }
 
 export function getSudokuPadLitCells(scene: SudokuPadScene): SudokuPadPoint[] {
