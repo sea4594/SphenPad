@@ -3113,20 +3113,6 @@ input.url {
   }
 }
 
-/* Short desktop windows: let the controls contract instead of forcing the
-   rules/card and keypad to overflow their shared sidebar. */
-@media (min-width: 1001px) and (max-height: 820px) and (hover: hover) and (pointer: fine) {
-  .puzzlePage .kbdPanel { grid-template-rows: minmax(0, 40%) minmax(0, 1fr); }
-  .puzzlePage .mobileControlPanel {
-    min-height: 0;
-    height: 100%;
-    grid-template-rows: repeat(5, minmax(0, 1fr));
-  }
-  .puzzlePage .panelBtn,
-  .puzzlePage .panelMainGrid .keyButton,
-  .puzzlePage .panelMainGrid .lineKindSelect { min-height: 0; }
-}
-
 @media (max-width: 760px), ((hover: none) and (pointer: coarse)) {
   .topbar {
     padding: max(6px, var(--safe-top)) 10px 8px 10px;
@@ -3793,17 +3779,59 @@ input.url {
 }
 
 
-/* On short tablet-landscape screens, reserve the available sidebar height
-   for both rules and controls rather than letting keypad min-sizes hide rules. */
-.puzzleShell.layoutTabletLandscape .kbdPanel {
-  grid-template-rows: minmax(0, 1fr) minmax(0, 1.2fr);
+/* Solver sidebar: reserve the keypad's usable height first, giving the
+   rules only the remaining vertical space. Never let either card overlap.
+   If an exceptionally short window cannot fit both, scroll the sidebar
+   rather than compressing the keypad to unusable heights. */
+@media (min-width: 1001px) and (hover: hover) and (pointer: fine) {
+  .puzzleShell:not(.videoLayoutOn) .kbdPanel {
+    --solver-key-min: clamp(60px, 8vh, 72px);
+    grid-template-rows: minmax(110px, 1fr) max-content;
+    align-content: start;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  .puzzleShell:not(.videoLayoutOn) .puzzleMetaCard {
+    grid-template-rows: auto auto minmax(40px, 1fr);
+    overflow-y: auto;
+  }
+  .puzzleShell:not(.videoLayoutOn) .mobileControlPanel {
+    min-height: 0;
+    height: max-content;
+    grid-template-rows: repeat(5, minmax(var(--solver-key-min), auto));
+    align-self: start;
+  }
+  .puzzleShell:not(.videoLayoutOn) .panelBtn,
+  .puzzleShell:not(.videoLayoutOn) .panelMainGrid .keyButton,
+  .puzzleShell:not(.videoLayoutOn) .panelMainGrid .lineKindSelect {
+    min-height: var(--solver-key-min);
+  }
 }
-.puzzleShell.layoutTabletLandscape .mobileControlPanel {
+
+/* Tablet landscape uses the same allocation without altering portrait/phone
+   controls or the optional video-player layout. */
+.puzzleShell.layoutTabletLandscape:not(.videoLayoutOn) .kbdPanel {
+  --solver-key-min: clamp(58px, 8vh, 66px);
+  grid-template-rows: minmax(110px, 1fr) max-content;
+  align-content: start;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.puzzleShell.layoutTabletLandscape:not(.videoLayoutOn) .puzzleMetaCard {
+  grid-template-rows: auto auto minmax(40px, 1fr);
+  overflow-y: auto;
+}
+.puzzleShell.layoutTabletLandscape:not(.videoLayoutOn) .mobileControlPanel {
   min-height: 0;
-  grid-template-rows: repeat(5, minmax(0, 1fr));
+  height: max-content;
+  grid-template-rows: repeat(5, minmax(var(--solver-key-min), auto));
+  align-self: start;
 }
-.puzzleShell.layoutTabletLandscape .panelMainGrid .keyButton,
-.puzzleShell.layoutTabletLandscape .panelMainGrid .lineKindSelect { min-height: 0; }
+.puzzleShell.layoutTabletLandscape:not(.videoLayoutOn) .panelBtn,
+.puzzleShell.layoutTabletLandscape:not(.videoLayoutOn) .panelMainGrid .keyButton,
+.puzzleShell.layoutTabletLandscape:not(.videoLayoutOn) .panelMainGrid .lineKindSelect {
+  min-height: var(--solver-key-min);
+}
 
 /* Native SudokuPad SVG board introduced by the importer/renderer replacement. */
 .sphenpad-native-board { min-width: 0; min-height: 0; }
