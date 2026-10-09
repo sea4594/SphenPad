@@ -2626,7 +2626,11 @@ input.url {
 .puzzleMetaCard {
   width: 100%;
   display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
   gap: 6px;
+  min-height: 0;
+  max-height: 100%;
+  overflow: hidden;
 }
 
 .puzzleTitle {
@@ -2645,6 +2649,7 @@ input.url {
   white-space: pre-wrap;
   line-height: 1.35;
   font-size: 13px;
+  min-height: 0;
   max-height: min(36vh, 320px);
   overflow: auto;
   padding-right: 4px;
@@ -3106,6 +3111,20 @@ input.url {
   .kbdPanel {
     grid-template-rows: minmax(170px, 40%) 1fr;
   }
+}
+
+/* Short desktop windows: let the controls contract instead of forcing the
+   rules/card and keypad to overflow their shared sidebar. */
+@media (min-width: 1001px) and (max-height: 820px) and (hover: hover) and (pointer: fine) {
+  .puzzlePage .kbdPanel { grid-template-rows: minmax(0, 40%) minmax(0, 1fr); }
+  .puzzlePage .mobileControlPanel {
+    min-height: 0;
+    height: 100%;
+    grid-template-rows: repeat(5, minmax(0, 1fr));
+  }
+  .puzzlePage .panelBtn,
+  .puzzlePage .panelMainGrid .keyButton,
+  .puzzlePage .panelMainGrid .lineKindSelect { min-height: 0; }
 }
 
 @media (max-width: 760px), ((hover: none) and (pointer: coarse)) {
@@ -3773,6 +3792,18 @@ input.url {
   gap: 8px;
 }
 
+
+/* On short tablet-landscape screens, reserve the available sidebar height
+   for both rules and controls rather than letting keypad min-sizes hide rules. */
+.puzzleShell.layoutTabletLandscape .kbdPanel {
+  grid-template-rows: minmax(0, 1fr) minmax(0, 1.2fr);
+}
+.puzzleShell.layoutTabletLandscape .mobileControlPanel {
+  min-height: 0;
+  grid-template-rows: repeat(5, minmax(0, 1fr));
+}
+.puzzleShell.layoutTabletLandscape .panelMainGrid .keyButton,
+.puzzleShell.layoutTabletLandscape .panelMainGrid .lineKindSelect { min-height: 0; }
 
 /* Native SudokuPad SVG board introduced by the importer/renderer replacement. */
 .sphenpad-native-board { min-width: 0; min-height: 0; }
