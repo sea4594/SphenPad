@@ -54,16 +54,20 @@
 .sphenpad-sudokupad-renderer .cage-selectioncage { stroke: var(--puzzle-selectioncage); }
 .sphenpad-sudokupad-renderer rect.cage-label { fill: var(--body-bg); }
 .sphenpad-sudokupad-renderer text.cage-label { font-size: 13px; text-anchor: start; fill: var(--puzzle-given); }
-.sphenpad-sudokupad-renderer .pm-0 { transform: translate(-15px, -15px); }
-.sphenpad-sudokupad-renderer .pm-1 { transform: translate(15px, -15px); }
-.sphenpad-sudokupad-renderer .pm-2 { transform: translate(-15px, 15px); }
-.sphenpad-sudokupad-renderer .pm-3 { transform: translate(15px, 15px); }
-.sphenpad-sudokupad-renderer .pm-4 { transform: translate(0, -15px); }
-.sphenpad-sudokupad-renderer .pm-5 { transform: translate(0, 15px); }
-.sphenpad-sudokupad-renderer .pm-6 { transform: translate(-15px, 0); }
-.sphenpad-sudokupad-renderer .pm-7 { transform: translate(15px, 0); }
-.sphenpad-sudokupad-renderer .pm-8 { transform: translate(-5px, 0); }
-.sphenpad-sudokupad-renderer .pm-9 { transform: translate(5px, 0); }
+/* Keep corner notes around the cell perimeter, clear of centered notes. */
+.sphenpad-sudokupad-renderer .pm-0 { transform: translate(-21px, -21px); }
+.sphenpad-sudokupad-renderer .pm-1 { transform: translate(21px, -21px); }
+.sphenpad-sudokupad-renderer .pm-2 { transform: translate(-21px, 21px); }
+.sphenpad-sudokupad-renderer .pm-3 { transform: translate(21px, 21px); }
+.sphenpad-sudokupad-renderer .pm-4 { transform: translate(0, -21px); }
+.sphenpad-sudokupad-renderer .pm-5 { transform: translate(0, 21px); }
+.sphenpad-sudokupad-renderer .pm-6 { transform: translate(-21px, 0); }
+.sphenpad-sudokupad-renderer .pm-7 { transform: translate(21px, 0); }
+.sphenpad-sudokupad-renderer .pm-8 { transform: translate(7px, -21px); }
+.sphenpad-sudokupad-renderer .pm-9 { transform: translate(7px, 21px); }
+/* Nine or ten notes share two slots along the top/bottom edges, never the center. */
+.sphenpad-sudokupad-renderer:not(.setting-altmarks) .cell-pencilmark.spread-cornermarks.pm-4 { transform: translate(-7px, -21px); }
+.sphenpad-sudokupad-renderer:not(.setting-altmarks) .cell-pencilmark.spread-cornermarks.pm-5 { transform: translate(-7px, 21px); }
 .sphenpad-sudokupad-renderer .cell-candidate[data-count="6"] { font-size: 97%; }
 .sphenpad-sudokupad-renderer .cell-candidate[data-count="7"] { font-size: 90%; }
 .sphenpad-sudokupad-renderer .cell-candidate[data-count="8"] { font-size: 80%; }
@@ -76,8 +80,10 @@
 .sphenpad-sudokupad-renderer.setting-largedigits .pm-5 { transform: translate(0, 20px); }
 .sphenpad-sudokupad-renderer.setting-largedigits .pm-6 { transform: translate(-20px, 0); }
 .sphenpad-sudokupad-renderer.setting-largedigits .pm-7 { transform: translate(20px, 0); }
-.sphenpad-sudokupad-renderer.setting-largedigits .pm-8 { transform: translate(-7px, -4px); }
-.sphenpad-sudokupad-renderer.setting-largedigits .pm-9 { transform: translate(7px, 4px); }
+.sphenpad-sudokupad-renderer.setting-largedigits .pm-8 { transform: translate(7px, -20px); }
+.sphenpad-sudokupad-renderer.setting-largedigits .pm-9 { transform: translate(7px, 20px); }
+.sphenpad-sudokupad-renderer.setting-largedigits:not(.setting-altmarks) .cell-pencilmark.spread-cornermarks.pm-4 { transform: translate(-7px, -20px); }
+.sphenpad-sudokupad-renderer.setting-largedigits:not(.setting-altmarks) .cell-pencilmark.spread-cornermarks.pm-5 { transform: translate(-7px, 20px); }
 .sphenpad-sudokupad-renderer.setting-largedigits .cell-candidate,
 .sphenpad-sudokupad-renderer.setting-largedigits .cell-pencilmark { font-size: 1.3rem; }
 .sphenpad-sudokupad-renderer.setting-largedigits .cell-candidate[data-count="9"] { font-size: 65%; }
