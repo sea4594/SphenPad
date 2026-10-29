@@ -191,7 +191,7 @@ function tidyProgressLineJunctions(rendered: RenderedSegment[], segmentsByKey: M
   }
 }
 
-function progressLines(progress: PuzzleProgress): SudokuPadSourceLine[] {
+export function progressLines(progress: PuzzleProgress): SudokuPadSourceLine[] {
   const lines: SudokuPadSourceLine[] = [];
   const appendKind = (kind: "center" | "edge") => {
     const segments = collectProgressSegments(progress, kind);

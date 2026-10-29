@@ -4400,3 +4400,6 @@ input.url {
     grid-template-rows: minmax(0, 1fr);
   }
 }
+
+/* The interactive line overlay supplies the complete live line scene. */
+.sphenpad-line-preview-active .sphenpad-user-line { visibility: hidden; }

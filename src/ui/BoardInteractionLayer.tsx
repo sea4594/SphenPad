@@ -3,6 +3,7 @@ import { mapForcedPortraitPoint, readForcedPortraitDirection } from "../app/forc
 import type { CellRC, PuzzleProgress } from "../core/model";
 import { SUDOKUPAD_CELL_SIZE } from "../sudokupad/types/scene";
 import { getCellOutline } from "../sudokupad/render/cellOutline";
+import { progressLines } from "../sudokupad/app/progressScene";
 import type { SelectionColor, SelectionOutlineThickness } from "../app/theme";
 
 export type BoardLineKind = "center" | "edge";
@@ -142,6 +143,40 @@ export function BoardInteractionLayer(props: BoardInteractionLayerProps) {
   const longPressRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [viewBox, setViewBox] = useState<ViewBox>(() => parseViewBox(svg));
   const [preview, setPreview] = useState<{ segments: BoardLineSegment[]; kind: BoardLineKind; action: "draw" | "erase" } | null>(null);
+  // During a stroke, replace the saved line layer with the full hypothetical
+  // result. This keeps removal and the two offset lanes visible immediately.
+  const previewLines = useMemo(() => {
+    if (!preview || !preview.segments.length || props.creatorPathDrawing) return null;
+    const keys = new Set(preview.segments.map((segment) => segKey(segment.a, segment.b)));
+    const matching = (kind: string) => (kind === "edge" ? "edge" : "center") === preview.kind;
+    const colors = new Map<string, string[]>();
+    for (const stroke of progress.lines ?? []) {
+      if (!matching(stroke.kind)) continue;
+      for (const segment of stroke.segments) {
+        const key = segKey(segment.a, segment.b), list = colors.get(key) ?? [];
+        if (!list.includes(stroke.color)) list.push(stroke.color);
+        colors.set(key, list);
+      }
+    }
+    const lines = preview.action === "erase"
+      ? progress.lines.map((stroke) => ({ ...stroke, segments: matching(stroke.kind) ? stroke.segments.filter((segment) => {
+        const key = segKey(segment.a, segment.b);
+        if (!keys.has(key)) return true;
+        const list = colors.get(key) ?? [];
+        return list.includes(progress.linePaletteColor) && stroke.color !== progress.linePaletteColor;
+      }) : stroke.segments })).filter((stroke) => stroke.segments.length > 0)
+      : [...progress.lines, { kind: preview.kind, color: progress.linePaletteColor, segments: preview.segments.filter((segment) => {
+        const list = colors.get(segKey(segment.a, segment.b)) ?? [];
+        return !list.includes(progress.linePaletteColor) && list.length < (progress.lineDoubleMode ? 2 : 1);
+      }) }].filter((stroke) => stroke.segments.length > 0);
+    return progressLines({ ...progress, lines });
+  }, [preview, progress, props.creatorPathDrawing]);
+
+  useEffect(() => {
+    if (!svg) return;
+    svg.classList.toggle("sphenpad-line-preview-active", previewLines !== null);
+    return () => svg.classList.remove("sphenpad-line-preview-active");
+  }, [svg, previewLines]);
   const [selectionPreview, setSelectionPreview] = useState<CellRC[] | null>(null);
   const [creatorPointPreview, setCreatorPointPreview] = useState<CreatorBoardPoint[] | null>(null);
   const [creatorEditPathPreview, setCreatorEditPathPreview] = useState<CellRC[] | null>(null);
@@ -936,10 +971,10 @@ export function BoardInteractionLayer(props: BoardInteractionLayerProps) {
     if (progress.activeTool === "line") {
       const kind = drag.lineKind ?? "center";
       if (drag.moved && drag.segments.length && drag.lineAction) props.onLineStroke(drag.segments, kind, drag.lineAction);
-      else if (kind === "edge") {
+      else if (!drag.moved && kind === "edge") {
         const edge = drag.edgeTapCandidate ?? pickEdge(event.clientX, event.clientY, 0.54);
         if (edge) props.onLineTapEdge(edge.a, edge.b);
-      } else {
+      } else if (!drag.moved) {
         const cell = cellAt(event.clientX, event.clientY);
         if (cell) props.onLineTapCell(cell);
       }
@@ -1041,7 +1076,12 @@ export function BoardInteractionLayer(props: BoardInteractionLayerProps) {
         {creatorPointPreview.length > 1 ? <polyline points={creatorPointPreview.map((point) => `${point.c * SUDOKUPAD_CELL_SIZE},${point.r * SUDOKUPAD_CELL_SIZE}`).join(" ")} fill="none" /> : null}
         {creatorPointPreview.map((point, index) => <circle key={index} cx={point.c * SUDOKUPAD_CELL_SIZE} cy={point.r * SUDOKUPAD_CELL_SIZE} r={5} />)}
       </g> : null}
-      {preview?.segments.map((segment, index) => {
+      {previewLines?.map((line, index) => {
+        if (!line.wayPoints || line.wayPoints.length < 2) return null;
+        const [a, b] = line.wayPoints;
+        return <line key={`live-${index}`} x1={a[1] * SUDOKUPAD_CELL_SIZE} y1={a[0] * SUDOKUPAD_CELL_SIZE} x2={b[1] * SUDOKUPAD_CELL_SIZE} y2={b[0] * SUDOKUPAD_CELL_SIZE} stroke={line.color} strokeWidth={line.thickness} strokeLinecap="round" pointerEvents="none" />;
+      })}
+      {props.creatorPathDrawing && preview?.segments.map((segment, index) => {
         const center = preview.kind === "center";
         const x1 = (segment.a.c + (center ? 0.5 : 0)) * 64;
         const y1 = (segment.a.r + (center ? 0.5 : 0)) * 64;
