@@ -2724,6 +2724,14 @@ input.url {
 .panelTool4 { grid-column: 4; grid-row: 4; }
 .panelTool5 { grid-column: 4; grid-row: 5; }
 
+.puzzlePage .mobileControlPanel .panelBtn.selectiveEraseTarget {
+  outline: 3px solid var(--ui-border-strong);
+  outline-offset: -3px;
+  background: var(--toggle-on-bg);
+  color: var(--toggle-on-text);
+  box-shadow: inset 0 0 0 1px var(--toggle-on-border);
+}
+
 .panelMainGrid {
   grid-column: 1 / 4;
   grid-row: 2 / 6;
@@ -3200,7 +3208,8 @@ input.url {
   .videoLayoutOn.videoModeMobilePortrait .gridLayout {
     --portrait-video-h: max(56px, min(calc(100vw * 9 / 16), calc(100% - var(--mobile-controls-h) - 138px)));
     --video-resize-h: 10px;
-    grid-template-rows: var(--portrait-video-h) var(--video-resize-h) minmax(128px, 1fr) var(--mobile-controls-h);
+    --controls-resize-h: 10px;
+    grid-template-rows: var(--portrait-video-h) var(--video-resize-h) minmax(128px, 1fr) var(--controls-resize-h) var(--portrait-controls-h, var(--mobile-controls-h));
     --mobile-controls-h: clamp(180px, calc(var(--mobile-controls-h-raw) * 0.84), 41vmax);
   }
 
@@ -3219,7 +3228,8 @@ input.url {
     margin-inline: auto;
   }
 
-  .videoResizeHandle {
+  .videoResizeHandle,
+  .controlsResizeHandle {
     grid-column: 1;
     grid-row: 2;
     display: grid;
@@ -3231,7 +3241,10 @@ input.url {
     user-select: none;
   }
 
-  .videoResizeHandle span {
+  .controlsResizeHandle { grid-row: 4; }
+
+  .videoResizeHandle span,
+  .controlsResizeHandle span {
     width: 34px;
     height: 6px;
     border-radius: 2px;
@@ -3246,7 +3259,9 @@ input.url {
 
   .videoLayoutOn.videoModeMobilePortrait .kbdPanel {
     grid-column: 1;
-    grid-row: 4;
+    grid-row: 5;
+    height: var(--portrait-controls-h, var(--mobile-controls-h));
+    max-height: none;
   }
 
   .boardColumn {
@@ -3600,8 +3615,14 @@ input.url {
   --mobile-controls-h: clamp(220px, calc(var(--mobile-controls-h-raw) * 1.05), 320px);
   --portrait-video-h: max(180px, min(calc(100vw * 9 / 16), calc(100% - var(--mobile-controls-h) - 138px)));
   --video-resize-h: 10px;
-  grid-template-rows: var(--portrait-video-h) var(--video-resize-h) minmax(128px, 1fr) calc(var(--mobile-controls-h) + max(8px, var(--safe-bottom)));
+  --controls-resize-h: 10px;
+  grid-template-rows: var(--portrait-video-h) var(--video-resize-h) minmax(128px, 1fr) var(--controls-resize-h) calc(var(--portrait-controls-h, var(--mobile-controls-h)) + max(8px, var(--safe-bottom)));
   gap: 6px;
+}
+
+.puzzleShell.layoutTabletPortrait.videoLayoutOn.videoModeMobilePortrait .kbdPanel {
+  height: var(--portrait-controls-h, var(--mobile-controls-h));
+  max-height: var(--portrait-controls-h, var(--mobile-controls-h));
 }
 
 .puzzleShell.layoutTabletPortrait .panelBtn svg,

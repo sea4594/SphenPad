@@ -499,8 +499,14 @@ function getVideoViewportMode(layoutKind: ViewportLayoutKind): VideoViewportMode
   return "desktop";
 }
 
+function portraitResizeReservedHeight(gridLayout: HTMLElement) {
+  const rowGap = parseFloat(window.getComputedStyle(gridLayout).rowGap) || 0;
+  return 20 + 4 * rowGap + (gridLayout.closest(".layoutTabletPortrait") ? 8 : 0);
+}
+
 function getPortraitVideoLayout(gridLayout: HTMLElement, desiredVideoHeight: number) {
   const controlsHeight = gridLayout.querySelector<HTMLElement>(".kbdPanel")?.getBoundingClientRect().height ?? 0;
+  const reservedHeight = portraitResizeReservedHeight(gridLayout);
   const videoWidth = gridLayout.querySelector<HTMLElement>(".puzzleGridVideoPlayer")?.getBoundingClientRect().width ?? 0;
   const boardSurface = gridLayout.querySelector<HTMLElement>(".boardSurface");
   const boardSvg = boardSurface?.querySelector<SVGSVGElement>(".sphenpad-sudokupad-renderer");
@@ -513,15 +519,25 @@ function getPortraitVideoLayout(gridLayout: HTMLElement, desiredVideoHeight: num
   const minimumVideoHeight = Math.max(
     56,
     videoWidth * (9 / 16) * 0.25,
-    gridHeight - controlsHeight - 10 - puzzleHeightAtMaximumSize
+    gridHeight - controlsHeight - reservedHeight - puzzleHeightAtMaximumSize
   );
-  const availableVideoHeight = gridHeight - controlsHeight - 138;
+  const availableVideoHeight = gridHeight - controlsHeight - reservedHeight - 128;
   const maximumVideoHeight = Math.max(minimumVideoHeight, Math.min(videoWidth * (9 / 16), availableVideoHeight));
   const videoHeight = Math.min(maximumVideoHeight, Math.max(minimumVideoHeight, desiredVideoHeight));
   return {
     videoHeight,
-    boardHeight: Math.max(128, gridHeight - controlsHeight - 10 - videoHeight),
+    boardHeight: Math.max(128, gridHeight - controlsHeight - reservedHeight - videoHeight),
   };
+}
+
+function getPortraitControlsLayout(gridLayout: HTMLElement, desiredControlsHeight: number) {
+  const gridHeight = gridLayout.getBoundingClientRect().height;
+  const videoHeight = gridLayout.querySelector<HTMLElement>(".puzzleGridVideoPlayer")?.getBoundingClientRect().height ?? 0;
+  const reservedHeight = portraitResizeReservedHeight(gridLayout);
+  const available = Math.max(0, gridHeight - videoHeight - reservedHeight - 128);
+  const minimum = Math.min(gridLayout.closest(".layoutTabletPortrait") ? 210 : 170, available);
+  const controlsHeight = Math.min(available, Math.max(minimum, desiredControlsHeight));
+  return { controlsHeight, boardHeight: Math.max(128, gridHeight - videoHeight - reservedHeight - controlsHeight) };
 }
 
 export function PuzzlePage(props: { editor?: boolean }) {
@@ -554,6 +570,8 @@ export function PuzzlePage(props: { editor?: boolean }) {
   const [videoViewportMode, setVideoViewportMode] = useState<VideoViewportMode>(() => getVideoViewportMode(getViewportLayoutKind()));
   const [portraitVideoHeight, setPortraitVideoHeight] = useState<number | null>(null);
   const [portraitBoardHeight, setPortraitBoardHeight] = useState<number | null>(null);
+  const [portraitControlsHeight, setPortraitControlsHeight] = useState<number | null>(null);
+  const [selectiveEraseMode, setSelectiveEraseMode] = useState(false);
   const [sideVideoWidth, setSideVideoWidth] = useState<number | null>(null);
   const tickRef = useRef<number | null>(null);
   const latestDataRef = useRef<PersistedPuzzle | null>(null);
@@ -570,6 +588,7 @@ export function PuzzlePage(props: { editor?: boolean }) {
   const definitionRefreshInFlightRef = useRef(new Set<string>());
   const gridLayoutRef = useRef<HTMLDivElement | null>(null);
   const videoResizeRef = useRef<{ pointerId: number; startY: number; startHeight: number } | null>(null);
+  const controlsResizeRef = useRef<{ pointerId: number; startY: number; startHeight: number } | null>(null);
   const sideVideoResizeRef = useRef<{ pointerId: number; startX: number; startWidth: number } | null>(null);
 
   function blurButtonAfterPointerUp(event: React.PointerEvent<HTMLDivElement>) {
@@ -580,9 +599,12 @@ export function PuzzlePage(props: { editor?: boolean }) {
   }
 
   function onShellPointerDownCapture(event: React.PointerEvent<HTMLDivElement>) {
-    if (!data || data.progress.activeTool === "line" || data.progress.selection.length === 0) return;
     const target = event.target;
     if (!(target instanceof Element)) return;
+    if (selectiveEraseMode && !target.closest(".panelTool1, .panelTool2, .panelTool3, .panelTool4, .panelTool5, .keyButtonBackspace")) {
+      setSelectiveEraseMode(false);
+    }
+    if (!data || data.progress.activeTool === "line" || data.progress.selection.length === 0) return;
 
     // Keep selection while interacting with the rendered puzzle. The player is
     // SVG-based now; treating only <canvas> as the board clears SudokuPad's
@@ -596,7 +618,7 @@ export function PuzzlePage(props: { editor?: boolean }) {
     // still selected when the puzzle is reopened. Plain whitespace, rules text,
     // board fitting space, and other non-interactive background areas still
     // deselect the grid.
-    if (target.closest(".controlStack, .overlayBackdrop, button, a, input, select, textarea, [role=button], [role=link]")) return;
+    if (target.closest(".controlStack, .videoResizeHandle, .controlsResizeHandle, .videoSideResizeHandle, .overlayBackdrop, button, a, input, select, textarea, [role=button], [role=link]")) return;
 
     setSelection([]);
   }
@@ -630,6 +652,38 @@ export function PuzzlePage(props: { editor?: boolean }) {
   function stopVideoResize(event: React.PointerEvent<HTMLDivElement>) {
     if (videoResizeRef.current?.pointerId !== event.pointerId) return;
     videoResizeRef.current = null;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+    event.preventDefault();
+    event.stopPropagation();
+  }
+
+  function startControlsResize(event: React.PointerEvent<HTMLDivElement>) {
+    const controls = gridLayoutRef.current?.querySelector<HTMLElement>(".kbdPanel");
+    if (!controls) return;
+    event.preventDefault();
+    event.stopPropagation();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    controlsResizeRef.current = {
+      pointerId: event.pointerId,
+      startY: event.clientY,
+      startHeight: controls.getBoundingClientRect().height,
+    };
+  }
+
+  function resizeControls(event: React.PointerEvent<HTMLDivElement>) {
+    const drag = controlsResizeRef.current;
+    const gridLayout = gridLayoutRef.current;
+    if (!drag || drag.pointerId !== event.pointerId || !gridLayout) return;
+    const next = getPortraitControlsLayout(gridLayout, drag.startHeight - (event.clientY - drag.startY));
+    setPortraitControlsHeight(next.controlsHeight);
+    setPortraitBoardHeight(next.boardHeight);
+    event.preventDefault();
+    event.stopPropagation();
+  }
+
+  function stopControlsResize(event: React.PointerEvent<HTMLDivElement>) {
+    if (controlsResizeRef.current?.pointerId !== event.pointerId) return;
+    controlsResizeRef.current = null;
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
     event.preventDefault();
     event.stopPropagation();
@@ -908,6 +962,7 @@ export function PuzzlePage(props: { editor?: boolean }) {
       rafId = window.requestAnimationFrame(() => {
         setPortraitVideoHeight(null);
         setPortraitBoardHeight(null);
+        setPortraitControlsHeight(null);
       });
       return clearScheduled;
     }
@@ -1129,6 +1184,7 @@ export function PuzzlePage(props: { editor?: boolean }) {
       : "";
   const gridLayoutStyle = {
     ...(portraitVideoHeight === null ? {} : { "--portrait-video-h": `${portraitVideoHeight}px` }),
+    ...(portraitControlsHeight === null ? {} : { "--portrait-controls-h": `${portraitControlsHeight}px` }),
     ...(sideVideoWidth === null ? {} : { "--video-side-w": `${Math.round(sideVideoWidth)}px` }),
   } as React.CSSProperties;
   const timeStr = useMemo(() => fmtHMS(data?.progress.totalMillis ?? 0), [data?.progress.totalMillis]);
@@ -1854,7 +1910,7 @@ export function PuzzlePage(props: { editor?: boolean }) {
     return { lines: nextLines, changed };
   }
 
-  function clearFeatureType(tool: PuzzleProgress["activeTool"], progress: PuzzleProgress): Patch[] {
+  function clearFeatureType(tool: PuzzleProgress["activeTool"], progress: PuzzleProgress, exactTool = false): Patch[] {
     const sel = progress.selection;
     if (!sel.length) return [];
     const selectedSet = new Set(sel.map(rcKey));
@@ -1875,7 +1931,7 @@ export function PuzzlePage(props: { editor?: boolean }) {
       for (const rc of editable) {
         const cell = progress.cells[rc.r][rc.c];
         // For pencil-mark tools, clear an entered value before clearing hidden notes.
-        if (cell.value != null) {
+        if (cell.value != null && !exactTool) {
           patches.push(patchAt(progress, ["cells", rc.r, rc.c, "value"], undefined));
           continue;
         }
@@ -1904,7 +1960,23 @@ export function PuzzlePage(props: { editor?: boolean }) {
     return patches;
   }
 
+  function clearSelectedTool(tool: PuzzleProgress["activeTool"]) {
+    if (data) {
+      // The line tool hides selection; use the selection stored when it was activated.
+      const selection = data.progress.selection.length
+        ? data.progress.selection
+        : data.progress.activeTool === "line" ? data.progress.storedSelectionWhenLineTool ?? [] : [];
+      const patches = clearFeatureType(tool, { ...data.progress, selection }, true);
+      if (patches.length) applyPatches(patches);
+    }
+    setSelectiveEraseMode(false);
+  }
+
   function handleBackspace() {
+    if (selectiveEraseMode) {
+      setSelectiveEraseMode(false);
+      return;
+    }
     if (!data || !data.progress.selection.length) return;
     const order: PuzzleProgress["activeTool"][] = ["value", "center", "corner", "highlight", "line"];
     const primary = clearFeatureType(data.progress.activeTool, data.progress);
@@ -2430,6 +2502,24 @@ export function PuzzlePage(props: { editor?: boolean }) {
               <span />
             </div>
           ) : null}
+          {videoLayoutOn && videoViewportMode === "mobile-portrait" ? (
+            <div
+              className="controlsResizeHandle"
+              role="separator"
+              aria-label="Resize puzzle and bottom controls"
+              aria-orientation="horizontal"
+              onPointerDown={startControlsResize}
+              onPointerMove={resizeControls}
+              onPointerUp={stopControlsResize}
+              onPointerCancel={stopControlsResize}
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+              }}
+            >
+              <span />
+            </div>
+          ) : null}
           {sideBySideVideoMode ? (
             <div
               className="videoSideResizeHandle"
@@ -2511,11 +2601,11 @@ export function PuzzlePage(props: { editor?: boolean }) {
                 <IconSelectMode multi={data.progress.multiSelect} />
               </button>
 
-              <button title="Big numbers (Z)" className={"btn panelBtn panelTool1" + (data.progress.activeTool === "value" ? " primary" : "")} onClick={() => setActiveTool("value")}><IconToolBig /></button>
-              <button title="Edge notes (X)" className={"btn panelBtn panelTool2" + (data.progress.activeTool === "corner" ? " primary" : "")} onClick={() => setActiveTool("corner")}><IconToolCorner /></button>
-              <button title="Center notes (C)" className={"btn panelBtn panelTool3" + (data.progress.activeTool === "center" ? " primary" : "")} onClick={() => setActiveTool("center")}><IconToolCenter /></button>
-              <button title="Highlight (V)" className={"btn panelBtn panelTool4" + (data.progress.activeTool === "highlight" ? " primary" : "")} onClick={() => setActiveTool("highlight")}><IconToolHighlight /></button>
-              <button title="Line (B)" className={"btn panelBtn panelTool5" + (data.progress.activeTool === "line" ? " primary" : "")} onClick={() => setActiveTool("line")}><IconToolLine /></button>
+              <button title={selectiveEraseMode ? "Clear big numbers from selected cells" : "Big numbers (Z)"} className={"btn panelBtn panelTool1" + (selectiveEraseMode ? " selectiveEraseTarget" : data.progress.activeTool === "value" ? " primary" : "")} onClick={() => selectiveEraseMode ? clearSelectedTool("value") : setActiveTool("value")}><IconToolBig /></button>
+              <button title={selectiveEraseMode ? "Clear edge notes from selected cells" : "Edge notes (X)"} className={"btn panelBtn panelTool2" + (selectiveEraseMode ? " selectiveEraseTarget" : data.progress.activeTool === "corner" ? " primary" : "")} onClick={() => selectiveEraseMode ? clearSelectedTool("corner") : setActiveTool("corner")}><IconToolCorner /></button>
+              <button title={selectiveEraseMode ? "Clear center notes from selected cells" : "Center notes (C)"} className={"btn panelBtn panelTool3" + (selectiveEraseMode ? " selectiveEraseTarget" : data.progress.activeTool === "center" ? " primary" : "")} onClick={() => selectiveEraseMode ? clearSelectedTool("center") : setActiveTool("center")}><IconToolCenter /></button>
+              <button title={selectiveEraseMode ? "Clear highlight from selected cells" : "Highlight (V)"} className={"btn panelBtn panelTool4" + (selectiveEraseMode ? " selectiveEraseTarget" : data.progress.activeTool === "highlight" ? " primary" : "")} onClick={() => selectiveEraseMode ? clearSelectedTool("highlight") : setActiveTool("highlight")}><IconToolHighlight /></button>
+              <button title={selectiveEraseMode ? "Clear line from selected cells" : "Line (B)"} className={"btn panelBtn panelTool5" + (selectiveEraseMode ? " selectiveEraseTarget" : data.progress.activeTool === "line" ? " primary" : "")} onClick={() => selectiveEraseMode ? clearSelectedTool("line") : setActiveTool("line")}><IconToolLine /></button>
 
               <div className="panelMainGrid">
                 {(data.progress.activeTool === "value" || data.progress.activeTool === "center" || data.progress.activeTool === "corner") ? (
@@ -2526,6 +2616,7 @@ export function PuzzlePage(props: { editor?: boolean }) {
                     onDigit={applyDigit}
                     onDigitLongPress={selectMatchingCells}
                     onBackspace={handleBackspace}
+                    onBackspaceLongPress={() => setSelectiveEraseMode(true)}
                     onToggleAlphabet={() => pushSessionPatch(patchAt(data.progress, ["alphabetMode"], !data.progress.alphabetMode))}
                     onCycleAlphabetPage={() => {
                       const next = ((data.progress.alphabetPage + 1) % 3) as 0 | 1 | 2;
@@ -2543,6 +2634,7 @@ export function PuzzlePage(props: { editor?: boolean }) {
                     onColorLongPress={selectMatchingCells}
                     onWhite={() => applyHighlight(TRANSPARENT_HIGHLIGHT_COLOR)}
                     onBackspace={handleBackspace}
+                    onBackspaceLongPress={() => setSelectiveEraseMode(true)}
                     onFlipPalette={() => {
                       const next = (data.progress.highlightPalettePage === 0 ? 1 : 0) as 0 | 1;
                       pushSessionPatch(patchAt(data.progress, ["highlightPalettePage"], next));
@@ -2556,6 +2648,7 @@ export function PuzzlePage(props: { editor?: boolean }) {
                     kind="line"
                     progress={data.progress}
                     onBackspace={handleBackspace}
+                    onBackspaceLongPress={() => setSelectiveEraseMode(true)}
                     onColor={(c) => pushSessionPatch(patchAt(data.progress, ["linePaletteColor"], c))}
                     onColorLongPress={selectMatchingCells}
                     onToggleDoubleLine={() => pushSessionPatch(patchAt(data.progress, ["lineDoubleMode"], !data.progress.lineDoubleMode))}

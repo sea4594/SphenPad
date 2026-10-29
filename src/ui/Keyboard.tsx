@@ -24,6 +24,7 @@ export function Keyboard(props: {
   onDigit?: (d: string) => void;
   onDigitLongPress?: (d: string) => void;
   onBackspace?: () => void;
+  onBackspaceLongPress?: () => void;
   onToggleAlphabet?: () => void;
   onCycleAlphabetPage?: () => void;
   onMode?: (m: PuzzleProgress["entryMode"]) => void;
@@ -53,7 +54,7 @@ export function Keyboard(props: {
           <Key className="keyButtonValue" onClick={() => props.onDigit?.("0")} onLongPress={() => props.onDigitLongPress?.("0")}>0</Key>
         )}
         <Key className="keyButtonCycle" onClick={() => props.onToggleAlphabet?.()}>{progress.alphabetMode ? "123" : "ABC"}</Key>
-        <Key className="keyButtonBackspace" onClick={() => props.onBackspace?.()} title="Backspace"><IconBackspace size={26} /></Key>
+        <Key className="keyButtonBackspace" onClick={() => props.onBackspace?.()} onLongPress={props.onBackspaceLongPress} title="Backspace (hold to clear a tool)"><IconBackspace size={26} /></Key>
       </Grid3x4>
     );
 
@@ -92,7 +93,7 @@ export function Keyboard(props: {
         ))}
         <ColorKey color="#ffffff" onClick={() => props.onWhite?.()} onLongPress={() => props.onColorLongPress?.("#ffffff")} />
         <Key onClick={() => props.onFlipPalette?.()}>⇄</Key>
-        <Key className="keyButtonBackspace" onClick={() => props.onBackspace?.()} title="Backspace"><IconBackspace size={26} /></Key>
+        <Key className="keyButtonBackspace" onClick={() => props.onBackspace?.()} onLongPress={props.onBackspaceLongPress} title="Backspace (hold to clear a tool)"><IconBackspace size={26} /></Key>
       </Grid3x4>
     );
 
@@ -130,7 +131,7 @@ export function Keyboard(props: {
       <Key active={progress.lineDoubleMode} className="keyButtonValue" onClick={() => props.onToggleDoubleLine?.()} title="Toggle double-line mode">
         2x
       </Key>
-      <Key className="keyButtonBackspace" onClick={() => props.onBackspace?.()} title="Backspace"><IconBackspace size={26} /></Key>
+      <Key className="keyButtonBackspace" onClick={() => props.onBackspace?.()} onLongPress={props.onBackspaceLongPress} title="Backspace (hold to clear a tool)"><IconBackspace size={26} /></Key>
     </Grid3x4>
   );
 
@@ -197,6 +198,7 @@ function Key(props: { children: React.ReactNode; onClick?: () => void; onLongPre
       onPointerUp={clearLongPress}
       onPointerLeave={clearLongPress}
       onPointerCancel={clearLongPress}
+      onContextMenu={props.onLongPress ? (event) => event.preventDefault() : undefined}
       title={props.title}
     >
       {props.children}
