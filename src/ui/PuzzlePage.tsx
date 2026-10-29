@@ -1859,8 +1859,8 @@ export function PuzzlePage(props: { editor?: boolean }) {
       for (let c = 0; c < cells[r].length; c++) {
         const cell = cells[r][c];
         if (activeTool === "value" && cell.value === target) add({ r, c });
-        if (activeTool === "center" && cell.notes.center.has(target)) add({ r, c });
-        if (activeTool === "corner" && cell.notes.corner.has(target)) add({ r, c });
+        if (activeTool === "center" && !cell.value && !cell.given && cell.notes.center.has(target)) add({ r, c });
+        if (activeTool === "corner" && !cell.value && !cell.given && cell.notes.corner.has(target)) add({ r, c });
         if (activeTool === "highlight" && cell.highlights.includes(normalizeHighlightColor(target))) add({ r, c });
       }
     }
@@ -1877,14 +1877,32 @@ export function PuzzlePage(props: { editor?: boolean }) {
       for (const mark of lineCenterMarks) {
         if (mark.color.toLowerCase() === normalizedTarget) add(mark.rc);
       }
+    }
+
+    // Multi-select adds matches without removing any previously selected cells.
+    // The line tool keeps a separate selection while it hides the normal one.
+    const previous = activeTool === "line"
+      ? data.progress.storedSelectionWhenLineTool ?? data.progress.selection
+      : data.progress.selection;
+    const nextSelection = data.progress.multiSelect ? [...previous] : [];
+    const seen = new Set(nextSelection.map(rcKey));
+    for (const rc of matches) {
+      const key = rcKey(rc);
+      if (!seen.has(key)) {
+        seen.add(key);
+        nextSelection.push(rc);
+      }
+    }
+
+    if (activeTool === "line") {
       applySessionPatches([
-        patchAt(data.progress, ["selection"], matches),
-        patchAt(data.progress, ["storedSelectionWhenLineTool"], matches),
+        patchAt(data.progress, ["selection"], nextSelection),
+        patchAt(data.progress, ["storedSelectionWhenLineTool"], nextSelection),
       ]);
       return;
     }
 
-    setSelection(matches);
+    setSelection(nextSelection);
   }
 
   function clearLineToolSelection() {

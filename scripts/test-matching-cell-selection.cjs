@@ -55,6 +55,59 @@ const keys = (cells) => cells.map((c) => `${c.r},${c.c}`).sort();
   fn({ r: 1, c: 1 });
   assert.deepEqual(keys(state.selection), ['1,1'], 'blank-cell matching must exclude cells with notes');
 }
+// A held number/color in the tool controls matches only visible pencil marks,
+// and honors the multi-select toggle without toggling existing cells off.
+function keyboardMatchingFunction(state) {
+  const js = extract(page, 'selectMatchingCells');
+  return new Function('data', 'rcKey', 'normalizeHighlightColor', 'setSelection', 'patchAt', 'applySessionPatches', `${js}\nreturn selectMatchingCells;`)(
+    state.data,
+    (rc) => `${rc.r},${rc.c}`,
+    (color) => color.toLowerCase(),
+    (selection) => { state.selection = selection; state.data.progress.selection = selection; },
+    (_, path, value) => ({ path, value }),
+    (patches) => {
+      for (const { path, value } of patches) state.data.progress[path[0]] = value;
+      state.selection = state.data.progress.selection;
+    },
+  );
+}
+{
+  const state = { data: { progress: { activeTool: 'center', multiSelect: false, selection: [], lines: [], lineCenterMarks: [], cells: [
+    [cell(undefined, { center: ['2'], corner: ['3'] }), cell('8', { center: ['2'], corner: ['3'] }), { ...cell(undefined, { center: ['2'], corner: ['3'] }), given: '9' }],
+    [cell(undefined, { center: ['3'], corner: ['4'] }), cell(undefined, { highlights: ['#ff0000'] }), cell('1', { highlights: ['#ff0000'] })],
+  ] } }, selection: [] };
+  const fn = keyboardMatchingFunction(state);
+  fn('2');
+  assert.deepEqual(keys(state.selection), ['0,0'], 'center-note hold must ignore pencil marks behind filled digits and givens');
+  state.data.progress.activeTool = 'corner';
+  fn('3');
+  assert.deepEqual(keys(state.selection), ['0,0'], 'corner-note hold must ignore pencil marks behind filled digits and givens');
+  state.data.progress.activeTool = 'highlight';
+  fn('#ff0000');
+  assert.deepEqual(keys(state.selection), ['1,1', '1,2'], 'highlight matching must still include colored cells with digits');
+  state.data.progress.activeTool = 'center';
+  state.data.progress.multiSelect = true;
+  fn('2');
+  fn('3');
+  assert.deepEqual(keys(state.selection), ['0,0', '1,0', '1,1', '1,2'], 'multi-select must retain earlier selections and union new pencil-mark matches');
+  fn('3');
+  assert.deepEqual(keys(state.selection), ['0,0', '1,0', '1,1', '1,2'], 'repeating a held key must not deselect existing matches or create duplicates');
+  state.data.progress.multiSelect = false;
+  fn('3');
+  assert.deepEqual(keys(state.selection), ['1,0'], 'single-select hold must still replace previous selection');
+}
+{
+  const state = { data: { progress: { activeTool: 'line', multiSelect: true,
+    selection: [], storedSelectionWhenLineTool: [{ r: 1, c: 1 }],
+    cells: [[cell(undefined), cell(undefined)], [cell(undefined), cell(undefined)]],
+    lines: [{ kind: 'center', color: '#ff0000', segments: [{ a: { r: 0, c: 0 }, b: { r: 0, c: 1 } }] }],
+    lineCenterMarks: [{ color: '#ff0000', rc: { r: 0, c: 1 } }],
+  } }, selection: [] };
+  const fn = keyboardMatchingFunction(state);
+  fn('#ff0000');
+  assert.deepEqual(keys(state.selection), ['0,0', '0,1', '1,1'], 'line-color hold must merge with the stored selection');
+  assert.deepEqual(keys(state.data.progress.storedSelectionWhenLineTool), ['0,0', '0,1', '1,1'], 'line tool must preserve the merged selection when switching tools');
+}
 assert.match(interaction, /props\.onDoubleCell\(rc, drag\.longPressCycleIndex \?\? 0\)/, 'long press must continue cycling matches');
 const pointerJs = extract(interaction, 'onPointerUp');
 function pointerUpCase({ lastTap, longPressTriggered, startedSelected = false }) {
