@@ -2623,6 +2623,17 @@ input.url {
   background: #ffffff;
 }
 
+/* The playable puzzle alone can use a subtle version of the active theme's
+   background without altering the authored SVG drawing layers. */
+html[data-white-background="false"] {
+  --sphenpad-puzzle-surface: color-mix(in srgb, #fff 85%, var(--bg) 15%);
+}
+.puzzleShell:not(.creatorEditorShell) .boardCard,
+.puzzleShell:not(.creatorEditorShell) .boardSurface,
+.puzzleShell:not(.creatorEditorShell) .sphenpad-native-board > .sphenpad-sudokupad-renderer {
+  background: var(--sphenpad-puzzle-surface, #fff);
+}
+
 .puzzleMetaCard {
   width: 100%;
   display: grid;

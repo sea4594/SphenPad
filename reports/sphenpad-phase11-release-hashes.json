@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-29T23:18:44.782Z",
+  "generatedAt": "2026-10-30T00:08:02.114Z",
   "phase": "11L",
   "target": "SphenPad Phase 11 / SudokuMaker creator parity on pinned SudokuPad 0.612.0",
   "productionInputs": [
@@ -21895,13 +21895,13 @@
     },
     {
       "path": "src/app/styles.css",
-      "bytes": 99424,
-      "sha256": "9426ed16abbbb4e2196d0530ad03f62d2c4bd6c21bee1c82ee950c874f73a16f"
+      "bytes": 99933,
+      "sha256": "c251a491916977d6cf1db7036ac70350fd67fe706883fd41805d92528822f51b"
     },
     {
       "path": "src/app/theme.tsx",
-      "bytes": 10155,
-      "sha256": "149f438d9f1afbde93b9f908a330cda77e5d1d090fcd6723d6712dbf06acf409"
+      "bytes": 10809,
+      "sha256": "0fa5e241a9206ebef9fbe0c4446f2c3d60b2ca0b2508acddc4d43ff7919599d6"
     },
     {
       "path": "src/app/viewportLayout.ts",
@@ -22505,8 +22505,8 @@
     },
     {
       "path": "src/ui/SettingsOverlay.tsx",
-      "bytes": 12059,
-      "sha256": "ac61080223a6249b897f5b237611c0efb9e12ae04ed6e9c1eb117fcb27618d66"
+      "bytes": 12611,
+      "sha256": "d921b41d41c6c7739cb70adcac69f1fd6c6fbd3f92fd270fc1f1a050af2d9d1a"
     },
     {
       "path": "src/ui/SudokuPadBoard.tsx",
@@ -44438,14 +44438,14 @@
       "sha256": "bebaa50f7a5c47189579f4e54a7380036d9c27028916981271a4cfc99f952b7d"
     },
     {
-      "path": "dist/assets/index-B57e3Kbz.js",
-      "bytes": 1337071,
-      "sha256": "3a192c8b7151425ebe92e64eca6346301cfb692897dadce1d014f930d8bac031"
+      "path": "dist/assets/index-0L9DeBp8.css",
+      "bytes": 95908,
+      "sha256": "0704b0ab1d2df194a2936a2c33852706916f4516bbfc5b539431c85a1b981660"
     },
     {
-      "path": "dist/assets/index-DURcJC89.css",
-      "bytes": 95564,
-      "sha256": "fcda8e39dc138bef60a098dee3e79f4ba9ffd4400f5583c9a78b57a2befcac08"
+      "path": "dist/assets/index-CpAJlv5O.js",
+      "bytes": 1337720,
+      "sha256": "ef0bf98f04ab22c7859cb1b44088baf0a7c2636d910c96851659f8c285753763"
     },
     {
       "path": "dist/assets/sudokupad-compatibility-manifest.json",
@@ -44460,7 +44460,7 @@
     {
       "path": "dist/index.html",
       "bytes": 2121,
-      "sha256": "1bab50edaca43253d4b21ca4d4a2fd90ee9079a6771e637d55a1853f3f6059bc"
+      "sha256": "de57a0d1e023de1ea1022b468c33a4e293cc96d36b581fa3dfaaa82be1d533de"
     },
     {
       "path": "dist/manifest.json",
@@ -44489,5 +44489,5 @@
     }
   ],
   "bundleBuilt": true,
-  "releaseContentSha256": "9da9ed8ff1b90cea6b6041da30b8461490263c39e22e6780add835ba52686a61"
+  "releaseContentSha256": "bfd18a6d2c217f0130f242509891307ada3d1152a8ceccdfdbef3612770e8cd5"
 }

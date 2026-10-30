@@ -10,6 +10,7 @@ type ThemeContextValue = {
   mode: ThemeMode;
   color: ThemeColor;
   hideTimer: boolean;
+  whiteBackground: boolean;
   outlineDigits: boolean;
   compactMarks: boolean;
   labelRowsCols: boolean;
@@ -21,6 +22,7 @@ type ThemeContextValue = {
   setMode: (mode: ThemeMode) => void;
   setColor: (color: ThemeColor) => void;
   setHideTimer: (hideTimer: boolean) => void;
+  setWhiteBackground: (whiteBackground: boolean) => void;
   setOutlineDigits: (outlineDigits: boolean) => void;
   setCompactMarks: (compactMarks: boolean) => void;
   setLabelRowsCols: (labelRowsCols: boolean) => void;
@@ -55,6 +57,7 @@ function readInitialTheme(): {
   mode: ThemeMode;
   color: ThemeColor;
   hideTimer: boolean;
+  whiteBackground: boolean;
   outlineDigits: boolean;
   compactMarks: boolean;
   labelRowsCols: boolean;
@@ -70,6 +73,7 @@ function readInitialTheme(): {
         mode: "light",
         color: "ocean",
         hideTimer: false,
+        whiteBackground: true,
         outlineDigits: true,
         compactMarks: false,
         labelRowsCols: false,
@@ -83,6 +87,7 @@ function readInitialTheme(): {
       mode?: ThemeMode;
       color?: ThemeColor | "sunset" | "sepia";
       hideTimer?: boolean;
+      whiteBackground?: boolean;
       outlineDigits?: boolean;
       compactMarks?: boolean;
       labelRowsCols?: boolean;
@@ -99,6 +104,7 @@ function readInitialTheme(): {
       : "ocean";
     const normalizedTheme = normalizeThemeSelection(mode, color);
     const hideTimer = typeof parsed.hideTimer === "boolean" ? parsed.hideTimer : false;
+    const whiteBackground = typeof parsed.whiteBackground === "boolean" ? parsed.whiteBackground : true;
     const outlineDigits = typeof parsed.outlineDigits === "boolean" ? parsed.outlineDigits : true;
     const compactMarks = typeof parsed.compactMarks === "boolean" ? parsed.compactMarks : false;
     const labelRowsCols = typeof parsed.labelRowsCols === "boolean" ? parsed.labelRowsCols : false;
@@ -110,12 +116,13 @@ function readInitialTheme(): {
     const highlightTransparency = typeof parsed.highlightTransparency === "number" && Number.isFinite(parsed.highlightTransparency)
       ? Math.max(0, Math.min(100, Math.round(parsed.highlightTransparency)))
       : 0;
-    return { mode: normalizedTheme.mode, color: normalizedTheme.color, hideTimer, outlineDigits, compactMarks, labelRowsCols, conflictChecker, selectionColor, selectionOutlineThickness, highlightTransparency };
+    return { mode: normalizedTheme.mode, color: normalizedTheme.color, hideTimer, whiteBackground, outlineDigits, compactMarks, labelRowsCols, conflictChecker, selectionColor, selectionOutlineThickness, highlightTransparency };
   } catch {
     return {
       mode: "light",
       color: "ocean",
       hideTimer: false,
+      whiteBackground: true,
       outlineDigits: true,
       compactMarks: false,
       labelRowsCols: false,
@@ -132,6 +139,7 @@ export function ThemeProvider(props: { children: ReactNode }) {
   const [mode, setModeState] = useState<ThemeMode>(initialTheme.mode);
   const [color, setColorState] = useState<ThemeColor>(initialTheme.color);
   const [hideTimer, setHideTimer] = useState<boolean>(initialTheme.hideTimer);
+  const [whiteBackground, setWhiteBackground] = useState<boolean>(initialTheme.whiteBackground);
   const [outlineDigits, setOutlineDigits] = useState<boolean>(initialTheme.outlineDigits);
   const [compactMarks, setCompactMarks] = useState<boolean>(initialTheme.compactMarks);
   const [labelRowsCols, setLabelRowsCols] = useState<boolean>(initialTheme.labelRowsCols);
@@ -160,6 +168,7 @@ export function ThemeProvider(props: { children: ReactNode }) {
       setModeState(next.mode);
       setColorState(next.color);
       setHideTimer(next.hideTimer);
+      setWhiteBackground(next.whiteBackground);
       setOutlineDigits(next.outlineDigits);
       setCompactMarks(next.compactMarks);
       setLabelRowsCols(next.labelRowsCols);
@@ -174,6 +183,7 @@ export function ThemeProvider(props: { children: ReactNode }) {
   useEffect(() => {
     document.documentElement.dataset.mode = mode;
     document.documentElement.dataset.theme = color;
+    document.documentElement.dataset.whiteBackground = String(whiteBackground);
     document.documentElement.style.setProperty("--sphenpad-highlight-opacity", String(1 - highlightTransparency / 100));
 
     // Keep browser chrome (notch/status bar area) aligned with the active theme color.
@@ -189,8 +199,8 @@ export function ThemeProvider(props: { children: ReactNode }) {
     document.documentElement.style.backgroundColor = bg;
     document.body.style.backgroundColor = bg;
 
-    setSyncedLocalStorageItem(STORAGE_KEY, JSON.stringify({ mode, color, hideTimer, outlineDigits, compactMarks, labelRowsCols, conflictChecker, selectionColor, selectionOutlineThickness, selectionOutlineThicknessVersion: 2, highlightTransparency }));
-  }, [mode, color, hideTimer, outlineDigits, compactMarks, labelRowsCols, conflictChecker, selectionColor, selectionOutlineThickness, highlightTransparency]);
+    setSyncedLocalStorageItem(STORAGE_KEY, JSON.stringify({ mode, color, hideTimer, whiteBackground, outlineDigits, compactMarks, labelRowsCols, conflictChecker, selectionColor, selectionOutlineThickness, selectionOutlineThicknessVersion: 2, highlightTransparency }));
+  }, [mode, color, hideTimer, whiteBackground, outlineDigits, compactMarks, labelRowsCols, conflictChecker, selectionColor, selectionOutlineThickness, highlightTransparency]);
 
   const setHighlightTransparency = useCallback((value: number) => {
     setHighlightTransparencyState(Math.max(0, Math.min(100, Math.round(value))));
@@ -201,6 +211,7 @@ export function ThemeProvider(props: { children: ReactNode }) {
       mode,
       color,
       hideTimer,
+      whiteBackground,
       outlineDigits,
       compactMarks,
       labelRowsCols,
@@ -212,6 +223,7 @@ export function ThemeProvider(props: { children: ReactNode }) {
       setMode,
       setColor,
       setHideTimer,
+      setWhiteBackground,
       setOutlineDigits,
       setCompactMarks,
       setLabelRowsCols,
@@ -220,7 +232,7 @@ export function ThemeProvider(props: { children: ReactNode }) {
       setSelectionOutlineThickness,
       setHighlightTransparency,
     }),
-    [mode, color, hideTimer, outlineDigits, compactMarks, labelRowsCols, conflictChecker, selectionColor, selectionOutlineThickness, highlightTransparency, setMode, setColor, setHighlightTransparency],
+    [mode, color, hideTimer, whiteBackground, outlineDigits, compactMarks, labelRowsCols, conflictChecker, selectionColor, selectionOutlineThickness, highlightTransparency, setMode, setColor, setHighlightTransparency],
   );
   return <ThemeContext.Provider value={value}>{props.children}</ThemeContext.Provider>;
 }

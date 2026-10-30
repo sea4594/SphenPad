@@ -55,6 +55,7 @@ export function SettingsOverlay(props: { onClose: () => void }) {
     mode,
     color,
     hideTimer,
+    whiteBackground,
     outlineDigits,
     compactMarks,
     labelRowsCols,
@@ -64,6 +65,7 @@ export function SettingsOverlay(props: { onClose: () => void }) {
     highlightTransparency,
     setTheme,
     setHideTimer,
+    setWhiteBackground,
     setOutlineDigits,
     setCompactMarks,
     setLabelRowsCols,
@@ -173,6 +175,18 @@ export function SettingsOverlay(props: { onClose: () => void }) {
                 <option key={preset.id} value={preset.id}>{preset.label}</option>
               ))}
             </select>
+
+            <div className="settingsRow" style={{ marginTop: 4 }}>
+              <div className="muted">White background</div>
+              <button
+                className={"switch" + (whiteBackground ? " is-on" : "")}
+                onClick={() => setWhiteBackground(!whiteBackground)}
+                aria-label="Toggle white puzzle background"
+                aria-pressed={whiteBackground}
+              >
+                <span className="switchThumb" />
+              </button>
+            </div>
 
             <div className="settingsRow" style={{ marginTop: 4 }}>
               <div className="muted">Hide timer</div>
