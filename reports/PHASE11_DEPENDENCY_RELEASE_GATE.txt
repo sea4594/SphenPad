@@ -1,4 +1,4 @@
-Phase 11 dependency-backed release gate — 2026-10-30T00:19:57Z
+Phase 11 dependency-backed release gate — 2026-10-30T15:34:24Z
 Node: v20.20.2
 npm: 10.8.2
 
@@ -59,14 +59,14 @@ transforming...
 rendering chunks...
 computing gzip size...
 dist/index.html                     2.12 kB │ gzip:   0.91 kB
-dist/assets/index-COUYp7wE.css     95.91 kB │ gzip:  16.42 kB
-dist/assets/index-9A9QZAW8.js   1,337.72 kB │ gzip: 402.17 kB
+dist/assets/index-pnvE6fQW.css     97.83 kB │ gzip:  16.73 kB
+dist/assets/index-BxMe0F02.js   1,337.72 kB │ gzip: 402.17 kB
 
 (!) Some chunks are larger than 500 kB after minification. Consider:
 - Using dynamic import() to code-split the application
 - Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
 - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
-✓ built in 3.00s
+✓ built in 2.97s
 [5/11] Complete Phase 11 creator regression matrix
 
 > sphenpad@0.0.0 test-creator-phase11
@@ -171,7 +171,7 @@ Production smoke: PASS (2 built asset references checked)
 > sphenpad@0.0.0 verify-production-bundle-clean
 > node scripts/verify-production-bundle-clean.mjs
 
-Production bundle cleanliness: PASS (4371 files, no test/debug/conformance leakage)
+Production bundle cleanliness: PASS (4192 files, no test/debug/conformance leakage)
 [8/11] Built-app browser smoke
 
 > sphenpad@0.0.0 verify-production-browser
@@ -197,7 +197,7 @@ SudokuPad compatibility manifest: PASS (67 JS/CSS assets, 13 fonts)
 > sphenpad@0.0.0 write-phase11-release-hashes
 > node scripts/write-phase11-release-hashes.mjs
 
-Phase 11 release hash manifest: PASS (4510 production inputs, 15 creator tests, 4371 built files)
-releaseContentSha256=da17395f233a6ee1d1dda5b2dcfa91ebae6b166d3e7d05344fe2ab3c629c1d48
+Phase 11 release hash manifest: PASS (4331 production inputs, 15 creator tests, 4192 built files)
+releaseContentSha256=0690b581b95aac7827e97e16e3e09853fc758e10d80ae1a0bea61faab9b10ec8
 
 PHASE 11 DEPENDENCY-BACKED RELEASE GATE PASSED

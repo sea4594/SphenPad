@@ -2623,15 +2623,60 @@ input.url {
   background: #ffffff;
 }
 
-/* The playable puzzle alone can use a subtle version of the active theme's
-   background without altering the authored SVG drawing layers. */
-html[data-white-background="false"] {
-  --sphenpad-puzzle-surface: color-mix(in srgb, #fff 75%, var(--bg) 25%);
-}
+/* Keep the default white board. With White background off, match the exact
+   theme background without changing authored puzzle data or creator previews. */
+html[data-white-background="false"] { --sphenpad-puzzle-surface: var(--bg); }
 .puzzleShell:not(.creatorEditorShell) .boardCard,
 .puzzleShell:not(.creatorEditorShell) .boardSurface,
 .puzzleShell:not(.creatorEditorShell) .sphenpad-native-board > .sphenpad-sudokupad-renderer {
   background: var(--sphenpad-puzzle-surface, #fff);
+}
+
+/* SudokuPad authors sometimes draw white shapes over the white board to hide
+   portions of constraints. Match those opaque white SVG parts to the surface
+   instead; do not alter fog masks, translucent highlights, or raster assets. */
+html[data-white-background="false"] .puzzleShell:not(.creatorEditorShell) .sphenpad-sudokupad-renderer {
+  --color-white: var(--bg);
+  --body-bg: var(--bg);
+}
+html[data-white-background="false"] .puzzleShell:not(.creatorEditorShell) .sphenpad-sudokupad-renderer
+:is(#background, #underlay, #overlay, #arrows, #cages, #cell-grids)
+:is([fill="#fff" i], [fill="#ffffff" i], [fill="#ffffffff" i], [fill="white" i],
+    [fill="rgb(255,255,255)" i], [fill="rgb(255, 255, 255)" i],
+    [fill="rgba(255,255,255,1)" i], [fill="rgba(255, 255, 255, 1)" i]) {
+  fill: var(--bg);
+}
+html[data-white-background="false"] .puzzleShell:not(.creatorEditorShell) .sphenpad-sudokupad-renderer
+:is(#background, #underlay, #overlay, #arrows, #cages, #cell-grids)
+:is([stroke="#fff" i], [stroke="#ffffff" i], [stroke="#ffffffff" i], [stroke="white" i],
+    [stroke="rgb(255,255,255)" i], [stroke="rgb(255, 255, 255)" i],
+    [stroke="rgba(255,255,255,1)" i], [stroke="rgba(255, 255, 255, 1)" i]) {
+  stroke: var(--bg);
+}
+
+/* The exact background is dark in dark themes: keep grid lines and all cell
+   digits/notes readable. Also invert pure-black authored SVG constraints. */
+html[data-mode="dark"][data-white-background="false"] .puzzleShell:not(.creatorEditorShell) .sphenpad-sudokupad-renderer {
+  --color-black: #fff;
+  --puzzle-given: #fff;
+  --puzzle-value: #fff;
+  --puzzle-candidate: #fff;
+  --puzzle-pencilmark: #fff;
+  --puzzle-givenCornermark: #fff;
+  --puzzle-givenCandidate: #fff;
+  --puzzle-outlines: var(--bg);
+}
+html[data-mode="dark"][data-white-background="false"] .puzzleShell:not(.creatorEditorShell) .sphenpad-sudokupad-renderer
+:is(.cell-grid, .cage-box) { stroke: #fff; }
+html[data-mode="dark"][data-white-background="false"] .puzzleShell:not(.creatorEditorShell) .sphenpad-sudokupad-renderer
+:is(#background, #underlay, #overlay, #arrows, #cages, #cell-grids)
+:is([stroke="#000" i], [stroke="#000000" i], [stroke="black" i], [stroke="rgba(0, 0, 0, 1)" i]) {
+  stroke: #fff;
+}
+html[data-mode="dark"][data-white-background="false"] .puzzleShell:not(.creatorEditorShell) .sphenpad-sudokupad-renderer
+:is(#background, #underlay, #overlay, #arrows, #cages, #cell-grids)
+:is([fill="#000" i], [fill="#000000" i], [fill="black" i], [fill="rgba(0, 0, 0, 1)" i]) {
+  fill: #fff;
 }
 
 .puzzleMetaCard {
