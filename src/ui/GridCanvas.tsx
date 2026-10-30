@@ -431,7 +431,7 @@ export function GridCanvas(props: GridCanvasProps) {
         } : {}),
       } as CSSProperties}
     >
-      <SudokuPadBoard ref={setSvg} scene={scene} assetResolver={sphenPadSudokuPadAssetResolver} />
+      <SudokuPadBoard ref={setSvg} scene={scene} whiteBackground={!previewMode && theme.whiteBackground} assetResolver={sphenPadSudokuPadAssetResolver} />
       {!previewMode ? <BoardInteractionLayer
         svg={svg}
         rows={scene.rows}

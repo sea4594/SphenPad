@@ -8,16 +8,18 @@ import { restoreCachedSudokuPadImages } from "../sudokupad/assets/imageAssets";
 import type { SudokuPadAssetResolver } from "../sudokupad/assets/assetResolver";
 import { sudokuPadBoardClassNames } from "../sudokupad/app/boardClasses";
 import "../sudokupad/styles/sudokupad-renderer.css";
+import { applyPlayableGridPaper } from "./playableGridPaper";
 
 export interface SudokuPadBoardProps {
   scene: SudokuPadScene;
   className?: string;
   ariaLabel?: string;
   assetResolver?: SudokuPadAssetResolver;
+  whiteBackground?: boolean;
 }
 
 export const SudokuPadBoard = forwardRef<SVGSVGElement, SudokuPadBoardProps>(function SudokuPadBoard(
-  { scene, className, ariaLabel = "Sudoku puzzle", assetResolver },
+  { scene, className, ariaLabel = "Sudoku puzzle", assetResolver, whiteBackground = false },
   forwardedRef,
 ) {
   const localRef = useRef<SVGSVGElement | null>(null);
@@ -39,6 +41,8 @@ export const SudokuPadBoard = forwardRef<SVGSVGElement, SudokuPadBoardProps>(fun
     // Restore previously resolved assets before paint; the asynchronous pass below
     // is still needed for first-load and for fonts/layout recomputation.
     const cleanupFog = applySudokuPadFogMasks(svg, scene);
+    const cleanupPaper = svg.closest(".puzzleShell:not(.creatorEditorShell)")
+      ? applyPlayableGridPaper(svg, scene.rows, scene.cols, whiteBackground) : () => undefined;
     restoreCachedSudokuPadImages(svg, scene, assetResolver);
     restoreCachedSudokuPadSvgEmoji(svg, assetResolver);
     void applySudokuPadAssets(svg, scene, { resolver: assetResolver, signal: controller.signal })
@@ -47,9 +51,10 @@ export const SudokuPadBoard = forwardRef<SVGSVGElement, SudokuPadBoardProps>(fun
     return () => {
       controller.abort();
       cleanupAssets?.();
+      cleanupPaper();
       cleanupFog();
     };
-  }, [scene, assetResolver]);
+  }, [scene, assetResolver, whiteBackground]);
 
   return <svg ref={localRef} className={classes} role="img" aria-label={ariaLabel} />;
 });

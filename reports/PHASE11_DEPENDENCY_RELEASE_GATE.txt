@@ -1,10 +1,10 @@
-Phase 11 dependency-backed release gate — 2026-10-30T16:02:18Z
+Phase 11 dependency-backed release gate — 2026-10-30T19:23:32Z
 Node: v20.20.2
 npm: 10.8.2
 
 [1/11] Clean dependency install
 
-added 274 packages, and audited 275 packages in 5s
+added 274 packages, and audited 275 packages in 13s
 
 51 packages are looking for funding
   run `npm fund` for details
@@ -55,18 +55,18 @@ npm audit: only the known Firebase/Firestore browser-only grpc advisories are pr
 
 vite v7.3.1 building client environment for production...
 transforming...
-✓ 173 modules transformed.
+✓ 174 modules transformed.
 rendering chunks...
 computing gzip size...
 dist/index.html                     2.12 kB │ gzip:   0.91 kB
-dist/assets/index-BrdrS6sh.css     98.08 kB │ gzip:  16.77 kB
-dist/assets/index-CJXBUVs7.js   1,337.72 kB │ gzip: 402.17 kB
+dist/assets/index-Cc34X-z5.css     97.99 kB │ gzip:  16.75 kB
+dist/assets/index-Cko3Sn8H.js   1,341.00 kB │ gzip: 403.15 kB
 
 (!) Some chunks are larger than 500 kB after minification. Consider:
 - Using dynamic import() to code-split the application
 - Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
 - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
-✓ built in 3.00s
+✓ built in 3.20s
 [5/11] Complete Phase 11 creator regression matrix
 
 > sphenpad@0.0.0 test-creator-phase11
@@ -171,7 +171,7 @@ Production smoke: PASS (2 built asset references checked)
 > sphenpad@0.0.0 verify-production-bundle-clean
 > node scripts/verify-production-bundle-clean.mjs
 
-Production bundle cleanliness: PASS (4192 files, no test/debug/conformance leakage)
+Production bundle cleanliness: PASS (4222 files, no test/debug/conformance leakage)
 [8/11] Built-app browser smoke
 
 > sphenpad@0.0.0 verify-production-browser
@@ -197,7 +197,7 @@ SudokuPad compatibility manifest: PASS (67 JS/CSS assets, 13 fonts)
 > sphenpad@0.0.0 write-phase11-release-hashes
 > node scripts/write-phase11-release-hashes.mjs
 
-Phase 11 release hash manifest: PASS (4331 production inputs, 15 creator tests, 4192 built files)
-releaseContentSha256=095b5ef2c2d22f7a99910174e3b1806b995076ce366d1c9d9213a82a92fd87ab
+Phase 11 release hash manifest: PASS (4362 production inputs, 15 creator tests, 4222 built files)
+releaseContentSha256=7f9701f6a98e4211495423779a7c4d06990f28c4cf710d9a777016787bd78cdf
 
 PHASE 11 DEPENDENCY-BACKED RELEASE GATE PASSED

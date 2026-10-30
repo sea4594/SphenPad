@@ -2623,13 +2623,12 @@ input.url {
   background: #ffffff;
 }
 
-/* Keep the default white board. With White background off, match the exact
-   theme background without changing authored puzzle data or creator previews. */
-html[data-white-background="false"] { --sphenpad-puzzle-surface: var(--bg); }
+/* Only the grid cells may have white paper; the surrounding space always
+   matches the theme, regardless of the White background preference. */
 .puzzleShell:not(.creatorEditorShell) .boardCard,
 .puzzleShell:not(.creatorEditorShell) .boardSurface,
 .puzzleShell:not(.creatorEditorShell) .sphenpad-native-board > .sphenpad-sudokupad-renderer {
-  background: var(--sphenpad-puzzle-surface, #fff);
+  background: var(--bg);
 }
 
 /* SudokuPad authors sometimes draw white shapes over the white board to hide
