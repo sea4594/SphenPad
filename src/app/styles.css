@@ -2758,6 +2758,17 @@ html[data-mode="dark"][data-white-background="false"] .puzzleShell:not(.creatorE
   border-radius: 0;
 }
 
+/* The play surface has a single continuous theme background. Keep the
+   controls and instructions free of inherited card panels and shadows; the
+   board itself still follows the White background preference. */
+.puzzleShell:not(.creatorEditorShell) .puzzlePage :is(.boardCard, .puzzleMetaCard, .mobileControlPanel) {
+  border-color: transparent;
+  box-shadow: none;
+}
+.puzzleShell:not(.creatorEditorShell) .puzzlePage :is(.puzzleMetaCard, .mobileControlPanel) {
+  background: transparent;
+}
+
 .panelBtn {
   min-width: 0;
   min-height: 0;
