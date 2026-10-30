@@ -2626,7 +2626,7 @@ input.url {
 /* The playable puzzle alone can use a subtle version of the active theme's
    background without altering the authored SVG drawing layers. */
 html[data-white-background="false"] {
-  --sphenpad-puzzle-surface: color-mix(in srgb, #fff 85%, var(--bg) 15%);
+  --sphenpad-puzzle-surface: color-mix(in srgb, #fff 75%, var(--bg) 25%);
 }
 .puzzleShell:not(.creatorEditorShell) .boardCard,
 .puzzleShell:not(.creatorEditorShell) .boardSurface,
