@@ -418,9 +418,13 @@ button,
   z-index: 20;
 }
 
+/* The solver header must paint the same solid theme color as the safe-area background.
+   Translucency/blur can make iPhone browser chrome sample a different shade. */
 .puzzleTopbar {
   flex-wrap: nowrap;
   gap: 8px;
+  background: var(--bg);
+  backdrop-filter: none;
 }
 
 .puzzleTopbarButtons {
@@ -2970,6 +2974,23 @@ html[data-mode="dark"][data-white-background="false"] .puzzleShell:not(.creatorE
   margin-top: 12px;
   padding-right: 2px;
 }
+
+.pauseOverlayQuickActions {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.pauseOverlayQuickActions .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  min-height: 44px;
+  padding: 0;
+}
+
 
 .settingsHeader {
   display: flex;

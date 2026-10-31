@@ -3,6 +3,7 @@ import type { PuzzleDefinition, PuzzleMeta } from "../core/model";
 import { makeInitialProgress } from "../core/scl";
 import { GridCanvas } from "./GridCanvas";
 import { LinkifiedText } from "./LinkifiedText";
+import { IconFolder, IconReload, IconSettings } from "./icons";
 
 export function PauseOverlay(props: {
   def: PuzzleDefinition;
@@ -13,9 +14,12 @@ export function PauseOverlay(props: {
   onResume: () => void;
   onClose?: () => void;
   onAddToFolder: () => void;
+  onRestart: () => void;
+  onSettings: () => void;
+  restartDisabled?: boolean;
   onSudokuPadLink?: (href: string) => void | Promise<void>;
 }) {
-  const { def, meta, started, onResume, onStart, onClose, onAddToFolder, onSudokuPadLink } = props;
+  const { def, meta, started, onResume, onStart, onClose, onAddToFolder, onRestart, onSettings, restartDisabled, onSudokuPadLink } = props;
   const clean = (value: string | null | undefined) => (value ?? "").trim();
   const formatDurationHm = (seconds: number | null | undefined): string => {
     if (seconds == null || seconds < 0) return "~";
@@ -82,14 +86,11 @@ export function PauseOverlay(props: {
           >
             Start
           </button>
-          <button
-            className="btn"
-            style={{ width: "100%", marginBottom: 12, flexShrink: 0, height: 44 }}
-            onClick={onAddToFolder}
-            type="button"
-          >
-            Add to Folder
-          </button>
+          <div className="pauseOverlayQuickActions" role="group" aria-label="Puzzle actions">
+            <button className="btn" onClick={onAddToFolder} type="button" title="Add to folder" aria-label="Add to folder"><IconFolder /></button>
+            <button className="btn" onClick={onRestart} type="button" title="Restart puzzle" aria-label="Restart puzzle" disabled={restartDisabled}><IconReload /></button>
+            <button className="btn" onClick={onSettings} type="button" title="Settings" aria-label="Settings"><IconSettings /></button>
+          </div>
           <div className="archiveRulesPreview" aria-label="Puzzle preview">
             <GridCanvas
               def={def}

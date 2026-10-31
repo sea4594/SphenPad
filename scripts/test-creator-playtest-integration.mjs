@@ -18,7 +18,8 @@ requireText(editor, "setCreatorProjectPublished(key, true)", "explicit creator p
 requireText(player, "freshCreatorPlaytestData", "isolated fresh playtest state");
 requireText(player, "if (!requestedCreatorPlaytest) await upsertPuzzle", "playtest persistence isolation");
 requireText(player, "state: location.state", "creator return state forwarding");
-requireText(player, "creatorSudokuPadUrl(data.def)", "creator SudokuPad link export");
+requireText(menu, "creatorSudokuPadUrl(row.def)", "Home creator SudokuPad link export");
+requireText(folders, "creatorSudokuPadUrl(row.def)", "folder creator SudokuPad link export");
 requireText(menu, "Creator · editable", "creator ownership marker");
 requireText(menu, "Edit in Creator", "Home creator edit action");
 requireText(menu, "setCreatorProjectPublished", "Home creator unpublish action");

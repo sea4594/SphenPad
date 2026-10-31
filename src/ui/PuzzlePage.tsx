@@ -21,8 +21,6 @@ import {
   IconPause,
   IconPlay,
   IconVideoPlay,
-  IconCopyLink,
-  IconReload,
   IconRedo,
   IconSelectMode,
   IconSettings,
@@ -44,7 +42,6 @@ import { onStorageRefreshNeeded } from "../core/syncSignal";
 
 import { puzzleConstraintLabels, puzzleSolution } from "../sudokupad/app/definitionSelectors";
 import { freshCreatorPlaytestData } from "../sudokupad/creator/playtest";
-import { creatorSudokuPadUrl } from "../sudokupad/creator/interchange";
 
 const AUTO_IN_PROGRESS_MILLIS = 30_000;
 const TRANSPARENT_HIGHLIGHT_COLOR = "rgba(0,0,0,0)";
@@ -1710,21 +1707,6 @@ export function PuzzlePage(props: { editor?: boolean }) {
     setRestartPromptOpen(true);
   }
 
-  async function onCopySudokuPadLinkClick() {
-    if (!data) return;
-    const source = (data.def.sourceId ?? key).trim();
-    if (!source) return;
-    const url = data.def.meta.creatorPuzzle
-      ? creatorSudokuPadUrl(data.def)
-      : /^https?:\/\//i.test(source) ? source : `https://sudokupad.app/${source}`;
-    if (!navigator?.clipboard?.writeText) return;
-    try {
-      await navigator.clipboard.writeText(url);
-    } catch {
-      // Intentionally no-op: copy action should not trigger other behavior.
-    }
-  }
-
   async function onImportSudokuPadLinkInApp(href: string) {
     try {
       const { key: importedKey, def } = await loadFromSudokuPad(href);
@@ -2453,17 +2435,8 @@ export function PuzzlePage(props: { editor?: boolean }) {
             {!editor && data.def.meta.creatorPuzzle && !requestedCreatorPlaytest ? <button className="btn" onClick={() => nav(`/creator/${encodeURIComponent(key)}`)} title="Edit this creator puzzle" type="button">Edit</button> : null}
             {requestedCreatorPlaytest && data.def.meta.creatorPuzzle ? <div className="creatorPlaytestBadge">Playtest</div> : null}
             {!editor && !hideTimer ? <div className="puzzleTimer">{timeStr}</div> : null}
-            {!editor ? <button className="btn" onClick={onCheckAnswers} title="Check answers" disabled={data.progress.status === "complete" || data.progress.paused}>
+            {!editor ? <button className="btn" onClick={onCheckAnswers} title="Check answers" aria-label="Check answers" disabled={data.progress.status === "complete" || data.progress.paused} type="button">
               <IconCheck />
-            </button> : null}
-            {!editor ? <button className="btn" onClick={onPausePlayClick} title={data.progress.status === "complete" ? "Open pause menu" : "Pause or resume"}>
-              {data.progress.status === "complete" ? <IconPause /> : data.progress.paused ? <IconPlay /> : <IconPause />}
-            </button> : null}
-            {!editor ? <button className="btn" onClick={onReloadPuzzleClick} title="Restart puzzle" disabled={reloadingPuzzle}>
-              <IconReload />
-            </button> : null}
-            {!editor ? <button className="btn" onClick={onCopySudokuPadLinkClick} title="Copy SudokuPad link">
-              <IconCopyLink />
             </button> : null}
             {hasLinkedVideo ? (
               <button
@@ -2476,10 +2449,13 @@ export function PuzzlePage(props: { editor?: boolean }) {
                 <IconVideoPlay />
               </button>
             ) : null}
+            {!editor ? <button className="btn" onClick={onPausePlayClick} title={data.progress.status === "complete" ? "Open pause menu" : "Pause or resume"} aria-label={data.progress.status === "complete" ? "Open pause menu" : data.progress.paused ? "Resume puzzle" : "Pause puzzle"} type="button">
+              {data.progress.status === "complete" ? <IconPause /> : data.progress.paused ? <IconPlay /> : <IconPause />}
+            </button> : null}
             {editor ? <button className="btn" onClick={() => setMetadataOpen(true)} title="Puzzle metadata" aria-label="Puzzle metadata"><IconMenu /></button> : null}
-            <button className="btn" onClick={() => setSettingsOpen(true)} title="Settings">
+            {editor ? <button className="btn" onClick={() => setSettingsOpen(true)} title="Settings" aria-label="Settings" type="button">
               <IconSettings />
-            </button>
+            </button> : null}
           </div>
         </div>
       </div>
@@ -2677,6 +2653,9 @@ export function PuzzlePage(props: { editor?: boolean }) {
           onResume={startOrResume}
           onClose={data.progress.status === "complete" ? () => setPauseMenuOpen(false) : undefined}
           onAddToFolder={onOpenAddToFolderDialog}
+          onRestart={() => { setPauseMenuOpen(false); onReloadPuzzleClick(); }}
+          onSettings={() => { setPauseMenuOpen(false); setSettingsOpen(true); }}
+          restartDisabled={reloadingPuzzle}
           onSudokuPadLink={onImportSudokuPadLinkInApp}
         />
       )}
