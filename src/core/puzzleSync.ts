@@ -69,3 +69,13 @@ export function puzzleFromCloudPayload(
     ...(typeof payload.createdAt === "number" ? { createdAt: payload.createdAt } : {}),
   };
 }
+
+/** Keep durable solve edits rather than replaying an older cloud snapshot.
+ * updatedAt tracks solve edits, NOT background timer/session checkpoints.
+ * A dirty local timer-only snapshot may yield to a newer remote solve.
+ */
+export function resolvePuzzleProgressVersion(localEditedAt: number, remoteEditedAt: number, localDirty: boolean): "local" | "remote" {
+  if (localEditedAt > remoteEditedAt) return "local";
+  if (localDirty && localEditedAt === remoteEditedAt) return "local";
+  return "remote";
+}

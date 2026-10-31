@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-31T03:38:05.626Z",
+  "generatedAt": "2026-10-31T03:47:42.331Z",
   "phase": "11L",
   "target": "SphenPad Phase 11 / SudokuMaker creator parity on pinned SudokuPad 0.612.0",
   "productionInputs": [
@@ -21270,8 +21270,8 @@
     },
     {
       "path": "src/core/puzzleSync.ts",
-      "bytes": 2654,
-      "sha256": "7f240c6c1af4d57e7464f03983bc2a171ffdd1d482b10188685b0f2f6266760c"
+      "bytes": 3162,
+      "sha256": "f2767ec39373fe7dc3beff69c66ed98a33f29b8ff3b8486b7a38b891e8d4e55d"
     },
     {
       "path": "src/core/scl.ts",
@@ -21285,8 +21285,8 @@
     },
     {
       "path": "src/core/storage.ts",
-      "bytes": 38194,
-      "sha256": "6c0f32bfa0a45ec86d323b03164e29846747323d639f603173157e21e337283a"
+      "bytes": 39047,
+      "sha256": "c34e73bb64f0e4ba99280585b91051e3da595f71b587d679f72f78aacea59dd6"
     },
     {
       "path": "src/core/sudokupad.ts",
@@ -21830,8 +21830,8 @@
     },
     {
       "path": "src/ui/PuzzlePage.tsx",
-      "bytes": 118918,
-      "sha256": "0fc56a8299481f2f5107a944d3cca6e5f84ba7c4fbce43955c6f1db1ce931acc"
+      "bytes": 119616,
+      "sha256": "e2ba1d36c9fca16c18dad6b7a875f93ffa890811816b9b3d2b8db8bf67f8b8ff"
     },
     {
       "path": "src/ui/SelectControl.tsx",
@@ -43098,9 +43098,9 @@
       "sha256": "bebaa50f7a5c47189579f4e54a7380036d9c27028916981271a4cfc99f952b7d"
     },
     {
-      "path": "dist/assets/index-BClhw83P.js",
-      "bytes": 1342538,
-      "sha256": "a71ae23ec2ebd2ead768828c9e94baf0f9f1a70a48918961ed5c299f658b4666"
+      "path": "dist/assets/index-D02uFMo8.js",
+      "bytes": 1342718,
+      "sha256": "451985d5302ea2f44c94fb3018ac54626b6434398051c0c590497c5203bb72e4"
     },
     {
       "path": "dist/assets/index-DWGeZON0.css",
@@ -43120,7 +43120,7 @@
     {
       "path": "dist/index.html",
       "bytes": 2121,
-      "sha256": "cc69523b5af81b2179ac8e4373b6d2683129dd6e45fc1e17dbcee21f03ec75ab"
+      "sha256": "0a081287c5faf2c655d0a17f2e18eb09566e5f3e8b75aa71d3fbe99dcd7b4916"
     },
     {
       "path": "dist/manifest.json",
@@ -43149,5 +43149,5 @@
     }
   ],
   "bundleBuilt": true,
-  "releaseContentSha256": "4b453cabebf610c9fae5ead5df9f1f646ba511364bdb0a8eafd831349747837d"
+  "releaseContentSha256": "70ebd650a24049be5dc3babbe9f5400ac70f32a568eb33adb98e1e80cae24be3"
 }

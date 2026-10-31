@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { puzzleToCloudPayload } from "../src/core/puzzleSync";
+import { puzzleToCloudPayload, resolvePuzzleProgressVersion } from "../src/core/puzzleSync";
 import type { PersistedPuzzle } from "../src/core/model";
 
 const puzzle = {
@@ -86,7 +86,6 @@ assert.match(accountSource, /payload\.def = row!?\.data\.def/, "creator puzzles 
 assert.match(firebaseSource, /readCreatorProjectDependency/, "cloud pulls must repair missing creator dependencies from current or legacy storage");
 assert.match(firebaseSource, /Skipping cloud puzzle .*definition dependency is unavailable/, "one orphan puzzle must not abort the entire cloud restore");
 assert.match(storageSource, /if \(dirty\?\.deletedAt\) continue;/, "local explicit deletes must survive stale remote updates");
-assert.match(storageSource, /if \(local && dirty\)/, "dirty local progress must survive concurrent remote updates");
 assert.match(storageSource, /Skipping cloud puzzle \$\{change\.key\}/, "an orphan incremental puzzle must be quarantined instead of aborting all sync");
 
 assert.match(accountSource, /if \(!forceAll && await hasDurableSyncDirtyRecords\(\)\) return/, "ordinary saves must not expand into full-library uploads");
@@ -102,7 +101,6 @@ assert.match(storageSource, /await db\.syncOutbox\.put\(row\)/, "sync intent mus
 assert.match(storageSource, /current\?\.token === record\.token/, "outbox acknowledgement must never clear a newer mutation");
 assert.match(storageSource, /db\.transaction\("rw", db\.puzzles, db\.syncOutbox[\s\S]*markDirtyIntent\("puzzle", key\)[\s\S]*db\.puzzles\.put/, "puzzle outbox intent must precede IndexedDB puzzle mutation");
 assert.match(storageSource, /change\.deleteIntent !== "manual"/, "untrusted legacy tombstones must not erase local data");
-assert.match(storageSource, /if \(local && dirty\)/, "dirty local puzzle progress must remain active during a remote conflict");
 
 assert.match(accountSource, /markAllDurableSyncDirty/, "anonymous-device work must be queued durably before account merge");
 assert.match(accountSource, /owner === null[\s\S]*recoverMissingDirtyJournal\(uid, true\)/, "anonymous local data must be reconciled from a protected local branch");
@@ -116,4 +114,20 @@ assert.match(accountSource, /cloudChangesEquivalent/, "identical replayed record
 assert.match(accountSource, /archiveCloudConflicts\(uid, conflicts, "cloud"\)/, "remote conflict branches must be recoverable");
 assert.match(accountSource, /archiveCloudConflicts\(uid, localBranches, "local"\)/, "local conflict branches must be recoverable before a remote delete can remove them");
 assert.match(firebaseSource, /origin: "cloud" \| "local"/, "recovery archives must identify which branch they preserve");
+// A stale cloud echo cannot erase pencil marks just entered on this device.
+assert.equal(resolvePuzzleProgressVersion(200, 100, false), "local");
+assert.equal(resolvePuzzleProgressVersion(200, 100, true), "local");
+// Stale timer-only uploads are superseded by newer edits from another device.
+assert.equal(resolvePuzzleProgressVersion(100, 200, true), "remote");
+assert.equal(resolvePuzzleProgressVersion(100, 200, false), "remote");
+assert.equal(resolvePuzzleProgressVersion(200, 200, true), "local");
+assert.equal(resolvePuzzleProgressVersion(200, 200, false), "remote");
+assert.match(storageSource, /resolvePuzzleProgressVersion\(local\.data\.updatedAt, materialized\.updatedAt, Boolean\(dirty\)\)/);
+assert.match(storageSource, /if \(!dirty\) await markDirtyIntent\("puzzle", change\.key\)/, "newer local solves must be queued for cloud repair");
+assert.match(storageSource, /for \(const record of await db\.syncOutbox\.toArray\(\)\)/, "remote applies must read dirty records atomically");
+assert.match(puzzlePageSource, /const current = latestDataRef\.current;[\s\S]*?await persist\(next, false\)/, "background metadata and import refresh must retain current progress");
+assert.doesNotMatch(puzzlePageSource, /setData\(next\);\s*await upsertPuzzle\(key, next\)/, "asynchronous metadata refresh must never write a stale snapshot");
+assert.match(puzzlePageSource, /function applyDigit\([\s\S]*?const current = latestDataRef\.current;/, "rapid pencil-mark inputs must read current progress");
+assert.match(puzzlePageSource, /if \(active\?\.def\.id === normalizedBase\.def\.id && active\.updatedAt > normalizedBase\.updatedAt\) return;/, "an async refresh cannot reset a newer edit");
+assert.match(puzzlePageSource, /Math\.max\(Date\.now\(\), current\.updatedAt \+ 1\)/, "successive edits must have strictly increasing timestamps");
 console.log("Account sync regression checks passed.");

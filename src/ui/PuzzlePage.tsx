@@ -359,27 +359,6 @@ function inBoundsFor(def: PuzzleDefinition, rc: CellRC): boolean {
   return rc.r >= 0 && rc.c >= 0 && rc.r < def.rows && rc.c < def.cols;
 }
 
-function hasMeaningfulProgress(p: PersistedPuzzle): boolean {
-  const { progress, def } = p;
-  for (let r = 0; r < progress.cells.length; r++) {
-    for (let c = 0; c < progress.cells[r].length; c++) {
-      const cell = progress.cells[r][c];
-      if (!cell) continue;
-      const given = def.givens.some((g) => g.rc.r === r && g.rc.c === c);
-      if (!given && cell.value) return true;
-      if (cell.notes.center.size || cell.notes.corner.size || cell.notes.candidates.size) return true;
-      if ((cell.highlights?.length ?? 0) > 0) return true;
-    }
-  }
-  return (
-    progress.lines.length > 0 ||
-    progress.lineCenterMarks.length > 0 ||
-    progress.lineEdgeMarks.length > 0 ||
-    p.undo.length > 0 ||
-    p.redo.length > 0
-  );
-}
-
 function migrateProgressToDefinition(oldData: PersistedPuzzle, nextDef: PuzzleDefinition): PuzzleProgress {
   const base = makeInitialProgress(nextDef);
   const old = oldData.progress;
@@ -815,7 +794,11 @@ export function PuzzlePage(props: { editor?: boolean }) {
       const local = await getPuzzle(key);
       if (cancelledRef.current || !local) return;
       const normalizedBase = normalizeSelectionHistories(normalizePersistedDefinition({ ...local, progress: normalizeProgress(local.progress) }));
-      const currentSelection = latestDataRef.current?.progress.selection;
+      const active = latestDataRef.current;
+      // A background refresh for any puzzle must not rewind an active solve
+      // while its newest edit is still being persisted.
+      if (active?.def.id === normalizedBase.def.id && active.updatedAt > normalizedBase.updatedAt) return;
+      const currentSelection = active?.progress.selection;
       const withLocalSelection = currentSelection
         ? { ...normalizedBase, progress: { ...normalizedBase.progress, selection: currentSelection } }
         : normalizedBase;
@@ -852,32 +835,28 @@ export function PuzzlePage(props: { editor?: boolean }) {
     (async () => {
       try {
         const loaded = await loadFromSudokuPad(source);
+        // The fetch may finish after the solver has entered pencil marks.
+        // Metadata must never restore the progress snapshot captured before it began.
+        const current = latestDataRef.current;
+        if (!current || (current.def.sourceId ?? key).trim() !== source) return;
         const freshMeta = loaded.def.meta;
-        const nextTitle = (freshMeta.title ?? data.def.meta.title ?? "").trim();
-        const nextAuthor = (freshMeta.author ?? data.def.meta.author ?? "").trim();
-        const nextRules = (freshMeta.rules ?? data.def.meta.rules ?? "").trim();
+        const nextTitle = (freshMeta.title ?? current.def.meta.title ?? "").trim();
+        const nextAuthor = (freshMeta.author ?? current.def.meta.author ?? "").trim();
+        const nextRules = (freshMeta.rules ?? current.def.meta.rules ?? "").trim();
         const changed =
-          nextTitle !== (data.def.meta.title ?? "").trim() ||
-          nextAuthor !== (data.def.meta.author ?? "").trim() ||
-          nextRules !== (data.def.meta.rules ?? "").trim() ||
-          (freshMeta.solveCount ?? null) !== (data.def.meta.solveCount ?? null);
+          nextTitle !== (current.def.meta.title ?? "").trim() ||
+          nextAuthor !== (current.def.meta.author ?? "").trim() ||
+          nextRules !== (current.def.meta.rules ?? "").trim() ||
+          (freshMeta.solveCount ?? null) !== (current.def.meta.solveCount ?? null);
         if (!changed) return;
 
-        const nextMeta = {
-          ...data.def.meta,
-          ...freshMeta,
-        };
         const next: PersistedPuzzle = {
-          ...data,
-          def: {
-            ...data.def,
-            meta: nextMeta,
-          },
-          updatedAt: Date.now(),
+          ...current,
+          def: { ...current.def, meta: { ...current.def.meta, ...freshMeta } },
         };
-
-        setData(next);
-        await upsertPuzzle(key, next);
+        // A derived metadata update is not a puzzle edit: do not upload an
+        // outdated complete progress snapshot or advance its edit timestamp.
+        await persist(next, false);
       } catch {
         // Keep existing metadata if refresh fails.
       } finally {
@@ -996,8 +975,11 @@ export function PuzzlePage(props: { editor?: boolean }) {
     (async () => {
       try {
         const loaded = await loadFromSudokuPad(source);
+        const current = latestDataRef.current;
+        if (!current || (current.def.sourceId ?? key).trim() !== source) return;
+        if ((current.def.importRevision ?? 0) >= SUDOKUPAD_IMPORT_REVISION) return;
         // Preserve archive-specific meta that loadFromSudokuPad does not populate.
-        const oldMeta = data.def.meta ?? {};
+        const oldMeta = current.def.meta ?? {};
         const preservedArchiveMeta: Record<string, unknown> = {};
         for (const field of [
           "archiveConstraints",
@@ -1014,18 +996,17 @@ export function PuzzlePage(props: { editor?: boolean }) {
           ...loaded.def,
           meta: { ...loaded.def.meta, ...preservedArchiveMeta },
         };
-        const migratedProgress = migrateProgressToDefinition(data, nextDef);
+        const migratedProgress = migrateProgressToDefinition(current, nextDef);
         const next: PersistedPuzzle = {
-          ...data,
+          ...current,
           def: nextDef,
           progress: migratedProgress,
           // Undo/redo patches are tied to prior definition layout and become unsafe after migration.
           undo: [],
           redo: [],
-          updatedAt: hasMeaningfulProgress(data) ? data.updatedAt : Date.now(),
         };
-        setData(next);
-        await upsertPuzzle(key, next);
+        // The import migration is local derived data, not a new solve action.
+        await persist(next, false);
       } catch {
         // Keep existing cached definition if refresh fails.
       } finally {
@@ -1069,8 +1050,12 @@ export function PuzzlePage(props: { editor?: boolean }) {
         const rawConstraints = typeof entry.subTypeConstraints === "string" ? entry.subTypeConstraints : "";
         const constraints = rawConstraints.split(";").map((s) => s.trim()).filter(Boolean);
         const clean = (v: unknown) => (typeof v === "string" ? v.trim() : "");
+        // Archive lookup is asynchronous; retain any edits made while fetching.
+        const current = latestDataRef.current;
+        if (!current || current.def.id !== data.def.id) return;
+        if (current.def.meta.archiveConstraints !== undefined || current.def.meta.archiveYouTubeUrl !== undefined) return;
         const nextMeta = {
-          ...meta,
+          ...current.def.meta,
           ...(clean(entry.collection) ? { collection: clean(entry.collection) } : {}),
           archiveConstraints: constraints,
           archiveVideoTitle: clean(entry.videoTitle),
@@ -1081,12 +1066,10 @@ export function PuzzlePage(props: { editor?: boolean }) {
           archiveSudokuPadUrl: clean(entry.sudokuPadUrl),
         };
         const next: PersistedPuzzle = {
-          ...data,
-          def: { ...data.def, meta: nextMeta },
-          updatedAt: Date.now(),
+          ...current,
+          def: { ...current.def, meta: nextMeta },
         };
-        setData(next);
-        await upsertPuzzle(key, next);
+        await persist(next, false);
       } catch {
         // Ignore; archive manifest may not exist in non-archive builds.
       } finally {
@@ -1227,16 +1210,19 @@ export function PuzzlePage(props: { editor?: boolean }) {
   const isCurrentFolderAlreadyAdded = addFolderNav ? selectedPuzzleFolderIds.has(addFolderNav.id) : false;
 
   function applyPatches(patches: Patch[], opts?: { recordHistory?: boolean; sync?: boolean; touchUpdatedAt?: boolean }) {
-    if (!data || !patches.length) return;
+    // React can batch multiple inputs before rerendering. Never apply a new edit
+    // to the older snapshot captured by an event-handler closure.
+    const current = latestDataRef.current;
+    if (!current || !patches.length) return;
     const recordHistory = opts?.recordHistory ?? true;
     const sync = opts?.sync ?? true;
     const touchUpdatedAt = opts?.touchUpdatedAt ?? true;
-    let nextProgress: PuzzleProgress = data.progress;
+    let nextProgress: PuzzleProgress = current.progress;
     for (const p of patches) nextProgress = applyPatchShared(nextProgress, p);
 
     // Editing after completion reopens the completion flow on re-solve, keeping timer paused until restart.
-    const solvedNow = isSolved(nextProgress, puzzleSolution(data.def));
-    if (recordHistory && data.progress.status === "complete" && !solvedNow) {
+    const solvedNow = isSolved(nextProgress, puzzleSolution(current.def));
+    if (recordHistory && current.progress.status === "complete" && !solvedNow) {
       nextProgress = {
         ...nextProgress,
         status: "in_progress",
@@ -1247,33 +1233,33 @@ export function PuzzlePage(props: { editor?: boolean }) {
 
     nextProgress = maybePromoteToInProgress(nextProgress, { onEdit: recordHistory });
 
-    let nextUndo = normalizeUndoSelectionHistory(data.undo);
-    let nextRedo = normalizeRedoSelectionHistory(data.redo);
+    let nextUndo = normalizeUndoSelectionHistory(current.undo);
+    let nextRedo = normalizeRedoSelectionHistory(current.redo);
 
     if (recordHistory) {
       // Selection is not an undoable action. Drop the single trailing selection
       // snapshot before appending a substantive action so a selection-only entry
       // can never sit between two non-selection history entries.
       nextUndo = splitTrailingSelectionHistory(nextUndo).substantive;
-      nextUndo.push({ patches: [...patches], selection: data.progress.selection });
+      nextUndo.push({ patches: [...patches], selection: current.progress.selection });
       nextRedo = [];
     }
 
     const nextDefinition = editor
       ? {
-        ...data.def,
+        ...current.def,
         givens: nextProgress.cells.flatMap((row, rowIndex) => row.flatMap((cell, colIndex) =>
           cell.value ? [{ rc: { r: rowIndex, c: colIndex }, v: cell.value }] : [],
         )),
       }
-      : data.def;
+      : current.def;
     void persist({
-      ...data,
+      ...current,
       def: nextDefinition,
       progress: nextProgress,
       undo: nextUndo,
       redo: nextRedo,
-      updatedAt: touchUpdatedAt ? Date.now() : data.updatedAt,
+      updatedAt: touchUpdatedAt ? Math.max(Date.now(), current.updatedAt + 1) : current.updatedAt,
     }, sync);
   }
 
@@ -1782,14 +1768,15 @@ export function PuzzlePage(props: { editor?: boolean }) {
   }
 
   function applyDigit(sym: string, forcedMode?: PuzzleProgress["entryMode"]) {
-    if (!data) return;
-    const sel = data.progress.selection;
+    const current = latestDataRef.current;
+    if (!current) return;
+    const sel = current.progress.selection;
     if (!sel.length) return;
-    const mode = forcedMode ?? data.progress.entryMode;
+    const mode = forcedMode ?? current.progress.entryMode;
     const keyName = mode === "center" ? "center" : mode === "corner" ? "corner" : "candidates";
 
     const editable = sel.filter((rc) => {
-      const cell = data.progress.cells[rc.r][rc.c];
+      const cell = current.progress.cells[rc.r][rc.c];
       if (cell.given) return false;
       if ((mode === "center" || mode === "corner") && cell.value != null) return false;
       return true;
@@ -1798,45 +1785,46 @@ export function PuzzlePage(props: { editor?: boolean }) {
 
     const patches: Patch[] = [];
     if (mode === "value") {
-      const allHave = editable.every((rc) => data.progress.cells[rc.r][rc.c].value === sym);
+      const allHave = editable.every((rc) => current.progress.cells[rc.r][rc.c].value === sym);
       const nextValue = allHave ? undefined : sym;
       for (const rc of editable) {
-        const cur = data.progress.cells[rc.r][rc.c].value;
+        const cur = current.progress.cells[rc.r][rc.c].value;
         if (cur === nextValue) continue;
-        patches.push(patchAt(data.progress, ["cells", rc.r, rc.c, "value"], nextValue));
+        patches.push(patchAt(current.progress, ["cells", rc.r, rc.c, "value"], nextValue));
       }
     } else {
-      const allHave = editable.every((rc) => data.progress.cells[rc.r][rc.c].notes[keyName].has(sym));
+      const allHave = editable.every((rc) => current.progress.cells[rc.r][rc.c].notes[keyName].has(sym));
       for (const rc of editable) {
-        const curSet = data.progress.cells[rc.r][rc.c].notes[keyName];
+        const curSet = current.progress.cells[rc.r][rc.c].notes[keyName];
         const nextSet = new Set(curSet);
         if (allHave) nextSet.delete(sym);
         else nextSet.add(sym);
         const ordered = keyName === "corner"
           ? new Set(Array.from(nextSet).sort(compareSymbols))
           : nextSet;
-        patches.push(patchAt(data.progress, ["cells", rc.r, rc.c, "notes", keyName], ordered));
+        patches.push(patchAt(current.progress, ["cells", rc.r, rc.c, "notes", keyName], ordered));
       }
     }
     applyPatches(patches);
   }
 
   function applyHighlight(color: string) {
-    if (!data) return;
-    const selected = data.progress.selection;
+    const current = latestDataRef.current;
+    if (!current) return;
+    const selected = current.progress.selection;
     if (!selected.length) return;
     const nextColor = normalizeHighlightColor(color);
-    const allHave = selected.every((rc) => (data.progress.cells[rc.r][rc.c].highlights ?? []).includes(nextColor));
+    const allHave = selected.every((rc) => (current.progress.cells[rc.r][rc.c].highlights ?? []).includes(nextColor));
     const patches = selected
       .map((rc) => {
-        const cur = data.progress.cells[rc.r][rc.c].highlights ?? [];
+        const cur = current.progress.cells[rc.r][rc.c].highlights ?? [];
         const nextSet = new Set(cur);
         if (allHave) nextSet.delete(nextColor);
         else if (nextSet.size < 18 || nextSet.has(nextColor)) nextSet.add(nextColor);
         const next = sortHighlightColors(Array.from(nextSet).slice(0, 18));
         const unchanged = next.length === cur.length && next.every((v, i) => v === cur[i]);
         if (unchanged) return null;
-        return patchAt(data.progress, ["cells", rc.r, rc.c, "highlights"], next);
+        return patchAt(current.progress, ["cells", rc.r, rc.c, "highlights"], next);
       })
       .filter(Boolean) as Patch[];
     applyPatches(patches);

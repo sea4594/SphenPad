@@ -2,7 +2,7 @@ import Dexie from "dexie";
 import type { Table } from "dexie";
 import { markLocalDataChanged } from "./localDataState";
 import { clearSyncJournal, readSyncDirtyRecords, type SyncDirtyRecord } from "./syncJournal";
-import { puzzleFromCloudPayload, type CloudPuzzlePayload } from "./puzzleSync";
+import { puzzleFromCloudPayload, resolvePuzzleProgressVersion, type CloudPuzzlePayload } from "./puzzleSync";
 import type { PersistedPuzzle, PuzzleDefinition } from "./model";
 import { creatorProjectFromDefinition, definitionFromCreatorProject, parseCreatorProject, type CreatorProject } from "../sudokupad/creator/project";
 import { cloneCreatorProjectForDuplicate, compareCreatorProjectStorageRows, normalizeCreatorProjectStorageRow, type CreatorProjectStorageRow } from "../sudokupad/creator/projectStorage";
@@ -721,13 +721,15 @@ export async function applyRemoteStorageChanges(changes: {
     ...changes.creatorProjects.map((entry) => entry.updatedAt),
   );
   const dirtyAtStart = new Map<string, DurableSyncDirtyRecord>();
-  for (const record of await readDurableSyncDirtyRecords()) dirtyAtStart.set(`${record.kind}:${record.key}`, record);
   const supersededDirty: DurableSyncDirtyRecord[] = [];
   const repairAfter: Array<{ kind: SyncDirtyRecord["kind"]; key: string }> = [];
   const dirtyFor = (kind: SyncDirtyRecord["kind"], key: string) => dirtyAtStart.get(`${kind}:${key}`);
   const supersede = (kind: SyncDirtyRecord["kind"], key: string) => { const record = dirtyFor(kind, key); if (record) supersededDirty.push(record); };
 
   await db.transaction("rw", db.creatorProjects, db.puzzles, db.folders, db.syncOutbox, async () => {
+    // Read the outbox inside the same IndexedDB transaction as remote writes.
+    // A local edit must not slip between an earlier snapshot and cloud replay.
+    for (const record of await db.syncOutbox.toArray()) dirtyAtStart.set(`${record.kind}:${record.key}`, record);
     for (const change of changes.creatorProjects) {
       const local = await db.creatorProjects.get(change.key) ?? null;
       const dirty = dirtyFor("creatorProject", change.key);
@@ -770,12 +772,22 @@ export async function applyRemoteStorageChanges(changes: {
       let materialized: PersistedPuzzle;
       try { materialized = puzzleFromCloudPayload(change.data, local?.data ?? null, creatorProject); }
       catch (error) { console.warn(`Skipping cloud puzzle ${change.key} because its definition dependency is unavailable`, error); continue; }
-      if (local && dirty) {
+      const resolution = local
+        ? resolvePuzzleProgressVersion(local.data.updatedAt, materialized.updatedAt, Boolean(dirty))
+        : "remote";
+      if (local && resolution === "local") {
+        // Even a clean local row can be newer than a late/stale cloud update.
+        // Queue it for repair instead of silently replacing the user's edits.
+        if (!dirty) await markDirtyIntent("puzzle", change.key);
         if (materialized.progress.totalMillis > local.data.progress.totalMillis) {
           await db.puzzles.put({ key: change.key, data: forPersistence({ ...local.data, progress: { ...local.data.progress, totalMillis: materialized.progress.totalMillis } }) });
         }
         continue;
       }
+      // A stale timer-only dirty record must not re-upload an older solve over
+      // a newer remote edit. The conflict branches have already been archived
+      // by accountSync before this transaction, when they differ.
+      if (dirty) supersede("puzzle", change.key);
       const withMergedTimer = local && local.data.progress.totalMillis > materialized.progress.totalMillis
         ? { ...materialized, progress: { ...materialized.progress, totalMillis: local.data.progress.totalMillis } }
         : materialized;
