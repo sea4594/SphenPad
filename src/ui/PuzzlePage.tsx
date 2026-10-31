@@ -1849,18 +1849,26 @@ export function PuzzlePage(props: { editor?: boolean }) {
       }
     }
 
-    // Multi-select adds matches without removing any previously selected cells.
+    if (!matches.length) return;
     // The line tool keeps a separate selection while it hides the normal one.
     const previous = activeTool === "line"
       ? data.progress.storedSelectionWhenLineTool ?? data.progress.selection
       : data.progress.selection;
-    const nextSelection = data.progress.multiSelect ? [...previous] : [];
+    const selectedKeys = new Set(previous.map(rcKey));
+    const allSelected = matches.every((rc) => selectedKeys.has(rcKey(rc)));
+    // Holding an already fully selected number/color toggles off only its matching
+    // cells, regardless of Multi-select; otherwise merge or replace as usual.
+    const nextSelection = allSelected
+      ? previous.filter((rc) => !matched.has(rcKey(rc)))
+      : data.progress.multiSelect ? [...previous] : [];
     const seen = new Set(nextSelection.map(rcKey));
-    for (const rc of matches) {
-      const key = rcKey(rc);
-      if (!seen.has(key)) {
-        seen.add(key);
-        nextSelection.push(rc);
+    if (!allSelected) {
+      for (const rc of matches) {
+        const key = rcKey(rc);
+        if (!seen.has(key)) {
+          seen.add(key);
+          nextSelection.push(rc);
+        }
       }
     }
 

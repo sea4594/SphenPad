@@ -56,7 +56,7 @@ const keys = (cells) => cells.map((c) => `${c.r},${c.c}`).sort();
   assert.deepEqual(keys(state.selection), ['1,1'], 'blank-cell matching must exclude cells with notes');
 }
 // A held number/color in the tool controls matches only visible pencil marks,
-// and honors the multi-select toggle without toggling existing cells off.
+// and toggles off an already selected matching group in either selection mode.
 function keyboardMatchingFunction(state) {
   const js = extract(page, 'selectMatchingCells');
   return new Function('data', 'rcKey', 'normalizeHighlightColor', 'setSelection', 'patchAt', 'applySessionPatches', `${js}\nreturn selectMatchingCells;`)(
@@ -79,22 +79,36 @@ function keyboardMatchingFunction(state) {
   const fn = keyboardMatchingFunction(state);
   fn('2');
   assert.deepEqual(keys(state.selection), ['0,0'], 'center-note hold must ignore pencil marks behind filled digits and givens');
+  fn('2');
+  assert.deepEqual(keys(state.selection), [], 'repeating an already selected center note must deselect it with multi-select off');
   state.data.progress.activeTool = 'corner';
   fn('3');
   assert.deepEqual(keys(state.selection), ['0,0'], 'corner-note hold must ignore pencil marks behind filled digits and givens');
   state.data.progress.activeTool = 'highlight';
   fn('#ff0000');
   assert.deepEqual(keys(state.selection), ['1,1', '1,2'], 'highlight matching must still include colored cells with digits');
+  fn('#ff0000');
+  assert.deepEqual(keys(state.selection), [], 'holding an already selected highlight color must deselect its matches');
+  fn('#ff0000');
   state.data.progress.activeTool = 'center';
   state.data.progress.multiSelect = true;
   fn('2');
   fn('3');
   assert.deepEqual(keys(state.selection), ['0,0', '1,0', '1,1', '1,2'], 'multi-select must retain earlier selections and union new pencil-mark matches');
   fn('3');
-  assert.deepEqual(keys(state.selection), ['0,0', '1,0', '1,1', '1,2'], 'repeating a held key must not deselect existing matches or create duplicates');
+  assert.deepEqual(keys(state.selection), ['0,0', '1,1', '1,2'], 'holding the same number again must deselect only its matches in multi-select mode');
+  fn('3');
+  assert.deepEqual(keys(state.selection), ['0,0', '1,0', '1,1', '1,2'], 'holding it again must add the matches back without duplicating cells');
   state.data.progress.multiSelect = false;
   fn('3');
-  assert.deepEqual(keys(state.selection), ['1,0'], 'single-select hold must still replace previous selection');
+  assert.deepEqual(keys(state.selection), ['0,0', '1,1', '1,2'], 'single-select hold must also deselect the fully selected group, preserving other cells');
+  fn('3');
+  assert.deepEqual(keys(state.selection), ['1,0'], 'single-select hold must replace selection when matches are not all selected');
+  fn('3');
+  assert.deepEqual(keys(state.selection), [], 'single-select hold must toggle off the group when all its cells are selected');
+  state.data.progress.selection = [{ r: 1, c: 2 }];
+  fn('9');
+  assert.deepEqual(keys(state.data.progress.selection), ['1,2'], 'holding an unmatched number must not deselect unrelated cells');
 }
 {
   const state = { data: { progress: { activeTool: 'line', multiSelect: true,
@@ -107,6 +121,9 @@ function keyboardMatchingFunction(state) {
   fn('#ff0000');
   assert.deepEqual(keys(state.selection), ['0,0', '0,1', '1,1'], 'line-color hold must merge with the stored selection');
   assert.deepEqual(keys(state.data.progress.storedSelectionWhenLineTool), ['0,0', '0,1', '1,1'], 'line tool must preserve the merged selection when switching tools');
+  fn('#ff0000');
+  assert.deepEqual(keys(state.selection), ['1,1'], 'holding an already selected line color must preserve unrelated selections');
+  assert.deepEqual(keys(state.data.progress.storedSelectionWhenLineTool), ['1,1'], 'line tool stored selection must follow group deselection');
 }
 assert.match(interaction, /props\.onDoubleCell\(rc, drag\.longPressCycleIndex \?\? 0\)/, 'long press must continue cycling matches');
 const pointerJs = extract(interaction, 'onPointerUp');
