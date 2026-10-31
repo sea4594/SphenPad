@@ -77,7 +77,18 @@ expect(creatorEditor.includes("layoutTabletPortrait") && creatorEditor.includes(
 
 
 expect(puzzlePage.includes("normalizeUndoSelectionHistory") && puzzlePage.includes("normalizeRedoSelectionHistory") && puzzlePage.includes("splitTrailingSelectionHistory") && puzzlePage.includes("Undo always targets the latest NON-selection event") && puzzlePage.includes("single terminal step") && puzzlePage.includes("terminal selection snapshot") && puzzlePage.includes("nextRedo = redoParts.substantive.length ? normalizedRedo : []") && puzzlePage.includes("button, a, input, select, textarea") && storage.includes("pendingPuzzleWrites") && storage.includes("puzzleWriteTails") && puzzlePage.includes("Queue one final local-only write on exit"), "selection history must contain only substantive actions plus one frozen terminal selection snapshot while substantive redo actions exist; mid-redo selections must not rewrite it");
-expect(gridCanvas.includes("expandPreviewViewBox") && gridCanvas.includes("svg.getBBox()") && gridCanvas.includes("layer.getBBox()") && gridCanvas.includes('preserveAspectRatio", "xMidYMid meet') && gridCanvas.includes("setPreviewFitSize") && gridCanvas.includes("Math.min(surface.clientWidth / width, surface.clientHeight / height)"), "puzzle previews must measure full rendered content and use an aspect-ratio-preserving contain fit");
+const playableFit = await read("src/ui/playableBoardFit.ts");
+expect(
+  gridCanvas.includes("fitPlayableBoard(svg, scene.rows, scene.cols, def.id, true)") &&
+  gridCanvas.includes("setPreviewFitSize") &&
+  gridCanvas.includes("Math.min(width / vb.width, height / vb.height)") &&
+  playableFit.includes("function measureAuthoredBounds(") &&
+  playableFit.includes("part.getBBox()") &&
+  playableFit.includes("part.getScreenCTM()") &&
+  playableFit.includes("fitCache.set(svg") &&
+  !gridCanvas.includes("expandPreviewViewBox"),
+  "puzzle previews must measure authored SVG geometry and scale to fit without cropping",
+);
 expect(appCss.includes(".sphenpad-native-board.preview.fitted > .sphenpad-sudokupad-renderer") && appCss.includes("width: var(--sphenpad-board-fit-width) !important") && appCss.includes("height: var(--sphenpad-board-fit-height) !important"), "preview thumbnails must use the largest explicit contain-fit size without cropping rectangular puzzles");
 expect(theme.includes('selectionOutlineThickness: "medium"'), "new/default selection outline thickness must be medium");
 expect(!puzzlePage.includes("useEffect(() => {\n    void refreshFolders();\n  }, []);"), "opening a puzzle must not eagerly hydrate the entire puzzle library for the folder picker");

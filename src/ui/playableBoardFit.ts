@@ -7,17 +7,27 @@ const fitCache = new WeakMap<SVGSVGElement, { key: string; rows: number; cols: n
 /** Use the painted authored SVG geometry, rather than SudokuPad's snapped
  * viewBox or any solver overlays. The viewBox is fixed for this puzzle, so
  * entering a digit cannot alter its scale or crop previously hidden clues. */
-export function fitPlayableBoard(svg: SVGSVGElement, rows: number, cols: number, key: string): void {
+export function fitPlayableBoard(svg: SVGSVGElement, rows: number, cols: number, key: string, remeasure = false): void {
   if (!rows || !cols) return;
   const cached = fitCache.get(svg);
-  if (cached?.key === key && cached.rows === rows && cached.cols === cols) {
+  if (!remeasure && cached?.key === key && cached.rows === rows && cached.cols === cols) {
     applyBounds(svg, cached.bounds);
     return;
   }
+  const bounds = measureAuthoredBounds(svg, rows, cols);
+  if (!bounds) return;
+  fitCache.set(svg, { key, rows, cols, bounds });
+  applyBounds(svg, bounds);
+}
+
+/** Tight authored artwork bounds shared by gameplay and every puzzle preview.
+ * Exclude dynamic solver entries, hidden metadata backgrounds and helper paper.
+ * Uses SVG geometry in root coordinates, including transforms and stroke widths. */
+function measureAuthoredBounds(svg: SVGSVGElement, rows: number, cols: number): FitBounds | null {
   const rootMatrix = svg.getScreenCTM();
-  if (!rootMatrix) return;
+  if (!rootMatrix) return null;
   let inverse: DOMMatrix;
-  try { inverse = rootMatrix.inverse(); } catch { return; }
+  try { inverse = rootMatrix.inverse(); } catch { return null; }
   let left = 0, top = 0, right = cols * SvgRenderer.CellSize, bottom = rows * SvgRenderer.CellSize;
 
   for (const id of SUDOKUPAD_SVG_LAYER_ORDER) {
@@ -26,7 +36,7 @@ export function fitPlayableBoard(svg: SVGSVGElement, rows: number, cols: number,
     if (["cell-colors", "cell-highlights", "cell-errors", "cell-pen", "cell-pencilmarks", "cell-candidates", "cell-values"].includes(id)) continue;
     const layer = svg.querySelector<SVGGElement>(`:scope > #${id}`);
     if (!layer) continue;
-    const parts = layer.querySelectorAll<SVGGraphicsElement>("path, rect, circle, ellipse, line, polyline, polygon, text, image, use");
+    const parts = layer.querySelectorAll<SVGGraphicsElement>("path, rect, circle, ellipse, line, polyline, polygon, text, image, use, foreignObject");
     for (const part of parts) {
       if (part.closest('[data-sudokupad-metadata-background="true"], [data-sphenpad-grid-paper], [data-sphenpad-fog-root], defs, marker, clipPath, mask, filter')) continue;
       try {
@@ -64,9 +74,7 @@ export function fitPlayableBoard(svg: SVGSVGElement, rows: number, cols: number,
   // viewBox to the old 16-unit boundaries or adding a large fixed margin.
   const pad = 1;
   const bounds = { x: left - pad, y: top - pad, width: right - left + 2 * pad, height: bottom - top + 2 * pad };
-  if (!(bounds.width > 0 && bounds.height > 0)) return;
-  fitCache.set(svg, { key, rows, cols, bounds });
-  applyBounds(svg, bounds);
+  return bounds.width > 0 && bounds.height > 0 ? bounds : null;
 }
 
 function applyBounds(svg: SVGSVGElement, bounds: FitBounds) {

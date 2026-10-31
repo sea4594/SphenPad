@@ -3975,6 +3975,17 @@ html[data-mode="dark"][data-white-background="false"] .puzzleShell:not(.creatorE
 .sphenpad-native-board.scalePuzzleStrokes > .sphenpad-sudokupad-renderer .cell-grid {
   vector-effect: none !important;
 }
+/* All previews are faithful white-paper renders, independent of the live
+   White background toggle and of dark themes. In particular, authored white
+   fills/strokes are never recolored in previews. */
+:is(.menuPuzzlePreview, .archivePreview, .archiveRulesPreview),
+.sphenpad-native-board.preview,
+.sphenpad-native-board.preview > .sphenpad-sudokupad-renderer,
+.puzzleShell:not(.creatorEditorShell) .boardSurface.preview,
+.puzzleShell:not(.creatorEditorShell) .boardSurface.preview > .sphenpad-sudokupad-renderer {
+  background: #fff;
+}
+.archiveRulesPreview { padding: 0; }
 /* A preview is the same SVG scaled down, so stock non-scaling strokes must
    become ordinary strokes at thumbnail scale. */
 .sphenpad-native-board.preview > .sphenpad-sudokupad-renderer {

@@ -4,6 +4,7 @@ import { useTheme } from "../app/theme";
 import { sceneWithPuzzleProgress } from "../sudokupad/app/progressScene";
 import { sphenPadSudokuPadAssetResolver } from "../sudokupad/app/network";
 import { SudokuPadBoard } from "./SudokuPadBoard";
+import { fitPlayableBoard } from "./playableBoardFit";
 import { BoardInteractionLayer, type BoardLineKind, type BoardLineSegment, type CreatorBoardPoint, type CreatorDirectMode, type CreatorSnapMode } from "./BoardInteractionLayer";
 
 const EMPTY_CONFLICT_CELLS: CellRC[] = [];
@@ -215,95 +216,35 @@ export function GridCanvas(props: GridCanvasProps) {
   const activeFitSize = !svg ? null : (previewMode ? previewFitSize : fitSize);
 
   useEffect(() => {
-    if (!previewMode || !svg) return;
+    if (!previewMode || !svg || !scene) return;
     let rafId: number | null = null;
     const timeoutIds: number[] = [];
 
-    const expandPreviewViewBox = () => {
+    const fitPreview = () => {
+      // The stock SudokuPad viewBox contains generous snapped padding. Reuse
+      // the live board's tight authored-geometry bounds instead of preserving
+      // that frame or including the SVG's decorative viewboxsize rectangle.
+      fitPlayableBoard(svg, scene.rows, scene.cols, def.id, true);
       const vb = svg.viewBox.baseVal;
-      if (!(vb.width > 0 && vb.height > 0)) return;
-      const rootScreen = svg.getScreenCTM();
-      if (!rootScreen) return;
-      let rootInverse: DOMMatrix;
-      try { rootInverse = rootScreen.inverse(); } catch { return; }
-
-      let contentLeft = Number.POSITIVE_INFINITY;
-      let contentTop = Number.POSITIVE_INFINITY;
-      let contentRight = Number.NEGATIVE_INFINITY;
-      let contentBottom = Number.NEGATIVE_INFINITY;
-      const addBox = (box: DOMRect | SVGRect) => {
-        contentLeft = Math.min(contentLeft, box.x);
-        contentTop = Math.min(contentTop, box.y);
-        contentRight = Math.max(contentRight, box.x + box.width);
-        contentBottom = Math.max(contentBottom, box.y + box.height);
-      };
-      // Root getBBox() is the most direct full-content bound and works for
-      // rectangular puzzles. Some browsers do not support getBBox(options), so
-      // always fall back to the standard no-argument form.
-      try {
-        addBox(svg.getBBox());
-      } catch { /* layer fallback below */ }
-      const layers = Array.from(svg.querySelectorAll(":scope > g:not(.defs)")) as SVGGElement[];
-      for (const layer of layers) {
-        const layerScreen = layer.getScreenCTM();
-        if (!layerScreen || typeof layer.getBBox !== "function") continue;
-        try {
-          let box: DOMRect | SVGRect;
-          try {
-            box = (layer.getBBox as unknown as (options?: { fill?: boolean; stroke?: boolean; markers?: boolean }) => DOMRect).call(
-              layer,
-              { fill: true, stroke: true, markers: true },
-            );
-          } catch {
-            box = layer.getBBox();
-          }
-          const corners = [
-            new DOMPoint(box.x, box.y),
-            new DOMPoint(box.x + box.width, box.y),
-            new DOMPoint(box.x, box.y + box.height),
-            new DOMPoint(box.x + box.width, box.y + box.height),
-          ];
-          for (const point of corners) {
-            const rootPoint = point.matrixTransform(layerScreen).matrixTransform(rootInverse);
-            contentLeft = Math.min(contentLeft, rootPoint.x);
-            contentTop = Math.min(contentTop, rootPoint.y);
-            contentRight = Math.max(contentRight, rootPoint.x);
-            contentBottom = Math.max(contentBottom, rootPoint.y);
-          }
-        } catch { /* ignore non-renderable layers */ }
-      }
-      if (!Number.isFinite(contentLeft)) return;
-
-      // Never crop the authored viewBox; previews may only zoom farther out.
-      // This is intentionally preview-only so live puzzle framing is untouched.
-      const pad = Math.max(2, Math.min(vb.width, vb.height) * 0.015);
-      const left = Math.min(vb.x, contentLeft - pad);
-      const top = Math.min(vb.y, contentTop - pad);
-      const right = Math.max(vb.x + vb.width, contentRight + pad);
-      const bottom = Math.max(vb.y + vb.height, contentBottom + pad);
-      const width = right - left;
-      const height = bottom - top;
-      svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
       const surface = surfaceRef.current;
-      if (surface && surface.clientWidth > 0 && surface.clientHeight > 0) {
-        const scale = Math.min(surface.clientWidth / width, surface.clientHeight / height);
-        setPreviewFitSize({ width: Math.max(1, width * scale), height: Math.max(1, height * scale) });
-      }
-      if (Math.abs(left - vb.x) < 0.5 && Math.abs(top - vb.y) < 0.5 && Math.abs(width - vb.width) < 0.5 && Math.abs(height - vb.height) < 0.5) return;
-      svg.setAttribute("viewBox", `${left} ${top} ${width} ${height}`);
-      svg.querySelectorAll<SVGElement>(".viewboxsize").forEach((elem) => {
-        elem.setAttribute("x", String(left));
-        elem.setAttribute("y", String(top));
-        elem.setAttribute("width", String(width));
-        elem.setAttribute("height", String(height));
-      });
+      if (!surface || !(vb.width > 0 && vb.height > 0)) return;
+      const width = surface.clientWidth;
+      // Auto-height previews (pause/rules) are limited by their width; fixed
+      // thumbnail slots have both width and height constraints.
+      const autoHeight = Boolean(surface.closest(".archiveRulesPreview"));
+      const height = autoHeight ? Number.POSITIVE_INFINITY : surface.clientHeight;
+      if (!(width > 0 && height > 0)) return;
+      const scale = Math.min(width / vb.width, height / vb.height);
+      const next = { width: Math.max(1, vb.width * scale), height: Math.max(1, vb.height * scale) };
+      setPreviewFitSize((current) => current && Math.abs(current.width - next.width) < 0.5 &&
+        Math.abs(current.height - next.height) < 0.5 ? current : next);
     };
 
     const schedule = () => {
       if (rafId !== null) window.cancelAnimationFrame(rafId);
       for (const id of timeoutIds.splice(0)) window.clearTimeout(id);
-      rafId = window.requestAnimationFrame(expandPreviewViewBox);
-      for (const delay of [80, 240, 500]) timeoutIds.push(window.setTimeout(expandPreviewViewBox, delay));
+      rafId = window.requestAnimationFrame(fitPreview);
+      for (const delay of [80, 240, 500]) timeoutIds.push(window.setTimeout(fitPreview, delay));
     };
     schedule();
     const resizeObserver = typeof ResizeObserver !== "undefined" && surfaceRef.current
@@ -315,7 +256,7 @@ export function GridCanvas(props: GridCanvasProps) {
       for (const id of timeoutIds) window.clearTimeout(id);
       resizeObserver?.disconnect();
     };
-  }, [previewMode, svg, scene]);
+  }, [previewMode, svg, scene, def.id]);
 
   useEffect(() => {
     if (previewMode || !svg) return;
