@@ -89,7 +89,16 @@
 .sphenpad-sudokupad-renderer.setting-largedigits .cell-candidate[data-count="9"] { font-size: 65%; }
 .sphenpad-sudokupad-renderer.setting-nogrid .cell-grid { display: none; }
 .sphenpad-sudokupad-renderer.setting-dashedgrid .cell-grid { stroke-dasharray: 3 10; }
-.sphenpad-sudokupad-renderer.setting-outlinesondigits { --text-stroke-width: 2px; }
+/* Outline only player-entered digits and notes, never authored puzzle text. */
+.sphenpad-sudokupad-renderer.setting-outlinesondigits #cell-values > text.cell-value,
+.sphenpad-sudokupad-renderer.setting-outlinesondigits #cell-candidates > text.cell-candidate,
+.sphenpad-sudokupad-renderer.setting-outlinesondigits #cell-pencilmarks > text.cell-pencilmark:not(.givenCornermark) {
+  stroke-width: 2px;
+}
+/* Setter-supplied center notes can share the candidate text element. */
+.sphenpad-sudokupad-renderer.setting-outlinesondigits #cell-candidates .cell-candidate > tspan.given {
+  stroke-width: 0;
+}
 .sphenpad-sudokupad-renderer.setting-darkmode {
   --dm-black: #1a1a1a;
   --dm-white: #eee;
