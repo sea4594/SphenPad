@@ -34,6 +34,7 @@ export const SudokuPadBoard = forwardRef<SVGSVGElement, SudokuPadBoardProps>(fun
     const controller = new AbortController();
     let cleanupAssets: (() => void) | undefined;
     const playable = Boolean(svg.closest(".puzzleShell:not(.creatorEditorShell)"));
+    const preview = Boolean(svg.closest(".sphenpad-native-board.preview"));
     renderSudokuPadScene(svg, scene, {
       retainUnchanged: true,
       preserveViewBox: playable,
@@ -46,7 +47,7 @@ export const SudokuPadBoard = forwardRef<SVGSVGElement, SudokuPadBoardProps>(fun
     // Restore previously resolved assets before paint; the asynchronous pass below
     // is still needed for first-load and for fonts/layout recomputation.
     const cleanupFog = applySudokuPadFogMasks(svg, scene);
-    const cleanupPaper = svg.closest(".puzzleShell:not(.creatorEditorShell)")
+    const cleanupPaper = (playable || preview)
       ? applyPlayableGridPaper(svg, scene.rows, scene.cols, whiteBackground) : () => undefined;
     restoreCachedSudokuPadImages(svg, scene, assetResolver);
     restoreCachedSudokuPadSvgEmoji(svg, assetResolver);

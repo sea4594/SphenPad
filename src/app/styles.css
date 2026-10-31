@@ -2637,18 +2637,18 @@ input.url {
 /* SudokuPad authors sometimes draw white shapes over the white board to hide
    portions of constraints. Match those opaque white SVG parts to the surface
    instead; do not alter fog masks, translucent highlights, or raster assets. */
-html[data-white-background="false"] .puzzleShell:not(.creatorEditorShell) .sphenpad-sudokupad-renderer {
+html[data-white-background="false"] .puzzleShell:not(.creatorEditorShell) .boardSurface:not(.preview) > .sphenpad-sudokupad-renderer {
   --color-white: var(--bg);
   --body-bg: var(--bg);
 }
-html[data-white-background="false"] .puzzleShell:not(.creatorEditorShell) .sphenpad-sudokupad-renderer
+html[data-white-background="false"] .puzzleShell:not(.creatorEditorShell) .boardSurface:not(.preview) > .sphenpad-sudokupad-renderer
 :is(#background, #underlay, #overlay, #arrows, #cages, #cell-grids)
 :is([fill="#fff" i], [fill="#ffffff" i], [fill="#ffffffff" i], [fill="white" i],
     [fill="rgb(255,255,255)" i], [fill="rgb(255, 255, 255)" i],
     [fill="rgba(255,255,255,1)" i], [fill="rgba(255, 255, 255, 1)" i]) {
   fill: var(--bg);
 }
-html[data-white-background="false"] .puzzleShell:not(.creatorEditorShell) .sphenpad-sudokupad-renderer
+html[data-white-background="false"] .puzzleShell:not(.creatorEditorShell) .boardSurface:not(.preview) > .sphenpad-sudokupad-renderer
 :is(#background, #underlay, #overlay, #arrows, #cages, #cell-grids)
 :is([stroke="#fff" i], [stroke="#ffffff" i], [stroke="#ffffffff" i], [stroke="white" i],
     [stroke="rgb(255,255,255)" i], [stroke="rgb(255, 255, 255)" i],
@@ -2658,7 +2658,7 @@ html[data-white-background="false"] .puzzleShell:not(.creatorEditorShell) .sphen
 
 /* The exact background is dark in dark themes: keep grid lines and all cell
    digits/notes readable. Also invert pure-black authored SVG constraints. */
-html[data-mode="dark"][data-white-background="false"] .puzzleShell:not(.creatorEditorShell) .sphenpad-sudokupad-renderer {
+html[data-mode="dark"][data-white-background="false"] .puzzleShell:not(.creatorEditorShell) .boardSurface:not(.preview) > .sphenpad-sudokupad-renderer {
   --color-black: #fff;
   --puzzle-given: #fff;
   --puzzle-value: #fff;
@@ -2668,14 +2668,14 @@ html[data-mode="dark"][data-white-background="false"] .puzzleShell:not(.creatorE
   --puzzle-givenCandidate: #fff;
   --puzzle-outlines: var(--bg);
 }
-html[data-mode="dark"][data-white-background="false"] .puzzleShell:not(.creatorEditorShell) .sphenpad-sudokupad-renderer
+html[data-mode="dark"][data-white-background="false"] .puzzleShell:not(.creatorEditorShell) .boardSurface:not(.preview) > .sphenpad-sudokupad-renderer
 :is(.cell-grid, .cage-box) { stroke: #fff; }
-html[data-mode="dark"][data-white-background="false"] .puzzleShell:not(.creatorEditorShell) .sphenpad-sudokupad-renderer
+html[data-mode="dark"][data-white-background="false"] .puzzleShell:not(.creatorEditorShell) .boardSurface:not(.preview) > .sphenpad-sudokupad-renderer
 :is(#background, #underlay, #overlay, #arrows, #cages, #cell-grids)
 :is([stroke="#000" i], [stroke="#000000" i], [stroke="black" i], [stroke="rgba(0, 0, 0, 1)" i]) {
   stroke: #fff;
 }
-html[data-mode="dark"][data-white-background="false"] .puzzleShell:not(.creatorEditorShell) .sphenpad-sudokupad-renderer
+html[data-mode="dark"][data-white-background="false"] .puzzleShell:not(.creatorEditorShell) .boardSurface:not(.preview) > .sphenpad-sudokupad-renderer
 :is(#background, #underlay, #overlay, #arrows, #cages, #cell-grids)
 :is([fill="#000" i], [fill="#000000" i], [fill="black" i], [fill="rgba(0, 0, 0, 1)" i]) {
   fill: #fff;
@@ -3924,11 +3924,25 @@ html[data-mode="dark"][data-white-background="false"] .puzzleShell:not(.creatorE
 }
 
 /* Native SudokuPad SVG board introduced by the importer/renderer replacement. */
-/* Portrait touch layouts keep the playable grid beside the controls rather
-   than leaving the unused aspect-ratio space underneath it. Tablets benefit
-   from the same reachability behavior; creator and previews are unaffected. */
-.puzzleShell:not(.creatorEditorShell).videoModeMobilePortrait .boardSurface {
+/* In portrait, stretch the board's entire grid row down to the controls before
+   bottom-aligning the actual SVG; otherwise .boardColumn's default start
+   alignment leaves unused space beneath even a bottom-aligned board surface.
+   This applies with and without video, for phones and portrait tablets only. */
+.puzzleShell:not(.creatorEditorShell).videoModeMobilePortrait .boardColumn {
+  grid-template-rows: minmax(0, 1fr);
+  align-content: stretch;
+}
+.puzzleShell:not(.creatorEditorShell).videoModeMobilePortrait .boardCard {
+  min-height: 0;
+  place-items: stretch;
+}
+.puzzleShell:not(.creatorEditorShell).videoModeMobilePortrait .boardSurface:not(.preview) {
   place-items: end center;
+}
+/* Tablet portrait inherits a 6px grid gap; remove it when there is no video
+   so the puzzle's available area meets the top of the controls. */
+.puzzleShell.layoutTabletPortrait.videoModeMobilePortrait:not(.videoLayoutOn) .gridLayout {
+  row-gap: 0;
 }
 .sphenpad-native-board { min-width: 0; min-height: 0; }
 .sphenpad-native-board > .sphenpad-sudokupad-renderer {
