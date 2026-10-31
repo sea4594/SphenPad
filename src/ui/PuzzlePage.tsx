@@ -2457,8 +2457,9 @@ export function PuzzlePage(props: { editor?: boolean }) {
                 state: withPuzzleReturnState(undefined, puzzleOriginState),
               });
             }}
+            aria-label={!editor && !(requestedCreatorPlaytest && data.def.meta.creatorPuzzle) ? "Back" : undefined}
           >
-            {requestedCreatorPlaytest && data.def.meta.creatorPuzzle ? "← Creator" : editor ? "← Creator" : "← Menu"}
+            {requestedCreatorPlaytest && data.def.meta.creatorPuzzle ? "← Creator" : editor ? "← Creator" : "←"}
           </button>
           <div className="puzzleTopbarRight">
             {!editor && data.def.meta.creatorPuzzle && !requestedCreatorPlaytest ? <button className="btn" onClick={() => nav(`/creator/${encodeURIComponent(key)}`)} title="Edit this creator puzzle" type="button">Edit</button> : null}
