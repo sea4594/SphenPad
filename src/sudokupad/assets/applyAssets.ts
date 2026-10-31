@@ -5,10 +5,12 @@ import { ensureSudokuPadPuzzleFont } from "./fontLoader";
 import { applySudokuPadMetadataBackground, resolveTaggedSudokuPadImages } from "./imageAssets";
 import { SvgRenderer } from "../render/SvgRenderer";
 import { computeSudokuPadViewBox } from "../render/contentBounds";
+import { fitPlayableBoard } from "../../ui/playableBoardFit";
 
 export interface ApplySudokuPadAssetsOptions {
   resolver?: SudokuPadAssetResolver;
   signal?: AbortSignal;
+  tightPlayableFit?: string;
 }
 
 export async function applySudokuPadAssets(
@@ -47,12 +49,13 @@ export async function applySudokuPadAssets(
       const hadStyleAttribute = metadataBackgroundImage?.hasAttribute("style") ?? false;
       const previousDisplay = metadataBackgroundImage?.style.display ?? "";
       if (metadataBackgroundImage) metadataBackgroundImage.style.display = "none";
-      const viewBox = computeSudokuPadViewBox(renderer);
+      const viewBox = options.tightPlayableFit ? null : computeSudokuPadViewBox(renderer);
       if (metadataBackgroundImage) {
         metadataBackgroundImage.style.display = previousDisplay;
         if (!hadStyleAttribute && !metadataBackgroundImage.getAttribute("style")) metadataBackgroundImage.removeAttribute("style");
       }
-      renderer.adjustViewBox(viewBox.left, viewBox.top, viewBox.width, viewBox.height);
+      if (viewBox) renderer.adjustViewBox(viewBox.left, viewBox.top, viewBox.width, viewBox.height);
+      else fitPlayableBoard(svg, scene.rows, scene.cols, options.tightPlayableFit!);
     }
   }
   if (!scene.renderSettings.disableEmoji && !options.signal?.aborted) {

@@ -1,21 +1,24 @@
-Phase 11 dependency-backed release gate — 2026-10-30T19:23:32Z
+Phase 11 dependency-backed release gate — 2026-10-31T03:01:36Z
 Node: v20.20.2
 npm: 10.8.2
 
 [1/11] Clean dependency install
 
-added 274 packages, and audited 275 packages in 13s
+added 274 packages, and audited 275 packages in 33s
 
 51 packages are looking for funding
   run `npm fund` for details
 
-17 vulnerabilities (2 low, 2 moderate, 13 high)
+29 vulnerabilities (2 low, 14 moderate, 13 high)
 
 To address issues that do not require attention, run:
   npm audit fix
 
-To address all issues (including breaking changes), run:
+To address all issues possible (including breaking changes), run:
   npm audit fix --force
+
+Some issues need review, and may require choosing
+a different dependency.
 
 Run `npm audit` for details.
 [2/11] Production dependency security audit
@@ -55,18 +58,18 @@ npm audit: only the known Firebase/Firestore browser-only grpc advisories are pr
 
 vite v7.3.1 building client environment for production...
 transforming...
-✓ 174 modules transformed.
+✓ 175 modules transformed.
 rendering chunks...
 computing gzip size...
 dist/index.html                     2.12 kB │ gzip:   0.91 kB
-dist/assets/index-Cc34X-z5.css     97.99 kB │ gzip:  16.75 kB
-dist/assets/index-Cko3Sn8H.js   1,341.00 kB │ gzip: 403.15 kB
+dist/assets/index-BPbD_UJ8.css     98.16 kB │ gzip:  16.77 kB
+dist/assets/index-DE4C2Jqw.js   1,343.69 kB │ gzip: 403.98 kB
 
 (!) Some chunks are larger than 500 kB after minification. Consider:
 - Using dynamic import() to code-split the application
 - Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
 - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
-✓ built in 3.20s
+✓ built in 3.12s
 [5/11] Complete Phase 11 creator regression matrix
 
 > sphenpad@0.0.0 test-creator-phase11
@@ -171,7 +174,7 @@ Production smoke: PASS (2 built asset references checked)
 > sphenpad@0.0.0 verify-production-bundle-clean
 > node scripts/verify-production-bundle-clean.mjs
 
-Production bundle cleanliness: PASS (4222 files, no test/debug/conformance leakage)
+Production bundle cleanliness: PASS (4241 files, no test/debug/conformance leakage)
 [8/11] Built-app browser smoke
 
 > sphenpad@0.0.0 verify-production-browser
@@ -197,7 +200,7 @@ SudokuPad compatibility manifest: PASS (67 JS/CSS assets, 13 fonts)
 > sphenpad@0.0.0 write-phase11-release-hashes
 > node scripts/write-phase11-release-hashes.mjs
 
-Phase 11 release hash manifest: PASS (4362 production inputs, 15 creator tests, 4222 built files)
-releaseContentSha256=7f9701f6a98e4211495423779a7c4d06990f28c4cf710d9a777016787bd78cdf
+Phase 11 release hash manifest: PASS (4382 production inputs, 15 creator tests, 4241 built files)
+releaseContentSha256=4992f7089c1415ac355285656880c73d3ee81b85baa5cf447dade24dde03f68c
 
 PHASE 11 DEPENDENCY-BACKED RELEASE GATE PASSED

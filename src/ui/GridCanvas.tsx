@@ -357,15 +357,14 @@ export function GridCanvas(props: GridCanvasProps) {
       // In the resizable creator, measuring up to the controls includes the
       // divider itself, so the puzzle can otherwise extend underneath it.
       const creatorBoard = Boolean(boardCard?.closest(".creatorEditorShell"));
-      const height = typeof requestedHeight === "number"
-        ? requestedHeight
-        : creatorBoard && (boardCard?.clientHeight ?? 0) > 1
-          ? boardCard!.clientHeight
-          : spaceAboveControls > 0
-            ? spaceAboveControls
-            : measuredHeight > 1 ? measuredHeight : viewportHeight;
-      const coarse = window.matchMedia("(hover: none) and (pointer: coarse)").matches;
-      const margin = creatorBoard ? 10 : coarse ? 0 : 8;
+      const height = creatorBoard
+        ? (typeof requestedHeight === "number" ? requestedHeight :
+          (boardCard?.clientHeight ?? 0) > 1 ? boardCard!.clientHeight :
+          spaceAboveControls > 0 ? spaceAboveControls : measuredHeight > 1 ? measuredHeight : viewportHeight)
+        : surface.clientHeight > 1 ? surface.clientHeight
+          : typeof requestedHeight === "number" ? requestedHeight
+          : (boardCard?.clientHeight ?? 0) > 1 ? boardCard!.clientHeight : viewportHeight;
+      const margin = creatorBoard ? 10 : 0;
       const availableWidth = Math.max(1, width - margin * 2);
       const availableHeight = Math.max(1, height - margin * 2);
       const scale = Math.min(availableWidth / vb.width, availableHeight / vb.height);
@@ -420,7 +419,6 @@ export function GridCanvas(props: GridCanvasProps) {
       className={`boardSurface sphenpad-native-board${previewMode ? " preview" : ""}${strictScale ? " strictScale" : ""}${scalePuzzleStrokes ? " scalePuzzleStrokes" : ""}${activeFitSize ? " fitted" : ""}`}
       style={{
         display: "inline-grid",
-        placeItems: "center",
         position: "relative",
         maxWidth: "100%",
         maxHeight: "100%",
@@ -431,7 +429,7 @@ export function GridCanvas(props: GridCanvasProps) {
         } : {}),
       } as CSSProperties}
     >
-      <SudokuPadBoard ref={setSvg} scene={scene} whiteBackground={!previewMode && theme.whiteBackground} assetResolver={sphenPadSudokuPadAssetResolver} />
+      <SudokuPadBoard ref={setSvg} scene={scene} whiteBackground={!previewMode && theme.whiteBackground} playableFitKey={def.id} assetResolver={sphenPadSudokuPadAssetResolver} />
       {!previewMode ? <BoardInteractionLayer
         svg={svg}
         rows={scene.rows}

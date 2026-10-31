@@ -9,6 +9,7 @@ import type { SudokuPadAssetResolver } from "../sudokupad/assets/assetResolver";
 import { sudokuPadBoardClassNames } from "../sudokupad/app/boardClasses";
 import "../sudokupad/styles/sudokupad-renderer.css";
 import { applyPlayableGridPaper } from "./playableGridPaper";
+import { fitPlayableBoard } from "./playableBoardFit";
 
 export interface SudokuPadBoardProps {
   scene: SudokuPadScene;
@@ -16,10 +17,11 @@ export interface SudokuPadBoardProps {
   ariaLabel?: string;
   assetResolver?: SudokuPadAssetResolver;
   whiteBackground?: boolean;
+  playableFitKey?: string;
 }
 
 export const SudokuPadBoard = forwardRef<SVGSVGElement, SudokuPadBoardProps>(function SudokuPadBoard(
-  { scene, className, ariaLabel = "Sudoku puzzle", assetResolver, whiteBackground = false },
+  { scene, className, ariaLabel = "Sudoku puzzle", assetResolver, whiteBackground = false, playableFitKey = "" },
   forwardedRef,
 ) {
   const localRef = useRef<SVGSVGElement | null>(null);
@@ -31,13 +33,16 @@ export const SudokuPadBoard = forwardRef<SVGSVGElement, SudokuPadBoardProps>(fun
     if (!svg) return;
     const controller = new AbortController();
     let cleanupAssets: (() => void) | undefined;
+    const playable = Boolean(svg.closest(".puzzleShell:not(.creatorEditorShell)"));
     renderSudokuPadScene(svg, scene, {
       retainUnchanged: true,
+      preserveViewBox: playable,
       beforeReconcile: () => {
         restoreCachedSudokuPadImages(svg, scene, assetResolver);
         restoreCachedSudokuPadSvgEmoji(svg, assetResolver);
       },
     });
+    if (playable) fitPlayableBoard(svg, scene.rows, scene.cols, playableFitKey);
     // Restore previously resolved assets before paint; the asynchronous pass below
     // is still needed for first-load and for fonts/layout recomputation.
     const cleanupFog = applySudokuPadFogMasks(svg, scene);
@@ -45,8 +50,13 @@ export const SudokuPadBoard = forwardRef<SVGSVGElement, SudokuPadBoardProps>(fun
       ? applyPlayableGridPaper(svg, scene.rows, scene.cols, whiteBackground) : () => undefined;
     restoreCachedSudokuPadImages(svg, scene, assetResolver);
     restoreCachedSudokuPadSvgEmoji(svg, assetResolver);
-    void applySudokuPadAssets(svg, scene, { resolver: assetResolver, signal: controller.signal })
-      .then((cleanup) => { if (!controller.signal.aborted) cleanupAssets = cleanup; else cleanup(); })
+    void applySudokuPadAssets(svg, scene, { resolver: assetResolver, signal: controller.signal, tightPlayableFit: playable ? playableFitKey : undefined })
+      .then((cleanup) => {
+        if (!controller.signal.aborted) {
+          cleanupAssets = cleanup;
+          if (playable) fitPlayableBoard(svg, scene.rows, scene.cols, playableFitKey);
+        } else cleanup();
+      })
       .catch((error) => { if (!controller.signal.aborted) console.warn("SudokuPad asset enhancement failed", error); });
     return () => {
       controller.abort();
@@ -54,7 +64,7 @@ export const SudokuPadBoard = forwardRef<SVGSVGElement, SudokuPadBoardProps>(fun
       cleanupPaper();
       cleanupFog();
     };
-  }, [scene, assetResolver, whiteBackground]);
+  }, [scene, assetResolver, whiteBackground, playableFitKey]);
 
   return <svg ref={localRef} className={classes} role="img" aria-label={ariaLabel} />;
 });

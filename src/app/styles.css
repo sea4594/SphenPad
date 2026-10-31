@@ -2623,6 +2623,9 @@ input.url {
   background: #ffffff;
 }
 
+/* Let the solver board occupy the full slot; creator padding is unchanged. */
+.puzzleShell:not(.creatorEditorShell) .boardCard { padding: 0; border-width: 0; }
+
 /* Only the grid cells may have white paper; the surrounding space always
    matches the theme, regardless of the White background preference. */
 .puzzleShell:not(.creatorEditorShell) .boardCard,
@@ -3921,6 +3924,12 @@ html[data-mode="dark"][data-white-background="false"] .puzzleShell:not(.creatorE
 }
 
 /* Native SudokuPad SVG board introduced by the importer/renderer replacement. */
+/* Portrait touch layouts keep the playable grid beside the controls rather
+   than leaving the unused aspect-ratio space underneath it. Tablets benefit
+   from the same reachability behavior; creator and previews are unaffected. */
+.puzzleShell:not(.creatorEditorShell).videoModeMobilePortrait .boardSurface {
+  place-items: end center;
+}
 .sphenpad-native-board { min-width: 0; min-height: 0; }
 .sphenpad-native-board > .sphenpad-sudokupad-renderer {
   grid-area: 1 / 1;

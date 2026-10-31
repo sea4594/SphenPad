@@ -102,7 +102,7 @@ function renderLine(renderer: SvgRenderer, line: SudokuPadSourceLine, plan: Retu
 
 /** Retain identical SVG nodes across redraws. In particular, WebKit repaints
  * embedded SVG emoji images when their <image> element is removed/recreated. */
-export interface SudokuPadRenderOptions { retainUnchanged?: boolean; beforeReconcile?: () => void }
+export interface SudokuPadRenderOptions { retainUnchanged?: boolean; beforeReconcile?: () => void; preserveViewBox?: boolean }
 
 export function renderSudokuPadScene(svg: SVGSVGElement, scene: SudokuPadScene, options: SudokuPadRenderOptions = {}): SvgRenderer {
   ensureSudokuPadLayers(svg);
@@ -195,7 +195,9 @@ export function renderSudokuPadScene(svg: SVGSVGElement, scene: SudokuPadScene, 
     }
   }
 
-  const viewBox = computeSudokuPadViewBox(renderer);
-  renderer.adjustViewBox(viewBox.left, viewBox.top, viewBox.width, viewBox.height);
+  if (!options.preserveViewBox || !svg.hasAttribute("viewBox")) {
+    const viewBox = computeSudokuPadViewBox(renderer);
+    renderer.adjustViewBox(viewBox.left, viewBox.top, viewBox.width, viewBox.height);
+  }
   return renderer;
 }
