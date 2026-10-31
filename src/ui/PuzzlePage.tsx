@@ -542,6 +542,7 @@ export function PuzzlePage(props: { editor?: boolean }) {
   const [folderCreateBusy, setFolderCreateBusy] = useState("");
   const [boardReloadNonce, setBoardReloadNonce] = useState(0);
   const [videoPlayerOpen, setVideoPlayerOpen] = useState(false);
+  const [videoPlayerEverOpened, setVideoPlayerEverOpened] = useState(false);
   const [viewportLayoutKind, setViewportLayoutKind] = useState<ViewportLayoutKind>(() => getViewportLayoutKind());
   const [videoViewportMode, setVideoViewportMode] = useState<VideoViewportMode>(() => getVideoViewportMode(getViewportLayoutKind()));
   const [portraitVideoHeight, setPortraitVideoHeight] = useState<number | null>(null);
@@ -1150,7 +1151,9 @@ export function PuzzlePage(props: { editor?: boolean }) {
   }, [hasLinkedVideo]);
 
   const videoLayoutOn = videoPlayerOpen;
-  const showGridVideoPlayer = videoLayoutOn;
+  // Keep the same YouTube iframe mounted after the first open to avoid a fresh
+  // playback/ad session whenever the video panel is temporarily closed.
+  const showGridVideoPlayer = hasLinkedVideo && videoPlayerEverOpened;
   const sideBySideVideoMode = videoLayoutOn && videoViewportMode === "desktop";
   const videoModeClass = videoViewportMode === "mobile-portrait"
     ? "videoModeMobilePortrait"
@@ -2392,11 +2395,12 @@ export function PuzzlePage(props: { editor?: boolean }) {
   };
 
   const renderVideoPlayer = (locationClassName: string) => (
-    <div className={`puzzleVideoCard ${locationClassName}`}>
+    <div className={`puzzleVideoCard ${locationClassName}`} aria-hidden={!videoPlayerOpen}>
       <div className="puzzleVideoFrame">
         {youtubeVideoId ? (
           <YouTubePlayer
             videoId={youtubeVideoId}
+            active={videoPlayerOpen}
             startSeconds={data.progress.videoResumeSeconds ?? 0}
             onProgress={handleVideoProgress}
           />
@@ -2449,7 +2453,10 @@ export function PuzzlePage(props: { editor?: boolean }) {
             {hasLinkedVideo ? (
               <button
                 className={"btn" + (videoPlayerOpen ? " primary" : "")}
-                onClick={() => setVideoPlayerOpen((open) => !open)}
+                onClick={() => {
+                  if (!videoPlayerOpen) setVideoPlayerEverOpened(true);
+                  setVideoPlayerOpen((open) => !open);
+                }}
                 title={videoPlayerOpen ? "Close puzzle video player" : "Open puzzle video player"}
                 aria-label={videoPlayerOpen ? "Close puzzle video player" : "Open puzzle video player"}
                 type="button"

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 type YouTubePlayerProps = {
   videoId: string;
+  active: boolean;
   startSeconds: number;
   onProgress: (seconds: number) => void;
 };
@@ -24,6 +25,7 @@ declare global {
         }
       ) => {
         getCurrentTime?: () => number;
+        pauseVideo?: () => void;
         seekTo?: (seconds: number, allowSeekAhead?: boolean) => void;
         destroy?: () => void;
       };
@@ -75,11 +77,14 @@ function loadYouTubeIframeApi(): Promise<void> {
 }
 
 export function YouTubePlayer(props: YouTubePlayerProps) {
-  const { videoId, startSeconds, onProgress } = props;
+  const { videoId, active, startSeconds, onProgress } = props;
   const hostRef = useRef<HTMLDivElement | null>(null);
+  const fallbackIframeRef = useRef<HTMLIFrameElement | null>(null);
+  const activeRef = useRef(active);
   const onProgressRef = useRef(onProgress);
   const playerRef = useRef<{
     getCurrentTime?: () => number;
+    pauseVideo?: () => void;
     seekTo?: (seconds: number, allowSeekAhead?: boolean) => void;
     destroy?: () => void;
   } | null>(null);
@@ -93,12 +98,30 @@ export function YouTubePlayer(props: YouTubePlayerProps) {
   }, [onProgress]);
 
   const fallbackSrc = useMemo(
-    () => `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=0&playsinline=1&rel=0&modestbranding=1&start=${roundedStart}`,
+    () => `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=0&playsinline=1&rel=0&modestbranding=1&enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}&start=${roundedStart}`,
     [roundedStart, videoId]
   );
 
   useEffect(() => {
+    activeRef.current = active;
+    if (active) return;
+
+    // Closing the panel must pause rather than destroy/reload the same player.
+    // Do this even while the iframe is hidden; reopen at its existing position.
+    const seconds = playerRef.current?.getCurrentTime?.();
+    if (Number.isFinite(seconds)) onProgressRef.current(Math.max(0, seconds as number));
+    try { playerRef.current?.pauseVideo?.(); } catch { /* player may be unloading */ }
+    try {
+      fallbackIframeRef.current?.contentWindow?.postMessage(
+        JSON.stringify({ event: "command", func: "pauseVideo", args: [] }),
+        "https://www.youtube-nocookie.com"
+      );
+    } catch { /* iframe may be unloading */ }
+  }, [active]);
+
+  useEffect(() => {
     const reportProgress = () => {
+      if (!activeRef.current) return;
       const seconds = playerRef.current?.getCurrentTime?.();
       if (!Number.isFinite(seconds)) return;
       onProgressRef.current(Math.max(0, seconds as number));
@@ -147,6 +170,7 @@ export function YouTubePlayer(props: YouTubePlayerProps) {
             onReady: () => {
               if (readyTimerRef.current !== null) { window.clearTimeout(readyTimerRef.current); readyTimerRef.current = null; }
               if (roundedStart > 0) player.seekTo?.(roundedStart, true);
+              if (!activeRef.current) player.pauseVideo?.();
               reportProgress();
             },
             onStateChange: reportProgress,
@@ -188,7 +212,7 @@ export function YouTubePlayer(props: YouTubePlayerProps) {
   }, [roundedStart, videoId]);
 
   if (fallbackMode) {
-    return <iframe src={fallbackSrc} title="Puzzle video" loading="eager" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerPolicy="strict-origin-when-cross-origin" allowFullScreen />;
+    return <iframe ref={fallbackIframeRef} src={fallbackSrc} title="Puzzle video" loading="eager" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerPolicy="strict-origin-when-cross-origin" allowFullScreen />;
   }
 
   return <div className="youtubePlayerHost" ref={hostRef} />;

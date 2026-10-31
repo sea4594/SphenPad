@@ -104,6 +104,18 @@ expect(gridCanvas.includes("const layoutRect = (boardCard ?? boardColumn ?? surf
 expect(appCss.includes('.puzzleShell:not(.creatorEditorShell)') && appCss.includes('.creatorEditorShell .creatorEditorTopbar'), "creator mobile landscape topbar must not inherit the solver left-rail layout");
 expect(gridCanvas.includes("additionalConflictCells") && gridCanvas.includes("hideAuthoredEntries") && gridCanvas.includes("checkerEnabled"), "GridCanvas must support creator-wide conflict overlays and Regions-only entry hiding");
 expect(youtubePlayer.includes("youtube-nocookie.com/embed") && youtubePlayer.includes("window.setTimeout(fallBack, 8000)") && youtubePlayer.includes("host.replaceChildren(mount)"), "video player must recover from black/stalled YouTube API embeds");
+expect(
+  puzzlePage.includes('const [videoPlayerEverOpened, setVideoPlayerEverOpened] = useState(false)') &&
+  puzzlePage.includes('const showGridVideoPlayer = hasLinkedVideo && videoPlayerEverOpened') &&
+  puzzlePage.includes('if (!videoPlayerOpen) setVideoPlayerEverOpened(true)') &&
+  puzzlePage.includes('active={videoPlayerOpen}') &&
+  youtubePlayer.includes('playerRef.current?.pauseVideo?.()') &&
+  youtubePlayer.includes('if (!activeRef.current) player.pauseVideo?.()') &&
+  youtubePlayer.includes('fallbackIframeRef.current?.contentWindow?.postMessage(') &&
+  appCss.includes('.puzzleTopbarVideoPlayer,\n.puzzleGridVideoPlayer {\n  display: none;'),
+  "closing and reopening the video panel must pause/reveal the SAME iframe without reloading the video",
+);
+
 
 expect(creatorEditor.includes('regionDigitEntryRef') && creatorEditor.includes('regions[index].label') && creatorEditor.includes('now - previous.at <= 900'), "region editing must use stored labels and replace the existing label on the first digit instead of deriving it from array order");
 expect(creatorEditor.includes('creatorActiveElementName') && appCss.includes('.creatorActiveElementName') && appCss.includes('text-overflow: ellipsis'), "creator element tabs must keep names on one line and truncate only at a bounded width");
