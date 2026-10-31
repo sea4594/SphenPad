@@ -2832,7 +2832,15 @@ export function PuzzlePage(props: { editor?: boolean }) {
         />
       )}
 
-      {settingsOpen ? <SettingsOverlay onClose={() => setSettingsOpen(false)} /> : null}
+      {settingsOpen ? (
+        <SettingsOverlay
+          fromPauseMenu={!editor}
+          onClose={() => {
+            setSettingsOpen(false);
+            if (!editor) setPauseMenuOpen(true);
+          }}
+        />
+      ) : null}
       {metadataOpen ? <PuzzleMetadataOverlay data={data} onClose={() => setMetadataOpen(false)} onSave={(next) => void persist(next)} /> : null}
 
       {checkResult !== null && (

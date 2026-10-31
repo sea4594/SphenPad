@@ -39,8 +39,8 @@ const selectionThicknessOptions: Array<{ value: SelectionOutlineThickness; label
   { value: "extra-thick", label: "Extra thick" },
 ];
 
-export function SettingsOverlay(props: { onClose: () => void }) {
-  const { onClose } = props;
+export function SettingsOverlay(props: { onClose: () => void; fromPauseMenu?: boolean }) {
+  const { onClose, fromPauseMenu = false } = props;
   const appCommitSha = __APP_COMMIT_SHA__ || "unknown";
   const {
     firebaseEnabled,
@@ -117,13 +117,22 @@ export function SettingsOverlay(props: { onClose: () => void }) {
 
   return (
     <div className="overlayBackdrop" onClick={closeSettings}>
-      <div className="card settingsCard" role="dialog" aria-modal="true" aria-label="Settings" onClick={(e) => e.stopPropagation()}>
+      <div className={`card settingsCard${fromPauseMenu ? " pauseSizedSettingsCard" : ""}`} role="dialog" aria-modal="true" aria-label="Settings" onClick={(e) => e.stopPropagation()}>
         <div className="settingsHeader">
           <div>
             <div style={{ fontWeight: 800, fontSize: 22 }}>Settings</div>
             <div className="muted" style={{ marginTop: 2, fontSize: 12 }}>Commit: {appCommitSha}</div>
           </div>
-          <button className="btn" onClick={closeSettings}>Close</button>
+          <button
+            type="button"
+            className="btn"
+            onClick={closeSettings}
+            aria-label="Close settings"
+            title="Close"
+            style={{ width: 32, height: 32, minHeight: 32, padding: 0, lineHeight: 1, fontSize: 16, flexShrink: 0 }}
+          >
+            x
+          </button>
         </div>
 
         <div className="settingsBody">

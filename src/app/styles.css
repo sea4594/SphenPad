@@ -2953,12 +2953,23 @@ html[data-mode="dark"][data-white-background="false"] .puzzleShell:not(.creatorE
   justify-self: start;
 }
 
-.pauseOverlayCard {
+.pauseOverlayCard,
+.pauseSizedSettingsCard {
   width: min(700px, 100%);
+  height: min(92dvh, calc(100vh - 24px));
   max-height: min(92dvh, calc(100vh - 24px));
   overflow: hidden;
+}
+
+.pauseOverlayCard {
   display: flex;
   flex-direction: column;
+}
+
+.pauseSizedSettingsCard .settingsHeader {
+  flex-shrink: 0;
+  padding-bottom: 12px;
+  border-bottom: 1px solid color-mix(in oklab, var(--text) 16%, transparent);
 }
 
 .pauseOverlayHeader {
