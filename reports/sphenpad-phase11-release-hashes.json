@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-31T20:49:28.209Z",
+  "generatedAt": "2026-10-31T20:55:56.887Z",
   "phase": "11L",
   "target": "SphenPad Phase 11 / SudokuMaker creator parity on pinned SudokuPad 0.612.0",
   "productionInputs": [
@@ -21,7 +21,7 @@
     {
       "path": "index.html",
       "bytes": 1947,
-      "sha256": "f4a0c1057b145efe2f41d6ece08bbe59b17c5d4fe4a73579b66f2df4b1c632d4"
+      "sha256": "056417c88956c1017ca1ad982b43a9037aa1d7b62c3a8a1430582a00d57bce61"
     },
     {
       "path": "package-lock.json",
@@ -21145,8 +21145,8 @@
     },
     {
       "path": "public/manifest.json",
-      "bytes": 408,
-      "sha256": "0a3a4a128503e5bd5080d1a6a019e045d77dff6e457442d7678b8c0aef33dfbe"
+      "bytes": 403,
+      "sha256": "b660e3f95250f523babe5bd48e43d457d66472b7eff8637b270d57001e7ea707"
     },
     {
       "path": "public/sphen-icon-192.png",
@@ -21190,8 +21190,8 @@
     },
     {
       "path": "src/app/styles.css",
-      "bytes": 105427,
-      "sha256": "903a0ac5cb3992e7b12dcbf85dd1ee667b037f6200307680be4b001b000e3d0b"
+      "bytes": 105417,
+      "sha256": "3058308b87580e893f20e0369a1955a36dea02be64e58fd6ab0e83ded7b29765"
     },
     {
       "path": "src/app/theme.tsx",
@@ -43038,14 +43038,14 @@
       "sha256": "bebaa50f7a5c47189579f4e54a7380036d9c27028916981271a4cfc99f952b7d"
     },
     {
-      "path": "dist/assets/index-Bsotvi4g.js",
+      "path": "dist/assets/index-BOYXxfXh.js",
       "bytes": 1343447,
-      "sha256": "8b9803e453ed920144c8c13adfc3760b0217a969f776f9343762f843c0a996e8"
+      "sha256": "52e629ef64cb364ea6520c8032d69f1025ab9290a5370e6022db25d6d7f0d46f"
     },
     {
-      "path": "dist/assets/index-BylXMIyP.css",
-      "bytes": 99791,
-      "sha256": "e928619b5605cdfce59a4c0c0d95ecca037cda8dc28e126d248b0ee10a09e65b"
+      "path": "dist/assets/index-DBr4cURT.css",
+      "bytes": 99745,
+      "sha256": "833892990a7e25d002c68e2329080dc309cf3c9497090030c53282265fab68fe"
     },
     {
       "path": "dist/assets/sudokupad-compatibility-manifest.json",
@@ -43060,12 +43060,12 @@
     {
       "path": "dist/index.html",
       "bytes": 2045,
-      "sha256": "ec22998d8b3fc310f031721876b69042b7390152a02d55b80b31593207a4e195"
+      "sha256": "3eecc37af051bc97be90fe574287fda981aec5849c4d2c0e2673998f4ecc4205"
     },
     {
       "path": "dist/manifest.json",
-      "bytes": 408,
-      "sha256": "0a3a4a128503e5bd5080d1a6a019e045d77dff6e457442d7678b8c0aef33dfbe"
+      "bytes": 403,
+      "sha256": "b660e3f95250f523babe5bd48e43d457d66472b7eff8637b270d57001e7ea707"
     },
     {
       "path": "dist/sphen-icon-192.png",
@@ -43089,5 +43089,5 @@
     }
   ],
   "bundleBuilt": true,
-  "releaseContentSha256": "3dd52c7fe9081642e1ddb67a279de64ca3452ebf76873c5d918256f61a934630"
+  "releaseContentSha256": "45787758db75460efd670d9f007721c4a6d91f73bdc779606c0f160e338e722f"
 }
