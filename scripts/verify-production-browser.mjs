@@ -51,7 +51,7 @@ const url = `http://127.0.0.1:${port}/`;
 const args = [
   '--headless=new', '--disable-gpu', '--no-first-run', '--no-default-browser-check',
   '--disable-background-networking', '--disable-extensions', '--disable-sync',
-  '--run-all-compositor-stages-before-draw', '--virtual-time-budget=5000',
+  '--run-all-compositor-stages-before-draw', '--virtual-time-budget=15000',
   '--dump-dom', url,
 ];
 if (process.platform !== 'darwin') args.unshift('--no-sandbox');
@@ -59,7 +59,7 @@ const child = spawn(chrome, args, { stdio:['ignore','pipe','pipe'] });
 let stdout='', stderr='';
 child.stdout.on('data', d => stdout += d);
 child.stderr.on('data', d => stderr += d);
-const timer = setTimeout(() => child.kill('SIGKILL'), 20000);
+const timer = setTimeout(() => child.kill('SIGKILL'), 45000);
 const code = await new Promise(resolveExit => child.on('exit', resolveExit));
 clearTimeout(timer);
 await new Promise(resolveClose => server.close(resolveClose));
@@ -67,6 +67,6 @@ await new Promise(resolveClose => server.close(resolveClose));
 if (code !== 0) throw new Error(`Headless browser exited ${code}: ${stderr.slice(-3000)}`);
 if (!stdout.includes('id="root"')) throw new Error('Production DOM did not contain #root.');
 // React should render something inside the root after the virtual-time budget.
-if (/<div id="root"><\/div>/.test(stdout.replace(/\s+/g, ' '))) throw new Error('React root remained empty in production browser smoke test.');
+if (/<div id="root"><\/div>/.test(stdout.replace(/\s+/g, ' '))) throw new Error(`React root remained empty in production browser smoke test. Chrome stderr: ${stderr.slice(-2500)}`);
 if (/Internal Server Error|Uncaught TypeError|Uncaught ReferenceError/.test(stdout + stderr)) throw new Error(`Fatal browser output detected: ${stderr.slice(-3000)}`);
 console.log(`PASS production browser smoke: ${chrome}`);

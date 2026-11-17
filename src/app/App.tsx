@@ -1,14 +1,16 @@
-import { useEffect } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { Routes, Route, HashRouter, useLocation, useNavigate } from "react-router-dom";
-import { MainMenu } from "../ui/MainMenu";
 import { PuzzlePage } from "../ui/PuzzlePage";
-import { CtCArchivePage } from "../ui/CtCArchivePage";
+import { MainMenu } from "../ui/MainMenu";
 import { FoldersPage } from "../ui/FoldersPage";
-import { PuzzleCreatorPage } from "../ui/PuzzleCreatorPage";
-import { PuzzleEditorPage } from "../ui/PuzzleEditorPage";
+import { CtCArchivePage } from "../ui/CtCArchivePage";
 import { AccountSyncProvider } from "./accountSync";
 import { clearForcedPortrait } from "./forcedPortrait";
 import { ThemeProvider } from "./theme";
+
+// The puzzle can resume without downloading creator and library page modules.
+const PuzzleCreatorPage = lazy(() => import("../ui/PuzzleCreatorPage").then((module) => ({ default: module.PuzzleCreatorPage })));
+const PuzzleEditorPage = lazy(() => import("../ui/PuzzleEditorPage").then((module) => ({ default: module.PuzzleEditorPage })));
 
 const LAST_ROUTE_KEY = "sphenpad-last-route-v1";
 const VIEWPORT_LOCKED_META = "width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content";
@@ -33,6 +35,10 @@ function MainPages() {
   const location = useLocation();
   const navigate = useNavigate();
   const { pathname, search, hash } = location;
+  const [keepMainPagesMounted, setKeepMainPagesMounted] = useState(() => isMainRoute(pathname));
+  useEffect(() => {
+    if (isMainRoute(pathname)) setKeepMainPagesMounted(true);
+  }, [pathname]);
 
   // On first mount: restore the last in-app route when the app opens at root.
   useEffect(() => {
@@ -59,6 +65,10 @@ function MainPages() {
     }
   }, [pathname, search, hash]);
 
+  // Once visited, the three main pages remain mounted/warm as before. On a
+  // direct puzzle resume, do not mount or hydrate any of them at all.
+  if (!keepMainPagesMounted && !isMainRoute(pathname)) return null;
+
   return (
     <div style={{ position: "relative", height: "100%", width: "100%" }}>
       <div
@@ -71,7 +81,7 @@ function MainPages() {
           pointerEvents: pathname === "/" ? "auto" : "none",
         }}
       >
-        <MainMenu active={pathname === "/"} />
+        <Suspense fallback={null}><MainMenu active={pathname === "/"} /></Suspense>
       </div>
       <div
         data-main-page-visible={pathname === "/folders" ? "true" : "false"}
@@ -221,7 +231,7 @@ export function App() {
                   path="/creator"
                   element={(
                     <div style={{ height: "100%", pointerEvents: "auto" }}>
-                      <PuzzleCreatorPage />
+                      <Suspense fallback={null}><PuzzleCreatorPage /></Suspense>
                     </div>
                   )}
                 />
@@ -229,7 +239,7 @@ export function App() {
                   path="/creator/:puzzleId"
                   element={(
                     <div style={{ height: "100%", pointerEvents: "auto" }}>
-                      <PuzzleEditorPage />
+                      <Suspense fallback={null}><PuzzleEditorPage /></Suspense>
                     </div>
                   )}
                 />

@@ -1816,8 +1816,10 @@ export function PuzzlePage(props: { editor?: boolean }) {
   }
 
   function selectMatchingCells(target: string) {
-    if (!data) return;
-    const { activeTool, cells, lines, lineCenterMarks } = data.progress;
+    const current = latestDataRef.current;
+    if (!current) return;
+    const { activeTool, cells, lines, lineCenterMarks, multiSelect, selection } = current.progress;
+    const highlightTarget = activeTool === "highlight" ? normalizeHighlightColor(target).toLowerCase() : "";
     const matches: CellRC[] = [];
     const matched = new Set<string>();
     const add = (rc: CellRC) => {
@@ -1834,7 +1836,7 @@ export function PuzzlePage(props: { editor?: boolean }) {
         if (activeTool === "value" && cell.value === target) add({ r, c });
         if (activeTool === "center" && !cell.value && !cell.given && cell.notes.center.has(target)) add({ r, c });
         if (activeTool === "corner" && !cell.value && !cell.given && cell.notes.corner.has(target)) add({ r, c });
-        if (activeTool === "highlight" && cell.highlights.includes(normalizeHighlightColor(target))) add({ r, c });
+        if (activeTool === "highlight" && cell.highlights?.some((color) => normalizeHighlightColor(color).toLowerCase() === highlightTarget)) add({ r, c });
       }
     }
 
@@ -1852,33 +1854,25 @@ export function PuzzlePage(props: { editor?: boolean }) {
       }
     }
 
-    if (!matches.length) return;
-    // The line tool keeps a separate selection while it hides the normal one.
-    const previous = activeTool === "line"
-      ? data.progress.storedSelectionWhenLineTool ?? data.progress.selection
-      : data.progress.selection;
-    const selectedKeys = new Set(previous.map(rcKey));
-    const allSelected = matches.every((rc) => selectedKeys.has(rcKey(rc)));
-    // Holding an already fully selected number/color toggles off only its matching
-    // cells, regardless of Multi-select; otherwise merge or replace as usual.
-    const nextSelection = allSelected
-      ? previous.filter((rc) => !matched.has(rcKey(rc)))
-      : data.progress.multiSelect ? [...previous] : [];
-    const seen = new Set(nextSelection.map(rcKey));
-    if (!allSelected) {
-      for (const rc of matches) {
-        const key = rcKey(rc);
-        if (!seen.has(key)) {
-          seen.add(key);
-          nextSelection.push(rc);
-        }
-      }
+    if (!matches.length && multiSelect) return;
+    let nextSelection: CellRC[];
+    if (!multiSelect) {
+      // Every single-select hold replaces the previous selection, even if the
+      // same color/number was already selected or no matching cells exist.
+      nextSelection = matches;
+    } else {
+      const selectedKeys = new Set(selection.map(rcKey));
+      const allSelected = matches.every((rc) => selectedKeys.has(rcKey(rc)));
+      nextSelection = allSelected
+        ? selection.filter((rc) => !matched.has(rcKey(rc)))
+        : [...selection, ...matches.filter((rc) => !selectedKeys.has(rcKey(rc)))];
     }
 
     if (activeTool === "line") {
+      if (sameSelection(selection, nextSelection) && sameSelection(current.progress.storedSelectionWhenLineTool ?? [], nextSelection)) return;
       applySessionPatches([
-        patchAt(data.progress, ["selection"], nextSelection),
-        patchAt(data.progress, ["storedSelectionWhenLineTool"], nextSelection),
+        patchAt(current.progress, ["selection"], nextSelection),
+        patchAt(current.progress, ["storedSelectionWhenLineTool"], nextSelection),
       ]);
       return;
     }

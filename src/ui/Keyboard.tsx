@@ -173,8 +173,8 @@ function Key(props: { children: React.ReactNode; onClick?: () => void; onLongPre
     longPressTimerRef.current = null;
   };
 
-  const startLongPress = () => {
-    if (!props.onLongPress) return;
+  const startLongPress = (event: React.PointerEvent<HTMLButtonElement>) => {
+    if (!props.onLongPress || !event.isPrimary || event.button !== 0) return;
     suppressClickRef.current = false;
     longPressTimerRef.current = setTimeout(() => {
       longPressTimerRef.current = null;
@@ -216,8 +216,8 @@ function ColorKey(props: { color: string; onClick?: () => void; onLongPress?: ()
     longPressTimerRef.current = null;
   };
 
-  const startLongPress = () => {
-    if (!props.onLongPress) return;
+  const startLongPress = (event: React.PointerEvent<HTMLButtonElement>) => {
+    if (!props.onLongPress || !event.isPrimary || event.button !== 0) return;
     suppressClickRef.current = false;
     longPressTimerRef.current = setTimeout(() => {
       longPressTimerRef.current = null;
@@ -240,6 +240,7 @@ function ColorKey(props: { color: string; onClick?: () => void; onLongPress?: ()
       onPointerUp={clearLongPress}
       onPointerLeave={clearLongPress}
       onPointerCancel={clearLongPress}
+      onContextMenu={props.onLongPress ? (event) => event.preventDefault() : undefined}
       title={props.label ?? props.color}
       aria-pressed={props.selected}
       style={{

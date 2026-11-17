@@ -55,15 +55,16 @@ const keys = (cells) => cells.map((c) => `${c.r},${c.c}`).sort();
   fn({ r: 1, c: 1 });
   assert.deepEqual(keys(state.selection), ['1,1'], 'blank-cell matching must exclude cells with notes');
 }
-// A held number/color in the tool controls matches only visible pencil marks,
-// and toggles off an already selected matching group in either selection mode.
+// A held number/color in the controls replaces selection with Multi-select off,
+// and adds/toggles matching groups with Multi-select on.
 function keyboardMatchingFunction(state) {
   const js = extract(page, 'selectMatchingCells');
-  return new Function('data', 'rcKey', 'normalizeHighlightColor', 'setSelection', 'patchAt', 'applySessionPatches', `${js}\nreturn selectMatchingCells;`)(
-    state.data,
+  return new Function('latestDataRef', 'rcKey', 'normalizeHighlightColor', 'setSelection', 'sameSelection', 'patchAt', 'applySessionPatches', `${js}\nreturn selectMatchingCells;`)(
+    { current: state.data },
     (rc) => `${rc.r},${rc.c}`,
-    (color) => color.toLowerCase(),
+    (color) => ['white', '#fff', '#ffffff'].includes(color.toLowerCase()) ? 'rgba(0,0,0,0)' : color.toLowerCase(),
     (selection) => { state.selection = selection; state.data.progress.selection = selection; },
+    (left, right) => keys(left).join('|') === keys(right).join('|'),
     (_, path, value) => ({ path, value }),
     (patches) => {
       for (const { path, value } of patches) state.data.progress[path[0]] = value;
@@ -80,7 +81,7 @@ function keyboardMatchingFunction(state) {
   fn('2');
   assert.deepEqual(keys(state.selection), ['0,0'], 'center-note hold must ignore pencil marks behind filled digits and givens');
   fn('2');
-  assert.deepEqual(keys(state.selection), [], 'repeating an already selected center note must deselect it with multi-select off');
+  assert.deepEqual(keys(state.selection), ['0,0'], 'repeated single-select holds must keep the matching center-note group');
   state.data.progress.activeTool = 'corner';
   fn('3');
   assert.deepEqual(keys(state.selection), ['0,0'], 'corner-note hold must ignore pencil marks behind filled digits and givens');
@@ -88,7 +89,7 @@ function keyboardMatchingFunction(state) {
   fn('#ff0000');
   assert.deepEqual(keys(state.selection), ['1,1', '1,2'], 'highlight matching must still include colored cells with digits');
   fn('#ff0000');
-  assert.deepEqual(keys(state.selection), [], 'holding an already selected highlight color must deselect its matches');
+  assert.deepEqual(keys(state.selection), ['1,1', '1,2'], 'repeated single-select highlight holds must keep matching cells');
   fn('#ff0000');
   state.data.progress.activeTool = 'center';
   state.data.progress.multiSelect = true;
@@ -101,14 +102,32 @@ function keyboardMatchingFunction(state) {
   assert.deepEqual(keys(state.selection), ['0,0', '1,0', '1,1', '1,2'], 'holding it again must add the matches back without duplicating cells');
   state.data.progress.multiSelect = false;
   fn('3');
-  assert.deepEqual(keys(state.selection), ['0,0', '1,1', '1,2'], 'single-select hold must also deselect the fully selected group, preserving other cells');
+  assert.deepEqual(keys(state.selection), ['1,0'], 'single-select hold must replace all unrelated selections, even when matches were already selected');
   fn('3');
-  assert.deepEqual(keys(state.selection), ['1,0'], 'single-select hold must replace selection when matches are not all selected');
-  fn('3');
-  assert.deepEqual(keys(state.selection), [], 'single-select hold must toggle off the group when all its cells are selected');
+  assert.deepEqual(keys(state.selection), ['1,0'], 'single-select hold must not toggle off its own matching group');
   state.data.progress.selection = [{ r: 1, c: 2 }];
   fn('9');
-  assert.deepEqual(keys(state.data.progress.selection), ['1,2'], 'holding an unmatched number must not deselect unrelated cells');
+  assert.deepEqual(keys(state.data.progress.selection), [], 'unmatched single-select hold must clear unrelated cells');
+  state.data.progress.multiSelect = true;
+  state.data.progress.selection = [{ r: 1, c: 2 }];
+  fn('9');
+  assert.deepEqual(keys(state.data.progress.selection), ['1,2'], 'unmatched multi-select hold must preserve the selection');
+}
+{
+  const state = { data: { progress: { activeTool: 'value', multiSelect: false, selection: [{ r: 1, c: 0 }], lines: [], lineCenterMarks: [], cells: [
+    [cell('4'), cell('7', { highlights: ['#FF0000'] })],
+    [cell('4', { highlights: ['rgba(0,0,0,0)'] }), cell(undefined, { highlights: ['#ff0000'] })],
+  ] } }, selection: [] };
+  const fn = keyboardMatchingFunction(state);
+  fn('4');
+  assert.deepEqual(keys(state.selection), ['0,0', '1,0'], 'value hold must replace selection with all matching digits');
+  fn('4');
+  assert.deepEqual(keys(state.selection), ['0,0', '1,0'], 'repeated value hold must not deselect matches in single-select mode');
+  state.data.progress.activeTool = 'highlight';
+  fn('#ff0000');
+  assert.deepEqual(keys(state.selection), ['0,1', '1,1'], 'color hold must match imported mixed-case highlight colors');
+  fn('#ffffff');
+  assert.deepEqual(keys(state.selection), ['1,0'], 'white highlight hold must match transparent eraser highlights');
 }
 {
   const state = { data: { progress: { activeTool: 'line', multiSelect: true,
@@ -119,12 +138,22 @@ function keyboardMatchingFunction(state) {
   } }, selection: [] };
   const fn = keyboardMatchingFunction(state);
   fn('#ff0000');
-  assert.deepEqual(keys(state.selection), ['0,0', '0,1', '1,1'], 'line-color hold must merge with the stored selection');
-  assert.deepEqual(keys(state.data.progress.storedSelectionWhenLineTool), ['0,0', '0,1', '1,1'], 'line tool must preserve the merged selection when switching tools');
+  assert.deepEqual(keys(state.selection), ['0,0', '0,1'], 'line-color hold must use visible selection, not hidden prior-tool cells');
+  assert.deepEqual(keys(state.data.progress.storedSelectionWhenLineTool), ['0,0', '0,1'], 'line tool must restore the visible held selection when switching tools');
   fn('#ff0000');
-  assert.deepEqual(keys(state.selection), ['1,1'], 'holding an already selected line color must preserve unrelated selections');
-  assert.deepEqual(keys(state.data.progress.storedSelectionWhenLineTool), ['1,1'], 'line tool stored selection must follow group deselection');
+  assert.deepEqual(keys(state.selection), [], 'holding an already selected line color must deselect the visible group in multi-select');
+  assert.deepEqual(keys(state.data.progress.storedSelectionWhenLineTool), [], 'line tool stored selection must follow group deselection');
+  state.data.progress.selection = [{ r: 1, c: 1 }];
+  state.data.progress.multiSelect = false;
+  fn('#ff0000');
+  assert.deepEqual(keys(state.selection), ['0,0', '0,1'], 'single-select line-color hold must replace unrelated selections');
+  fn('#ff0000');
+  assert.deepEqual(keys(state.selection), ['0,0', '0,1'], 'repeated line-color hold with multi-select off must retain matches');
+  fn('#00ff00');
+  assert.deepEqual(keys(state.selection), [], 'unmatched single-select line color must clear both visible and stored selections');
+  assert.deepEqual(keys(state.data.progress.storedSelectionWhenLineTool), [], 'line tool must not restore stale hidden selection');
 }
+assert.match(fs.readFileSync(path.join(root, 'src/ui/Keyboard.tsx'), 'utf8'), /onContextMenu=\{props\.onLongPress/g, 'long-press color buttons must suppress native context menus');
 assert.match(interaction, /props\.onDoubleCell\(rc, drag\.longPressCycleIndex \?\? 0\)/, 'long press must continue cycling matches');
 const pointerJs = extract(interaction, 'onPointerUp');
 function pointerUpCase({ lastTap, longPressTriggered, startedSelected = false }) {
@@ -156,4 +185,4 @@ result = pointerUpCase({ lastTap: false, longPressTriggered: true });
 assert.equal(result.published.length, 0, 'long-press release must not overwrite its previously selected matching group');
 result = pointerUpCase({ lastTap: false, longPressTriggered: false });
 assert.equal(result.published.length, 1, 'ordinary taps must still finalize their normal selection');
-console.log('Cell matching: value/highlight/marks/blank/cycle/multi-select and pointer-release regressions passed');
+console.log('Cell matching: value/highlight/marks/line/multi-select and pointer-release regressions passed');

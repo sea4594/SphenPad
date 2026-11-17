@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { setSyncedLocalStorageItem } from "../core/localDataState";
 import { onStorageRefreshNeeded } from "../core/syncSignal";
 import { normalizePuzzleKey } from "../core/id";
-import { type PuzzleDefinition } from "../core/model";
+import type { PuzzleDefinition } from "../core/model";
 import { makeInitialProgress } from "../core/scl";
 import { addPuzzleToFolder, createFolder, getPuzzle, listCompletedPuzzleKeys, listFolders, listPuzzles, type PuzzleFolder, upsertPuzzle } from "../core/storage";
 import { loadFromSudokuPad } from "../core/sudokupad";

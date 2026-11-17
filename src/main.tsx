@@ -3,6 +3,20 @@ import ReactDOM from "react-dom/client";
 import { App } from "./app/App";
 import "./app/styles.css";
 
+// Restore before HashRouter mounts. Navigating after the initial render first
+// mounts all three main pages (and starts their library/archive work).
+try {
+  if (!window.location.hash || window.location.hash === "#/") {
+    const saved = localStorage.getItem("sphenpad-last-route-v1")?.trim() ?? "";
+    const path = saved.split(/[?#]/, 1)[0];
+    if (path === "/folders" || path === "/archive" || path === "/creator" || path.startsWith("/p/") || path.startsWith("/creator/")) {
+      window.history.replaceState(window.history.state, "", `${window.location.pathname}${window.location.search}#${saved}`);
+    }
+  }
+} catch {
+  // Keep the root route when browser storage/history is unavailable.
+}
+
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <App />
