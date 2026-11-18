@@ -3,8 +3,46 @@ import { test } from 'node:test';
 import {
   youtubeId, descriptionLinks, normalizeUrl, sourceFromUrl, parseCatalogTable,
   parseOriginalWorkbook, constraintsToLabels, durationSeconds, reconcileExisting,
-  looksLikePayload, stableKey, urlFromCell,
+  looksLikePayload, stableKey, urlFromCell, fetchCatalogResponse,
 } from './ctc-original-catalog-utils.mjs';
+
+test('original catalogue fetch retries aborted and terminated responses including body failures', async () => {
+  let attempts = 0;
+  const result = await fetchCatalogResponse('https://ctc-catalogue.com/catalog.json', {
+    retryDelayMs: 0,
+    transport: async () => {
+      attempts++;
+      if (attempts === 1) throw new DOMException('The operation was aborted', 'AbortError');
+      if (attempts === 2) {
+        return new Response(new ReadableStream({ start(controller) {
+          controller.error(new TypeError('terminated'));
+        } }), { status: 200 });
+      }
+      return Response.json({ rows: [{ Id: 1 }] });
+    },
+  });
+  assert.equal(attempts, 3);
+  assert.deepEqual(await result.json(), { rows: [{ Id: 1 }] });
+});
+
+test('catalogue fetch retries temporary HTTP errors but not permanent errors', async () => {
+  let attempts = 0;
+  const result = await fetchCatalogResponse('https://ctc-catalogue.com/', {
+    retryDelayMs: 0,
+    transport: async () => {
+      attempts++;
+      return attempts === 1 ? new Response('unavailable', { status: 503 }) : new Response('catalogue');
+    },
+  });
+  assert.equal(await result.text(), 'catalogue');
+  assert.equal(attempts, 2);
+  attempts = 0;
+  await assert.rejects(fetchCatalogResponse('https://ctc-catalogue.com/unknown', {
+    retryDelayMs: 0,
+    transport: async () => { attempts++; return new Response('missing', { status: 404 }); },
+  }), /HTTP 404/);
+  assert.equal(attempts, 1);
+});
 
 test('recognizes videos from all supported YouTube URL types, not unrelated numbers', () => {
   for (const input of ['https://www.youtube.com/watch?v=AbC_dEF1234&t=3', 'https://youtu.be/AbC_dEF1234',
@@ -134,6 +172,7 @@ test('end-to-end migration keeps old payloads and incrementally adds original-ca
   const initialMax = process.env.CTC_MAX_VIDEOS_PER_RUN;
   const initialPuzzles = process.env.CTC_MAX_NEW_PUZZLES_PER_RUN;
   let payloadRequests = 0;
+  let workbookRequests = 0;
   let videoRequests = 0;
   let redirectRequests = 0;
   try {
@@ -142,7 +181,11 @@ test('end-to-end migration keeps old payloads and incrementally adds original-ca
     process.env.CTC_MAX_NEW_PUZZLES_PER_RUN = '1';
     globalThis.fetch = async input => {
       const address = String(input);
-      if (address.includes('docs.google.com/spreadsheets/')) return new Response(new Uint8Array(60000));
+      if (address.includes('docs.google.com/spreadsheets/')) {
+        workbookRequests++;
+        if (workbookRequests === 1) throw new DOMException('The operation was aborted', 'AbortError');
+        return new Response(new Uint8Array(60000));
+      }
       if (address.startsWith('https://www.googleapis.com/youtube/v3/videos')) {
         videoRequests++;
         const ids = new URL(address).searchParams.get('id').split(',');
@@ -184,6 +227,7 @@ test('end-to-end migration keeps old payloads and incrementally adds original-ca
     await import(runner);
     const first = await waitAudit(4980);
     assert.equal(first.originalCatalogEntries, 5030);
+    assert.equal(workbookRequests, 2, 'Source fetch should recover from an initial transient error');
     assert.equal(first.youtubeDescriptionsFetched, 50);
     assert.equal(payloadRequests, 1);
     assert.equal(redirectRequests, 3, 'Daily Killer and nested short links must resolve through three redirects');

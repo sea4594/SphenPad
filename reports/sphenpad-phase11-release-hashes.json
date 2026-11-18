@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-18T20:19:52.366Z",
+  "generatedAt": "2026-11-18T22:13:41.364Z",
   "phase": "11L",
   "target": "SphenPad Phase 11 / SudokuMaker creator parity on pinned SudokuPad 0.612.0",
   "productionInputs": [
@@ -43343,9 +43343,9 @@
       "sha256": "bebaa50f7a5c47189579f4e54a7380036d9c27028916981271a4cfc99f952b7d"
     },
     {
-      "path": "dist/assets/index-DJ4u2qNA.js",
+      "path": "dist/assets/index-6091Pts7.js",
       "bytes": 1157373,
-      "sha256": "e4ec372066b18872b8bfa7604b8673bcb2e2e277ad1269aaadda24274a9075a3"
+      "sha256": "88279af90645e028e6d92538a213597533ab2be06ed541714dba4445de1f0402"
     },
     {
       "path": "dist/assets/index-t2NTBvmN.css",
@@ -43353,14 +43353,14 @@
       "sha256": "cea3ed79183a45f225af2fcaaab76e6c47fd19d9efe31dce2818603abcf3463a"
     },
     {
-      "path": "dist/assets/PuzzleCreatorPage-BiAE07z_.js",
+      "path": "dist/assets/PuzzleCreatorPage-CmPkmtKH.js",
       "bytes": 5080,
-      "sha256": "b7debd828efc2c6bfe7eb5661777dce5f49554bcb1ca42dbf5277c10f0c30ab0"
+      "sha256": "179663e6d42a787aaf596511d1de0a6d575183db7548d2a4890470106f00852a"
     },
     {
-      "path": "dist/assets/PuzzleEditorPage-CWLHebv0.js",
+      "path": "dist/assets/PuzzleEditorPage-DWQaHfpp.js",
       "bytes": 181202,
-      "sha256": "79257e5cbb2458d955d0c7643c46e0c41b0a3d932872ed780b89c1c1d1cc70ae"
+      "sha256": "0c92ca7c6db9f7d00cc43027cd9f891f00cccc6ba16904e3aca038214cbd63a4"
     },
     {
       "path": "dist/assets/sudokupad-compatibility-manifest.json",
@@ -43375,7 +43375,7 @@
     {
       "path": "dist/index.html",
       "bytes": 2045,
-      "sha256": "5542d074a48ceffc21cce1884622bb0e51833d52526091433b335c2c7e7a8d79"
+      "sha256": "ba5b3717d483317203a9b9dfbb0e3c93f129798e3f46b9c8d162edd8ebb1b6fb"
     },
     {
       "path": "dist/manifest.json",
@@ -43404,5 +43404,5 @@
     }
   ],
   "bundleBuilt": true,
-  "releaseContentSha256": "f1eb48eb94f8d8a5a085e4f87d1da7554469ce0d12e13ec9732769703f6e1a4e"
+  "releaseContentSha256": "462d22359ffde4e2ffc7dcc2701eaf1b95ae69b74b03acbb75dfa67cf2a1c016"
 }

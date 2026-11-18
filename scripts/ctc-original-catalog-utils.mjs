@@ -5,6 +5,57 @@ export const ORIGINAL_CTC_SHEET = 'https://docs.google.com/spreadsheets/d/1rVqAj
 export const VIDEO_ID_REGEX = /^[A-Za-z0-9_-]{11}$/;
 export const MAX_PUZZLE_BYTES = 8_000_000;
 export const clean = value => String(value ?? '').trim();
+
+/**
+ * Retrieve a complete original-CtC catalogue response, retrying transient
+ * transport/HTTP errors. Unlike a headers-only timeout, the deadline includes
+ * receiving the entire response body (Cloudflare may close it prematurely).
+ * This helper is only for catalogue metadata, never puzzle payloads.
+ */
+export async function fetchCatalogResponse(url, options = {}) {
+  const timeoutMs = options.timeoutMs ?? 60000;
+  const maxAttempts = options.maxAttempts ?? 3;
+  const retryDelayMs = options.retryDelayMs ?? 1500;
+  const maxBytes = options.maxBytes ?? 80_000_000;
+  const transport = options.transport ?? fetch;
+  const onRetry = options.onRetry ?? (() => {});
+  if (maxAttempts < 1) throw new Error('Catalogue retry count must be positive');
+  let lastError;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
+    let shouldRetry = true;
+    try {
+      const response = await transport(url, { signal: controller.signal });
+      if (!response.ok) {
+        // Retrying permanent HTTP errors just delays an actionable failure.
+        shouldRetry = [408, 429, 500, 502, 503, 504].includes(response.status);
+        throw new Error(`HTTP ${response.status} from ${new URL(url).hostname}`);
+      }
+      const declared = Number(response.headers.get('content-length') || 0);
+      if (declared > maxBytes) {
+        shouldRetry = false;
+        throw new Error(`Original CtC catalogue response exceeds ${maxBytes} bytes`);
+      }
+      const body = await response.arrayBuffer();
+      if (body.byteLength > maxBytes) {
+        shouldRetry = false;
+        throw new Error(`Original CtC catalogue response exceeds ${maxBytes} bytes`);
+      }
+      // Buffer before releasing the deadline: `response.text()`/`.json()`
+      // must never later fail with an undici `TypeError: terminated`.
+      return new Response(body, { status: response.status, headers: response.headers });
+    } catch (error) {
+      lastError = error;
+      if (!shouldRetry || attempt === maxAttempts) break;
+      onRetry(attempt, error);
+    } finally {
+      clearTimeout(timeout);
+    }
+    if (retryDelayMs > 0) await new Promise(resolve => setTimeout(resolve, retryDelayMs * attempt));
+  }
+  throw new Error(`Original CtC catalogue request failed (${new URL(url).hostname}): ${String(lastError)}`);
+}
 const norm = value => clean(value).toLowerCase().replace(/[^a-z0-9]/g, '');
 
 export function fieldIndex(headers, aliases) {

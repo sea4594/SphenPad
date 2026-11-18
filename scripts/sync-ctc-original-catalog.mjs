@@ -12,7 +12,7 @@ import { createHash } from 'node:crypto';
 import {
   ORIGINAL_CTC_SHEET, clean, youtubeId, descriptionLinks, isAllowedHost,
   isPuzzleHost, sourceFromUrl, stableKey, looksLikePayload,
-  parseOriginalWorkbook, parseCatalogTable, reconcileExisting,
+  parseOriginalWorkbook, parseCatalogTable, reconcileExisting, fetchCatalogResponse,
 } from './ctc-original-catalog-utils.mjs';
 
 const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
@@ -92,7 +92,9 @@ function linkAndTitle(value) {
 
 async function fetchDatasetteCatalog() {
   log('Trying the original-catalogue Datasette mirror (same spreadsheet source)');
-  const homepage = await requestText('https://ctc-catalogue.com/');
+  const homepage = await (await fetchCatalogResponse('https://ctc-catalogue.com/', {
+    onRetry: (attempt, error) => log(`Catalogue homepage retry ${attempt}: ${String(error)}`),
+  })).text();
   const prefix = homepage.match(/(?:\/|href=["']\/?)(ctc-catalogue-[a-z0-9]+)\/(?:sudoku_puzzles|pencil_puzzles)/i)?.[1];
   if (!prefix) throw new Error('Could not discover current CtC Datasette database hash');
   const result = [];
@@ -102,8 +104,9 @@ async function fetchDatasetteCatalog() {
     const visited = new Set();
     while (url && !visited.has(url) && visited.size < 20) {
       visited.add(url);
-      const response = await request(url);
-      if (!response.ok) throw new Error(`CtC Datasette ${table}: HTTP ${response.status}`);
+      const response = await fetchCatalogResponse(url, {
+        onRetry: (attempt, error) => log(`CtC ${table} page retry ${attempt}: ${String(error)}`),
+      });
       const data = await response.json();
       if (!Array.isArray(data.rows)) throw new Error(`Unexpected CtC Datasette response for ${table}`);
       collected.push(...data.rows);
@@ -128,8 +131,9 @@ async function fetchOriginalCatalog() {
   let fromWorkbook = [];
   let workbookError = '';
   try {
-    const response = await request(ORIGINAL_CTC_SHEET);
-    if (!response.ok) throw new Error(`Original CtC workbook returned HTTP ${response.status}`);
+    const response = await fetchCatalogResponse(ORIGINAL_CTC_SHEET, {
+      onRetry: (attempt, error) => log(`Original workbook retry ${attempt}: ${String(error)}`),
+    });
     const bytes = await response.arrayBuffer();
     if (bytes.byteLength < 50_000 || bytes.byteLength > 80_000_000) {
       throw new Error(`Unexpected original CtC workbook size: ${bytes.byteLength}`);
