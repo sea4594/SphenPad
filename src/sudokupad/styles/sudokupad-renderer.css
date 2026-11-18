@@ -47,6 +47,9 @@
 .sphenpad-sudokupad-renderer .cage-box { stroke-width: 3px; }
 .sphenpad-sudokupad-renderer .cell-given { font-size: 3rem; fill: var(--puzzle-given); }
 .sphenpad-sudokupad-renderer .cell-value { font-size: 3rem; fill: var(--puzzle-value); }
+/* Conflict checker: red big digits, not red cell backgrounds. */
+.sphenpad-sudokupad-renderer .cell-given.digit-error,
+.sphenpad-sudokupad-renderer .cell-value.digit-error { fill: var(--puzzle-pencilmarkerror) !important; }
 .sphenpad-sudokupad-renderer .cell-candidate { font-size: 1.2rem; fill: var(--puzzle-candidate); }
 .sphenpad-sudokupad-renderer .cell-pencilmark { font-size: 1.1rem; fill: var(--puzzle-pencilmark); }
 .sphenpad-sudokupad-renderer .cell-pencilmark.givenCornermark { fill: var(--puzzle-givenCornermark); }

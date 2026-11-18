@@ -547,10 +547,10 @@ def progress_fixtures() -> list[Fixture]:
     # adapter directly so the renderer migration cannot silently break it.
     p = base_source(); prog = base_progress(4, 4); prog["cells"][0][0]["value"] = "2"; prog["cells"][0][1]["value"] = "2"
     out.append(Fixture("progress-conflict-errors", json.dumps(p), progress=prog, structural=False, raster=False,
-                       candidate_assertions=[{"selector":"#cell-errors .cell-error","count":2}],
+                       candidate_assertions=[{"selector":"#cell-values .cell-value.digit-error","count":2}, {"selector":"#cell-errors .cell-error","count":0}],
                        note="Preserve SphenPad conflict-checker overlays through the production progress adapter"))
     out.append(Fixture("progress-conflict-errors-disabled", json.dumps(p), progress=prog, conflict_checker=False, structural=False, raster=False,
-                       candidate_assertions=[{"selector":"#cell-errors .cell-error","count":0}],
+                       candidate_assertions=[{"selector":"#cell-values .cell-value.digit-error","count":0}, {"selector":"#cell-errors .cell-error","count":0}],
                        note="Preserve SphenPad conflict-checker setting when disabled"))
 
     # Dynamic fog from player values.

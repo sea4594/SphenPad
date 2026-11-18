@@ -45,7 +45,10 @@ export function renderSceneCells(
   cells.forEach((row, rowIndex) => row.forEach((cell, colIndex) => {
     const center: [number, number] = [rowIndex + 0.5, colIndex + 0.5];
     if (cell.highlighted) renderer.renderRect({ target: "cell-highlights", className: "cell-highlight", center, width: 1, height: 1 });
-    if (cell.hasError) renderer.renderRect({ target: "cell-errors", className: "cell-error", center, width: 1, height: 1 });
+    // Invalid empty cells can still show creator validation overlays. For big
+    // digits, the conflict indicator belongs on the glyph instead of the cell.
+    const hasBigDigit = (cell.given !== undefined && cell.given !== "") || (cell.value !== undefined && cell.value !== "");
+    if (cell.hasError && !hasBigDigit) renderer.renderRect({ target: "cell-errors", className: "cell-error", center, width: 1, height: 1 });
 
     const colours = cell.colours ?? [];
     colours.forEach((colour, index) => {
@@ -70,10 +73,10 @@ export function renderSceneCells(
     const pencilmarks = marksAllowed ? (cell.pencilmarks ?? cell.givenCornermarks ?? []) : [];
 
     if (given !== undefined && given !== "") {
-      renderer.renderText({ target: "cell-givens", className: "cell-given", center, width: 1, height: 1, text: displayZeroIsTen(String(given), zeroIsTen) });
+      renderer.renderText({ target: "cell-givens", className: `cell-given${cell.hasError ? " digit-error" : ""}`, center, width: 1, height: 1, text: displayZeroIsTen(String(given), zeroIsTen) });
     }
     if (value !== undefined && value !== "") {
-      renderer.renderText({ target: "cell-values", className: "cell-value", center, width: 1, height: 1, text: displayZeroIsTen(String(value), zeroIsTen) });
+      renderer.renderText({ target: "cell-values", className: `cell-value${cell.hasError ? " digit-error" : ""}`, center, width: 1, height: 1, text: displayZeroIsTen(String(value), zeroIsTen) });
     }
 
     if (candidates.length > 0) {

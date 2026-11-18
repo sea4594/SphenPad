@@ -780,7 +780,7 @@ export function PuzzlePage(props: { editor?: boolean }) {
           ? { ...normalizedBase, progress: { ...normalizedBase.progress, paused: false } }
           : normalizedBase;
       setData(normalized);
-      setPauseMenuOpen(editor || creatorPlaytest ? false : Boolean(normalized.progress.paused));
+      setPauseMenuOpen(editor || creatorPlaytest ? false : Boolean(normalized.progress.paused && normalized.progress.status !== "complete"));
     })();
   }, [key, nav, editor, requestedCreatorPlaytest]);
 
@@ -806,7 +806,7 @@ export function PuzzlePage(props: { editor?: boolean }) {
 
       latestDataRef.current = normalized;
       setData(normalized);
-      setPauseMenuOpen(editor ? false : Boolean(normalized.progress.paused));
+      setPauseMenuOpen(editor ? false : Boolean(normalized.progress.paused && normalized.progress.status !== "complete"));
     };
 
     const unsubscribe = onStorageRefreshNeeded(() => {
