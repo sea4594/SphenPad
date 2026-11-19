@@ -24,7 +24,14 @@ import {
 
 import { puzzleConstraintLabels } from "../sudokupad/app/definitionSelectors";
 
+type ArchiveCatalog = "ctc" | "lmg";
+
 type ArchiveEntry = {
+  lmgUrl?: string;
+  lmgId?: string;
+  lmgDifficulty?: string;
+  lmgRating?: number | null;
+  lmgSolves?: number | null;
   id: string;
   title: string;
   subTypeConstraints: string;
@@ -369,25 +376,26 @@ type CachedPuzzlePayload = {
   payload?: string;
 };
 
-async function loadManifest(): Promise<ArchiveEntry[] | null> {
+async function loadManifest(catalog: ArchiveCatalog): Promise<ArchiveEntry[] | null> {
   try {
-    const res = await fetch(`${import.meta.env.BASE_URL}archive/archive-manifest.json`);
+    const path = catalog === "lmg" ? "lmg/lmg-manifest.json" : "archive/archive-manifest.json";
+    const res = await fetch(`${import.meta.env.BASE_URL}${path}`);
     if (!res.ok) return null;
     const data = (await res.json()) as { entries?: ArchiveEntry[] };
-    if (!Array.isArray(data.entries) || data.entries.length === 0) return null;
+    if (!Array.isArray(data.entries) || (catalog === "ctc" && data.entries.length === 0)) return null;
     return data.entries;
   } catch {
     return null;
   }
 }
 
-async function loadCachedPuzzlePayload(entry: ArchiveEntry): Promise<string | null> {
+async function loadCachedPuzzlePayload(entry: ArchiveEntry, catalog: ArchiveCatalog): Promise<string | null> {
   const cacheKey = clean(entry.cacheKey || entry.stableKey);
   if (!cacheKey) return null;
 
   try {
     const res = await fetch(
-      `${import.meta.env.BASE_URL}archive/puzzles/${encodeURIComponent(cacheKey)}.json`,
+      `${import.meta.env.BASE_URL}${catalog === "lmg" ? "lmg" : "archive"}/puzzles/${encodeURIComponent(cacheKey)}.json`,
     );
     if (!res.ok) return null;
 
@@ -401,6 +409,8 @@ async function loadCachedPuzzlePayload(entry: ArchiveEntry): Promise<string | nu
 
 export function CtCArchivePage(props: { active?: boolean }) {
   const active = props.active ?? true;
+  const [catalog, setCatalog] = useState<ArchiveCatalog>("ctc");
+  const manifestRequestRef = useRef(0);
   const nav = useNavigate();
   const location = useLocation();
   const [renderConfig] = useState(getRenderConfig);
@@ -518,16 +528,17 @@ export function CtCArchivePage(props: { active?: boolean }) {
 
   async function refreshRows() {
     if (!isMountedRef.current) return;
+    const request = ++manifestRequestRef.current;
     setLoading(true);
     setError("");
 
     try {
-      const manifestEntries = await loadManifest();
-      if (!isMountedRef.current) return;
+      const manifestEntries = await loadManifest(catalog);
+      if (!isMountedRef.current || request !== manifestRequestRef.current) return;
       
       if (!manifestEntries) {
         setRows([]);
-        setError("Unable to load archive manifest. Run npm run sync-archive-cache and rebuild.");
+        setError(catalog === "lmg" ? "Unable to load LMG catalog. Run Sync LMG Cache." : "Unable to load archive manifest. Run npm run sync-archive-cache and rebuild.");
         return;
       }
       setRows(manifestEntries.map(prepareArchiveEntry));
@@ -563,7 +574,7 @@ export function CtCArchivePage(props: { active?: boolean }) {
 
     const timer = window.setTimeout(run, 150);
     return () => window.clearTimeout(timer);
-  }, [active]);
+  }, [active, catalog]);
 
   useEffect(() => {
     if (!active || !pendingRefreshRef.current) return;
@@ -859,7 +870,7 @@ export function CtCArchivePage(props: { active?: boolean }) {
     }
 
     try {
-      const cachedPayload = await loadCachedPuzzlePayload(entry);
+      const cachedPayload = await loadCachedPuzzlePayload(entry, catalog);
       if (!cachedPayload) {
         loadingQueueRef.current.delete(entry.id);
         return null;
@@ -879,7 +890,7 @@ export function CtCArchivePage(props: { active?: boolean }) {
     } finally {
       loadingQueueRef.current.delete(entry.id);
     }
-  }, [previewedPuzzles]);
+  }, [previewedPuzzles, catalog]);
 
   const processPreviewQueue = useCallback(async () => {
     if (!active) return;
@@ -1049,7 +1060,7 @@ export function CtCArchivePage(props: { active?: boolean }) {
       throw new Error("No puzzle source ID found in archive metadata.");
     }
 
-    const cachedPayload = await loadCachedPuzzlePayload(entry);
+    const cachedPayload = await loadCachedPuzzlePayload(entry, catalog);
     if (!cachedPayload) {
       throw new Error("No cached puzzle payload found. Run archive sync to regenerate local cache files.");
     }
@@ -1059,12 +1070,14 @@ export function CtCArchivePage(props: { active?: boolean }) {
       skipCounterFetch: true,
     });
 
+    const existing = await getPuzzle(key);
     const fallbackAuthor = clean(entry.puzzleAuthor);
     const collection = clean(entry.collection);
     const constraints = splitConstraintTypes(entry.subTypeConstraints);
     const importedDef = {
       ...def,
       meta: {
+        ...(existing?.def.meta ?? {}),
         ...def.meta,
         ...(fallbackAuthor && !clean(def.meta?.author) ? { author: fallbackAuthor } : {}),
         ...(collection ? { collection } : {}),
@@ -1075,11 +1088,15 @@ export function CtCArchivePage(props: { active?: boolean }) {
         archiveVideoHost: clean(entry.videoHost),
         archiveYouTubeUrl: clean(entry.youtubeUrl),
         archiveSudokuPadUrl: clean(entry.sudokuPadUrl),
+        ...(entry.lmgUrl ? {
+          archiveLMGUrl: entry.lmgUrl,
+          archiveLMGRating: entry.lmgRating,
+          archiveLMGDifficulty: entry.lmgDifficulty,
+        } : {}),
       },
     };
 
     const now = Date.now();
-    const existing = await getPuzzle(key);
     const nextProgress = existing?.progress ?? makeInitialProgress(importedDef);
 
     await upsertPuzzle(key, {
@@ -1338,11 +1355,26 @@ export function CtCArchivePage(props: { active?: boolean }) {
             {busy ? <div className="muted" style={{ marginTop: 10 }}>{busy}</div> : null}
           </div>
 
+          <div className="card" role="tablist" aria-label="Import puzzle catalog">
+            <div className="row" style={{ gap: 8 }}>
+              <button type="button" role="tab" aria-selected={catalog === "ctc"}
+                className={`btn ${catalog === "ctc" ? "primary" : ""}`}
+                onClick={() => { if (catalog !== "ctc") { manifestRequestRef.current++; setCatalog("ctc"); setRows([]); setPreviewedPuzzles(new Map()); setPreviewRulesByEntryId(new Map()); setRulesDialogEntry(null); pendingQueueRef.current = []; loadingQueueRef.current.clear(); onClearFilters(); } }}>
+                CtC
+              </button>
+              <button type="button" role="tab" aria-selected={catalog === "lmg"}
+                className={`btn ${catalog === "lmg" ? "primary" : ""}`}
+                onClick={() => { if (catalog !== "lmg") { manifestRequestRef.current++; setCatalog("lmg"); setRows([]); setPreviewedPuzzles(new Map()); setPreviewRulesByEntryId(new Map()); setRulesDialogEntry(null); pendingQueueRef.current = []; loadingQueueRef.current.clear(); onClearFilters(); } }}>
+                LMG
+              </button>
+            </div>
+          </div>
+
           <div className="card archiveControls">
             <div className="row">
               <input
                 className="url"
-                placeholder="Search CtC archive..."
+                placeholder={catalog === "lmg" ? "Search LMG puzzles..." : "Search CtC archive..."}
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
               />
@@ -1561,7 +1593,7 @@ export function CtCArchivePage(props: { active?: boolean }) {
 
           <div className="card">
             <div className="row" style={{ justifyContent: "space-between" }}>
-              <div className="menuSectionTitle">CtC Archive Puzzles</div>
+              <div className="menuSectionTitle">{catalog === "lmg" ? "LMG Puzzles" : "CtC Archive Puzzles"}</div>
 
               <div className="row">
                 <div className="sortControlGroup">
@@ -1662,16 +1694,16 @@ export function CtCArchivePage(props: { active?: boolean }) {
                           )}
                         </div>
 
-                        {entry.youtubeUrl ? (
+                        {(entry.lmgUrl || entry.youtubeUrl) ? (
                           <a
                             className="btn archiveOpenIcon archiveYoutubeIcon"
-                            href={entry.youtubeUrl}
+                            href={entry.lmgUrl || entry.youtubeUrl}
                             target="_blank"
                             rel="noreferrer noopener"
-                            title="Open YouTube"
-                            aria-label="Open YouTube"
+                            title={entry.lmgUrl ? "Open on LMG" : "Open YouTube"}
+                            aria-label={entry.lmgUrl ? "Open on LMG" : "Open YouTube"}
                           >
-                            <img src={YOUTUBE_ICON_DATA_URL} alt="" className="archiveIconImage" />
+                            {entry.lmgUrl ? <span aria-hidden="true">LMG</span> : <img src={YOUTUBE_ICON_DATA_URL} alt="" className="archiveIconImage" />}
                           </a>
                         ) : (
                           <button
@@ -1687,7 +1719,13 @@ export function CtCArchivePage(props: { active?: boolean }) {
 
                         <div className="archiveInfoText archiveVideoInfo">
                           <div className="archiveVideoTitle">{display(entry.videoTitle)}</div>
-                          <div className="archiveMetaSmall">{display(entry.videoDate)}</div>
+                          {entry.lmgUrl ? (
+                            <div className="archiveMetaSmall">
+                              {entry.lmgDifficulty || "Difficulty unrated"}
+                              {entry.lmgRating != null ? ` · Rating ${entry.lmgRating}%` : ""}
+                              {entry.lmgSolves != null ? ` · ${entry.lmgSolves} solves` : ""}
+                            </div>
+                          ) : <div className="archiveMetaSmall">{display(entry.videoDate)}</div>}
                           <div className="archiveMetaMedium">
                             {formatDurationHm(entry.videoLengthSeconds)} - {display(entry.videoHost)}
                           </div>
@@ -1772,7 +1810,9 @@ export function CtCArchivePage(props: { active?: boolean }) {
               )}
 
               {!loading && !filteredRows.length && !error && (
-                <div className="muted">No archive puzzles match the current search/filter.</div>
+                <div className="muted">{catalog === "lmg" && rows.length === 0
+                  ? "No LMG puzzles cached yet. Run Sync LMG Cache in GitHub Actions."
+                  : "No archive puzzles match the current search/filter."}</div>
               )}
             </div>
           </div>

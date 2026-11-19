@@ -11,8 +11,8 @@ permissions:
   id-token: write
 
 concurrency:
-  group: sync-data-deploy-${{ github.ref }}
-  cancel-in-progress: true
+  group: sphenpad-archive-cache-writers-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   build:
