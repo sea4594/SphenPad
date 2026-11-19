@@ -1,4 +1,4 @@
-import { Fragment, startTransition, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   addPuzzleToFolder,
@@ -20,10 +20,10 @@ import { fillProgressWithSolutionDigits } from "../core/solutionFill";
 import { fmtHMS } from "../core/time";
 import { AppBrand, scrollActiveMainPageToTop } from "./AppBrand";
 import { PuzzleListPreview } from "./PuzzleListPreview";
-import { IconFolder, IconHome, IconImport, IconSettings, IconSort, IconSortAsc, IconSortDesc } from "./icons";
+import { IconFolder, IconHome, IconImport, IconSort, IconSortAsc, IconSortDesc } from "./icons";
 import { PopupMenuButton } from "./PopupMenuButton";
 import { SelectControl, type SelectControlOption } from "./SelectControl";
-import { SettingsOverlay } from "./SettingsOverlay";
+import { SettingsButton } from "./SettingsButton";
 import {
   currentRoutePath,
   readCurrentScrollPosition,
@@ -238,7 +238,6 @@ export function FoldersPage(props: { active?: boolean }) {
 
   const [deleteCandidate, setDeleteCandidate] = useState<StoredPuzzle | null>(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
   const [folderRowsVisibleCount, setFolderRowsVisibleCount] = useState(() =>
     (typeof window !== "undefined" && window.matchMedia(MOBILE_LIST_MEDIA_QUERY).matches)
       ? FOLDER_ROWS_INITIAL_MOBILE
@@ -651,7 +650,7 @@ export function FoldersPage(props: { active?: boolean }) {
     action: "edit_creator" | "move" | "remove_from_folder" | "open_in_sudokupad" | "status_not_started" | "status_in_progress" | "status_complete" | "delete",
   ) {
     if (action === "edit_creator") {
-      startTransition(() => nav(`/creator/${encodeURIComponent(row.key)}`));
+      nav(`/creator/${encodeURIComponent(row.key)}`);
       return;
     }
     if (action === "move") {
@@ -802,7 +801,7 @@ export function FoldersPage(props: { active?: boolean }) {
   }
 
   function navigateToMainMenu() {
-    startTransition(() => nav("/"));
+    nav("/");
   }
 
   function navigateToFolders() {
@@ -810,11 +809,11 @@ export function FoldersPage(props: { active?: boolean }) {
       scrollActiveMainPageToTop("smooth");
       return;
     }
-    startTransition(() => nav("/folders"));
+    nav("/folders");
   }
 
   function navigateToArchive() {
-    startTransition(() => nav("/archive"));
+    nav("/archive");
   }
 
   return (
@@ -835,9 +834,7 @@ export function FoldersPage(props: { active?: boolean }) {
             <span>Import</span>
           </button>
         </div>
-        <button className="btn topbarSettingsButton" onClick={() => setSettingsOpen(true)} title="Settings" type="button">
-          <IconSettings />
-        </button>
+        <SettingsButton key={location.key} />
       </div>
 
       <div className="page">
@@ -1325,7 +1322,6 @@ export function FoldersPage(props: { active?: boolean }) {
         </div>
       ) : null}
 
-      {settingsOpen ? <SettingsOverlay onClose={() => setSettingsOpen(false)} /> : null}
     </div>
   );
 }

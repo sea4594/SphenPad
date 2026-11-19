@@ -25,7 +25,7 @@ assert.equal(boot('/folders', '#/')?.url, '/SphenPad/#/folders', 'remembered mai
 assert.equal(boot('/p/old', '#/p/explicit'), null, 'explicit deep links must win over remembered routes');
 assert.equal(boot('https://example.com/'), null, 'external routes must not restore');
 assert.equal(boot('/'), null, 'root remains root when last page was home');
-assert.match(app, /if \(!keepMainPagesMounted && !isMainRoute\(pathname\)\) return null;/, 'no library pages may mount before a main page is visited');
+assert.match(app, /if \(mountedMainPages\.length === 0 && !isMainRoute\(pathname\)\) return null;/, 'no library pages may mount before a main page is visited');
 assert.ok(app.includes('import { MainMenu } from "../ui/MainMenu";'), 'main menu must load eagerly');
 
 for (const page of ['FoldersPage', 'CtCArchivePage']) {

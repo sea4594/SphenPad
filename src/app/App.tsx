@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useDeferredValue, useEffect, useState } from "react";
 import { Routes, Route, HashRouter, useLocation, useNavigate } from "react-router-dom";
 import { PuzzlePage } from "../ui/PuzzlePage";
 import { MainMenu } from "../ui/MainMenu";
@@ -27,18 +27,32 @@ function isRestorableRoute(path: string) {
 }
 
 /**
- * Renders all three main pages simultaneously so they stay mounted and preserve
- * their state. Only the active page is interactive/visible; inactive pages stay
- * laid out in the background so puzzle previews remain warm.
+ * Main pages mount when first visited, then remain mounted to preserve their
+ * scroll positions, filters, previews, and local state. Hidden pages stay warm.
+ * Only the active page is visible; its heavier refresh work can follow paint.
  */
 function MainPages() {
   const location = useLocation();
   const navigate = useNavigate();
   const { pathname, search, hash } = location;
-  const [keepMainPagesMounted, setKeepMainPagesMounted] = useState(() => isMainRoute(pathname));
+  const [mountedMainPages, setMountedMainPages] = useState<MainRoute[]>([]);
+  // Route visibility changes immediately. On a first visit, commit the empty
+  // destination shell before mounting its potentially expensive page contents.
+  const deferredPathname = useDeferredValue(pathname);
+  const activeForWork = isMainRoute(pathname) ? deferredPathname : "";
   useEffect(() => {
-    if (isMainRoute(pathname)) setKeepMainPagesMounted(true);
-  }, [pathname]);
+    if (!isMainRoute(pathname) || mountedMainPages.includes(pathname)) return;
+    let secondFrame: number | null = null;
+    const firstFrame = window.requestAnimationFrame(() => {
+      secondFrame = window.requestAnimationFrame(() => {
+        setMountedMainPages((prev) => prev.includes(pathname) ? prev : [...prev, pathname]);
+      });
+    });
+    return () => {
+      window.cancelAnimationFrame(firstFrame);
+      if (secondFrame !== null) window.cancelAnimationFrame(secondFrame);
+    };
+  }, [pathname, mountedMainPages]);
 
   // On first mount: restore the last in-app route when the app opens at root.
   useEffect(() => {
@@ -65,13 +79,12 @@ function MainPages() {
     }
   }, [pathname, search, hash]);
 
-  // Once visited, the three main pages remain mounted/warm as before. On a
-  // direct puzzle resume, do not mount or hydrate any of them at all.
-  if (!keepMainPagesMounted && !isMainRoute(pathname)) return null;
+  // A direct puzzle resume still avoids mounting any main page at startup.
+  if (mountedMainPages.length === 0 && !isMainRoute(pathname)) return null;
 
   return (
     <div style={{ position: "relative", height: "100%", width: "100%" }}>
-      <div
+      {(mountedMainPages.includes("/") || pathname === "/") && <div
         data-main-page-visible={pathname === "/" ? "true" : "false"}
         style={{
           position: "absolute",
@@ -81,9 +94,9 @@ function MainPages() {
           pointerEvents: pathname === "/" ? "auto" : "none",
         }}
       >
-        <Suspense fallback={null}><MainMenu active={pathname === "/"} /></Suspense>
-      </div>
-      <div
+        {mountedMainPages.includes("/") ? <Suspense fallback={null}><MainMenu active={activeForWork === "/"} /></Suspense> : null}
+      </div>}
+      {(mountedMainPages.includes("/folders") || pathname === "/folders") && <div
         data-main-page-visible={pathname === "/folders" ? "true" : "false"}
         style={{
           position: "absolute",
@@ -93,9 +106,9 @@ function MainPages() {
           pointerEvents: pathname === "/folders" ? "auto" : "none",
         }}
       >
-        <FoldersPage active={pathname === "/folders"} />
-      </div>
-      <div
+        {mountedMainPages.includes("/folders") ? <FoldersPage active={activeForWork === "/folders"} /> : null}
+      </div>}
+      {(mountedMainPages.includes("/archive") || pathname === "/archive") && <div
         data-main-page-visible={pathname === "/archive" ? "true" : "false"}
         style={{
           position: "absolute",
@@ -105,8 +118,8 @@ function MainPages() {
           pointerEvents: pathname === "/archive" ? "auto" : "none",
         }}
       >
-        <CtCArchivePage active={pathname === "/archive"} />
-      </div>
+        {mountedMainPages.includes("/archive") ? <CtCArchivePage active={activeForWork === "/archive"} /> : null}
+      </div>}
     </div>
   );
 }

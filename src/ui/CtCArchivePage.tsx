@@ -1,4 +1,4 @@
-import { Fragment, memo, startTransition, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, memo, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { setSyncedLocalStorageItem } from "../core/localDataState";
 import { onStorageRefreshNeeded } from "../core/syncSignal";
@@ -10,10 +10,10 @@ import { loadFromSudokuPad } from "../core/sudokupad";
 import { fmtHMS } from "../core/time";
 import { AppBrand, scrollActiveMainPageToTop } from "./AppBrand";
 import { GridCanvas } from "./GridCanvas";
-import { IconFolder, IconHome, IconImport, IconPlay, IconSettings, IconSort, IconSortAsc, IconSortDesc } from "./icons";
+import { IconFolder, IconHome, IconImport, IconPlay, IconSort, IconSortAsc, IconSortDesc } from "./icons";
 import { MobileMultiSelectFilter } from "./MobileMultiSelectFilter";
 import { SelectControl, type SelectControlOption } from "./SelectControl";
-import { SettingsOverlay } from "./SettingsOverlay";
+import { SettingsButton } from "./SettingsButton";
 import {
   clearReturnStateFromHistory,
   currentRoutePath,
@@ -523,7 +523,6 @@ export function CtCArchivePage(props: { active?: boolean }) {
   const [minRating, setMinRating] = useState(initialFilterPrefs.minRating);
   const [minSolves, setMinSolves] = useState(initialFilterPrefs.minSolves);
   const [visibleRowsCount, setVisibleRowsCount] = useState(renderConfig.initialVisibleRows);
-  const [settingsOpen, setSettingsOpen] = useState(false);
   const [previewedPuzzles, setPreviewedPuzzles] = useState<Map<string, PuzzleDefinition>>(new Map());
   const [previewRulesByEntryId, setPreviewRulesByEntryId] = useState<Map<string, string>>(new Map());
   const [rulesDialogEntry, setRulesDialogEntry] = useState<PreparedArchiveEntry | null>(null);
@@ -1430,11 +1429,11 @@ export function CtCArchivePage(props: { active?: boolean }) {
   }
 
   function navigateToMainMenu() {
-    startTransition(() => nav("/"));
+    nav("/");
   }
 
   function navigateToFolders() {
-    startTransition(() => nav("/folders"));
+    nav("/folders");
   }
 
   function navigateToArchive() {
@@ -1442,7 +1441,7 @@ export function CtCArchivePage(props: { active?: boolean }) {
       scrollActiveMainPageToTop("smooth");
       return;
     }
-    startTransition(() => nav("/archive"));
+    nav("/archive");
   }
 
   return (
@@ -1463,9 +1462,7 @@ export function CtCArchivePage(props: { active?: boolean }) {
             <span>Import</span>
           </button>
         </div>
-        <button className="btn topbarSettingsButton" onClick={() => setSettingsOpen(true)} title="Settings" type="button">
-          <IconSettings />
-        </button>
+        <SettingsButton key={location.key} />
       </div>
 
       <div className="page">
@@ -1902,7 +1899,6 @@ export function CtCArchivePage(props: { active?: boolean }) {
                             </div>
                           ) : (
                             <div className="archivePreview archivePreviewPlaceholder">
-                              <span className="muted">Loading preview...</span>
                             </div>
                           )}
                         </button>
@@ -2020,7 +2016,7 @@ export function CtCArchivePage(props: { active?: boolean }) {
                   <ArchivePreviewCanvas def={previewedPuzzles.get(rulesDialogEntry.id)!} />
                 ) : (
                   <div className="archiveRulesPreviewFallback muted">
-                    {rulesDialogBusy ? "Loading puzzle..." : "Puzzle preview unavailable."}
+                    {rulesDialogBusy ? "" : "Puzzle preview unavailable."}
                   </div>
                 )}
               </div>
@@ -2029,7 +2025,7 @@ export function CtCArchivePage(props: { active?: boolean }) {
                 <div style={{ fontWeight: 700, marginBottom: 6 }}>Instructions</div>
                 <div className="archiveRulesBody">
                   {rulesDialogBusy
-                    ? "Loading rules..."
+                    ? ""
                     : (previewRulesByEntryId.get(rulesDialogEntry.id) || "No rules available.")}
                 </div>
               </div>
@@ -2367,7 +2363,6 @@ export function CtCArchivePage(props: { active?: boolean }) {
         </div>
       ) : null}
 
-      {settingsOpen ? <SettingsOverlay onClose={() => setSettingsOpen(false)} /> : null}
     </div>
   );
 }

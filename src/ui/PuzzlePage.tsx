@@ -1,6 +1,6 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 
-import { Fragment, startTransition, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { addPuzzleToFolder, createFolder, getPuzzle, listFolders, listPuzzles, type PuzzleFolder, upsertPuzzle } from "../core/storage";
 import type { CellRC, PersistedPuzzle, PuzzleProgress, LineStroke, PuzzleDefinition } from "../core/model";
@@ -769,7 +769,7 @@ export function PuzzlePage(props: { editor?: boolean }) {
           });
           return;
         }
-        startTransition(() => nav("/"));
+        nav("/");
         return;
       }
       const normalizedBase = normalizeSelectionHistories(normalizePersistedDefinition({ ...local, progress: normalizeProgress(local.progress) }));
@@ -2421,11 +2421,11 @@ export function PuzzlePage(props: { editor?: boolean }) {
                 return;
               }
               if (editor) {
-                startTransition(() => nav("/creator"));
+                nav("/creator");
                 return;
               }
               if (!puzzleOriginState) {
-                startTransition(() => nav("/"));
+                nav("/");
                 return;
               }
               nav(puzzleOriginState.path, {

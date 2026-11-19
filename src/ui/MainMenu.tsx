@@ -1,4 +1,4 @@
-import { Fragment, startTransition, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   addPuzzleToFolder,
@@ -18,11 +18,11 @@ import { fillProgressWithSolutionDigits } from "../core/solutionFill";
 import { fmtHMS } from "../core/time";
 import { PuzzleListPreview } from "./PuzzleListPreview";
 import { AppBrand, scrollActiveMainPageToTop } from "./AppBrand";
-import { IconChevronDown, IconClose, IconFolder, IconHome, IconImport, IconSettings, IconSort, IconSortAsc, IconSortDesc } from "./icons";
+import { IconChevronDown, IconClose, IconFolder, IconHome, IconImport, IconSort, IconSortAsc, IconSortDesc } from "./icons";
 import { MobileMultiSelectFilter } from "./MobileMultiSelectFilter";
 import { PopupMenuButton } from "./PopupMenuButton";
 import { SelectControl, type SelectControlOption } from "./SelectControl";
-import { SettingsOverlay } from "./SettingsOverlay";
+import { SettingsButton } from "./SettingsButton";
 import {
   clearReturnStateFromHistory,
   currentRoutePath,
@@ -358,7 +358,6 @@ export function MainMenu(props: { active?: boolean }) {
 
   const [rows, setRows] = useState<StoredPuzzle[]>([]);
   const [folders, setFolders] = useState<PuzzleFolder[]>([]);
-  const [settingsOpen, setSettingsOpen] = useState(false);
   const [sortOrder, setSortOrder] = useState<SortOrder>(initialFilterPrefs.sortOrder);
   const [sortDirection, setSortDirection] = useState<SortDirection>(initialFilterPrefs.sortDirection);
   const [filterStatusList, setFilterStatusList] = useState<FilterStatus[]>(initialFilterPrefs.filterStatusList);
@@ -879,7 +878,7 @@ export function MainMenu(props: { active?: boolean }) {
   }
 
   function openCreatorProject(key: string) {
-    startTransition(() => nav(`/creator/${encodeURIComponent(key)}`));
+    nav(`/creator/${encodeURIComponent(key)}`);
   }
 
   function openPuzzle(key: string) {
@@ -899,7 +898,7 @@ export function MainMenu(props: { active?: boolean }) {
   }
 
   function navigateToFolders() {
-    startTransition(() => nav("/folders"));
+    nav("/folders");
   }
 
   function navigateToMainMenu() {
@@ -907,11 +906,11 @@ export function MainMenu(props: { active?: boolean }) {
       scrollActiveMainPageToTop("smooth");
       return;
     }
-    startTransition(() => nav("/"));
+    nav("/");
   }
 
   function navigateToArchive() {
-    startTransition(() => nav("/archive"));
+    nav("/archive");
   }
 
   function sudokuPadUrlFor(row: StoredPuzzle): string | null {
@@ -1178,14 +1177,12 @@ export function MainMenu(props: { active?: boolean }) {
             <span>Import</span>
           </button>
         </div>
-        <button className="btn topbarSettingsButton" onClick={() => setSettingsOpen(true)} title="Settings" type="button">
-          <IconSettings />
-        </button>
+        <SettingsButton key={location.key} />
       </div>
 
       <div className="page">
         <div className="mainMenuWrap">
-          <button className="btn primary creatorEntryButton" onClick={() => startTransition(() => nav("/creator"))} type="button">
+          <button className="btn primary creatorEntryButton" onClick={() => nav("/creator")} type="button">
             Puzzle Creator
           </button>
           <div className="card menuFilterPanelCard">
@@ -1935,7 +1932,6 @@ export function MainMenu(props: { active?: boolean }) {
         </div>
       ) : null}
 
-      {settingsOpen ? <SettingsOverlay onClose={() => setSettingsOpen(false)} /> : null}
     </div>
   );
 }
