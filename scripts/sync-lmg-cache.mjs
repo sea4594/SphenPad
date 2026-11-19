@@ -17,7 +17,7 @@ const DAYS = 24 * 60 * 60 * 1000;
 const RETRY_AFTER = 2 * DAYS;
 const DETAIL_REFRESH = 30 * DAYS;
 const MAX_REDIRECTS = 6;
-const DEFAULTS = { pages: 20, details: 80, payloads: 60 };
+const DEFAULTS = { pages: 25, details: 160, payloads: 100 };
 const int = (v, fallback) => Number.isInteger(Number(v)) && Number(v) > 0 && Number(v) <= 2000 ? Number(v) : fallback;
 const getText = (v) => String(v ?? '').trim();
 
@@ -280,6 +280,8 @@ export async function syncLmg({ root = REPO_ROOT, http = readHttp, now = Date.no
     withHostedPayload: new Set(entries.map(row => row.lmgId)).size,
     publishedEntries: entries.length, unresolvedLinks: urls.filter(url => state.resolutions[url]?.status !== 'ok').length,
     pendingPayloads: sourceIds.filter(id => !sourceCache.has(id)).length,
+    pendingDetailPages: Object.values(state.entries).filter(entry => !entry.checkedAt).length,
+    nextListingStart: state.nextStart,
     stats,
   };
   writeJson(statePath, state);

@@ -13,7 +13,8 @@ assert.ok(src.indexOf('className="archiveCatalogTabs"') < src.indexOf('placehold
 assert.doesNotMatch(src, /archiveLoadLabel">Puzzle URL/);
 assert.match(src, /aria-expanded=\{filtersExpanded\} aria-controls="archive-extra-filters"/);
 assert.match(src, /\{filtersExpanded && <div id="archive-extra-filters"/);
-assert.ok(src.indexOf('Surprise me!') < src.indexOf('{filtersExpanded && <div'), 'Surprise is visible when filters are collapsed');
+assert.ok(src.indexOf('Surprise me!') > src.indexOf('{filtersExpanded && <div'), 'Surprise stays visible after the collapsed filters');
+assert.match(src, /\}\s*<button type="button" className="btn primary archiveSurpriseButton"/);
 assert.match(src, /onClick=\{\(\) => onSwitchCatalog\("ctc"\)\}/);
 assert.match(src, /onClick=\{\(\) => onSwitchCatalog\("lmg"\)\}/);
 assert.match(src, /catalog === "ctc" && <div className="archiveLengthRow">/);

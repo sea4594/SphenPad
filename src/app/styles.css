@@ -4572,3 +4572,7 @@ html[data-mode="dark"][data-white-background="false"] .puzzleShell:not(.creatorE
   .archiveLoadRow > .url { flex: 1 1 110px; }
   .archiveSearchRow > .url { flex: 1 1 90px; min-width: 65px; }
 }
+
+/* Import toolbar: Clear Filters stays beside Search; Surprise me fills its own row. */
+.archiveSearchRow .archiveClearFiltersButton { flex: 0 0 auto; white-space: nowrap; }
+.archiveControls > .archiveSurpriseButton { display: block; width: 100%; margin-top: 8px; }

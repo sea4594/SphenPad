@@ -165,6 +165,7 @@ const LMG_SEARCH_FIELD_OPTIONS: SelectControlOption[] = [
 const LMG_SORT_OPTIONS: SelectControlOption[] = [
   { value: "rating", label: "Quality rating" },
   { value: "solves", label: "Solve count" },
+  { value: "date", label: "Published date" },
   { value: "title", label: "Puzzle title" },
 ];
 const ARCHIVE_SORT_OPTIONS: SelectControlOption[] = [
@@ -214,6 +215,7 @@ function normalizeLmgDifficulty(value: string): string {
   const raw = clean(value);
   if (!raw) return "Unrated";
   if (/very hard|extrem|sehr schwer|expert/i.test(raw)) return "Very hard";
+  if (/very easy|sehr leicht/i.test(raw)) return "Very easy";
   if (/mittelschwer|medium|moderate/i.test(raw)) return "Medium";
   if (/schwer|hard|difficult/i.test(raw)) return "Hard";
   if (/leicht|easy/i.test(raw)) return "Easy";
@@ -412,7 +414,7 @@ function readInitialArchiveFilterPrefs(catalog: ArchiveCatalog): ArchiveFilterPr
       minSolves: typeof parsed.minSolves === "string" ? parsed.minSolves : "",
       query: typeof parsed.query === "string" ? parsed.query : defaults.query,
       searchField,
-      sortField: catalog === "ctc" && (sortField === "rating" || sortField === "solves") ? defaults.sortField : catalog === "lmg" && (sortField === "video_length" || sortField === "date") ? defaults.sortField : sortField,
+      sortField: catalog === "ctc" && (sortField === "rating" || sortField === "solves") ? defaults.sortField : catalog === "lmg" && sortField === "video_length" ? defaults.sortField : sortField,
       sortDirection,
       hostFilters: Array.isArray(parsed.hostFilters)
         ? parsed.hostFilters.filter((value): value is string => typeof value === "string").map((value) => clean(value)).filter(Boolean)
@@ -681,10 +683,13 @@ export function CtCArchivePage(props: { active?: boolean }) {
 
   const difficultyOptions = useMemo<SelectControlOption[]>(() => {
     const values = new Set(rows.map((row) => normalizeLmgDifficulty(row.lmgDifficulty ?? "")));
-    return [
-      { value: "", label: "All difficulties" },
-      ...[...values].sort((a, b) => a.localeCompare(b)).map((value) => ({ value, label: value })),
-    ];
+    const order = ["Very easy", "Easy", "Medium", "Hard", "Very hard", "Unrated"];
+    const sorted = [...values].sort((a, b) => {
+      const ai = order.indexOf(a);
+      const bi = order.indexOf(b);
+      return (ai < 0 ? order.length : ai) - (bi < 0 ? order.length : bi) || a.localeCompare(b);
+    });
+    return [{ value: "", label: "All difficulties" }, ...sorted.map((value) => ({ value, label: value }))];
   }, [rows]);
 
   const activeFilterCount = (searchField !== "any" ? 1 : 0)
@@ -1503,10 +1508,8 @@ export function CtCArchivePage(props: { active?: boolean }) {
                 onClick={() => setFiltersExpanded((open) => !open)}>
                 Filters{activeFilterCount ? ` (${activeFilterCount})` : ""} {filtersExpanded ? "▴" : "▾"}
               </button>
-              <button type="button" className="btn primary archiveSurpriseButton"
-                onClick={() => void onSurpriseMe()}
-                disabled={!filteredRows.length || !!importingId || !!importAllBusy}>
-                Surprise me!
+              <button type="button" className="btn archiveClearFiltersButton" onClick={onClearFilters}>
+                Clear Filters
               </button>
             </div>
             {filtersExpanded && <div id="archive-extra-filters" className="archiveExpandableFilters">
@@ -1717,9 +1720,6 @@ export function CtCArchivePage(props: { active?: boolean }) {
             </div>}
 
             <div className="archiveFilterActions">
-              <button type="button" className="btn" onClick={onClearFilters}>
-                Clear Filters
-              </button>
               <div className="archiveFilterActionsRight">
                 <button
                   type="button"
@@ -1732,6 +1732,11 @@ export function CtCArchivePage(props: { active?: boolean }) {
               </div>
             </div>
             </div>}
+            <button type="button" className="btn primary archiveSurpriseButton"
+              onClick={() => void onSurpriseMe()}
+              disabled={!filteredRows.length || !!importingId || !!importAllBusy}>
+              Surprise me!
+            </button>
           </div>
 
           <div className="card">

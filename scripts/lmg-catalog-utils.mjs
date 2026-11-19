@@ -8,6 +8,27 @@ export const LMG_PAGE_SIZE = 20;
 export const LMG_SOURCE_HOSTS = new Set(['logic-masters.de', 'www.logic-masters.de']);
 export const VALID_LMG_ID = /^[a-zA-Z0-9]{5,10}$/;
 
+const LMG_MONTHS = {
+  january: 1, januar: 1, february: 2, februar: 2, march: 3, märz: 3, maerz: 3,
+  april: 4, may: 5, mai: 5, june: 6, juni: 6, july: 7, juli: 7,
+  august: 8, september: 9, october: 10, oktober: 10, november: 11,
+  december: 12, dezember: 12,
+};
+
+/** Use a timezone-independent timestamp for chronological sorting of LMG publication dates. */
+export function parseLmgPublishedDate(value) {
+  const raw = String(value ?? '').replace(/\s+/g, ' ').trim();
+  const match = /(?:^|\b)(\d{1,2})\.\s*([a-zA-ZäÄ]+)\s+(\d{4})(?:,?\s+(\d{1,2}):(\d{2}))?/i.exec(raw);
+  if (!match) return null;
+  const month = LMG_MONTHS[match[2].toLocaleLowerCase('de')];
+  const day = Number(match[1]), year = Number(match[3]);
+  const hour = Number(match[4] ?? 0), minute = Number(match[5] ?? 0);
+  if (!month || day < 1 || day > 31 || hour > 23 || minute > 59) return null;
+  const date = new Date(Date.UTC(year, month - 1, day, hour, minute));
+  if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) return null;
+  return date.getTime();
+}
+
 export function decodeHtml(value) {
   const named = { amp: '&', quot: '"', apos: "'", lt: '<', gt: '>', nbsp: ' ', ndash: '–', mdash: '—', hellip: '…', auml: 'ä', ouml: 'ö', uuml: 'ü', Auml: 'Ä', Ouml: 'Ö', Uuml: 'Ü', szlig: 'ß', rsquo: '’', lsquo: '‘' };
   return String(value ?? '').replace(/&(#(?:x[0-9a-f]+|\d+)|[a-z]+);/gi, (ent, key) => {
@@ -53,7 +74,7 @@ export function puzzleDescriptionHtml(html) {
   // Cut at first page marker that always follows the puzzle description.
   const endings = [
     /Zuletzt\s+geändert\s+am/i,
-    /Last\s+(?:edited|modified)\s+on/i,
+    /Last\s+(?:edited|modified|changed|updated)\s+on/i,
     /<h[1-6][^>]*>\s*(?:Kommentare|Comments)\b/i,
     /<[^>]+\b(?:id|class)=["'][^"']*(?:comment-list|comments|kommentare)[^"']*["']/i,
     /<h[1-6][^>]*>\s*(?:Lösung\s+abgeben|Submit\s+solution)\b/i,
@@ -97,6 +118,7 @@ export function extractLmgMetadata(html, known = {}) {
     rating: rating ? Number(rating[1]) : null,
     solves: solves ? Number(solves[1].replace(/[,.]/g, '')) : null,
     published: date ? stripHtml(date[1]) : '',
+    dateTs: parseLmgPublishedDate(date ? stripHtml(date[1]) : ''),
     subTypeConstraints: [...new Set(puzzleTags)].join('; '),
   };
 }
@@ -110,7 +132,7 @@ export function catalogEntryFromSource(item, link, source, cacheKey, ordinal) {
     subTypeConstraints: item.subTypeConstraints || '',
     videoTitle: item.difficulty ? `Difficulty: ${item.difficulty}` : 'LMG puzzle',
     videoLength: '', videoLengthSeconds: null,
-    videoDate: item.published || '', videoDateTs: item.dateTs ?? null,
+    videoDate: item.published || '', videoDateTs: item.dateTs ?? parseLmgPublishedDate(item.published),
     puzzleAuthor: item.puzzleAuthor || '', videoHost: 'LMG', collection: '',
     videoType: 'Sudoku', sudokuPadUrl: link, youtubeUrl: '',
     lmgUrl: item.lmgUrl || LMG_DETAIL_URL(item.id), lmgId: item.id,
