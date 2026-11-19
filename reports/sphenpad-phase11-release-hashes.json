@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-19T00:31:10.428Z",
+  "generatedAt": "2026-11-19T01:56:47.573Z",
   "phase": "11L",
   "target": "SphenPad Phase 11 / SudokuMaker creator parity on pinned SudokuPad 0.612.0",
   "productionInputs": [
@@ -21790,8 +21790,313 @@
     },
     {
       "path": "public/lmg/lmg-manifest.json",
-      "bytes": 27,
-      "sha256": "e5a76fe3d134f87e636debc55cc15ac01dbd2bbf0ed1edac80c0f3b35a228eb3"
+      "bytes": 42610,
+      "sha256": "dfb89a0a73542c1a9c56fbd3a79bb3216ef0c9869fc2c1ff2d10f39034278882"
+    },
+    {
+      "path": "public/lmg/lmg-source-index.json",
+      "bytes": 105714,
+      "sha256": "9a3d420e374ef78ab625524cf4fbdd3a544d24a32c6e90a48b110bbd834014eb"
+    },
+    {
+      "path": "public/lmg/puzzles/009m3lr3d7.json",
+      "bytes": 2189,
+      "sha256": "5e24ce115234e1a12f47469996be06bf1cbc81390c0864360d4a8545c8c5cfb2"
+    },
+    {
+      "path": "public/lmg/puzzles/0jw9vqzxkb.json",
+      "bytes": 3997,
+      "sha256": "4365c7552ed35e24b43fee404a059a0ba2e8d2605cceefed9b793920e380cc07"
+    },
+    {
+      "path": "public/lmg/puzzles/0ketzzbhiz.json",
+      "bytes": 1961,
+      "sha256": "a1bda57057b7c84e09cf5c9899ca84d52e51fb8de408df13e5f888b6cafa6ba6"
+    },
+    {
+      "path": "public/lmg/puzzles/0pcf9ffxh7.json",
+      "bytes": 1385,
+      "sha256": "e7630857e765733ed96fd42efe63df5620438d24ba6235ff7350da35dcdd8f87"
+    },
+    {
+      "path": "public/lmg/puzzles/0w58mhra60.json",
+      "bytes": 2201,
+      "sha256": "241ef44e7555ae91100f490cefbff58471f1912ad16d05e3c82acb39d5ecf0a5"
+    },
+    {
+      "path": "public/lmg/puzzles/1p6dhk0fht.json",
+      "bytes": 1609,
+      "sha256": "4392b0b3da42407ea493066f76e87e0f029e97d95d4cb57eb33ba96a1c97aca9"
+    },
+    {
+      "path": "public/lmg/puzzles/45fev2kxzt.json",
+      "bytes": 3801,
+      "sha256": "2d8e0a2fccd356d1219184e0f88ba9ac058bbdd23c1c2ce87f7ab0e9d0bd6407"
+    },
+    {
+      "path": "public/lmg/puzzles/4q0grqvu7w.json",
+      "bytes": 3257,
+      "sha256": "54653e063bdf9517e8883fbcc4332907387dbf5b8591bbed730d2a7459ab6a8c"
+    },
+    {
+      "path": "public/lmg/puzzles/4xirqrfef9.json",
+      "bytes": 1202,
+      "sha256": "b416f5c8d9334b99dfcdf2874843907a4ef1b5766dbd6f0aefdff1b5d3ec51bb"
+    },
+    {
+      "path": "public/lmg/puzzles/6tnnb63t3z.json",
+      "bytes": 2325,
+      "sha256": "488bed04fe5131847f1626e809dfc2a090ba0c8d5e3330a21d13aedfc8dba8fd"
+    },
+    {
+      "path": "public/lmg/puzzles/7lca010v0o.json",
+      "bytes": 2885,
+      "sha256": "9fc784476edcb78df59715a3bae3d2ed7b2c5727dd9681b0055b92969fd1c96d"
+    },
+    {
+      "path": "public/lmg/puzzles/7mz7q0118q.json",
+      "bytes": 6577,
+      "sha256": "c91096f67567470722abafefad8271e1342f60b1e7caf925bfb8c5daec087c81"
+    },
+    {
+      "path": "public/lmg/puzzles/8pevjd00jw.json",
+      "bytes": 1843,
+      "sha256": "e98c68e8d20bc92936a45cee6a4f1896fe8c9c6dda10723679b75dd0f4a47e95"
+    },
+    {
+      "path": "public/lmg/puzzles/92ihuviszl.json",
+      "bytes": 2869,
+      "sha256": "d552908ac836b1b1da5e374683d5124e914fc227593e434f5e825a2298d61513"
+    },
+    {
+      "path": "public/lmg/puzzles/9m245lf4w8.json",
+      "bytes": 1341,
+      "sha256": "2d713023c66a4c899e20f653d50943846303ca0e6bf89f8ffa5b835943993ebd"
+    },
+    {
+      "path": "public/lmg/puzzles/9t67allwhn.json",
+      "bytes": 2465,
+      "sha256": "cb118ed631e182b0cb48fbe721aeabf47d63f17d33113b5a6863c83b7269b6d8"
+    },
+    {
+      "path": "public/lmg/puzzles/9yghqcrxba.json",
+      "bytes": 2517,
+      "sha256": "cdb00657c4480d594b0e5623e940d643a75caf7acb4ac3ab4c259fca798a3869"
+    },
+    {
+      "path": "public/lmg/puzzles/ad4xg01xip.json",
+      "bytes": 2125,
+      "sha256": "a211ee03277f8f6df13dd615480897453a9d02e8407fc78be0a338c1a92af1c3"
+    },
+    {
+      "path": "public/lmg/puzzles/axe5mtdi8m.json",
+      "bytes": 6093,
+      "sha256": "896277820444c4f4d02448e9deb57ccad2c18c91b8e059793d39e9d6028bc82c"
+    },
+    {
+      "path": "public/lmg/puzzles/azvzzr0uso.json",
+      "bytes": 2645,
+      "sha256": "d271ec6fac8162e638cda7f0490f0b3634a9f8d40c879bcbadeb0686eb9c9110"
+    },
+    {
+      "path": "public/lmg/puzzles/bgavytdzjx.json",
+      "bytes": 1885,
+      "sha256": "9b21ad7ba287a2a64b8deb85aaf7ce2ebdb4233b59eae4060654ffbc109e065e"
+    },
+    {
+      "path": "public/lmg/puzzles/c0gaxofhcr.json",
+      "bytes": 6705,
+      "sha256": "a5376a7ee3337d31a9b5c626f33f8d6a02c00c34892bb07d6df2418a9c78f27a"
+    },
+    {
+      "path": "public/lmg/puzzles/clx974pdci.json",
+      "bytes": 2285,
+      "sha256": "2f7f19179c3c3314d69628526c58fa0eef38689382fb6dca6895004d570c0b1c"
+    },
+    {
+      "path": "public/lmg/puzzles/dxb7kinmev.json",
+      "bytes": 5073,
+      "sha256": "59a848121e9a6020d40813f902a217ad3da8a61e55cbc7a40806e363e4953c2a"
+    },
+    {
+      "path": "public/lmg/puzzles/ekxt1854q1.json",
+      "bytes": 10881,
+      "sha256": "63a1acdc2dee34dc1bc40bd12abfd2d9e045e9bbb23d73ff05417f0c8bb2810a"
+    },
+    {
+      "path": "public/lmg/puzzles/fju8ojyskd.json",
+      "bytes": 2749,
+      "sha256": "da2044f9ea130edefd1e2f3a172b91a1147126bd7e752bb2e2d708a0b4d4c344"
+    },
+    {
+      "path": "public/lmg/puzzles/g7u1tmga3w.json",
+      "bytes": 1973,
+      "sha256": "a1b81f3a146fab54b3d736cca4a62a9b88362b5488a13d8acc3dc8be2ac90012"
+    },
+    {
+      "path": "public/lmg/puzzles/hc565bmo2m.json",
+      "bytes": 1469,
+      "sha256": "e618057440cef3b51a6e53a04d7d05e8db10929d094345e62fbc4d53aeae74f9"
+    },
+    {
+      "path": "public/lmg/puzzles/j3lz7a001o.json",
+      "bytes": 3193,
+      "sha256": "4ebca0bb37ef00dd09ebfac0d546be3c948af39647f6099f3d7a26d3a18f4b78"
+    },
+    {
+      "path": "public/lmg/puzzles/j3r4uxdlu0.json",
+      "bytes": 2037,
+      "sha256": "a8797dff08796e0e1c3f55e7cf8f537470667a65f90f6c4a1a91f22a1f5d8c22"
+    },
+    {
+      "path": "public/lmg/puzzles/james-sinclair_10k.json",
+      "bytes": 1461,
+      "sha256": "4358ee3a64c96d792ca8122db17b4c3d2c07ade29b0d8daffc5f40b810cf70ea"
+    },
+    {
+      "path": "public/lmg/puzzles/l4pnfnqurq.json",
+      "bytes": 1413,
+      "sha256": "e9b6014a0d55738ec6143a48c4bcbd8ae07f265e68c9ce4cad4a6aa9a6ac6d19"
+    },
+    {
+      "path": "public/lmg/puzzles/l6khwvriye.json",
+      "bytes": 5077,
+      "sha256": "a54b7e6d275bbdeeb1547f1e404a28c7be2ddc04bdd830274e6c3ea66b9fc825"
+    },
+    {
+      "path": "public/lmg/puzzles/lm3zeq9i0j.json",
+      "bytes": 5237,
+      "sha256": "4dca4a05392fcd72787318823a42fbfa9499c54374b7645726802b58a1de8758"
+    },
+    {
+      "path": "public/lmg/puzzles/mnltw1i5nz.json",
+      "bytes": 1598,
+      "sha256": "98e86a49b73dcc35e289c6c5ddfc46676991b2a0d842bf3fca313a7430b3644a"
+    },
+    {
+      "path": "public/lmg/puzzles/ndf9gwzz06.json",
+      "bytes": 3321,
+      "sha256": "566f6d6e512dc6717f4d4eb3ff2e517376b1235be54244a003e4a3760ca71a67"
+    },
+    {
+      "path": "public/lmg/puzzles/ocekysa172.json",
+      "bytes": 2945,
+      "sha256": "748cc223ddab61147099a2d336373fda334c26114e7a12af1b9df20f5695468b"
+    },
+    {
+      "path": "public/lmg/puzzles/p4ywl621tw.json",
+      "bytes": 2381,
+      "sha256": "9998cd3d959a0bcdfb9c596d96d863e7c401970cf0b880b038a3d04b8a3f97ca"
+    },
+    {
+      "path": "public/lmg/puzzles/pgc5yub967.json",
+      "bytes": 4653,
+      "sha256": "a11ca0775ea5b4f5fa79f0348074279ac74b62e9eccc4bb3d4535c1a9772d876"
+    },
+    {
+      "path": "public/lmg/puzzles/racjko9aca.json",
+      "bytes": 4085,
+      "sha256": "9806ee6e521ae159b4da48384fa5ae8fad318ed9f8d72023cef7c1d654aae214"
+    },
+    {
+      "path": "public/lmg/puzzles/rg2rdlye61.json",
+      "bytes": 1273,
+      "sha256": "ab0565b62e56591f7a242363563b2a7c6a30911aa68f61d7e90e822add9d04f1"
+    },
+    {
+      "path": "public/lmg/puzzles/rin34es86q.json",
+      "bytes": 873,
+      "sha256": "ed643f3d6db95b4a73da3cfd60181aa5d5e84b78dfe4970ef22a2af81a20904c"
+    },
+    {
+      "path": "public/lmg/puzzles/sclN4SwJgXA5AzgHjAtgfQCoAsCmAFTYCGANoSAHYDm2I_pIMALsgExOZMBsAnO5_832542a7ca706a.json",
+      "bytes": 4196,
+      "sha256": "0aea88c705038ffb72cc9fe1cfd13af56b5a5873909148bef9b7bd9cb95777a7"
+    },
+    {
+      "path": "public/lmg/puzzles/sdwbc8j4cp.json",
+      "bytes": 2961,
+      "sha256": "1fb9c2ddfb7480eeb30051700faaf9f3aa4973f339c3f4de5bf25422b48a7461"
+    },
+    {
+      "path": "public/lmg/puzzles/tx07zqywgn.json",
+      "bytes": 2865,
+      "sha256": "c6ddff9a7b47965af037c0a65f0c3207df37a2e6aa8011802187c3d0d1045546"
+    },
+    {
+      "path": "public/lmg/puzzles/ut1dcmh0iu.json",
+      "bytes": 2073,
+      "sha256": "9ebd4b7e0d20762f1de5db150d043b8206687335bef9e01f1c6201171c4de808"
+    },
+    {
+      "path": "public/lmg/puzzles/va1h7l3tmy.json",
+      "bytes": 8413,
+      "sha256": "c7fc2cc33f6645235419a24ebb6a1370df8d9c5def6a7dde5ca7b96786e7b7c2"
+    },
+    {
+      "path": "public/lmg/puzzles/vf02otmpej.json",
+      "bytes": 1597,
+      "sha256": "e3c778e2b4495734ae78e7e7e372f6b77c760982ec1a4f81936a9323ff850548"
+    },
+    {
+      "path": "public/lmg/puzzles/vno374ya7w.json",
+      "bytes": 1549,
+      "sha256": "3d171714b85b56bbac19f051f4eb4a8a343cdc6baf016b73b560e6704021e096"
+    },
+    {
+      "path": "public/lmg/puzzles/vovpwn6tw8.json",
+      "bytes": 2085,
+      "sha256": "aa63dac142c87951e485d900ba1992691cee9cb66594967e63b8cebe13493870"
+    },
+    {
+      "path": "public/lmg/puzzles/w2x2nau0yy.json",
+      "bytes": 4917,
+      "sha256": "5f610b75d75b27b0955ab0cc94c77216ef0394433f13993b52aacf49aae782a0"
+    },
+    {
+      "path": "public/lmg/puzzles/wjzlo4qixb.json",
+      "bytes": 3193,
+      "sha256": "b607833a2e121478f0fbc6fead977e3c0d59a1cbba4f8e5f2a814c6188d57a06"
+    },
+    {
+      "path": "public/lmg/puzzles/wstwyebk2g.json",
+      "bytes": 2125,
+      "sha256": "97615a7751fa0783ddddaaa474787fdd7c6ed484cc4aedba60f48cf3b67f6ca4"
+    },
+    {
+      "path": "public/lmg/puzzles/ww61z5k3j6.json",
+      "bytes": 5033,
+      "sha256": "98f236ba0b5f1b9373bedc393ddfe326f4cc7fb8a8e0fc70e6c39a22d5e52db1"
+    },
+    {
+      "path": "public/lmg/puzzles/xb2ob1p7u2.json",
+      "bytes": 1925,
+      "sha256": "70e5cf7dc32242e0838d671be9c2c72e89d4a893fdf4b4f044bef8704a5be8fa"
+    },
+    {
+      "path": "public/lmg/puzzles/xcvb5019n9.json",
+      "bytes": 1229,
+      "sha256": "957eb98a1ac3416329ffb8dcfb6ff6bc22f5f01f09d933cc5c6a685efb50730c"
+    },
+    {
+      "path": "public/lmg/puzzles/xgmfbfitvr.json",
+      "bytes": 3225,
+      "sha256": "5f29a0f76f77b0968eca6abd81369f7e1a781fc2e666a09f0bbaa50c9abd6156"
+    },
+    {
+      "path": "public/lmg/puzzles/xnp25xu6ua.json",
+      "bytes": 2041,
+      "sha256": "dadb2807e19716b1ae73322e5e37f65cb10ef0d9be78d7108448ff0238d0cf7e"
+    },
+    {
+      "path": "public/lmg/puzzles/z13hbl740n.json",
+      "bytes": 2501,
+      "sha256": "52fe27c8073809ccc6f8721553f0e2451543d583fba55721aea7fc75e2058bc2"
+    },
+    {
+      "path": "public/lmg/puzzles/zjm1pvu446.json",
+      "bytes": 3817,
+      "sha256": "e2d105b50953d9aa7d0864736de3c31eb847396b36010c412ff491dd63c4505c"
     },
     {
       "path": "public/manifest.json",
@@ -21830,8 +22135,8 @@
     },
     {
       "path": "src/app/App.tsx",
-      "bytes": 10719,
-      "sha256": "154bf8e7b589c75aed1aa580af1eb831df835588b82d4d8808954d5785340b33"
+      "bytes": 10586,
+      "sha256": "0334bbc8b3c0235e44e430676e8b646b76bf173506a85ecf9cac5de71997940f"
     },
     {
       "path": "src/app/forcedPortrait.ts",
@@ -22365,13 +22670,13 @@
     },
     {
       "path": "src/ui/CtCArchivePage.tsx",
-      "bytes": 89905,
-      "sha256": "226e0a5dbce8611c1b5ba99bc5aa48afbaf827898a6305bdca18c004116a8e4f"
+      "bytes": 90386,
+      "sha256": "8b800e2183dd48ab8a02250c34cd6cdc6b9c88b231c038e9e7706d9a6770710d"
     },
     {
       "path": "src/ui/FoldersPage.tsx",
-      "bytes": 50742,
-      "sha256": "54c39d70c11caa1889ecf967bb8f5576249859a6a6a41f642524b2ecdf74dab9"
+      "bytes": 50077,
+      "sha256": "9d860daf7175d9dd63d1860a3a9b8d85353663501920d45ebb0848c096f7d330"
     },
     {
       "path": "src/ui/GridCanvas.tsx",
@@ -22395,8 +22700,8 @@
     },
     {
       "path": "src/ui/MainMenu.tsx",
-      "bytes": 81520,
-      "sha256": "a81126f5380b6744990071ae55dc3fadcdda22b0ab2a2ffa1af57d736d568dbb"
+      "bytes": 79543,
+      "sha256": "4bd4a8794d0373064de1885b2a032b0eddc053af3432af85c0eae1b2638ea287"
     },
     {
       "path": "src/ui/MobileMultiSelectFilter.tsx",
@@ -22432,6 +22737,11 @@
       "path": "src/ui/PuzzleEditorPage.tsx",
       "bytes": 204718,
       "sha256": "1ef2cec9f74b77c4a98fbc97892454dbff59e91958d120d46174c5704e5c6c88"
+    },
+    {
+      "path": "src/ui/PuzzleListPreview.tsx",
+      "bytes": 810,
+      "sha256": "111f998a4ca24784b6c6ae5c1f66eccbfe4480b4efbaaa4526a08c35a7e27c3e"
     },
     {
       "path": "src/ui/PuzzleMetadataOverlay.tsx",
@@ -44328,24 +44638,24 @@
       "sha256": "1f7f4bb6da41597cb3e34934fe5100fb41cdc54a3156032afca6cdb38c8ed2ba"
     },
     {
-      "path": "dist/assets/index-D6vPV_HR.js",
-      "bytes": 1158771,
-      "sha256": "9d1a40255685f88ef13c3d8a563c9ecf98dee5e9a14d1d33ce2a5aa4a69c183b"
-    },
-    {
       "path": "dist/assets/index-t2NTBvmN.css",
       "bytes": 99896,
       "sha256": "cea3ed79183a45f225af2fcaaab76e6c47fd19d9efe31dce2818603abcf3463a"
     },
     {
-      "path": "dist/assets/PuzzleCreatorPage-x2biJm5_.js",
-      "bytes": 5080,
-      "sha256": "1a4fa7ef8a8ff480ec39dcc4df46b63da6ae051c7988bc777853024216ff7c6c"
+      "path": "dist/assets/index-uG_giSlc.js",
+      "bytes": 1158477,
+      "sha256": "5e10fa395baff20eccfa07c3b9cec179f9ba00ca430255ecccfb4284b12f4014"
     },
     {
-      "path": "dist/assets/PuzzleEditorPage-B7uSlwzF.js",
+      "path": "dist/assets/PuzzleCreatorPage-CNreFQgr.js",
+      "bytes": 5080,
+      "sha256": "d770a67e2865181b889565125951ad1e84230a0eda99c04ef111bd1c32924b34"
+    },
+    {
+      "path": "dist/assets/PuzzleEditorPage-BI7G15hf.js",
       "bytes": 181202,
-      "sha256": "e0f6be45dce36ca4e5278f543067a424db22ca2eee55741b086316bf8132da31"
+      "sha256": "20b8707b531cf594e0f07a5f808953e8bf39741ce7be139f1b07d6713500b41f"
     },
     {
       "path": "dist/assets/sudokupad-compatibility-manifest.json",
@@ -44360,12 +44670,317 @@
     {
       "path": "dist/index.html",
       "bytes": 2045,
-      "sha256": "fbf8af0bba55b0be09c58355d4b53eb7ff9803583401fa860766018c285d5726"
+      "sha256": "58c47e796e9a1b45ad1c04aae55d3149d82e48cfa3d466714a4512ad71539a90"
     },
     {
       "path": "dist/lmg/lmg-manifest.json",
-      "bytes": 27,
-      "sha256": "e5a76fe3d134f87e636debc55cc15ac01dbd2bbf0ed1edac80c0f3b35a228eb3"
+      "bytes": 42610,
+      "sha256": "dfb89a0a73542c1a9c56fbd3a79bb3216ef0c9869fc2c1ff2d10f39034278882"
+    },
+    {
+      "path": "dist/lmg/lmg-source-index.json",
+      "bytes": 105714,
+      "sha256": "9a3d420e374ef78ab625524cf4fbdd3a544d24a32c6e90a48b110bbd834014eb"
+    },
+    {
+      "path": "dist/lmg/puzzles/009m3lr3d7.json",
+      "bytes": 2189,
+      "sha256": "5e24ce115234e1a12f47469996be06bf1cbc81390c0864360d4a8545c8c5cfb2"
+    },
+    {
+      "path": "dist/lmg/puzzles/0jw9vqzxkb.json",
+      "bytes": 3997,
+      "sha256": "4365c7552ed35e24b43fee404a059a0ba2e8d2605cceefed9b793920e380cc07"
+    },
+    {
+      "path": "dist/lmg/puzzles/0ketzzbhiz.json",
+      "bytes": 1961,
+      "sha256": "a1bda57057b7c84e09cf5c9899ca84d52e51fb8de408df13e5f888b6cafa6ba6"
+    },
+    {
+      "path": "dist/lmg/puzzles/0pcf9ffxh7.json",
+      "bytes": 1385,
+      "sha256": "e7630857e765733ed96fd42efe63df5620438d24ba6235ff7350da35dcdd8f87"
+    },
+    {
+      "path": "dist/lmg/puzzles/0w58mhra60.json",
+      "bytes": 2201,
+      "sha256": "241ef44e7555ae91100f490cefbff58471f1912ad16d05e3c82acb39d5ecf0a5"
+    },
+    {
+      "path": "dist/lmg/puzzles/1p6dhk0fht.json",
+      "bytes": 1609,
+      "sha256": "4392b0b3da42407ea493066f76e87e0f029e97d95d4cb57eb33ba96a1c97aca9"
+    },
+    {
+      "path": "dist/lmg/puzzles/45fev2kxzt.json",
+      "bytes": 3801,
+      "sha256": "2d8e0a2fccd356d1219184e0f88ba9ac058bbdd23c1c2ce87f7ab0e9d0bd6407"
+    },
+    {
+      "path": "dist/lmg/puzzles/4q0grqvu7w.json",
+      "bytes": 3257,
+      "sha256": "54653e063bdf9517e8883fbcc4332907387dbf5b8591bbed730d2a7459ab6a8c"
+    },
+    {
+      "path": "dist/lmg/puzzles/4xirqrfef9.json",
+      "bytes": 1202,
+      "sha256": "b416f5c8d9334b99dfcdf2874843907a4ef1b5766dbd6f0aefdff1b5d3ec51bb"
+    },
+    {
+      "path": "dist/lmg/puzzles/6tnnb63t3z.json",
+      "bytes": 2325,
+      "sha256": "488bed04fe5131847f1626e809dfc2a090ba0c8d5e3330a21d13aedfc8dba8fd"
+    },
+    {
+      "path": "dist/lmg/puzzles/7lca010v0o.json",
+      "bytes": 2885,
+      "sha256": "9fc784476edcb78df59715a3bae3d2ed7b2c5727dd9681b0055b92969fd1c96d"
+    },
+    {
+      "path": "dist/lmg/puzzles/7mz7q0118q.json",
+      "bytes": 6577,
+      "sha256": "c91096f67567470722abafefad8271e1342f60b1e7caf925bfb8c5daec087c81"
+    },
+    {
+      "path": "dist/lmg/puzzles/8pevjd00jw.json",
+      "bytes": 1843,
+      "sha256": "e98c68e8d20bc92936a45cee6a4f1896fe8c9c6dda10723679b75dd0f4a47e95"
+    },
+    {
+      "path": "dist/lmg/puzzles/92ihuviszl.json",
+      "bytes": 2869,
+      "sha256": "d552908ac836b1b1da5e374683d5124e914fc227593e434f5e825a2298d61513"
+    },
+    {
+      "path": "dist/lmg/puzzles/9m245lf4w8.json",
+      "bytes": 1341,
+      "sha256": "2d713023c66a4c899e20f653d50943846303ca0e6bf89f8ffa5b835943993ebd"
+    },
+    {
+      "path": "dist/lmg/puzzles/9t67allwhn.json",
+      "bytes": 2465,
+      "sha256": "cb118ed631e182b0cb48fbe721aeabf47d63f17d33113b5a6863c83b7269b6d8"
+    },
+    {
+      "path": "dist/lmg/puzzles/9yghqcrxba.json",
+      "bytes": 2517,
+      "sha256": "cdb00657c4480d594b0e5623e940d643a75caf7acb4ac3ab4c259fca798a3869"
+    },
+    {
+      "path": "dist/lmg/puzzles/ad4xg01xip.json",
+      "bytes": 2125,
+      "sha256": "a211ee03277f8f6df13dd615480897453a9d02e8407fc78be0a338c1a92af1c3"
+    },
+    {
+      "path": "dist/lmg/puzzles/axe5mtdi8m.json",
+      "bytes": 6093,
+      "sha256": "896277820444c4f4d02448e9deb57ccad2c18c91b8e059793d39e9d6028bc82c"
+    },
+    {
+      "path": "dist/lmg/puzzles/azvzzr0uso.json",
+      "bytes": 2645,
+      "sha256": "d271ec6fac8162e638cda7f0490f0b3634a9f8d40c879bcbadeb0686eb9c9110"
+    },
+    {
+      "path": "dist/lmg/puzzles/bgavytdzjx.json",
+      "bytes": 1885,
+      "sha256": "9b21ad7ba287a2a64b8deb85aaf7ce2ebdb4233b59eae4060654ffbc109e065e"
+    },
+    {
+      "path": "dist/lmg/puzzles/c0gaxofhcr.json",
+      "bytes": 6705,
+      "sha256": "a5376a7ee3337d31a9b5c626f33f8d6a02c00c34892bb07d6df2418a9c78f27a"
+    },
+    {
+      "path": "dist/lmg/puzzles/clx974pdci.json",
+      "bytes": 2285,
+      "sha256": "2f7f19179c3c3314d69628526c58fa0eef38689382fb6dca6895004d570c0b1c"
+    },
+    {
+      "path": "dist/lmg/puzzles/dxb7kinmev.json",
+      "bytes": 5073,
+      "sha256": "59a848121e9a6020d40813f902a217ad3da8a61e55cbc7a40806e363e4953c2a"
+    },
+    {
+      "path": "dist/lmg/puzzles/ekxt1854q1.json",
+      "bytes": 10881,
+      "sha256": "63a1acdc2dee34dc1bc40bd12abfd2d9e045e9bbb23d73ff05417f0c8bb2810a"
+    },
+    {
+      "path": "dist/lmg/puzzles/fju8ojyskd.json",
+      "bytes": 2749,
+      "sha256": "da2044f9ea130edefd1e2f3a172b91a1147126bd7e752bb2e2d708a0b4d4c344"
+    },
+    {
+      "path": "dist/lmg/puzzles/g7u1tmga3w.json",
+      "bytes": 1973,
+      "sha256": "a1b81f3a146fab54b3d736cca4a62a9b88362b5488a13d8acc3dc8be2ac90012"
+    },
+    {
+      "path": "dist/lmg/puzzles/hc565bmo2m.json",
+      "bytes": 1469,
+      "sha256": "e618057440cef3b51a6e53a04d7d05e8db10929d094345e62fbc4d53aeae74f9"
+    },
+    {
+      "path": "dist/lmg/puzzles/j3lz7a001o.json",
+      "bytes": 3193,
+      "sha256": "4ebca0bb37ef00dd09ebfac0d546be3c948af39647f6099f3d7a26d3a18f4b78"
+    },
+    {
+      "path": "dist/lmg/puzzles/j3r4uxdlu0.json",
+      "bytes": 2037,
+      "sha256": "a8797dff08796e0e1c3f55e7cf8f537470667a65f90f6c4a1a91f22a1f5d8c22"
+    },
+    {
+      "path": "dist/lmg/puzzles/james-sinclair_10k.json",
+      "bytes": 1461,
+      "sha256": "4358ee3a64c96d792ca8122db17b4c3d2c07ade29b0d8daffc5f40b810cf70ea"
+    },
+    {
+      "path": "dist/lmg/puzzles/l4pnfnqurq.json",
+      "bytes": 1413,
+      "sha256": "e9b6014a0d55738ec6143a48c4bcbd8ae07f265e68c9ce4cad4a6aa9a6ac6d19"
+    },
+    {
+      "path": "dist/lmg/puzzles/l6khwvriye.json",
+      "bytes": 5077,
+      "sha256": "a54b7e6d275bbdeeb1547f1e404a28c7be2ddc04bdd830274e6c3ea66b9fc825"
+    },
+    {
+      "path": "dist/lmg/puzzles/lm3zeq9i0j.json",
+      "bytes": 5237,
+      "sha256": "4dca4a05392fcd72787318823a42fbfa9499c54374b7645726802b58a1de8758"
+    },
+    {
+      "path": "dist/lmg/puzzles/mnltw1i5nz.json",
+      "bytes": 1598,
+      "sha256": "98e86a49b73dcc35e289c6c5ddfc46676991b2a0d842bf3fca313a7430b3644a"
+    },
+    {
+      "path": "dist/lmg/puzzles/ndf9gwzz06.json",
+      "bytes": 3321,
+      "sha256": "566f6d6e512dc6717f4d4eb3ff2e517376b1235be54244a003e4a3760ca71a67"
+    },
+    {
+      "path": "dist/lmg/puzzles/ocekysa172.json",
+      "bytes": 2945,
+      "sha256": "748cc223ddab61147099a2d336373fda334c26114e7a12af1b9df20f5695468b"
+    },
+    {
+      "path": "dist/lmg/puzzles/p4ywl621tw.json",
+      "bytes": 2381,
+      "sha256": "9998cd3d959a0bcdfb9c596d96d863e7c401970cf0b880b038a3d04b8a3f97ca"
+    },
+    {
+      "path": "dist/lmg/puzzles/pgc5yub967.json",
+      "bytes": 4653,
+      "sha256": "a11ca0775ea5b4f5fa79f0348074279ac74b62e9eccc4bb3d4535c1a9772d876"
+    },
+    {
+      "path": "dist/lmg/puzzles/racjko9aca.json",
+      "bytes": 4085,
+      "sha256": "9806ee6e521ae159b4da48384fa5ae8fad318ed9f8d72023cef7c1d654aae214"
+    },
+    {
+      "path": "dist/lmg/puzzles/rg2rdlye61.json",
+      "bytes": 1273,
+      "sha256": "ab0565b62e56591f7a242363563b2a7c6a30911aa68f61d7e90e822add9d04f1"
+    },
+    {
+      "path": "dist/lmg/puzzles/rin34es86q.json",
+      "bytes": 873,
+      "sha256": "ed643f3d6db95b4a73da3cfd60181aa5d5e84b78dfe4970ef22a2af81a20904c"
+    },
+    {
+      "path": "dist/lmg/puzzles/sclN4SwJgXA5AzgHjAtgfQCoAsCmAFTYCGANoSAHYDm2I_pIMALsgExOZMBsAnO5_832542a7ca706a.json",
+      "bytes": 4196,
+      "sha256": "0aea88c705038ffb72cc9fe1cfd13af56b5a5873909148bef9b7bd9cb95777a7"
+    },
+    {
+      "path": "dist/lmg/puzzles/sdwbc8j4cp.json",
+      "bytes": 2961,
+      "sha256": "1fb9c2ddfb7480eeb30051700faaf9f3aa4973f339c3f4de5bf25422b48a7461"
+    },
+    {
+      "path": "dist/lmg/puzzles/tx07zqywgn.json",
+      "bytes": 2865,
+      "sha256": "c6ddff9a7b47965af037c0a65f0c3207df37a2e6aa8011802187c3d0d1045546"
+    },
+    {
+      "path": "dist/lmg/puzzles/ut1dcmh0iu.json",
+      "bytes": 2073,
+      "sha256": "9ebd4b7e0d20762f1de5db150d043b8206687335bef9e01f1c6201171c4de808"
+    },
+    {
+      "path": "dist/lmg/puzzles/va1h7l3tmy.json",
+      "bytes": 8413,
+      "sha256": "c7fc2cc33f6645235419a24ebb6a1370df8d9c5def6a7dde5ca7b96786e7b7c2"
+    },
+    {
+      "path": "dist/lmg/puzzles/vf02otmpej.json",
+      "bytes": 1597,
+      "sha256": "e3c778e2b4495734ae78e7e7e372f6b77c760982ec1a4f81936a9323ff850548"
+    },
+    {
+      "path": "dist/lmg/puzzles/vno374ya7w.json",
+      "bytes": 1549,
+      "sha256": "3d171714b85b56bbac19f051f4eb4a8a343cdc6baf016b73b560e6704021e096"
+    },
+    {
+      "path": "dist/lmg/puzzles/vovpwn6tw8.json",
+      "bytes": 2085,
+      "sha256": "aa63dac142c87951e485d900ba1992691cee9cb66594967e63b8cebe13493870"
+    },
+    {
+      "path": "dist/lmg/puzzles/w2x2nau0yy.json",
+      "bytes": 4917,
+      "sha256": "5f610b75d75b27b0955ab0cc94c77216ef0394433f13993b52aacf49aae782a0"
+    },
+    {
+      "path": "dist/lmg/puzzles/wjzlo4qixb.json",
+      "bytes": 3193,
+      "sha256": "b607833a2e121478f0fbc6fead977e3c0d59a1cbba4f8e5f2a814c6188d57a06"
+    },
+    {
+      "path": "dist/lmg/puzzles/wstwyebk2g.json",
+      "bytes": 2125,
+      "sha256": "97615a7751fa0783ddddaaa474787fdd7c6ed484cc4aedba60f48cf3b67f6ca4"
+    },
+    {
+      "path": "dist/lmg/puzzles/ww61z5k3j6.json",
+      "bytes": 5033,
+      "sha256": "98f236ba0b5f1b9373bedc393ddfe326f4cc7fb8a8e0fc70e6c39a22d5e52db1"
+    },
+    {
+      "path": "dist/lmg/puzzles/xb2ob1p7u2.json",
+      "bytes": 1925,
+      "sha256": "70e5cf7dc32242e0838d671be9c2c72e89d4a893fdf4b4f044bef8704a5be8fa"
+    },
+    {
+      "path": "dist/lmg/puzzles/xcvb5019n9.json",
+      "bytes": 1229,
+      "sha256": "957eb98a1ac3416329ffb8dcfb6ff6bc22f5f01f09d933cc5c6a685efb50730c"
+    },
+    {
+      "path": "dist/lmg/puzzles/xgmfbfitvr.json",
+      "bytes": 3225,
+      "sha256": "5f29a0f76f77b0968eca6abd81369f7e1a781fc2e666a09f0bbaa50c9abd6156"
+    },
+    {
+      "path": "dist/lmg/puzzles/xnp25xu6ua.json",
+      "bytes": 2041,
+      "sha256": "dadb2807e19716b1ae73322e5e37f65cb10ef0d9be78d7108448ff0238d0cf7e"
+    },
+    {
+      "path": "dist/lmg/puzzles/z13hbl740n.json",
+      "bytes": 2501,
+      "sha256": "52fe27c8073809ccc6f8721553f0e2451543d583fba55721aea7fc75e2058bc2"
+    },
+    {
+      "path": "dist/lmg/puzzles/zjm1pvu446.json",
+      "bytes": 3817,
+      "sha256": "e2d105b50953d9aa7d0864736de3c31eb847396b36010c412ff491dd63c4505c"
     },
     {
       "path": "dist/manifest.json",
@@ -44394,5 +45009,5 @@
     }
   ],
   "bundleBuilt": true,
-  "releaseContentSha256": "3be9cacf6c102175ce1a005830f1f3b54ffae72e55c5508f7a4ce2575a7e40da"
+  "releaseContentSha256": "12975e8ca4339ea97c2f76de9e20352aab5e5559031e322b526b82172d9b1a12"
 }

@@ -19,7 +19,7 @@ import { useAccountSync } from "../app/accountSync";
 import { fillProgressWithSolutionDigits } from "../core/solutionFill";
 import { fmtHMS } from "../core/time";
 import { AppBrand, scrollActiveMainPageToTop } from "./AppBrand";
-import { GridCanvas } from "./GridCanvas";
+import { PuzzleListPreview } from "./PuzzleListPreview";
 import { IconFolder, IconHome, IconImport, IconSettings, IconSort, IconSortAsc, IconSortDesc } from "./icons";
 import { PopupMenuButton } from "./PopupMenuButton";
 import { SelectControl, type SelectControlOption } from "./SelectControl";
@@ -56,7 +56,6 @@ const FOLDER_ROWS_STEP_DESKTOP = 50;
 const FOLDER_ROWS_STEP_MOBILE = 50;
 const FOLDER_ROWS_INACTIVE_CAP_DESKTOP = 16;
 const FOLDER_ROWS_INACTIVE_CAP_MOBILE = 8;
-const NOOP = () => {};
 const FOLDER_SORT_OPTIONS: SelectControlOption[] = [
   { value: "recent", label: "Recent" },
   { value: "az", label: "A - Z" },
@@ -945,11 +944,6 @@ export function FoldersPage(props: { active?: boolean }) {
               {activeFolder ? (
                 <>
                   {visibleFolderRows.map((row) => {
-                    const previewProgress = {
-                      ...row.progress,
-                      selection: [],
-                      multiSelect: false,
-                    };
                     const constraintBullets = extractConstraintBullets(row.def);
                     const menuBusy = folderActionBusyKey === row.key;
 
@@ -985,18 +979,7 @@ export function FoldersPage(props: { active?: boolean }) {
 
                         <div className="menuPuzzleDeleteStack">
                           <div className="menuPuzzlePreview" aria-hidden="true">
-                            <GridCanvas
-                              def={row.def}
-                              progress={previewProgress}
-                              onSelection={NOOP}
-                              onLineStroke={NOOP}
-                              onLineTapCell={NOOP}
-                              onLineTapEdge={NOOP}
-                              onDoubleCell={NOOP}
-                              interactive={false}
-                              previewMode
-                              strictScale
-                            />
+                            <PuzzleListPreview def={row.def} progress={row.progress} />
                           </div>
 
                           <div className="row menuPuzzleActions">

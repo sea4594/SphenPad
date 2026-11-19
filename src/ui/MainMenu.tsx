@@ -16,7 +16,7 @@ import { onStorageRefreshNeeded } from "../core/syncSignal";
 import { useAccountSync } from "../app/accountSync";
 import { fillProgressWithSolutionDigits } from "../core/solutionFill";
 import { fmtHMS } from "../core/time";
-import { GridCanvas } from "./GridCanvas";
+import { PuzzleListPreview } from "./PuzzleListPreview";
 import { AppBrand, scrollActiveMainPageToTop } from "./AppBrand";
 import { IconChevronDown, IconClose, IconFolder, IconHome, IconImport, IconSettings, IconSort, IconSortAsc, IconSortDesc } from "./icons";
 import { MobileMultiSelectFilter } from "./MobileMultiSelectFilter";
@@ -120,7 +120,6 @@ function incrementCountMap(counts: Map<string, number>, values: Iterable<string>
   }
 }
 
-const NOOP = () => {};
 
 function isSortOrder(value: string): value is SortOrder {
   return value === "recent" || value === "az" || value === "date";
@@ -1419,11 +1418,6 @@ export function MainMenu(props: { active?: boolean }) {
 
             <div className="menuPuzzleList">
               {visibleDisplayRows.map((row) => {
-                const previewProgress = {
-                  ...row.progress,
-                  selection: [],
-                  multiSelect: false,
-                };
                 const constraintBullets = constraintBulletsByPuzzle.get(row.key) ?? ["Normal Sudoku rules only"];
                 return (
                   <div
@@ -1457,18 +1451,7 @@ export function MainMenu(props: { active?: boolean }) {
 
                     <div className="menuPuzzleDeleteStack">
                       <div className="menuPuzzlePreview" aria-hidden="true">
-                        <GridCanvas
-                          def={row.def}
-                          progress={previewProgress}
-                          onSelection={NOOP}
-                          onLineStroke={NOOP}
-                          onLineTapCell={NOOP}
-                          onLineTapEdge={NOOP}
-                          onDoubleCell={NOOP}
-                          interactive={false}
-                          previewMode
-                          strictScale
-                        />
+                        <PuzzleListPreview def={row.def} progress={row.progress} />
                       </div>
 
                       <div className="row menuPuzzleActions">
@@ -1641,11 +1624,6 @@ export function MainMenu(props: { active?: boolean }) {
                   <>
                     <div className="muted" style={{ fontSize: 13, marginTop: 4 }}>Folder contents</div>
                     {visibleFolderRows.map((row) => {
-                      const previewProgress = {
-                        ...row.progress,
-                        selection: [],
-                        multiSelect: false,
-                      };
                       const constraintBullets = constraintBulletsByPuzzle.get(row.key) ?? ["Normal Sudoku rules only"];
                       const menuBusy = folderActionBusyKey === row.key;
 
@@ -1681,18 +1659,7 @@ export function MainMenu(props: { active?: boolean }) {
 
                           <div className="menuPuzzleDeleteStack">
                             <div className="menuPuzzlePreview" aria-hidden="true">
-                              <GridCanvas
-                                def={row.def}
-                                progress={previewProgress}
-                                onSelection={NOOP}
-                                onLineStroke={NOOP}
-                                onLineTapCell={NOOP}
-                                onLineTapEdge={NOOP}
-                                onDoubleCell={NOOP}
-                                interactive={false}
-                                previewMode
-                                strictScale
-                              />
+                              <PuzzleListPreview def={row.def} progress={row.progress} />
                             </div>
 
                             <div className="row menuPuzzleActions">
@@ -1863,11 +1830,6 @@ export function MainMenu(props: { active?: boolean }) {
                 {addFolderNav ? (
                   <div className="menuPuzzleList" style={{ marginTop: 10 }}>
                     {addDialogFolderPuzzles.map((row) => {
-                      const previewProgress = {
-                        ...row.progress,
-                        selection: [],
-                        multiSelect: false,
-                      };
                       const constraintBullets = constraintBulletsByPuzzle.get(row.key) ?? ["Normal Sudoku rules only"];
                       return (
                         <div key={`add-folder-existing-puzzle-${row.key}`} className="card menuPuzzleRow">
@@ -1896,18 +1858,7 @@ export function MainMenu(props: { active?: boolean }) {
 
                           <div className="menuPuzzleDeleteStack">
                             <div className="menuPuzzlePreview" aria-hidden="true">
-                              <GridCanvas
-                                def={row.def}
-                                progress={previewProgress}
-                                onSelection={NOOP}
-                                onLineStroke={NOOP}
-                                onLineTapCell={NOOP}
-                                onLineTapEdge={NOOP}
-                                onDoubleCell={NOOP}
-                                interactive={false}
-                                previewMode
-                                strictScale
-                              />
+                              <PuzzleListPreview def={row.def} progress={row.progress} />
                             </div>
                             {row.key === addToFolderPuzzle.key ? (
                               <div className="muted" style={{ marginTop: 2, fontSize: 12, textAlign: "right" }}>

@@ -1,4 +1,4 @@
-import { Fragment, startTransition, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, memo, startTransition, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { setSyncedLocalStorageItem } from "../core/localDataState";
 import { onStorageRefreshNeeded } from "../core/syncSignal";
@@ -66,6 +66,29 @@ type PreparedArchiveEntry = ArchiveEntry & {
 type StoredPuzzle = Awaited<ReturnType<typeof listPuzzles>>[number];
 type PuzzlePlayStatus = "not_started" | "in_progress" | "complete";
 const NOOP = () => {};
+
+// A decoded preview is immutable. Keep its initial progress and SVG renderer
+// stable when search controls, Settings, or a different preview updates.
+const ArchivePreviewCanvas = memo(function ArchivePreviewCanvas({
+  def,
+  strictScale = false,
+}: { def: PuzzleDefinition; strictScale?: boolean }) {
+  const progress = useMemo(() => makeInitialProgress(def), [def]);
+  return (
+    <GridCanvas
+      def={def}
+      progress={progress}
+      onSelection={NOOP}
+      onLineStroke={NOOP}
+      onLineTapCell={NOOP}
+      onLineTapEdge={NOOP}
+      onDoubleCell={NOOP}
+      interactive={false}
+      previewMode
+      strictScale={strictScale}
+    />
+  );
+});
 
 function puzzleStatus(row: StoredPuzzle): PuzzlePlayStatus {
   const status = row.progress?.status ?? "not_started";
@@ -457,7 +480,9 @@ export function CtCArchivePage(props: { active?: boolean }) {
   const [folderCreateDialogOpen, setFolderCreateDialogOpen] = useState(false);
   const [folderCreateName, setFolderCreateName] = useState("");
   const [folderCreateBusy, setFolderCreateBusy] = useState("");
-  const observerRef = useRef<IntersectionObserver | null>(null);
+  const archiveListRef = useRef<HTMLDivElement | null>(null);
+  const previewCacheRef = useRef<Map<string, PuzzleDefinition>>(new Map());
+  const previewAttemptedRef = useRef<Set<string>>(new Set());
   const loadingQueueRef = useRef<Set<string>>(new Set());
   const loadCountRef = useRef<number>(0);
   const pendingQueueRef = useRef<PreparedArchiveEntry[]>([]);
@@ -860,8 +885,9 @@ export function CtCArchivePage(props: { active?: boolean }) {
   );
 
   const loadPuzzlePreview = useCallback(async (entry: PreparedArchiveEntry) => {
-    const cached = previewedPuzzles.get(entry.id);
+    const cached = previewCacheRef.current.get(entry.id);
     if (cached) return cached;
+    const generation = manifestRequestRef.current;
 
     const importSource = clean(entry.sourceId || entry.sudokuPadUrl);
     if (!importSource) {
@@ -875,11 +901,15 @@ export function CtCArchivePage(props: { active?: boolean }) {
         loadingQueueRef.current.delete(entry.id);
         return null;
       }
+      if (generation !== manifestRequestRef.current) return null;
 
       const { def } = await loadFromSudokuPad(importSource, {
         preloadedPayload: cachedPayload,
         skipCounterFetch: true,
       });
+      // A tab switch may have occurred during the async decode.
+      if (generation !== manifestRequestRef.current) return null;
+      previewCacheRef.current.set(entry.id, def);
 
       setPreviewedPuzzles((prev) => new Map(prev).set(entry.id, def));
       setPreviewRulesByEntryId((prev) => new Map(prev).set(entry.id, clean(def.meta?.rules) || "No rules available."));
@@ -890,7 +920,7 @@ export function CtCArchivePage(props: { active?: boolean }) {
     } finally {
       loadingQueueRef.current.delete(entry.id);
     }
-  }, [previewedPuzzles, catalog]);
+  }, [catalog]);
 
   const processPreviewQueue = useCallback(async () => {
     if (!active) return;
@@ -898,67 +928,59 @@ export function CtCArchivePage(props: { active?: boolean }) {
 
     const entry = pendingQueueRef.current.shift();
     if (!entry) return;
+    const generation = manifestRequestRef.current;
 
     loadCountRef.current++;
     try {
       await loadPuzzlePreview(entry);
     } finally {
-      loadCountRef.current--;
-      if (pendingQueueRef.current.length > 0) {
-        await processPreviewQueue();
+      // Requests from the previous tab must not drain the next tab's queue.
+      if (generation === manifestRequestRef.current) {
+        loadCountRef.current--;
+        if (pendingQueueRef.current.length > 0) void processPreviewQueue();
       }
     }
   }, [active, loadPuzzlePreview]);
 
   const queuePreviewLoad = useCallback((entry: PreparedArchiveEntry) => {
     if (!active) return;
-    if (loadingQueueRef.current.has(entry.id) || previewedPuzzles.has(entry.id)) return;
+    if (previewAttemptedRef.current.has(entry.id) || loadingQueueRef.current.has(entry.id) || previewCacheRef.current.has(entry.id)) return;
 
+    previewAttemptedRef.current.add(entry.id);
     loadingQueueRef.current.add(entry.id);
     pendingQueueRef.current.push(entry);
     void processPreviewQueue();
-  }, [active, previewedPuzzles, processPreviewQueue]);
+  }, [active, processPreviewQueue]);
 
   useEffect(() => {
     if (active) return;
+    // Unstarted work may be queued again when this page is revisited.
+    for (const entry of pendingQueueRef.current) previewAttemptedRef.current.delete(entry.id);
     pendingQueueRef.current = [];
     loadingQueueRef.current.clear();
   }, [active]);
 
   useEffect(() => {
     if (!active) return;
-    const observerOptions = {
-      root: null,
-      rootMargin: "50px",
-      threshold: 0,
-    };
 
-    const handleIntersect = (entries: IntersectionObserverEntry[]) => {
-      entries.forEach((entry) => {
-        if (entry.isIntersecting) {
-          const entryId = (entry.target as HTMLElement).dataset.entryId;
-          if (entryId) {
-            const entry_data = visibleRows.find((r) => r.id === entryId);
-            if (entry_data) {
-              queuePreviewLoad(entry_data);
-            }
-          }
-        }
-      });
-    };
-
-    observerRef.current = new IntersectionObserver(handleIntersect, observerOptions);
-
-    // Immediately preload all currently visible rows
-    visibleRows.forEach((entry) => {
-      queuePreviewLoad(entry);
-    });
-
-    return () => {
-      if (observerRef.current) {
-        observerRef.current.disconnect();
+    // The previous effect eagerly decoded every displayed puzzle (50+), and
+    // reconstructed its observer after every completed preview. Only decode
+    // cards near the viewport and keep the observer stable as previews arrive.
+    const byId = new Map(visibleRows.map((entry) => [entry.id, entry]));
+    if (typeof IntersectionObserver === "undefined") {
+      visibleRows.slice(0, 3).forEach(queuePreviewLoad);
+      return;
+    }
+    const observer = new IntersectionObserver((entries) => {
+      for (const item of entries) {
+        if (!item.isIntersecting) continue;
+        const entry = byId.get((item.target as HTMLElement).dataset.archiveEntryId ?? "");
+        if (entry) queuePreviewLoad(entry);
       }
-    };
+    }, { rootMargin: "240px 0px", threshold: 0 });
+    archiveListRef.current?.querySelectorAll<HTMLElement>("[data-archive-entry-id]")
+      .forEach((element) => observer.observe(element));
+    return () => observer.disconnect();
   }, [active, visibleRows, queuePreviewLoad]);
 
   const hasMoreRows = visibleRowsCount < filteredRows.length;
@@ -1305,15 +1327,6 @@ export function CtCArchivePage(props: { active?: boolean }) {
     startTransition(() => nav("/archive"));
   }
 
-  const attachCardObserver = useCallback(
-    (element: HTMLDivElement | null, entryId: string) => {
-      if (!element || !observerRef.current) return;
-      element.dataset.entryId = entryId;
-      observerRef.current.observe(element);
-    },
-    [],
-  );
-
   return (
     <div className="shell">
       <div className="topbar">
@@ -1359,12 +1372,12 @@ export function CtCArchivePage(props: { active?: boolean }) {
             <div className="row" style={{ gap: 8 }}>
               <button type="button" role="tab" aria-selected={catalog === "ctc"}
                 className={`btn ${catalog === "ctc" ? "primary" : ""}`}
-                onClick={() => { if (catalog !== "ctc") { manifestRequestRef.current++; setCatalog("ctc"); setRows([]); setPreviewedPuzzles(new Map()); setPreviewRulesByEntryId(new Map()); setRulesDialogEntry(null); pendingQueueRef.current = []; loadingQueueRef.current.clear(); onClearFilters(); } }}>
+                onClick={() => { if (catalog !== "ctc") { manifestRequestRef.current++; setCatalog("ctc"); setRows([]); previewCacheRef.current.clear(); previewAttemptedRef.current.clear(); setPreviewedPuzzles(new Map()); setPreviewRulesByEntryId(new Map()); setRulesDialogEntry(null); pendingQueueRef.current = []; loadingQueueRef.current.clear(); loadCountRef.current = 0; onClearFilters(); } }}>
                 CtC
               </button>
               <button type="button" role="tab" aria-selected={catalog === "lmg"}
                 className={`btn ${catalog === "lmg" ? "primary" : ""}`}
-                onClick={() => { if (catalog !== "lmg") { manifestRequestRef.current++; setCatalog("lmg"); setRows([]); setPreviewedPuzzles(new Map()); setPreviewRulesByEntryId(new Map()); setRulesDialogEntry(null); pendingQueueRef.current = []; loadingQueueRef.current.clear(); onClearFilters(); } }}>
+                onClick={() => { if (catalog !== "lmg") { manifestRequestRef.current++; setCatalog("lmg"); setRows([]); previewCacheRef.current.clear(); previewAttemptedRef.current.clear(); setPreviewedPuzzles(new Map()); setPreviewRulesByEntryId(new Map()); setRulesDialogEntry(null); pendingQueueRef.current = []; loadingQueueRef.current.clear(); loadCountRef.current = 0; onClearFilters(); } }}>
                 LMG
               </button>
             </div>
@@ -1626,7 +1639,7 @@ export function CtCArchivePage(props: { active?: boolean }) {
             {error && <div className="muted" style={{ marginTop: 10 }}>{error}</div>}
             {!!uiMessage && <div className="muted" style={{ marginTop: 10 }}>{uiMessage}</div>}
 
-            <div className="menuPuzzleList">
+            <div className="menuPuzzleList" ref={archiveListRef}>
               {visibleRows.map((entry) => {
                 const solved = entry.sourceKey ? completedKeys.has(entry.sourceKey) : false;
                 const display = (value: string) => clean(value) || "~";
@@ -1638,11 +1651,7 @@ export function CtCArchivePage(props: { active?: boolean }) {
                   <div
                     key={entry.id}
                     className="card archiveEntryCard"
-                    ref={(el) => {
-                      if (el) {
-                        attachCardObserver(el, entry.id);
-                      }
-                    }}
+                    data-archive-entry-id={entry.id}
                   >
                     <div className="archiveEntryHead">
                       <div className="archiveEntryMain archiveDetailsGrid">
@@ -1744,18 +1753,7 @@ export function CtCArchivePage(props: { active?: boolean }) {
                         >
                           {previewDef ? (
                             <div className="archivePreview" aria-hidden="true">
-                              <GridCanvas
-                                def={previewDef}
-                                progress={makeInitialProgress(previewDef)}
-                                onSelection={() => {}}
-                                onLineStroke={() => {}}
-                                onLineTapCell={() => {}}
-                                onLineTapEdge={() => {}}
-                                onDoubleCell={() => {}}
-                                interactive={false}
-                                previewMode
-                                strictScale
-                              />
+                              <ArchivePreviewCanvas def={previewDef} strictScale />
                             </div>
                           ) : (
                             <div className="archivePreview archivePreviewPlaceholder">
@@ -1874,17 +1872,7 @@ export function CtCArchivePage(props: { active?: boolean }) {
 
               <div className="archiveRulesPreview" aria-label="Puzzle preview">
                 {previewedPuzzles.get(rulesDialogEntry.id) ? (
-                  <GridCanvas
-                    def={previewedPuzzles.get(rulesDialogEntry.id)!}
-                    progress={makeInitialProgress(previewedPuzzles.get(rulesDialogEntry.id)!)}
-                    onSelection={() => {}}
-                    onLineStroke={() => {}}
-                    onLineTapCell={() => {}}
-                    onLineTapEdge={() => {}}
-                    onDoubleCell={() => {}}
-                    interactive={false}
-                    previewMode
-                  />
+                  <ArchivePreviewCanvas def={previewedPuzzles.get(rulesDialogEntry.id)!} />
                 ) : (
                   <div className="archiveRulesPreviewFallback muted">
                     {rulesDialogBusy ? "Loading puzzle..." : "Puzzle preview unavailable."}

@@ -185,7 +185,6 @@ export function App() {
     document.addEventListener("visibilitychange", onVisibilityChange);
     orientation?.addEventListener("change", scheduleViewportSync);
     viewport?.addEventListener("resize", scheduleViewportSync);
-    viewport?.addEventListener("scroll", scheduleViewportSync);
     document.addEventListener("gesturestart", preventGestureZoom, { passive: false });
     document.addEventListener("gesturechange", preventGestureZoom, { passive: false });
     document.addEventListener("gestureend", preventGestureZoom, { passive: false });
@@ -202,7 +201,6 @@ export function App() {
       document.removeEventListener("visibilitychange", onVisibilityChange);
       orientation?.removeEventListener("change", scheduleViewportSync);
       viewport?.removeEventListener("resize", scheduleViewportSync);
-      viewport?.removeEventListener("scroll", scheduleViewportSync);
       document.removeEventListener("gesturestart", preventGestureZoom);
       document.removeEventListener("gesturechange", preventGestureZoom);
       document.removeEventListener("gestureend", preventGestureZoom);
