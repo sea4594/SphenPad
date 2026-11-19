@@ -32,6 +32,7 @@ const DESCRIPTION_RETRY_MS = 7 * 24 * 60 * 60 * 1000;
 const MISSING_DESCRIPTION_RETRY_MS = 24 * 60 * 60 * 1000;
 const FAILED_RESOLUTION_RETRY_MS = 3 * 24 * 60 * 60 * 1000;
 const CONCURRENCY = 8;
+let originalCatalogCoverage = null;
 
 function parsePositiveInt(value, fallback) {
   const number = Number(value);
@@ -147,9 +148,18 @@ async function fetchOriginalCatalog() {
   } catch (error) { workbookError = String(error); log(`Original workbook fallback: ${workbookError}`); }
   const nonSudokuCount = fromWorkbook.filter(item => item.videoType.toLowerCase() !== 'sudoku').length;
   const latinCount = fromWorkbook.filter(item => /latin square/i.test(item.videoType)).length;
-  if (fromWorkbook.length < 5000 || nonSudokuCount < 300 || latinCount < 25) {
-    // The source workbook sometimes exposes a Sudoku-only view. Never silently
-    // reproduce that old exclusion; use the separately published pencil-puzzle table.
+  const needsMirror = fromWorkbook.length < 5000 || nonSudokuCount < 300 || latinCount < 25;
+  originalCatalogCoverage = {
+    mode: needsMirror ? 'pending-mirror' : 'complete-workbook',
+    workbookEntries: fromWorkbook.length, workbookNonSudokuEntries: nonSudokuCount,
+    workbookLatinSquareEntries: latinCount, mirrorError: '',
+  };
+  if (!needsMirror) return fromWorkbook;
+
+  // The source spreadsheet occasionally exports only the main Catalogue tab.
+  // Try to supplement it from Datasette, but do not turn a temporary mirror
+  // outage into a full sync failure when we already have a usable workbook.
+  try {
     const mirror = await fetchDatasetteCatalog();
     const keys = new Set(mirror.map(item => `${youtubeId(item.youtubeUrl)}|${item.title.toLowerCase()}`));
     for (const entry of fromWorkbook) {
@@ -157,11 +167,19 @@ async function fetchOriginalCatalog() {
       if (!keys.has(key)) mirror.push(entry);
     }
     if (mirror.length < 5000 || mirror.filter(item => /latin square/i.test(item.videoType)).length < 25) {
-      throw new Error(`CtC source incomplete (workbook=${fromWorkbook.length}, mirror=${mirror.length}, pencil=${nonSudokuCount}, latin=${latinCount}). Archive left unchanged.`);
+      throw new Error(`Incomplete mirror result: ${mirror.length} rows`);
     }
+    originalCatalogCoverage.mode = 'workbook-and-mirror';
     return mirror;
+  } catch (error) {
+    originalCatalogCoverage.mirrorError = String(error);
+    if (fromWorkbook.length < 5000) {
+      throw new Error(`Original CtC sources unavailable/incomplete: workbook=${fromWorkbook.length}; mirror=${String(error)}. Archive left unchanged.`);
+    }
+    originalCatalogCoverage.mode = 'workbook-partial';
+    log(`WARN: Mirror unavailable (${String(error)}). Using ${fromWorkbook.length} valid workbook entries; non-Sudoku/Latin-Square discovery may be incomplete until the mirror recovers. Existing cached puzzles and legacy rows will be retained.`);
+    return fromWorkbook;
   }
-  return fromWorkbook;
 }
 
 async function fetchDescriptions(videoIds, previous) {
@@ -436,6 +454,7 @@ async function main() {
   const noLink = all.filter(entry => !entry.sourceId);
   const audit = {
     generatedAt: new Date().toISOString(),
+    originalCatalogCoverage,
     originalCatalogEntries: entries.length,
     preservedLegacyEntries: legacy.length,
     catalogAndLegacyEntries: all.length,
