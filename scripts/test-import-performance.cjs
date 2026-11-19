@@ -27,8 +27,8 @@ test('Observer callbacks do not change on every preview result', () => {
 test('Tab switches cancel stale work and never mix CtC and LMG previews', () => {
   assert.match(ui, /if \(generation !== manifestRequestRef\.current\) return null/);
   assert.match(ui, /if \(generation === manifestRequestRef\.current\)/);
-  assert.equal((ui.match(/previewCacheRef\.current\.clear\(\)/g) || []).length, 2);
-  assert.equal((ui.match(/loadCountRef\.current = 0/g) || []).length, 2);
+  assert.equal((ui.match(/previewCacheRef\.current\.clear\(\)/g) || []).length, 1);
+  assert.equal((ui.match(/loadCountRef\.current = 0/g) || []).length, 1);
   assert.match(ui, /archive\/archive-manifest\.json/);
   assert.match(ui, /lmg\/lmg-manifest\.json/);
 });

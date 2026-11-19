@@ -4557,3 +4557,18 @@ html[data-mode="dark"][data-white-background="false"] .puzzleShell:not(.creatorE
 
 /* The interactive line overlay supplies the complete live line scene. */
 .sphenpad-line-preview-active .sphenpad-user-line { visibility: hidden; }
+
+/* Import-only catalog/search toolbar; keep the default controls collapsed. */
+.archiveCatalogTabs { display: flex; flex: 0 0 auto; align-items: center; gap: 6px; }
+.archiveCatalogTabs > .btn { white-space: nowrap; }
+.archiveLoadRow > .url { flex: 1 1 180px; min-width: 0; }
+.archiveSearchRow { display: flex; gap: 8px; align-items: center; min-width: 0; flex-wrap: wrap; }
+.archiveSearchRow > .url { flex: 1 1 180px; min-width: 0; }
+.archiveFiltersToggle, .archiveSurpriseButton { flex: 0 0 auto; white-space: nowrap; }
+.archiveExpandableFilters { display: grid; gap: 8px; min-width: 0; }
+@media (max-width: 560px) {
+  .archiveLoadRow { flex-wrap: wrap; }
+  .archiveCatalogTabs { flex: 0 0 auto; }
+  .archiveLoadRow > .url { flex: 1 1 110px; }
+  .archiveSearchRow > .url { flex: 1 1 90px; min-width: 65px; }
+}

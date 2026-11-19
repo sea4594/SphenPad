@@ -117,7 +117,7 @@ type SearchField =
   | "host"
   | "collection";
 
-type SortField = "title" | "video_length" | "date";
+type SortField = "title" | "video_length" | "date" | "rating" | "solves";
 type SortDirection = "asc" | "desc";
 
 type ArchiveFilterPrefs = {
@@ -131,6 +131,9 @@ type ArchiveFilterPrefs = {
   constraintFilters: string[];
   minLength: string;
   maxLength: string;
+  difficultyFilter: string;
+  minRating: string;
+  minSolves: string;
 };
 
 const SEARCH_FIELDS = new Set<SearchField>([
@@ -143,7 +146,7 @@ const SEARCH_FIELDS = new Set<SearchField>([
   "collection",
 ]);
 
-const SORT_FIELDS = new Set<SortField>(["title", "video_length", "date"]);
+const SORT_FIELDS = new Set<SortField>(["title", "video_length", "date", "rating", "solves"]);
 const ARCHIVE_SEARCH_FIELD_OPTIONS: SelectControlOption[] = [
   { value: "any", label: "Search: Any field" },
   { value: "title", label: "Title" },
@@ -152,6 +155,17 @@ const ARCHIVE_SEARCH_FIELD_OPTIONS: SelectControlOption[] = [
   { value: "author", label: "Puzzle author" },
   { value: "host", label: "Video host" },
   { value: "collection", label: "Collection" },
+];
+const LMG_SEARCH_FIELD_OPTIONS: SelectControlOption[] = [
+  { value: "any", label: "Search: Any field" },
+  { value: "title", label: "Puzzle title" },
+  { value: "constraints", label: "Constraints" },
+  { value: "author", label: "Puzzle author" },
+];
+const LMG_SORT_OPTIONS: SelectControlOption[] = [
+  { value: "rating", label: "Quality rating" },
+  { value: "solves", label: "Solve count" },
+  { value: "title", label: "Puzzle title" },
 ];
 const ARCHIVE_SORT_OPTIONS: SelectControlOption[] = [
   { value: "date", label: "Video date" },
@@ -172,6 +186,8 @@ const MOBILE_VISIBLE_ROWS_STEP = 50;
 const DESKTOP_VISIBLE_ROWS_INITIAL = 50;
 const DESKTOP_VISIBLE_ROWS_STEP = 50;
 const ARCHIVE_FILTER_PREFS_KEY = "sphenpad-archive-filters-v1";
+const LMG_FILTER_PREFS_KEY = "sphenpad-lmg-filters-v1";
+const filterPrefsKey = (catalog: ArchiveCatalog) => catalog === "lmg" ? LMG_FILTER_PREFS_KEY : ARCHIVE_FILTER_PREFS_KEY;
 
 const DEFAULT_ARCHIVE_FILTER_PREFS: ArchiveFilterPrefs = {
   query: "",
@@ -184,7 +200,31 @@ const DEFAULT_ARCHIVE_FILTER_PREFS: ArchiveFilterPrefs = {
   constraintFilters: [],
   minLength: "",
   maxLength: "",
+  difficultyFilter: "",
+  minRating: "",
+  minSolves: "",
 };
+const DEFAULT_LMG_FILTER_PREFS: ArchiveFilterPrefs = {
+  ...DEFAULT_ARCHIVE_FILTER_PREFS,
+  sortField: "rating",
+  sortDirection: "desc",
+};
+
+function normalizeLmgDifficulty(value: string): string {
+  const raw = clean(value);
+  if (!raw) return "Unrated";
+  if (/very hard|extrem|sehr schwer|expert/i.test(raw)) return "Very hard";
+  if (/mittelschwer|medium|moderate/i.test(raw)) return "Medium";
+  if (/schwer|hard|difficult/i.test(raw)) return "Hard";
+  if (/leicht|easy/i.test(raw)) return "Easy";
+  return raw;
+}
+
+function writeArchiveFilterPrefs(catalog: ArchiveCatalog, prefs: ArchiveFilterPrefs) {
+  const value = JSON.stringify(prefs);
+  if (catalog === "ctc") setSyncedLocalStorageItem(ARCHIVE_FILTER_PREFS_KEY, value);
+  else localStorage.setItem(LMG_FILTER_PREFS_KEY, value);
+}
 
 function splitSemicolonValues(value: string): string[] {
   return clean(value)
@@ -339,10 +379,11 @@ function isSortDirection(value: string): value is SortDirection {
   return value === "asc" || value === "desc";
 }
 
-function readInitialArchiveFilterPrefs(): ArchiveFilterPrefs {
+function readInitialArchiveFilterPrefs(catalog: ArchiveCatalog): ArchiveFilterPrefs {
+  const defaults = catalog === "lmg" ? DEFAULT_LMG_FILTER_PREFS : DEFAULT_ARCHIVE_FILTER_PREFS;
   try {
-    const raw = localStorage.getItem(ARCHIVE_FILTER_PREFS_KEY);
-    if (!raw) return DEFAULT_ARCHIVE_FILTER_PREFS;
+    const raw = localStorage.getItem(filterPrefsKey(catalog));
+    if (!raw) return defaults;
 
     const parsed = JSON.parse(raw) as Partial<ArchiveFilterPrefs>;
     const legacy = parsed as {
@@ -353,42 +394,49 @@ function readInitialArchiveFilterPrefs(): ArchiveFilterPrefs {
 
     const searchField = typeof parsed.searchField === "string" && isSearchField(parsed.searchField)
       ? parsed.searchField
-      : DEFAULT_ARCHIVE_FILTER_PREFS.searchField;
+      : defaults.searchField;
     const sortField = typeof parsed.sortField === "string" && isSortField(parsed.sortField)
       ? parsed.sortField
-      : DEFAULT_ARCHIVE_FILTER_PREFS.sortField;
+      : defaults.sortField;
     const sortDirection = typeof parsed.sortDirection === "string" && isSortDirection(parsed.sortDirection)
       ? parsed.sortDirection
-      : DEFAULT_ARCHIVE_FILTER_PREFS.sortDirection;
+      : defaults.sortDirection;
 
+    if (catalog === "lmg" && (searchField === "host" || searchField === "collection" || searchField === "video_title")) {
+      // LMG has no CtC video fields.
+      return { ...defaults, query: typeof parsed.query === "string" ? parsed.query : "" };
+    }
     return {
-      query: typeof parsed.query === "string" ? parsed.query : DEFAULT_ARCHIVE_FILTER_PREFS.query,
+      difficultyFilter: typeof parsed.difficultyFilter === "string" ? parsed.difficultyFilter : "",
+      minRating: typeof parsed.minRating === "string" ? parsed.minRating : "",
+      minSolves: typeof parsed.minSolves === "string" ? parsed.minSolves : "",
+      query: typeof parsed.query === "string" ? parsed.query : defaults.query,
       searchField,
-      sortField,
+      sortField: catalog === "ctc" && (sortField === "rating" || sortField === "solves") ? defaults.sortField : catalog === "lmg" && (sortField === "video_length" || sortField === "date") ? defaults.sortField : sortField,
       sortDirection,
       hostFilters: Array.isArray(parsed.hostFilters)
         ? parsed.hostFilters.filter((value): value is string => typeof value === "string").map((value) => clean(value)).filter(Boolean)
         : (typeof legacy.hostFilter === "string" && clean(legacy.hostFilter).toLowerCase() !== "all"
           ? [clean(legacy.hostFilter)]
-          : DEFAULT_ARCHIVE_FILTER_PREFS.hostFilters),
+          : defaults.hostFilters),
       authorFilters: Array.isArray(parsed.authorFilters)
         ? parsed.authorFilters.filter((value): value is string => typeof value === "string").map((value) => clean(value)).filter(Boolean)
         : (typeof legacy.authorFilter === "string" && clean(legacy.authorFilter).toLowerCase() !== "all"
           ? [clean(legacy.authorFilter)]
-          : DEFAULT_ARCHIVE_FILTER_PREFS.authorFilters),
+          : defaults.authorFilters),
       collectionFilters: Array.isArray(parsed.collectionFilters)
         ? parsed.collectionFilters.filter((value): value is string => typeof value === "string").map((value) => clean(value)).filter(Boolean)
         : (typeof legacy.collectionFilter === "string" && clean(legacy.collectionFilter).toLowerCase() !== "all"
           ? [clean(legacy.collectionFilter)]
-          : DEFAULT_ARCHIVE_FILTER_PREFS.collectionFilters),
+          : defaults.collectionFilters),
       constraintFilters: Array.isArray(parsed.constraintFilters)
         ? parsed.constraintFilters.filter((value): value is string => typeof value === "string")
-        : DEFAULT_ARCHIVE_FILTER_PREFS.constraintFilters,
-      minLength: typeof parsed.minLength === "string" ? parsed.minLength : DEFAULT_ARCHIVE_FILTER_PREFS.minLength,
-      maxLength: typeof parsed.maxLength === "string" ? parsed.maxLength : DEFAULT_ARCHIVE_FILTER_PREFS.maxLength,
+        : defaults.constraintFilters,
+      minLength: typeof parsed.minLength === "string" ? parsed.minLength : defaults.minLength,
+      maxLength: typeof parsed.maxLength === "string" ? parsed.maxLength : defaults.maxLength,
     };
   } catch {
-    return DEFAULT_ARCHIVE_FILTER_PREFS;
+    return defaults;
   }
 }
 
@@ -437,7 +485,13 @@ export function CtCArchivePage(props: { active?: boolean }) {
   const nav = useNavigate();
   const location = useLocation();
   const [renderConfig] = useState(getRenderConfig);
-  const initialFilterPrefs = useMemo(readInitialArchiveFilterPrefs, []);
+  const initialFilterPrefs = useMemo(() => readInitialArchiveFilterPrefs("ctc"), []);
+  const initialLmgFilterPrefs = useMemo(() => readInitialArchiveFilterPrefs("lmg"), []);
+  const catalogPrefsRef = useRef<Record<ArchiveCatalog, ArchiveFilterPrefs>>({
+    ctc: initialFilterPrefs,
+    lmg: initialLmgFilterPrefs,
+  });
+  const [filtersExpanded, setFiltersExpanded] = useState(false);
   const appliedReturnStateRef = useRef(false);
 
   const [rows, setRows] = useState<PreparedArchiveEntry[]>([]);
@@ -463,6 +517,9 @@ export function CtCArchivePage(props: { active?: boolean }) {
   const [constraintFilterQuery, setConstraintFilterQuery] = useState("");
   const [minLength, setMinLength] = useState(initialFilterPrefs.minLength);
   const [maxLength, setMaxLength] = useState(initialFilterPrefs.maxLength);
+  const [difficultyFilter, setDifficultyFilter] = useState(initialFilterPrefs.difficultyFilter);
+  const [minRating, setMinRating] = useState(initialFilterPrefs.minRating);
+  const [minSolves, setMinSolves] = useState(initialFilterPrefs.minSolves);
   const [visibleRowsCount, setVisibleRowsCount] = useState(renderConfig.initialVisibleRows);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [previewedPuzzles, setPreviewedPuzzles] = useState<Map<string, PuzzleDefinition>>(new Map());
@@ -495,34 +552,17 @@ export function CtCArchivePage(props: { active?: boolean }) {
     };
   }, []);
 
+  const currentFilterPrefs = useMemo<ArchiveFilterPrefs>(() => ({
+    query, searchField, sortField, sortDirection, hostFilters, authorFilters,
+    collectionFilters, constraintFilters, minLength, maxLength,
+    difficultyFilter, minRating, minSolves,
+  }), [query, searchField, sortField, sortDirection, hostFilters, authorFilters,
+      collectionFilters, constraintFilters, minLength, maxLength, difficultyFilter, minRating, minSolves]);
+
   useEffect(() => {
-    setSyncedLocalStorageItem(
-      ARCHIVE_FILTER_PREFS_KEY,
-      JSON.stringify({
-        query,
-        searchField,
-        sortField,
-        sortDirection,
-        hostFilters,
-        authorFilters,
-        collectionFilters,
-        constraintFilters,
-        minLength,
-        maxLength,
-      } satisfies ArchiveFilterPrefs),
-    );
-  }, [
-    query,
-    searchField,
-    sortField,
-    sortDirection,
-    hostFilters,
-    authorFilters,
-    collectionFilters,
-    constraintFilters,
-    minLength,
-    maxLength,
-  ]);
+    catalogPrefsRef.current[catalog] = currentFilterPrefs;
+    writeArchiveFilterPrefs(catalog, currentFilterPrefs);
+  }, [catalog, currentFilterPrefs]);
 
   useEffect(() => {
     if (appliedReturnStateRef.current) return;
@@ -638,6 +678,20 @@ export function CtCArchivePage(props: { active?: boolean }) {
     () => Array.from(new Set(rows.flatMap((r) => r.constraintTypes).filter(Boolean))).sort((a, b) => a.localeCompare(b)),
     [rows],
   );
+
+  const difficultyOptions = useMemo<SelectControlOption[]>(() => {
+    const values = new Set(rows.map((row) => normalizeLmgDifficulty(row.lmgDifficulty ?? "")));
+    return [
+      { value: "", label: "All difficulties" },
+      ...[...values].sort((a, b) => a.localeCompare(b)).map((value) => ({ value, label: value })),
+    ];
+  }, [rows]);
+
+  const activeFilterCount = (searchField !== "any" ? 1 : 0)
+    + (authorFilters.length ? 1 : 0) + (constraintFilters.length ? 1 : 0)
+    + (catalog === "ctc"
+      ? Number(!!hostFilters.length) + Number(!!collectionFilters.length) + Number(!!minLength) + Number(!!maxLength)
+      : Number(!!difficultyFilter) + Number(!!minRating) + Number(!!minSolves));
 
   const filteredHostOptions = useMemo(() => {
     const q = clean(hostFilterQuery).toLowerCase();
@@ -812,6 +866,14 @@ export function CtCArchivePage(props: { active?: boolean }) {
         return a.title.localeCompare(b.title) * directionFactor;
       }
 
+      if (sortField === "rating" || sortField === "solves") {
+        const av = sortField === "rating" ? a.lmgRating : a.lmgSolves;
+        const bv = sortField === "rating" ? b.lmgRating : b.lmgSolves;
+        if (av == null && bv == null) return 0;
+        if (av == null) return 1;
+        if (bv == null) return -1;
+        return (av - bv) * directionFactor;
+      }
       if (sortField === "video_length") {
         const av = a.videoLengthSeconds;
         const bv = b.videoLengthSeconds;
@@ -839,21 +901,30 @@ export function CtCArchivePage(props: { active?: boolean }) {
 
     return sortedRows.filter((r) => {
       const rowAuthors = splitSemicolonValues(r.puzzleAuthor);
-      if (hostFilters.length && !hostFilters.includes(r.videoHost)) return false;
+      if (catalog === "ctc" && hostFilters.length && !hostFilters.includes(r.videoHost)) return false;
       if (authorFilters.length && !authorFilters.some((selectedAuthor) => rowAuthors.includes(selectedAuthor))) return false;
-      if (collectionFilters.length && !collectionFilters.includes(r.collection)) return false;
+      if (catalog === "ctc" && collectionFilters.length && !collectionFilters.includes(r.collection)) return false;
       if (constraintFilters.length && !constraintFilters.every((selectedConstraint) => r.constraintTypes.includes(selectedConstraint))) {
         return false;
       }
-      if (minSeconds != null && (r.videoLengthSeconds == null || r.videoLengthSeconds < minSeconds)) return false;
-      if (maxSeconds != null && (r.videoLengthSeconds == null || r.videoLengthSeconds > maxSeconds)) return false;
+      if (catalog === "ctc" && minSeconds != null && (r.videoLengthSeconds == null || r.videoLengthSeconds < minSeconds)) return false;
+      if (catalog === "ctc" && maxSeconds != null && (r.videoLengthSeconds == null || r.videoLengthSeconds > maxSeconds)) return false;
+      if (catalog === "lmg") {
+        if (difficultyFilter && normalizeLmgDifficulty(r.lmgDifficulty ?? "") !== difficultyFilter) return false;
+        if (minRating && (r.lmgRating == null || r.lmgRating < Number(minRating))) return false;
+        if (minSolves && (r.lmgSolves == null || r.lmgSolves < Number(minSolves))) return false;
+      }
       if (!matchesSearch(r, searchField, q)) return false;
       return true;
     });
   }, [
     sortedRows,
     deferredQuery,
+    catalog,
     searchField,
+    difficultyFilter,
+    minRating,
+    minSolves,
     hostFilters,
     authorFilters,
     collectionFilters,
@@ -867,7 +938,11 @@ export function CtCArchivePage(props: { active?: boolean }) {
   }, [
     renderConfig.initialVisibleRows,
     deferredQuery,
+    catalog,
     searchField,
+    difficultyFilter,
+    minRating,
+    minSolves,
     sortField,
     sortDirection,
     hostFilters,
@@ -1037,7 +1112,45 @@ export function CtCArchivePage(props: { active?: boolean }) {
     setConstraintFilterQuery("");
     setMinLength("");
     setMaxLength("");
+    setDifficultyFilter("");
+    setMinRating("");
+    setMinSolves("");
   }, []);
+
+  function onSwitchCatalog(next: ArchiveCatalog) {
+    if (next === catalog) return;
+    catalogPrefsRef.current[catalog] = currentFilterPrefs;
+    writeArchiveFilterPrefs(catalog, currentFilterPrefs);
+    const prefs = catalogPrefsRef.current[next];
+    setQuery(prefs.query);
+    setSearchField(prefs.searchField);
+    setSortField(prefs.sortField);
+    setSortDirection(prefs.sortDirection);
+    setHostFilters([...prefs.hostFilters]);
+    setAuthorFilters([...prefs.authorFilters]);
+    setCollectionFilters([...prefs.collectionFilters]);
+    setConstraintFilters([...prefs.constraintFilters]);
+    setMinLength(prefs.minLength);
+    setMaxLength(prefs.maxLength);
+    setDifficultyFilter(prefs.difficultyFilter);
+    setMinRating(prefs.minRating);
+    setMinSolves(prefs.minSolves);
+    setHostFilterQuery("");
+    setAuthorFilterQuery("");
+    setCollectionFilterQuery("");
+    setConstraintFilterQuery("");
+    manifestRequestRef.current++;
+    setRows([]);
+    previewCacheRef.current.clear();
+    previewAttemptedRef.current.clear();
+    setPreviewedPuzzles(new Map());
+    setPreviewRulesByEntryId(new Map());
+    setRulesDialogEntry(null);
+    pendingQueueRef.current = [];
+    loadingQueueRef.current.clear();
+    loadCountRef.current = 0;
+    setCatalog(next);
+  }
 
   async function onLoad() {
     setBusy("Loading puzzle...");
@@ -1354,10 +1467,17 @@ export function CtCArchivePage(props: { active?: boolean }) {
         <div className="mainMenuWrap">
           <div className="card">
             <div className="row archiveLoadRow">
-              <div className="menuSectionTitle archiveLoadLabel">Puzzle URL</div>
+              <div className="archiveCatalogTabs" role="tablist" aria-label="Import puzzle catalog">
+                <button type="button" role="tab" aria-selected={catalog === "ctc"}
+                  className={`btn ${catalog === "ctc" ? "primary" : ""}`}
+                  onClick={() => onSwitchCatalog("ctc")}>CtC</button>
+                <button type="button" role="tab" aria-selected={catalog === "lmg"}
+                  className={`btn ${catalog === "lmg" ? "primary" : ""}`}
+                  onClick={() => onSwitchCatalog("lmg")}>LMG</button>
+              </div>
               <input
                 className="url"
-                placeholder="https://sudokupad.app/..."
+                placeholder="Sudokupad URL"
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
               />
@@ -1368,44 +1488,43 @@ export function CtCArchivePage(props: { active?: boolean }) {
             {busy ? <div className="muted" style={{ marginTop: 10 }}>{busy}</div> : null}
           </div>
 
-          <div className="card" role="tablist" aria-label="Import puzzle catalog">
-            <div className="row" style={{ gap: 8 }}>
-              <button type="button" role="tab" aria-selected={catalog === "ctc"}
-                className={`btn ${catalog === "ctc" ? "primary" : ""}`}
-                onClick={() => { if (catalog !== "ctc") { manifestRequestRef.current++; setCatalog("ctc"); setRows([]); previewCacheRef.current.clear(); previewAttemptedRef.current.clear(); setPreviewedPuzzles(new Map()); setPreviewRulesByEntryId(new Map()); setRulesDialogEntry(null); pendingQueueRef.current = []; loadingQueueRef.current.clear(); loadCountRef.current = 0; onClearFilters(); } }}>
-                CtC
-              </button>
-              <button type="button" role="tab" aria-selected={catalog === "lmg"}
-                className={`btn ${catalog === "lmg" ? "primary" : ""}`}
-                onClick={() => { if (catalog !== "lmg") { manifestRequestRef.current++; setCatalog("lmg"); setRows([]); previewCacheRef.current.clear(); previewAttemptedRef.current.clear(); setPreviewedPuzzles(new Map()); setPreviewRulesByEntryId(new Map()); setRulesDialogEntry(null); pendingQueueRef.current = []; loadingQueueRef.current.clear(); loadCountRef.current = 0; onClearFilters(); } }}>
-                LMG
-              </button>
-            </div>
-          </div>
 
           <div className="card archiveControls">
-            <div className="row">
+            <div className="archiveSearchRow">
               <input
                 className="url"
                 placeholder={catalog === "lmg" ? "Search LMG puzzles..." : "Search CtC archive..."}
+                aria-label="Search puzzles"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
               />
-
-              <SelectControl
-                className="btn menuControlSelect"
-                value={searchField}
-                onValueChange={(value) => {
-                  if (isSearchField(value)) setSearchField(value);
-                }}
-                options={ARCHIVE_SEARCH_FIELD_OPTIONS}
-              />
+              <button type="button" className="btn archiveFiltersToggle"
+                aria-expanded={filtersExpanded} aria-controls="archive-extra-filters"
+                onClick={() => setFiltersExpanded((open) => !open)}>
+                Filters{activeFilterCount ? ` (${activeFilterCount})` : ""} {filtersExpanded ? "▴" : "▾"}
+              </button>
+              <button type="button" className="btn primary archiveSurpriseButton"
+                onClick={() => void onSurpriseMe()}
+                disabled={!filteredRows.length || !!importingId || !!importAllBusy}>
+                Surprise me!
+              </button>
             </div>
+            {filtersExpanded && <div id="archive-extra-filters" className="archiveExpandableFilters">
+              <div className="row">
+                <SelectControl
+                  className="btn menuControlSelect"
+                  value={searchField}
+                  onValueChange={(value) => {
+                    if (isSearchField(value)) setSearchField(value);
+                  }}
+                  options={catalog === "lmg" ? LMG_SEARCH_FIELD_OPTIONS : ARCHIVE_SEARCH_FIELD_OPTIONS}
+                />
+              </div>
 
             <div className="archiveFilterRow">
               {renderConfig.compact ? (
                 <>
-                  <div className="archiveFilterControl is-mobile-popup">
+                  {catalog === "ctc" && <div className="archiveFilterControl is-mobile-popup">
                     <MobileMultiSelectFilter
                       label="Host"
                       searchPlaceholder="Search hosts..."
@@ -1417,7 +1536,7 @@ export function CtCArchivePage(props: { active?: boolean }) {
                       emptyText="No hosts found"
                       summaryText={hostFilters.length ? `${hostFilters.length} selected` : "All"}
                     />
-                  </div>
+                  </div>}
                   <div className="archiveFilterControl is-mobile-popup">
                     <MobileMultiSelectFilter
                       label="Author"
@@ -1431,7 +1550,7 @@ export function CtCArchivePage(props: { active?: boolean }) {
                       summaryText={authorFilters.length ? `${authorFilters.length} selected` : "All"}
                     />
                   </div>
-                  <div className="archiveFilterControl is-mobile-popup">
+                  {catalog === "ctc" && <div className="archiveFilterControl is-mobile-popup">
                     <MobileMultiSelectFilter
                       label="Collection"
                       searchPlaceholder="Search collections..."
@@ -1443,7 +1562,7 @@ export function CtCArchivePage(props: { active?: boolean }) {
                       emptyText="No collections found"
                       summaryText={collectionFilters.length ? `${collectionFilters.length} selected` : "All"}
                     />
-                  </div>
+                  </div>}
                   <div className="archiveFilterControl is-mobile-popup">
                     <MobileMultiSelectFilter
                       label="Constraints"
@@ -1460,7 +1579,7 @@ export function CtCArchivePage(props: { active?: boolean }) {
                 </>
               ) : (
                 <>
-                  <label className="archiveFilterControl">
+                  {catalog === "ctc" && <label className="archiveFilterControl">
                     <span className="muted archiveFilterLabel">Host</span>
                     <input
                       className="url"
@@ -1481,7 +1600,7 @@ export function CtCArchivePage(props: { active?: boolean }) {
                     <span className="muted archiveFilterHint">
                       {hostFilters.length ? `${hostFilters.length} selected` : "All"}
                     </span>
-                  </label>
+                  </label>}
 
                   <label className="archiveFilterControl">
                     <span className="muted archiveFilterLabel">Author</span>
@@ -1506,7 +1625,7 @@ export function CtCArchivePage(props: { active?: boolean }) {
                     </span>
                   </label>
 
-                  <label className="archiveFilterControl">
+                  {catalog === "ctc" && <label className="archiveFilterControl">
                     <span className="muted archiveFilterLabel">Collection</span>
                     <input
                       className="url"
@@ -1527,7 +1646,7 @@ export function CtCArchivePage(props: { active?: boolean }) {
                     <span className="muted archiveFilterHint">
                       {collectionFilters.length ? `${collectionFilters.length} selected` : "All"}
                     </span>
-                  </label>
+                  </label>}
 
                   <label className="archiveFilterControl">
                     <span className="muted archiveFilterLabel">Constraints</span>
@@ -1555,7 +1674,7 @@ export function CtCArchivePage(props: { active?: boolean }) {
               )}
             </div>
 
-            <div className="archiveLengthRow">
+            {catalog === "ctc" && <div className="archiveLengthRow">
               <label className="archiveFilterControl">
                 <span className="muted archiveFilterLabel">Min Length (Minutes)</span>
                 <input
@@ -1575,23 +1694,33 @@ export function CtCArchivePage(props: { active?: boolean }) {
                   onChange={(e) => setMaxLength(e.target.value)}
                 />
               </label>
-            </div>
+            </div>}
+
+            {catalog === "lmg" && <div className="archiveFilterRow">
+              <label className="archiveFilterControl">
+                <span className="muted archiveFilterLabel">Difficulty</span>
+                <SelectControl className="btn menuControlSelect"
+                  value={difficultyFilter} onValueChange={setDifficultyFilter} options={difficultyOptions} />
+              </label>
+              <label className="archiveFilterControl">
+                <span className="muted archiveFilterLabel">Minimum quality rating (%)</span>
+                <input className="url" type="number" min={0} max={100} step={1}
+                  placeholder="Any rating" value={minRating}
+                  onChange={(event) => setMinRating(event.target.value)} />
+              </label>
+              <label className="archiveFilterControl">
+                <span className="muted archiveFilterLabel">Minimum solve count</span>
+                <input className="url" type="number" min={0} step={1}
+                  placeholder="Any solve count" value={minSolves}
+                  onChange={(event) => setMinSolves(event.target.value)} />
+              </label>
+            </div>}
 
             <div className="archiveFilterActions">
               <button type="button" className="btn" onClick={onClearFilters}>
                 Clear Filters
               </button>
               <div className="archiveFilterActionsRight">
-                <button
-                  type="button"
-                  className="btn primary"
-                  onClick={() => {
-                    void onSurpriseMe();
-                  }}
-                  disabled={!filteredRows.length || !!importingId || !!importAllBusy}
-                >
-                  Surprise me!
-                </button>
                 <button
                   type="button"
                   className="btn primary archiveImportAllBtn"
@@ -1602,6 +1731,7 @@ export function CtCArchivePage(props: { active?: boolean }) {
                 </button>
               </div>
             </div>
+            </div>}
           </div>
 
           <div className="card">
@@ -1618,7 +1748,7 @@ export function CtCArchivePage(props: { active?: boolean }) {
                       onValueChange={(value) => {
                         if (isSortField(value)) setSortField(value);
                       }}
-                      options={ARCHIVE_SORT_OPTIONS}
+                      options={catalog === "lmg" ? LMG_SORT_OPTIONS : ARCHIVE_SORT_OPTIONS}
                     />
                   </div>
                   <button
@@ -1643,9 +1773,11 @@ export function CtCArchivePage(props: { active?: boolean }) {
               {visibleRows.map((entry) => {
                 const solved = entry.sourceKey ? completedKeys.has(entry.sourceKey) : false;
                 const display = (value: string) => clean(value) || "~";
-                const constraints = entry.constraintTypes;
-                const collection = displayCollection(entry.collection);
                 const previewDef = previewedPuzzles.get(entry.id);
+                const constraints = entry.constraintTypes.length ? entry.constraintTypes
+                  : catalog === "lmg" && previewDef ? puzzleConstraintLabels(previewDef) : [];
+                const author = clean(entry.puzzleAuthor) || (catalog === "lmg" ? clean(previewDef?.meta?.author) : "");
+                const collection = displayCollection(entry.collection);
 
                 return (
                   <div
@@ -1690,7 +1822,7 @@ export function CtCArchivePage(props: { active?: boolean }) {
                             ) : null}
                           </div>
 
-                          <div className="archiveMetaSmall">{display(entry.puzzleAuthor)}</div>
+                          <div className="archiveMetaSmall">{display(author)}</div>
 
                           {constraints.length ? (
                             <ul className="archiveConstraintList">
@@ -1727,17 +1859,25 @@ export function CtCArchivePage(props: { active?: boolean }) {
                         )}
 
                         <div className="archiveInfoText archiveVideoInfo">
-                          <div className="archiveVideoTitle">{display(entry.videoTitle)}</div>
                           {entry.lmgUrl ? (
-                            <div className="archiveMetaSmall">
-                              {entry.lmgDifficulty || "Difficulty unrated"}
-                              {entry.lmgRating != null ? ` · Rating ${entry.lmgRating}%` : ""}
-                              {entry.lmgSolves != null ? ` · ${entry.lmgSolves} solves` : ""}
-                            </div>
-                          ) : <div className="archiveMetaSmall">{display(entry.videoDate)}</div>}
-                          <div className="archiveMetaMedium">
-                            {formatDurationHm(entry.videoLengthSeconds)} - {display(entry.videoHost)}
-                          </div>
+                            <>
+                              <div className="archiveVideoTitle">Logic Masters Germany</div>
+                              <div className="archiveMetaSmall">Difficulty: {normalizeLmgDifficulty(entry.lmgDifficulty ?? "")}</div>
+                              <div className="archiveMetaMedium">
+                                Quality: {entry.lmgRating != null ? `${entry.lmgRating}%` : "Unrated"}
+                                {" · "}Solves: {entry.lmgSolves != null ? entry.lmgSolves.toLocaleString() : "Unknown"}
+                              </div>
+                              {entry.videoDate && <div className="archiveMetaSmall">Published: {entry.videoDate}</div>}
+                            </>
+                          ) : (
+                            <>
+                              <div className="archiveVideoTitle">{display(entry.videoTitle)}</div>
+                              <div className="archiveMetaSmall">{display(entry.videoDate)}</div>
+                              <div className="archiveMetaMedium">
+                                {formatDurationHm(entry.videoLengthSeconds)} - {display(entry.videoHost)}
+                              </div>
+                            </>
+                          )}
                         </div>
                       </div>
 
