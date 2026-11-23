@@ -1,0 +1,107 @@
+name: Full LMG Backfill
+
+on:
+  workflow_dispatch:
+    inputs:
+      continuation:
+        description: 'Internal continuation counter; leave at zero for manual runs'
+        required: false
+        type: string
+        default: '0'
+  push:
+    branches: ['main']
+    paths:
+      - '.github/workflows/lmg-full-backfill.yml'
+      - 'scripts/run-lmg-full-backfill.sh'
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+  actions: write
+
+# Serialized with the CtC and normal LMG archive writers. Never cancel a backfill.
+concurrency:
+  group: sphenpad-archive-cache-writers-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    outputs:
+      complete: ${{ steps.backfill.outputs.complete }}
+      made_progress: ${{ steps.backfill.outputs.made_progress }}
+    steps:
+      - name: Checkout main with history
+        uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Verify LMG import and backfill behavior
+        run: |
+          npm run test-lmg-catalog
+          node --test scripts/test-lmg-full-backfill.mjs
+      - name: Discover, download and checkpoint historical puzzles
+        id: backfill
+        run: bash scripts/run-lmg-full-backfill.sh
+        env:
+          LMG_BATCHES_PER_JOB: '10'
+          LMG_MAX_LIST_PAGES_PER_RUN: '40'
+          LMG_MAX_DETAILS_PER_RUN: '200'
+          LMG_MAX_NEW_PUZZLES_PER_RUN: '180'
+          LMG_BACKFILL_CONCURRENCY: '4'
+          LMG_BACKFILL_DELAY_MS: '400'
+      - name: Build SphenPad with latest hosted puzzles
+        run: npm run build
+        env:
+          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+      - name: Upload GitHub Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+  continue:
+    needs: [build, deploy]
+    if: ${{ needs.build.outputs.complete == 'false' && needs.build.outputs.made_progress == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: write
+    steps:
+      - name: Dispatch next bounded batch job, with a hard continuation limit
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PRIOR: ${{ inputs.continuation }}
+        run: |
+          count="${PRIOR:-0}"
+          if ! [[ "$count" =~ ^[0-9]+$ ]]; then count=0; fi
+          if (( count >= 15 )); then
+            echo 'Reached the 16-job safety limit. Run Full LMG Backfill manually to continue.'
+            exit 0
+          fi
+          next=$((count + 1))
+          gh workflow run lmg-full-backfill.yml --repo "$GITHUB_REPOSITORY" --ref main -f continuation="$next"
+          echo "Queued continuation $next. Existing payloads remain cached."

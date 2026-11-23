@@ -2,12 +2,6 @@ name: Sync LMG Cache
 
 on:
   workflow_dispatch:
-  push:
-    branches: ["main"]
-    paths:
-      - "scripts/lmg-catalog-utils.mjs"
-      - "scripts/sync-lmg-cache.mjs"
-      - ".github/workflows/lmg-sync.yml"
   schedule:
     - cron: "37 1,7,13,19 * * *"
 
