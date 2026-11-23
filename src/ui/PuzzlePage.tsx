@@ -14,6 +14,7 @@ import { CompletionOverlay } from "./CompletionOverlay";
 import { CheckAnswersOverlay } from "./CheckAnswersOverlay";
 import { Keyboard } from "./Keyboard";
 import { GridCanvas } from "./GridCanvas";
+import { AfterFirstPaint } from "./AfterFirstPaint";
 import { YouTubePlayer } from "./YouTubePlayer";
 import {
   IconCheck,
@@ -527,6 +528,9 @@ export function PuzzlePage(props: { editor?: boolean }) {
   const requestedCreatorPlaytest = new URLSearchParams(location.search).get("creatorPlaytest") === "1";
 
   const [data, setData] = useState<PersistedPuzzle | null>(null);
+  // The route can change without unmounting PuzzlePage. Never render a stale
+  // puzzle while the next route's persisted record is being fetched.
+  const [loadedPuzzleKey, setLoadedPuzzleKey] = useState<string | null>(null);
   const [pauseMenuOpen, setPauseMenuOpen] = useState(false);
   const [completionOpen, setCompletionOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -754,12 +758,14 @@ export function PuzzlePage(props: { editor?: boolean }) {
   }
 
   useEffect(() => {
+    let cancelled = false;
     setCompletionOpen(false);
     setCheckResult(null);
     setPauseMenuOpen(false);
 
     (async () => {
       const local = await getPuzzle(key);
+      if (cancelled) return;
       if (!local) {
         alert("Puzzle not found.");
         if (puzzleOriginState) {
@@ -779,9 +785,12 @@ export function PuzzlePage(props: { editor?: boolean }) {
         : editor
           ? { ...normalizedBase, progress: { ...normalizedBase.progress, paused: false } }
           : normalizedBase;
+      if (cancelled) return;
       setData(normalized);
+      setLoadedPuzzleKey(key);
       setPauseMenuOpen(editor || creatorPlaytest ? false : Boolean(normalized.progress.paused && normalized.progress.status !== "complete"));
     })();
+    return () => { cancelled = true; };
   }, [key, nav, editor, requestedCreatorPlaytest]);
 
   useEffect(() => {
@@ -2371,7 +2380,34 @@ export function PuzzlePage(props: { editor?: boolean }) {
 
   useEffect(() => () => stopHoldRepeat(), []);
 
-  if (!data) return null;
+  if (!data || loadedPuzzleKey !== key) return (
+    <div className="shell puzzleShell" data-layout-mode={viewportLayoutKind}>
+      <div className="topbar puzzleTopbar">
+        <div className="puzzleTopbarButtons">
+          <button
+            className="btn"
+            type="button"
+            aria-label="Back"
+            onClick={() => {
+              if (requestedCreatorPlaytest) {
+                nav(`/creator/${encodeURIComponent(key)}`, { replace: true, state: location.state });
+              } else if (editor) {
+                nav("/creator");
+              } else if (puzzleOriginState) {
+                nav(puzzleOriginState.path, {
+                  replace: true,
+                  state: withPuzzleReturnState(undefined, puzzleOriginState),
+                });
+              } else {
+                nav("/");
+              }
+            }}
+          >←</button>
+        </div>
+      </div>
+      <div className="page puzzlePage" />
+    </div>
+  );
 
   const handleVideoProgress = (seconds: number) => {
     const rounded = Math.max(0, Math.floor(seconds));
@@ -2532,6 +2568,7 @@ export function PuzzlePage(props: { editor?: boolean }) {
           ) : null}
           <div className="boardColumn">
             <div className="card boardCard">
+              <AfterFirstPaint key={key}>
               <GridCanvas
                 key={`puzzle-grid-${boardReloadNonce}-${videoLayoutOn ? 1 : 0}-${videoViewportMode}`}
                 def={data.def}
@@ -2549,6 +2586,7 @@ export function PuzzlePage(props: { editor?: boolean }) {
                 requestedHeight={portraitBoardHeight ?? undefined}
                 scalePuzzleStrokes={videoLayoutOn}
               />
+              </AfterFirstPaint>
             </div>
           </div>
 
