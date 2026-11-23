@@ -4576,3 +4576,12 @@ html[data-mode="dark"][data-white-background="false"] .puzzleShell:not(.creatorE
 /* Import toolbar: Clear Filters stays beside Search; Surprise me fills its own row. */
 .archiveSearchRow .archiveClearFiltersButton { flex: 0 0 auto; white-space: nowrap; }
 .archiveControls > .archiveSurpriseButton { display: block; width: 100%; margin-top: 8px; }
+
+/* Phase 3: suppress inactive retained-page layout and paint. */
+/* Hidden page trees stay in the DOM with their React state, filters, scroll
+   offsets and preview components intact. This only skips browser rendering of
+   their descendants while the route is inactive. Unsupported browsers safely
+   continue using the existing visibility:hidden fallback in App.tsx. */
+[data-main-page-visible="false"] {
+  content-visibility: hidden;
+}
