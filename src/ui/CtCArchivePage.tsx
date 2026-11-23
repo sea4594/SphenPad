@@ -543,7 +543,6 @@ export function CtCArchivePage(props: { active?: boolean }) {
   const loadingQueueRef = useRef<Set<string>>(new Set());
   const loadCountRef = useRef<number>(0);
   const pendingQueueRef = useRef<PreparedArchiveEntry[]>([]);
-  const pendingRefreshRef = useRef(false);
   const deferredQuery = useDeferredValue(query);
 
   useEffect(() => {
@@ -651,23 +650,13 @@ export function CtCArchivePage(props: { active?: boolean }) {
     return () => window.clearTimeout(timer);
   }, [active, catalog]);
 
-  useEffect(() => {
-    if (!active || !pendingRefreshRef.current) return;
-    pendingRefreshRef.current = false;
+  // Already-mounted Import pages refresh on activation. Do not also queue a
+  // redundant hidden-page reload for each background account-sync event.
+  useEffect(() => onStorageRefreshNeeded(() => {
+    if (!active) return;
     void refreshCompleted();
     void refreshFolders();
-  }, [active]);
-
-  useEffect(() => {
-    return onStorageRefreshNeeded(() => {
-      if (!active) {
-        pendingRefreshRef.current = true;
-        return;
-      }
-      void refreshCompleted();
-      void refreshFolders();
-    });
-  }, [active]);
+  }), [active]);
 
   const hosts = useMemo(
     () => Array.from(new Set(rows.map((r) => r.videoHost).filter(Boolean))).sort((a, b) => a.localeCompare(b)),

@@ -15,7 +15,6 @@ import {
 } from "../core/storage";
 import { setSyncedLocalStorageItem } from "../core/localDataState";
 import { onStorageRefreshNeeded } from "../core/syncSignal";
-import { useAccountSync } from "../app/accountSync";
 import { fillProgressWithSolutionDigits } from "../core/solutionFill";
 import { fmtHMS } from "../core/time";
 import { AppBrand, scrollActiveMainPageToTop } from "./AppBrand";
@@ -203,13 +202,11 @@ function extractConstraintBullets(def: StoredPuzzle["def"]): string[] {
 
 export function FoldersPage(props: { active?: boolean }) {
   const active = props.active ?? true;
-  const { syncStatus } = useAccountSync();
   const nav = useNavigate();
   const location = useLocation();
   const initialPrefs = useMemo(readInitialFolderMenuPrefs, []);
   const initialActiveFolderId = useMemo(readInitialActiveFolderId, []);
   const appliedReturnStateRef = useRef(false);
-  const pendingRefreshRef = useRef(false);
   const [initialFoldersLoaded, setInitialFoldersLoaded] = useState(false);
 
   const [rows, setRows] = useState<StoredPuzzle[]>([]);
@@ -256,29 +253,11 @@ export function FoldersPage(props: { active?: boolean }) {
     void refresh();
   }, [active]);
 
-  useEffect(() => {
-    if (active || syncStatus === "syncing") return;
-    const timer = window.setTimeout(() => {
-      void refresh();
-    }, 120);
-    return () => window.clearTimeout(timer);
-  }, [active, syncStatus]);
-
-  useEffect(() => {
-    if (!active || !pendingRefreshRef.current) return;
-    pendingRefreshRef.current = false;
-    void refresh();
-  }, [active]);
-
-  useEffect(() => {
-    return onStorageRefreshNeeded(() => {
-      if (!active) {
-        pendingRefreshRef.current = true;
-        return;
-      }
-      void refresh();
-    });
-  }, [active]);
+  // An inactive retained page refreshes on activation, not on every cloud
+  // status change. Visible sync changes still trigger an immediate refresh.
+  useEffect(() => onStorageRefreshNeeded(() => {
+    if (active) void refresh();
+  }), [active]);
 
   useEffect(() => {
     setSyncedLocalStorageItem(

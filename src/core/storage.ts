@@ -31,6 +31,12 @@ export type { CreatorProjectStorageRow } from "../sudokupad/creator/projectStora
 
 let puzzlesListCache: StoredPuzzleRow[] | null = null;
 let foldersListCache: PuzzleFolder[] | null = null;
+// One IndexedDB scan/rehydration per collection at a time. Epochs ensure an
+// in-flight load cannot overwrite a later local edit or cloud merge.
+let puzzleListEpoch = 0;
+let folderListEpoch = 0;
+let puzzleListInFlight: Promise<StoredPuzzleRow[]> | null = null;
+let folderListInFlight: Promise<PuzzleFolder[]> | null = null;
 let creatorProjectsListCache: CreatorProjectStorageRow[] | null = null;
 // Imported SudokuPad scenes are expensive derived data. Keep the hydrated
 // definition in memory so opening a puzzle already shown in a menu does not
@@ -75,8 +81,8 @@ async function hydratePersistedPuzzle(data: PersistedPuzzle): Promise<PersistedP
 }
 
 function signalStorageMutation(notify = true, updatedAt = Date.now(), invalidate: { puzzles?: boolean; folders?: boolean; creatorProjects?: boolean } = {}) {
-  if (invalidate.puzzles !== false) puzzlesListCache = null;
-  if (invalidate.folders !== false) foldersListCache = null;
+  if (invalidate.puzzles !== false) { puzzleListEpoch++; puzzlesListCache = null; }
+  if (invalidate.folders !== false) { folderListEpoch++; foldersListCache = null; }
   if (invalidate.creatorProjects !== false) creatorProjectsListCache = null;
   // Device-only session saves (selection, tool, timer checkpoints) must not
   // advance the cloud mutation revision: no outbox record was written for them.
@@ -428,6 +434,8 @@ export async function upsertPuzzle(key: string, data: PersistedPuzzle, options: 
   const sync = options.sync !== false;
   cacheHydratedDefinition(data.def);
   pendingPuzzleWrites.set(key, data);
+  // A load begun before this optimistic update must not repopulate a stale list.
+  puzzleListEpoch++;
   updatePuzzleListCache(key, data);
 
   const previous = puzzleWriteTails.get(key) ?? Promise.resolve();
@@ -447,6 +455,7 @@ export async function upsertPuzzle(key: string, data: PersistedPuzzle, options: 
   try {
     await write;
   } catch (error) {
+    puzzleListEpoch++;
     puzzlesListCache = null;
     throw error;
   } finally {
@@ -470,15 +479,34 @@ export async function getPuzzle(key: string) {
   return data ? hydratePersistedPuzzle(data) : null;
 }
 
-export async function listPuzzles(): Promise<StoredPuzzleRow[]> {
-  if (puzzlesListCache) return puzzlesListCache;
-  const rows = await db.puzzles.toArray();
-  const hydrated = await Promise.all(rows.map(async (r) => ({ key: r.key, ...(await hydratePersistedPuzzle(r.data)) })));
-  const list: StoredPuzzleRow[] = hydrated
-    .filter((row) => !row.def.meta.creatorPuzzle || row.def.meta.creatorPublished === true)
-    .sort((a, b) => b.updatedAt - a.updatedAt);
-  puzzlesListCache = list;
-  return list;
+export function listPuzzles(): Promise<StoredPuzzleRow[]> {
+  if (puzzlesListCache) return Promise.resolve(puzzlesListCache);
+  if (puzzleListInFlight) return puzzleListInFlight;
+  // All callers share the same promise, including across Puzzles, Folders,
+  // Import, and an account-sync refresh. Restart if a write happened mid-read.
+  const task = Promise.resolve().then(async (): Promise<StoredPuzzleRow[]> => {
+    for (;;) {
+      const epoch = puzzleListEpoch;
+      const rows = await db.puzzles.toArray();
+      // Include queued saves before IndexedDB has flushed them. This preserves
+      // the existing quick-close/reopen semantics during a background write.
+      const current = new Map(rows.map((row) => [row.key, row.data]));
+      for (const [key, data] of pendingPuzzleWrites) current.set(key, data);
+      const hydrated = await Promise.all(Array.from(current, async ([key, data]) => ({ key, ...(await hydratePersistedPuzzle(data)) })));
+      if (epoch !== puzzleListEpoch) continue;
+      if (puzzlesListCache) return puzzlesListCache;
+      const list = hydrated
+        .filter((row) => !row.def.meta.creatorPuzzle || row.def.meta.creatorPublished === true)
+        .sort((a, b) => b.updatedAt - a.updatedAt);
+      puzzlesListCache = list;
+      return list;
+    }
+  });
+  puzzleListInFlight = task;
+  // Success and failure both release the slot. Avoid a rejected finally() chain.
+  void task.then(() => { if (puzzleListInFlight === task) puzzleListInFlight = null; },
+    () => { if (puzzleListInFlight === task) puzzleListInFlight = null; });
+  return task;
 }
 
 export async function listCompletedPuzzleKeys() {
@@ -489,11 +517,23 @@ export async function listCompletedPuzzleKeys() {
   return keys;
 }
 
-export async function listFolders() {
-  if (foldersListCache) return foldersListCache;
-  const list = (await db.folders.toArray()).filter((folder) => !folder.deletedAt);
-  foldersListCache = list;
-  return list;
+export function listFolders(): Promise<PuzzleFolder[]> {
+  if (foldersListCache) return Promise.resolve(foldersListCache);
+  if (folderListInFlight) return folderListInFlight;
+  const task = Promise.resolve().then(async (): Promise<PuzzleFolder[]> => {
+    for (;;) {
+      const epoch = folderListEpoch;
+      const list = (await db.folders.toArray()).filter((folder) => !folder.deletedAt);
+      if (epoch !== folderListEpoch) continue;
+      if (foldersListCache) return foldersListCache;
+      foldersListCache = list;
+      return list;
+    }
+  });
+  folderListInFlight = task;
+  void task.then(() => { if (folderListInFlight === task) folderListInFlight = null; },
+    () => { if (folderListInFlight === task) folderListInFlight = null; });
+  return task;
 }
 
 export async function createFolder(name: string, parentId: string | null = null) {
@@ -522,7 +562,7 @@ export async function createFolder(name: string, parentId: string | null = null)
     await markDirtyIntent("folder", folder.id);
     await db.folders.add(folder);
   });
-  signalStorageMutation(true, folder.updatedAt);
+  signalStorageMutation(true, folder.updatedAt, { puzzles: false, creatorProjects: false });
   return folder;
 }
 
@@ -542,7 +582,7 @@ export async function addPuzzleToFolder(folderId: string, puzzleKey: string) {
       membershipState: { ...folder.membershipState, [puzzleKey]: { present: true, updatedAt } },
     });
   });
-  signalStorageMutation(true, updatedAt);
+  signalStorageMutation(true, updatedAt, { puzzles: false, creatorProjects: false });
 }
 
 export async function removePuzzleFromFolder(folderId: string, puzzleKey: string) {
@@ -561,7 +601,7 @@ export async function removePuzzleFromFolder(folderId: string, puzzleKey: string
       membershipState: { ...folder.membershipState, [puzzleKey]: { present: false, updatedAt } },
     });
   });
-  signalStorageMutation(true, updatedAt);
+  signalStorageMutation(true, updatedAt, { puzzles: false, creatorProjects: false });
 }
 
 export async function renameFolder(folderId: string, name: string) {
@@ -581,7 +621,7 @@ export async function renameFolder(folderId: string, name: string) {
       nameUpdatedAt: updatedAt,
     });
   });
-  signalStorageMutation(true, updatedAt);
+  signalStorageMutation(true, updatedAt, { puzzles: false, creatorProjects: false });
 }
 
 export async function deleteFolder(folderId: string) {
@@ -622,7 +662,7 @@ export async function deleteFolder(folderId: string) {
       });
     }
   });
-  signalStorageMutation(true, updatedAt);
+  signalStorageMutation(true, updatedAt, { puzzles: false, creatorProjects: false });
 }
 
 export async function deletePuzzle(key: string) {
@@ -823,6 +863,8 @@ export async function applyRemoteStorageChanges(changes: {
 
   await acknowledgeDurableSyncDirty(supersededDirty);
   for (const repair of repairAfter) await markDirtyIntent(repair.kind, repair.key);
+  if (changes.puzzles.length || changes.creatorProjects.length) puzzleListEpoch++;
+  if (changes.folders.length) folderListEpoch++;
   if (puzzlesListCache && changes.puzzles.length) {
     for (const change of changes.puzzles) {
       if (!change.data && change.deleteIntent === "manual") {

@@ -13,7 +13,6 @@ import {
 } from "../core/storage";
 import { setSyncedLocalStorageItem } from "../core/localDataState";
 import { onStorageRefreshNeeded } from "../core/syncSignal";
-import { useAccountSync } from "../app/accountSync";
 import { fillProgressWithSolutionDigits } from "../core/solutionFill";
 import { fmtHMS } from "../core/time";
 import { PuzzleListPreview } from "./PuzzleListPreview";
@@ -348,13 +347,11 @@ function extractConstraintBullets(def: StoredPuzzle["def"]): string[] {
 
 export function MainMenu(props: { active?: boolean }) {
   const active = props.active ?? true;
-  const { syncStatus } = useAccountSync();
   const nav = useNavigate();
   const location = useLocation();
   const initialFilterPrefs = useMemo(readInitialMainMenuFilterPrefs, []);
   const initialFolderPrefs = useMemo(readInitialFolderMenuPrefs, []);
   const appliedReturnStateRef = useRef(false);
-  const pendingRefreshRef = useRef(false);
 
   const [rows, setRows] = useState<StoredPuzzle[]>([]);
   const [folders, setFolders] = useState<PuzzleFolder[]>([]);
@@ -420,32 +417,14 @@ export function MainMenu(props: { active?: boolean }) {
     void refreshFolders();
   }, [active]);
 
-  useEffect(() => {
-    if (active || syncStatus === "syncing") return;
-    const timer = window.setTimeout(() => {
-      void refreshPuzzles();
-      void refreshFolders();
-    }, 120);
-    return () => window.clearTimeout(timer);
-  }, [active, syncStatus]);
-
-  useEffect(() => {
-    if (!active || !pendingRefreshRef.current) return;
-    pendingRefreshRef.current = false;
+  // The activation effect above refreshes this page on every return. Cloud
+  // notifications update the visible page only; no background duplicate reads
+  // from hidden retained pages, and no second refresh on activation.
+  useEffect(() => onStorageRefreshNeeded(() => {
+    if (!active) return;
     void refreshPuzzles();
     void refreshFolders();
-  }, [active]);
-
-  useEffect(() => {
-    return onStorageRefreshNeeded(() => {
-      if (!active) {
-        pendingRefreshRef.current = true;
-        return;
-      }
-      void refreshPuzzles();
-      void refreshFolders();
-    });
-  }, [active]);
+  }), [active]);
 
   useEffect(() => {
     if (typeof window === "undefined" || typeof window.matchMedia !== "function") return;
