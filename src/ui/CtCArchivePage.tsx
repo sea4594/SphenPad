@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { setSyncedLocalStorageItem } from "../core/localDataState";
 import { onStorageRefreshNeeded } from "../core/syncSignal";
 import { normalizePuzzleKey } from "../core/id";
+import { peekCatalog, readCatalog, refreshCatalog, type CatalogSnapshot } from "../core/archiveCatalogCache";
 import type { PuzzleDefinition } from "../core/model";
 import { makeInitialProgress } from "../core/scl";
 import { addPuzzleToFolder, createFolder, getPuzzle, listCompletedPuzzleKeys, listFolders, listPuzzles, type PuzzleFolder, upsertPuzzle } from "../core/storage";
@@ -449,17 +450,15 @@ type CachedPuzzlePayload = {
   payload?: string;
 };
 
-async function loadManifest(catalog: ArchiveCatalog): Promise<ArchiveEntry[] | null> {
-  try {
-    const path = catalog === "lmg" ? "lmg/lmg-manifest.json" : "archive/archive-manifest.json";
-    const res = await fetch(`${import.meta.env.BASE_URL}${path}`);
-    if (!res.ok) return null;
-    const data = (await res.json()) as { entries?: ArchiveEntry[] };
-    if (!Array.isArray(data.entries) || (catalog === "ctc" && data.entries.length === 0)) return null;
-    return data.entries;
-  } catch {
-    return null;
-  }
+// Prepared entries are stable across tab revisits and unchanged background refreshes.
+const preparedCatalogCache = new Map<ArchiveCatalog, { fingerprint: string; source: unknown[]; entries: PreparedArchiveEntry[] }>();
+function preparedCatalogRows(catalog: ArchiveCatalog, snapshot: CatalogSnapshot): PreparedArchiveEntry[] {
+  const previous = preparedCatalogCache.get(catalog);
+  if (previous && snapshot.fingerprint && previous.fingerprint === snapshot.fingerprint) return previous.entries;
+  if (previous && previous.source === snapshot.entries) return previous.entries;
+  const entries = (snapshot.entries as ArchiveEntry[]).map(prepareArchiveEntry);
+  preparedCatalogCache.set(catalog, { fingerprint: snapshot.fingerprint, source: snapshot.entries, entries });
+  return entries;
 }
 
 async function loadCachedPuzzlePayload(entry: ArchiveEntry, catalog: ArchiveCatalog): Promise<string | null> {
@@ -595,27 +594,37 @@ export function CtCArchivePage(props: { active?: boolean }) {
   async function refreshRows() {
     if (!isMountedRef.current) return;
     const request = ++manifestRequestRef.current;
-    setLoading(true);
-    setError("");
+    const selectedCatalog = catalog;
+    const manifestUrl = `${import.meta.env.BASE_URL}${catalog === "lmg" ? "lmg/lmg-manifest.json" : "archive/archive-manifest.json"}`;
+    const current = () => isMountedRef.current && request === manifestRequestRef.current;
+    const display = (snapshot: CatalogSnapshot | null): boolean => {
+      if (!snapshot || !current()) return false;
+      const prepared = preparedCatalogRows(selectedCatalog, snapshot);
+      setRows((old) => old === prepared ? old : prepared);
+      setLoading(false);
+      setError("");
+      return true;
+    };
 
+    // Memory results display synchronously; IndexedDB results display as soon
+    // as their asynchronous read completes. Network revalidation never clears them.
+    const warm = peekCatalog(selectedCatalog, manifestUrl);
+    if (!warm) setLoading(true);
+    setError("");
+    let hasCatalog = display(warm);
     try {
-      const manifestEntries = await loadManifest(catalog);
-      if (!isMountedRef.current || request !== manifestRequestRef.current) return;
-      
-      if (!manifestEntries) {
+      if (!hasCatalog) hasCatalog = display(await readCatalog(selectedCatalog, manifestUrl));
+      if (!current()) return;
+      const fresh = await refreshCatalog(selectedCatalog, manifestUrl);
+      if (!current()) return;
+      if (!display(fresh) && !hasCatalog) {
         setRows([]);
-        setError(catalog === "lmg" ? "Unable to load LMG catalog. Run Sync LMG Cache." : "Unable to load archive manifest. Run npm run sync-archive-cache and rebuild.");
-        return;
+        setError(selectedCatalog === "lmg" ? "Unable to load LMG catalog. Run Sync LMG Cache." : "Unable to load archive manifest. Run npm run sync-archive-cache and rebuild.");
       }
-      setRows(manifestEntries.map(prepareArchiveEntry));
     } catch (e: unknown) {
-      if (isMountedRef.current) {
-        setError(e instanceof Error ? e.message : String(e));
-      }
+      if (current() && !hasCatalog) setError(e instanceof Error ? e.message : String(e));
     } finally {
-      if (isMountedRef.current) {
-        setLoading(false);
-      }
+      if (current()) setLoading(false);
     }
   }
 
@@ -955,7 +964,6 @@ export function CtCArchivePage(props: { active?: boolean }) {
     constraintFilters,
     minLength,
     maxLength,
-    rows,
   ]);
 
   const visibleRows = useMemo(
@@ -1144,7 +1152,13 @@ export function CtCArchivePage(props: { active?: boolean }) {
     setCollectionFilterQuery("");
     setConstraintFilterQuery("");
     manifestRequestRef.current++;
-    setRows([]);
+    // A previously visited catalog is already in memory: switch immediately,
+    // while its network refresh remains a separate background operation.
+    const nextUrl = `${import.meta.env.BASE_URL}${next === "lmg" ? "lmg/lmg-manifest.json" : "archive/archive-manifest.json"}`;
+    const warm = peekCatalog(next, nextUrl);
+    setRows(warm ? preparedCatalogRows(next, warm) : []);
+    setLoading(!warm);
+    setError("");
     previewCacheRef.current.clear();
     previewAttemptedRef.current.clear();
     setPreviewedPuzzles(new Map());
