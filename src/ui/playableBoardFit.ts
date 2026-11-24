@@ -21,7 +21,7 @@ export function fitPlayableBoard(svg: SVGSVGElement, rows: number, cols: number,
 }
 
 /** Tight authored artwork bounds shared by gameplay and every puzzle preview.
- * Exclude dynamic solver entries, hidden metadata backgrounds and helper paper.
+ * Exclude dynamic solver entries and helper paper; include authored image frames.
  * Uses SVG geometry in root coordinates, including transforms and stroke widths. */
 function measureAuthoredBounds(svg: SVGSVGElement, rows: number, cols: number): FitBounds | null {
   const rootMatrix = svg.getScreenCTM();
@@ -38,7 +38,7 @@ function measureAuthoredBounds(svg: SVGSVGElement, rows: number, cols: number): 
     if (!layer) continue;
     const parts = layer.querySelectorAll<SVGGraphicsElement>("path, rect, circle, ellipse, line, polyline, polygon, text, image, use, foreignObject");
     for (const part of parts) {
-      if (part.closest('[data-sudokupad-metadata-background="true"], [data-sphenpad-grid-paper], [data-sphenpad-fog-root], defs, marker, clipPath, mask, filter')) continue;
+      if (part.closest('[data-sphenpad-grid-paper], [data-sphenpad-fog-root], defs, marker, clipPath, mask, filter')) continue;
       try {
         const style = getComputedStyle(part);
         if (style.display === "none" || style.visibility === "hidden" || Number(style.opacity) === 0) continue;

@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-23T18:39:56.971Z",
+  "generatedAt": "2026-11-24T00:53:51.611Z",
   "phase": "11L",
   "target": "SphenPad Phase 11 / SudokuMaker creator parity on pinned SudokuPad 0.612.0",
   "productionInputs": [
@@ -53235,8 +53235,8 @@
     },
     {
       "path": "src/sudokupad/assets/assetResolver.ts",
-      "bytes": 6152,
-      "sha256": "5f947435e22d274a778e759410f695299a618c255265156bf94483fe5f38ac63"
+      "bytes": 7729,
+      "sha256": "c75a468e3ab063af52cd6f8070a0484ab82eea613831ecfababa52dc5e845ef2"
     },
     {
       "path": "src/sudokupad/assets/emojiAssets.ts",
@@ -53260,8 +53260,8 @@
     },
     {
       "path": "src/sudokupad/assets/imageAssets.ts",
-      "bytes": 5520,
-      "sha256": "f24d8644c03e5e0381cd127e9ea4555ba9f9d6007f0f63f98cbe4ca5d14a3256"
+      "bytes": 7413,
+      "sha256": "52c1fdabafb54542b8ef9e5467faab818f9a42798f8a67df7aff9678e19b0294"
     },
     {
       "path": "src/sudokupad/codecs/base64Puzzle.ts",
@@ -53470,8 +53470,8 @@
     },
     {
       "path": "src/sudokupad/normalize/normalizePuzzle.ts",
-      "bytes": 7893,
-      "sha256": "dce77b3a59348b05ad3870d8b1d7a2c6455c00c537e3f39d0cff81bc905c3c20"
+      "bytes": 7851,
+      "sha256": "268684ecacca2a878383c415c9d4f7601c54c83e8ef642caacae10077389a56e"
     },
     {
       "path": "src/sudokupad/parity/stockFeatureManifest.ts",
@@ -53635,8 +53635,8 @@
     },
     {
       "path": "src/ui/GridCanvas.tsx",
-      "bytes": 20830,
-      "sha256": "941ebf475bc9e901d26667be897d97a6590e07e5fac2bb65ff344f3f92589c62"
+      "bytes": 21300,
+      "sha256": "ae3f320f2969fe7f575b70a40d2ab573fd26132a21e95862671bb0f3987bf687"
     },
     {
       "path": "src/ui/icons.tsx",
@@ -53670,8 +53670,8 @@
     },
     {
       "path": "src/ui/playableBoardFit.ts",
-      "bytes": 5842,
-      "sha256": "209c2167647f1ec227e99d45abc03dbaf9c51b9f8126fdee4efb7d2ae9f48690"
+      "bytes": 5799,
+      "sha256": "6237c7e10ad1c986879bda1dcbc4136f343718750d74523fca57f66b826457d8"
     },
     {
       "path": "src/ui/playableGridPaper.ts",
@@ -53730,8 +53730,8 @@
     },
     {
       "path": "src/ui/SudokuPadBoard.tsx",
-      "bytes": 3668,
-      "sha256": "a046648db8cb7311b3b4c9bd96dbf0962d18274607a2ec764f29391251baa244"
+      "bytes": 4037,
+      "sha256": "bd7046f98491ff649207c5a37be28078479da4f3c039eba36a4dcbab83071193"
     },
     {
       "path": "src/ui/toolPalettes.ts",
@@ -75688,9 +75688,9 @@
       "sha256": "6078c1fc0eb5fb9232cea69e5bc571fa104f68473b835b0dc7644a533f3d60a7"
     },
     {
-      "path": "dist/assets/index-BdRkK8nW.js",
-      "bytes": 1166741,
-      "sha256": "538f39882f4cc6c5d46095436966e3b2551b472527e433c49138464be1091422"
+      "path": "dist/assets/index-BJ2g0ORZ.js",
+      "bytes": 1168177,
+      "sha256": "b45b55c99db216f4a22f8d847cfe2c61d4d0e3950d89fc8f0400d000c673c645"
     },
     {
       "path": "dist/assets/index-Bks0kLu0.css",
@@ -75698,14 +75698,14 @@
       "sha256": "d167f36d027e4aae1afc6fa8bcec970421049d5cfc2d631c3afb20d12097354a"
     },
     {
-      "path": "dist/assets/PuzzleCreatorPage-BleT_T4g.js",
+      "path": "dist/assets/PuzzleCreatorPage-CfQHNi-h.js",
       "bytes": 5080,
-      "sha256": "fed791c90e5386c2ae9613fe15193d11ac89daf3124238b25b3bbe10cda236ab"
+      "sha256": "1cdd45ee6cddc17f97fb51efbceb53f22587593051068cb73b487776e0491602"
     },
     {
-      "path": "dist/assets/PuzzleEditorPage-D5la70j_.js",
+      "path": "dist/assets/PuzzleEditorPage-My0Ozg_U.js",
       "bytes": 181202,
-      "sha256": "9f49426d2082b67197cab801eac4f175160b1c1fa424da8aafcd154326362c4e"
+      "sha256": "a045fa220334122fc90e8a2e820f25c21620c6a4aa43b81c904dddd9aeb12154"
     },
     {
       "path": "dist/assets/sudokupad-compatibility-manifest.json",
@@ -75720,7 +75720,7 @@
     {
       "path": "dist/index.html",
       "bytes": 2045,
-      "sha256": "bc852066533617745b75025317ca519bf0489e990c81d5d230f7be90bbba6f58"
+      "sha256": "3f9bf187d4e987f7ed76c559f64954444935944c6aa043a8b0be87ff696cd187"
     },
     {
       "path": "dist/lmg/lmg-manifest.json",
@@ -106914,5 +106914,5 @@
     }
   ],
   "bundleBuilt": true,
-  "releaseContentSha256": "30548c93457086a41a040c2ef5e1db03ce391a3129b6e698472eb0b3caa6e5fa"
+  "releaseContentSha256": "6072ae3ebb60ba60aecda5ba4ca5ec82200e35cbcecf85af789e03f6cdd151ce"
 }

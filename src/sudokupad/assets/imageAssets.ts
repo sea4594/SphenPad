@@ -1,5 +1,7 @@
 import type { SudokuPadScene } from "../types/scene";
 import { defaultSudokuPadAssetResolver, type SudokuPadAssetResolver } from "./assetResolver";
+import { computeSudokuPadViewBox } from "../render/contentBounds";
+import { SvgRenderer } from "../render/SvgRenderer";
 
 export function parseSudokuPadBackgroundOpacity(value: unknown): number {
   let opacity = Number.parseFloat(String(value));
@@ -16,6 +18,27 @@ export interface ApplyBackgroundImageOptions {
 // Like Twemoji URLs, image object URLs must survive progress-only redraws.
 // The resolver is shared by boards and caches the source blobs for this session.
 const imageObjectUrlCache = new WeakMap<SudokuPadAssetResolver, Map<string, string>>();
+type ImageFrame = { x: number; y: number; width: number; height: number };
+const metadataImageFrames = new WeakMap<SVGSVGElement, { key: string; source: string; frame: ImageFrame }>();
+
+/** Capture the *authored* frame before the playable/preview viewport is tightened.
+ * Image placement must not change when the surrounding SVG is resized. */
+export function rememberSudokuPadBackgroundFrame(svg: SVGSVGElement, scene: SudokuPadScene, key: string, remeasure = false): void {
+  const source = scene.metadata.bgimage;
+  if (typeof source !== "string" || !source.trim()) { metadataImageFrames.delete(svg); return; }
+  const previous = metadataImageFrames.get(svg);
+  if (!remeasure && previous?.key === key && previous.source === source) return;
+  // An already-restored cached image must not enlarge its own placement on
+  // subsequent preview/creator renders (viewBox feedback loop).
+  const existing = svg.querySelector<SVGImageElement>('image[data-sudokupad-metadata-background="true"]');
+  const originalDisplay = existing?.style.display ?? "";
+  if (existing) existing.style.display = "none";
+  let bounds: ReturnType<typeof computeSudokuPadViewBox>;
+  try { bounds = computeSudokuPadViewBox(new SvgRenderer(svg)); }
+  finally { if (existing) existing.style.display = originalDisplay; }
+  if (!(bounds.width > 0 && bounds.height > 0)) return;
+  metadataImageFrames.set(svg, { key, source, frame: { x: bounds.left, y: bounds.top, width: bounds.width, height: bounds.height } });
+}
 function cachedImageHref(resolver: SudokuPadAssetResolver, source: string): string | undefined {
   return imageObjectUrlCache.get(resolver)?.get(source);
 }
@@ -32,8 +55,10 @@ function insertMetadataBackground(svg: SVGSVGElement, scene: SudokuPadScene, hre
   if (!target) return;
   const previous = target.querySelector<SVGImageElement>('image[data-sudokupad-metadata-background="true"]');
   if (previous) return previous;
-  const viewBox = svg.getAttribute("viewBox")?.split(/\s+/).map(Number) ?? [];
-  const [left = 0, top = 0, width = scene.cols * 64, height = scene.rows * 64] = viewBox;
+  const remembered = metadataImageFrames.get(svg);
+  const viewBox = svg.viewBox.baseVal;
+  const frame = remembered?.source === bgimage ? remembered.frame : viewBox;
+  const { x: left, y: top, width, height } = frame;
   const image = document.createElementNS("http://www.w3.org/2000/svg", "image");
   image.setAttribute("href", href);
   image.setAttribute("x", String(left)); image.setAttribute("y", String(top));
@@ -105,7 +130,12 @@ export async function applySudokuPadMetadataBackground(
       if (options.signal?.aborted) { resolved.revoke(); return { cleanup: () => undefined }; }
       href = resolved.url;
       cacheImageHref(resolver, bgimage, href);
-    } catch { href = resolver.absoluteUrl(bgimage); }
+    } catch {
+      // Never bypass inline-image validation/size limits by falling back to
+      // the raw data URL. Keep the ordinary remote-image fallback unchanged.
+      if (/^data:/i.test(bgimage)) return { cleanup: () => undefined };
+      href = resolver.absoluteUrl(bgimage);
+    }
   }
   if (options.signal?.aborted) return { cleanup: () => undefined };
   const image = insertMetadataBackground(svg, scene, href);

@@ -247,6 +247,11 @@ export function GridCanvas(props: GridCanvasProps) {
       for (const delay of [80, 240, 500]) timeoutIds.push(window.setTimeout(fitPreview, delay));
     };
     schedule();
+    // First-pass bounds can precede an embedded image, external image or font.
+    // Refitting on completion/viewBox changes avoids relying on fixed delays.
+    svg.addEventListener("sudokupad-assets-ready", schedule);
+    const viewBoxObserver = new MutationObserver(schedule);
+    viewBoxObserver.observe(svg, { attributes: true, attributeFilter: ["viewBox"] });
     const resizeObserver = typeof ResizeObserver !== "undefined" && surfaceRef.current
       ? new ResizeObserver(schedule)
       : null;
@@ -255,6 +260,8 @@ export function GridCanvas(props: GridCanvasProps) {
       if (rafId !== null) window.cancelAnimationFrame(rafId);
       for (const id of timeoutIds) window.clearTimeout(id);
       resizeObserver?.disconnect();
+      viewBoxObserver.disconnect();
+      svg.removeEventListener("sudokupad-assets-ready", schedule);
     };
   }, [previewMode, svg, scene, def.id]);
 

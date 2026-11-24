@@ -43,9 +43,9 @@ function normalizeSceneCells(source: SudokuPadSourcePuzzle, rows: number, cols: 
     for (let col = 0; col < cols; col += 1) {
       const sourceCell = sourceRow[col] ?? {};
       const cell: SudokuPadSceneCell = { row, col };
-      if (sourceCell.value !== undefined && !Number.isNaN(sourceCell.value)) cell.given = String(sourceCell.value).toLowerCase();
-      if ((sourceCell.centremarks ?? []).length) cell.givenCentremarks = sourceCell.centremarks!.map((value) => String(value).toLowerCase());
-      if ((sourceCell.pencilMarks ?? []).length) cell.givenCornermarks = sourceCell.pencilMarks!.map((value) => String(value).toLowerCase());
+      if (sourceCell.value !== undefined && !Number.isNaN(sourceCell.value)) cell.given = String(sourceCell.value);
+      if ((sourceCell.centremarks ?? []).length) cell.givenCentremarks = sourceCell.centremarks!.map((value) => String(value));
+      if ((sourceCell.pencilMarks ?? []).length) cell.givenCornermarks = sourceCell.pencilMarks!.map((value) => String(value));
       sceneRow.push(cell);
     }
     result.push(sceneRow);

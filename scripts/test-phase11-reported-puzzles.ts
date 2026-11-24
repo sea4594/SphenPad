@@ -148,4 +148,38 @@ expect(fogMaskSource.includes('[mask="url(#fog-mask-fog)"]'), "authored fog-mask
 expect(fogMaskSource.includes('fogEdge.setAttribute("clip-path", `url(#${fogInnerClipId})`)'), "fog soft edge must be clipped inside hidden cells");
 expect(fogMaskSource.indexOf('fogEdge.appendChild(shapeUse)') < fogMaskSource.indexOf('edgeUses(fogShapeId).forEach((use) => fogEdge.appendChild(use))'), "fog edge strokes must be drawn after the opaque hidden region, not outside the revealed border");
 
+// Imported SVG backgrounds and letter givens must preserve source fidelity.
+// Outside-grid artwork/clues are features of the source format, not special cases.
+{
+  const jungle = await loadResolvedSudokuPadPayload(await archivedPayload("55em9pvc2c.json"), {
+    context: { sourceId: "55em9pvc2c", urlSettings: emptySudokuPadUrlSettings() },
+  });
+  expect(jungle.scene.metadata.bgimage?.startsWith("data:image/svg+xml"), "embedded SVG artwork must survive jungle import");
+  const letterGivens = jungle.sourcePuzzle.cells.flatMap((row) => row.map((cell) => cell.value))
+    .filter((value): value is string => typeof value === "string" && /[A-Z]/.test(value));
+  expect(letterGivens.length > 0, "test fixture needs uppercase letter givens");
+  for (let r = 0; r < jungle.scene.rows; r += 1) for (let c = 0; c < jungle.scene.cols; c += 1) {
+    const value = jungle.sourcePuzzle.cells[r]?.[c]?.value;
+    if (typeof value === "string" && /[A-Z]/.test(value)) {
+      expect(jungle.scene.cells[r][c].given === value, "import must preserve the case of authored givens");
+    }
+  }
+}
+{
+  const lmgRaw = JSON.parse(await readFile(new URL("../public/lmg/puzzles/wu0j06yqei.json", import.meta.url), "utf8")) as { payload: string };
+  const robo = await loadResolvedSudokuPadPayload(lmgRaw.payload, {
+    context: { sourceId: "wu0j06yqei", urlSettings: emptySudokuPadUrlSettings() },
+  });
+  expect(typeof robo.scene.metadata.bgimage === "string" && robo.scene.metadata.bgimage.includes("robo-rally"), "external artwork must survive import");
+  expect(robo.scene.overlays.length >= 2, "outside frame-setting graphics must survive RoboRally import");
+}
+{
+  const balanced = await loadResolvedSudokuPadPayload(await archivedPayload("g0gb6ifc1r.json"), {
+    context: { sourceId: "g0gb6ifc1r", urlSettings: emptySudokuPadUrlSettings() },
+  });
+  const outsideText = balanced.scene.underlays.filter((graphic) => graphic.text && graphic.center &&
+    (graphic.center[0] < 0 || graphic.center[1] < 0 || graphic.center[0] > balanced.scene.rows || graphic.center[1] > balanced.scene.cols));
+  expect(outsideText.length > 0, "outside-grid text graphics must survive import into previews");
+}
+
 console.log("Reported arrow/fog/preview puzzle import-to-play regressions passed");

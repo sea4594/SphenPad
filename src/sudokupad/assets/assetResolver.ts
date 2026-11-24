@@ -105,6 +105,34 @@ export class SudokuPadAssetResolver {
   }
 
   async fetchBlob(input: string, kind: SudokuPadAssetKind, signal?: AbortSignal): Promise<ResolvedSudokuPadBlobAsset> {
+    // SudokuPad puzzles may embed their artwork as data:image/... URLs.
+    // Decode those locally (never through the external-asset proxy), with the
+    // same MIME and byte limits as fetched images. Other data: kinds stay blocked.
+    if (/^data:/i.test(input)) {
+      if (kind !== "image" && kind !== "emoji") throw new Error("Inline assets are only supported for images");
+      const header = /^data:([^,]*),/i.exec(input);
+      const mime = header?.[1].split(";", 1)[0].toLowerCase() ?? "";
+      validateContentType(kind, mime);
+      if (input.length > this.maxBytes * 3 + 512) throw new Error(`Inline asset exceeds ${this.maxBytes} bytes`);
+      const key = `${kind}:${input}`;
+      let cached = this.blobCache.get(key);
+      if (!cached) {
+        cached = (async () => {
+          if (signal?.aborted) throw signal.reason;
+          // Fetching a data URL is local; do not route it through the injected
+          // network fetch or allow an unvalidated href to bypass the limit.
+          const response = await globalThis.fetch(input, { signal });
+          validateContentType(kind, response.headers.get("content-type"));
+          let blob = await response.blob();
+          if (blob.size > this.maxBytes) throw new Error(`Inline asset exceeds ${this.maxBytes} bytes`);
+          if (kind === "image") blob = await freezeGifFirstFrame(blob);
+          return { originalUrl: input, fetchedUrl: input, blob };
+        })();
+        this.blobCache.set(key, cached);
+        cached.catch(() => this.blobCache.delete(key));
+      }
+      return cached;
+    }
     const absolute = this.absoluteUrl(input);
     const key = `${kind}:${absolute}`;
     let cached = this.blobCache.get(key);

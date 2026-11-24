@@ -4,7 +4,7 @@ import { renderSudokuPadScene } from "../sudokupad/render/renderScene";
 import { applySudokuPadFogMasks } from "../sudokupad/fog/fogMasks";
 import { applySudokuPadAssets } from "../sudokupad/assets/applyAssets";
 import { restoreCachedSudokuPadSvgEmoji } from "../sudokupad/assets/emojiAssets";
-import { restoreCachedSudokuPadImages } from "../sudokupad/assets/imageAssets";
+import { rememberSudokuPadBackgroundFrame, restoreCachedSudokuPadImages } from "../sudokupad/assets/imageAssets";
 import type { SudokuPadAssetResolver } from "../sudokupad/assets/assetResolver";
 import { sudokuPadBoardClassNames } from "../sudokupad/app/boardClasses";
 import "../sudokupad/styles/sudokupad-renderer.css";
@@ -43,6 +43,7 @@ export const SudokuPadBoard = forwardRef<SVGSVGElement, SudokuPadBoardProps>(fun
         restoreCachedSudokuPadSvgEmoji(svg, assetResolver);
       },
     });
+    rememberSudokuPadBackgroundFrame(svg, scene, playableFitKey || scene.puzzleId || "preview", !playable);
     if (playable) fitPlayableBoard(svg, scene.rows, scene.cols, playableFitKey);
     // Restore previously resolved assets before paint; the asynchronous pass below
     // is still needed for first-load and for fonts/layout recomputation.
@@ -57,7 +58,10 @@ export const SudokuPadBoard = forwardRef<SVGSVGElement, SudokuPadBoardProps>(fun
       .then((cleanup) => {
         if (!controller.signal.aborted) {
           cleanupAssets = cleanup;
-          if (playable) fitPlayableBoard(svg, scene.rows, scene.cols, playableFitKey);
+          if (playable) fitPlayableBoard(svg, scene.rows, scene.cols, playableFitKey, true);
+          // Asset/font completion may change authored bounds without a viewBox
+          // mutation (e.g. late metadata images in the import thumbnail).
+          svg.dispatchEvent(new Event("sudokupad-assets-ready"));
         } else cleanup();
       })
       .catch((error) => { if (!controller.signal.aborted) console.warn("SudokuPad asset enhancement failed", error); });

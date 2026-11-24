@@ -1,24 +1,21 @@
-Phase 11 dependency-backed release gate — 2026-10-31T20:55:22Z
+Phase 11 dependency-backed release gate — 2026-11-24T00:53:07Z
 Node: v20.20.2
 npm: 10.8.2
 
 [1/11] Clean dependency install
 
-added 274 packages, and audited 275 packages in 6s
+added 274 packages, and audited 275 packages in 5s
 
 51 packages are looking for funding
   run `npm fund` for details
 
-29 vulnerabilities (2 low, 14 moderate, 13 high)
+24 vulnerabilities (2 low, 9 moderate, 13 high)
 
 To address issues that do not require attention, run:
   npm audit fix
 
-To address all issues possible (including breaking changes), run:
+To address all issues (including breaking changes), run:
   npm audit fix --force
-
-Some issues need review, and may require choosing
-a different dependency.
 
 Run `npm audit` for details.
 [2/11] Production dependency security audit
@@ -39,6 +36,9 @@ npm audit: only the known Firebase/Firestore browser-only grpc advisories are pr
   157:9  warning  The 'setMode' function makes the dependencies of useMemo Hook (at line 235) change on every render. Move it inside the useMemo callback. Alternatively, wrap the definition of 'setMode' in its own useCallback() Hook    react-hooks/exhaustive-deps
   161:9  warning  The 'setColor' function makes the dependencies of useMemo Hook (at line 235) change on every render. Move it inside the useMemo callback. Alternatively, wrap the definition of 'setColor' in its own useCallback() Hook  react-hooks/exhaustive-deps
 
+/Users/sea/Desktop/SphenPad/src/ui/CtCArchivePage.tsx
+  651:6  warning  React Hook useEffect has a missing dependency: 'refreshRows'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
 /Users/sea/Desktop/SphenPad/src/ui/PopupMenuButton.tsx
    97:6  warning  React Hook useEffect has a missing dependency: 'positionMenu'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
   103:6  warning  React Hook useEffect has a missing dependency: 'positionMenu'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
@@ -49,7 +49,7 @@ npm audit: only the known Firebase/Firestore browser-only grpc advisories are pr
 /Users/sea/Desktop/SphenPad/src/ui/SelectControl.tsx
   51:9  warning  The 'selectedValues' conditional could make the dependencies of useMemo Hook (at line 53) change on every render. Move it inside the useMemo callback. Alternatively, wrap the initialization of 'selectedValues' in its own useMemo() Hook  react-hooks/exhaustive-deps
 
-✖ 10 problems (0 errors, 10 warnings)
+✖ 11 problems (0 errors, 11 warnings)
 
 [4/11] Production build
 
@@ -58,18 +58,20 @@ npm audit: only the known Firebase/Firestore browser-only grpc advisories are pr
 
 vite v7.3.1 building client environment for production...
 transforming...
-✓ 175 modules transformed.
+✓ 179 modules transformed.
 rendering chunks...
 computing gzip size...
-dist/index.html                     2.05 kB │ gzip:   0.89 kB
-dist/assets/index-DBr4cURT.css     99.75 kB │ gzip:  16.96 kB
-dist/assets/index-BOYXxfXh.js   1,343.45 kB │ gzip: 404.09 kB
+dist/index.html                                2.05 kB │ gzip:   0.89 kB
+dist/assets/index-Bks0kLu0.css               100.73 kB │ gzip:  17.18 kB
+dist/assets/PuzzleCreatorPage-CfQHNi-h.js      5.08 kB │ gzip:   1.74 kB
+dist/assets/PuzzleEditorPage-My0Ozg_U.js     181.20 kB │ gzip:  50.29 kB
+dist/assets/index-BJ2g0ORZ.js              1,168.18 kB │ gzip: 356.46 kB
 
 (!) Some chunks are larger than 500 kB after minification. Consider:
 - Using dynamic import() to code-split the application
 - Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
 - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
-✓ built in 3.08s
+✓ built in 5.07s
 [5/11] Complete Phase 11 creator regression matrix
 
 > sphenpad@0.0.0 test-creator-phase11
@@ -151,7 +153,7 @@ Phase 11 release UI/workflow audit passed: 47/47 inventory rows exposed and crit
 > node scripts/test-phase11-playtest-regressions.mjs
 
 Phase 11 playtest rendering/selection regression checks passed
-Cell matching: value/highlight/marks/blank/cycle/multi-select and pointer-release regressions passed
+Cell matching: value/highlight/marks/line/multi-select and pointer-release regressions passed
 Creator gesture polish: hold preview, high-resolution line sweep, pan/pinch safeguards, perimeter outline, and duplicate markers passed
 
 > sphenpad@0.0.0 test-phase11-reported-puzzles
@@ -174,7 +176,7 @@ Production smoke: PASS (2 built asset references checked)
 > sphenpad@0.0.0 verify-production-bundle-clean
 > node scripts/verify-production-bundle-clean.mjs
 
-Production bundle cleanliness: PASS (4230 files, no test/debug/conformance leakage)
+Production bundle cleanliness: PASS (10612 files, no test/debug/conformance leakage)
 [8/11] Built-app browser smoke
 
 > sphenpad@0.0.0 verify-production-browser
@@ -200,7 +202,7 @@ SudokuPad compatibility manifest: PASS (67 JS/CSS assets, 13 fonts)
 > sphenpad@0.0.0 write-phase11-release-hashes
 > node scripts/write-phase11-release-hashes.mjs
 
-Phase 11 release hash manifest: PASS (4371 production inputs, 15 creator tests, 4230 built files)
-releaseContentSha256=45787758db75460efd670d9f007721c4a6d91f73bdc779606c0f160e338e722f
+Phase 11 release hash manifest: PASS (10754 production inputs, 15 creator tests, 10612 built files)
+releaseContentSha256=6072ae3ebb60ba60aecda5ba4ca5ec82200e35cbcecf85af789e03f6cdd151ce
 
 PHASE 11 DEPENDENCY-BACKED RELEASE GATE PASSED
