@@ -10,6 +10,7 @@ import { IconSettings } from "./icons";
 import { PopupMenuButton } from "./PopupMenuButton";
 import { SettingsOverlay } from "./SettingsOverlay";
 import { onStorageRefreshNeeded } from "../core/syncSignal";
+import { getCreatorEditorSaveQueue } from "../sudokupad/creator/persistence";
 
 type StoredPuzzle = CreatorProjectStorageRow;
 const NOOP = () => {};
@@ -25,6 +26,7 @@ function defaultSubgrid(size: number) {
 export function PuzzleCreatorPage() {
   const nav = useNavigate();
   const [rows, setRows] = useState<StoredPuzzle[]>([]);
+  const [projectError, setProjectError] = useState("");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [dimensionsOpen, setDimensionsOpen] = useState(false);
   const [height, setHeight] = useState(9);
@@ -76,22 +78,34 @@ export function PuzzleCreatorPage() {
   }
 
   async function removePuzzle(row: StoredPuzzle) {
-    if (!window.confirm(`Delete creator project?\n\n${row.project.metadata.title || "Untitled puzzle"}`)) return;
-    await deleteCreatorProject(row.key);
-    await refresh();
+    if (!window.confirm(`Delete creator project?\n\n${row.project.metadata.title || "Untitled puzzle"}\n\nThis deletes the stored project from your creator list.`)) return;
+    try {
+      await getCreatorEditorSaveQueue(row.key).flush();
+      await deleteCreatorProject(row.key);
+      await refresh();
+      setProjectError("");
+    } catch { setProjectError("Could not delete the project. Any unsaved edits remain available; retry after saving."); }
   }
 
   async function duplicatePuzzle(row: StoredPuzzle) {
-    const duplicate = await duplicateCreatorProject(row.key);
-    await refresh();
-    startTransition(() => nav(`/creator/${encodeURIComponent(duplicate.key)}`));
+    try {
+      await getCreatorEditorSaveQueue(row.key).flush();
+      const duplicate = await duplicateCreatorProject(row.key);
+      await refresh();
+      setProjectError("");
+      startTransition(() => nav(`/creator/${encodeURIComponent(duplicate.key)}`));
+    } catch { setProjectError("Could not duplicate the project. Check that pending edits have saved."); }
   }
 
   async function renamePuzzle(row: StoredPuzzle) {
     const next = window.prompt("Puzzle title", row.project.metadata.title || "Untitled puzzle")?.trim();
     if (!next || next === row.project.metadata.title) return;
-    await renameCreatorProject(row.key, next);
-    await refresh();
+    try {
+      await getCreatorEditorSaveQueue(row.key).flush();
+      await renameCreatorProject(row.key, next);
+      await refresh();
+      setProjectError("");
+    } catch { setProjectError("Could not rename the project. Check that pending edits have saved."); }
   }
 
   function openPuzzle(row: StoredPuzzle) {
@@ -117,6 +131,7 @@ export function PuzzleCreatorPage() {
       <div className="page">
         <div className="mainMenuWrap">
           <button className="btn primary creatorEntryButton" onClick={() => setDimensionsOpen(true)} type="button">New puzzle</button>
+          {projectError ? <div role="alert" className="creatorValidation invalid">{projectError}</div> : null}
           <div className="card">
             <div className="menuPuzzleList">{rows.map(projectRow)}{!rows.length ? <div className="muted">No created puzzles yet.</div> : null}</div>
           </div>

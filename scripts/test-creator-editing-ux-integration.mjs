@@ -56,8 +56,9 @@ for (const token of ['.creatorFogRole', '.sphenpad-creator-path-handles']) if (!
 
 
 for (const token of [
-  'createCreatorProjectHistoryEntry', 'applyCreatorProjectHistoryEntry', 'creatorHistoryRef', 'persistCreatorDefinition(key, snapshot, historySnapshot)',
-  'persistCreatorHistoryNavigation', 'creatorPaneResizeHandle', 'startCreatorPaneResize', 'resizeCreatorPane', 'keyCreatorPaneResize',
+  'createCreatorProjectHistoryEntry', 'applyCreatorProjectHistoryEntry', 'creatorHistoryRef', 'saveQueue.enqueue({ def, history: creatorHistoryRef.current })',
+  'const savedRevision = await saveQueue.flush()',
+  'setCreatorHistoryState(nextUndo, nextRedo)', 'creatorPaneResizeHandle', 'startCreatorPaneResize', 'resizeCreatorPane', 'keyCreatorPaneResize',
   'aria-valuenow={Math.round(creatorControlSplit * 100)}', 'creatorGridLayoutRef', '--creator-controls-size'
 ]) if (!editor.includes(token)) throw new Error(`missing creator UX hardening token: ${token}`);
 for (const token of ['collectPatches(', 'validHistoryPath(', 'applyCreatorProjectHistoryEntry']) if (!creatorHistory.includes(token)) throw new Error(`missing compact creator history token: ${token}`);

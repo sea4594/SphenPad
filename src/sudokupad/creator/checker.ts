@@ -13,6 +13,9 @@ export function validateCreatorDefinition(input: PuzzleDefinition): string[] {
   if (!Number.isInteger(def.rows) || !Number.isInteger(def.cols) || def.rows < 1 || def.cols < 1 || def.rows > 30 || def.cols > 30) messages.push("Grid dimensions must be whole numbers from 1 to 30.");
   const range = creatorDigitRange(def), digitCount = creatorDigitCount(def);
   if (range.min < 1 || range.max > 64 || range.min > range.max) messages.push("Digit range must stay between 1 and 64.");
+  if (creatorSudokuRulesEnabled(def) && Number.isInteger(digitCount) && digitCount > 0 && Math.max(def.rows, def.cols) > digitCount) {
+    messages.push(`Standard Sudoku row/column rules require at least ${Math.max(def.rows, def.cols)} distinct values for this grid.`);
+  }
   const values = new Map(def.givens.map((given) => [key(given.rc), given.v.trim().toUpperCase()]));
   const seen = new Set<string>();
   for (const given of def.givens) {
@@ -94,7 +97,7 @@ export function validateCreatorDefinition(input: PuzzleDefinition): string[] {
   }
   for (const given of def.givens) {
     const expected = solutionByCell.get(key(given.rc));
-    if (expected && expected !== given.v) messages.push("A given conflicts with the solution.");
+    if (expected && expected !== given.v) messages.push(`Given at R${given.rc.r + 1}C${given.rc.c + 1} conflicts with the solution.`);
   }
   const checked = (id: string) => def.meta.creatorConstraintChecks?.[id] !== false;
   const num = (cell: CellRC) => Number(values.get(key(cell)));

@@ -1,3 +1,4 @@
+import "./test-creator-phase1-safety";
 function ok(value: unknown, message = "assertion failed"): asserts value { if (!value) throw new Error(message); }
 function equal(actual: unknown, expected: unknown) { if (actual !== expected) throw new Error(`expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`); }
 

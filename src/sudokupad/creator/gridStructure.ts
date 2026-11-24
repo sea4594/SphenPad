@@ -4,6 +4,99 @@ import { getCreatorRegions, removeCreatorConstraint, setCreatorRegions, setCreat
 export type CreatorRegionMode = "none" | "regular" | "irregular";
 export type CreatorSolutionEntry = { rc: CellRC; value: string };
 
+export type CreatorStructureDraft = {
+  rows: number; cols: number; min: number; max: number;
+  regionMode: CreatorRegionMode; boxRows: number; boxCols: number;
+  sudokuRules: boolean;
+};
+
+/** Reject invalid authoring settings instead of silently clamping them to another puzzle. */
+export function validateCreatorStructureDraft(draft: CreatorStructureDraft): string[] {
+  const problems: string[] = [];
+  const dimension = (value: number) => Number.isInteger(value) && value >= 1 && value <= 30;
+  if (!dimension(draft.rows) || !dimension(draft.cols)) problems.push("Rows and columns must be whole numbers between 1 and 30.");
+  if (!Number.isInteger(draft.min) || !Number.isInteger(draft.max) || draft.min < 1 || draft.max > 64 || draft.max < draft.min) {
+    problems.push("Digit range must use whole numbers from 1 to 64, with the highest digit at least the lowest.");
+  }
+  const count = draft.max - draft.min + 1;
+  if (problems.length) return problems;
+  if (draft.sudokuRules && Math.max(draft.rows, draft.cols) > count) {
+    problems.push(`With standard Sudoku row/column rules, a ${draft.rows}×${draft.cols} grid needs at least ${Math.max(draft.rows, draft.cols)} allowed digits.`);
+  }
+  if (draft.regionMode === "regular") {
+    if (!Number.isInteger(draft.boxRows) || !Number.isInteger(draft.boxCols) || draft.boxRows < 1 || draft.boxCols < 1 ||
+        draft.rows % draft.boxRows !== 0 || draft.cols % draft.boxCols !== 0) {
+      problems.push("Regular box dimensions must be positive whole numbers that divide the grid exactly.");
+    } else if (draft.boxRows * draft.boxCols !== count) {
+      problems.push(`Each regular box must contain ${count} cells for this digit range.`);
+    }
+  }
+  return problems;
+}
+
+/** Return cells not currently assigned to any base region (useful while painting irregular regions). */
+export function getCreatorUnassignedRegionCells(def: PuzzleDefinition): CellRC[] {
+  const covered = new Set(getCreatorRegions(def).flatMap((region) => region.cells.map(key)));
+  return Array.from({ length: def.rows * def.cols }, (_, index) => ({ r: Math.floor(index / def.cols), c: index % def.cols }))
+    .filter((cell) => !covered.has(key(cell)));
+}
+
+/** Assign selected cells to a base region atomically, without allowing duplicate membership. */
+export function assignCreatorRegionCells(def: PuzzleDefinition, selected: CellRC[], label: string): PuzzleDefinition {
+  const valid = new Map(selected.filter((cell) => inBounds(cell, def.rows, def.cols)).map((cell) => [key(cell), cell]));
+  if (!valid.size) return def;
+  const regions = getCreatorRegions(def)
+    .map((region) => ({ ...region, cells: region.cells.filter((cell) => !valid.has(key(cell))) }))
+    .filter((region) => region.cells.length);
+  if (label) {
+    const matching = regions.find((region) => region.label === label);
+    if (matching) matching.cells.push(...valid.values());
+    else regions.push({ label, cells: [...valid.values()] });
+  }
+  regions.sort((a, b) => Number(a.label ?? 0) - Number(b.label ?? 0));
+  return setCreatorRegions(def, regions);
+}
+
+/** Numeric values are canonical strings; zero and dot are blank only in grid text. */
+export function creatorGridValueError(raw: string, min: number, max: number): string | undefined {
+  if (!/^\d+$/.test(raw) || String(Number(raw)) !== raw || !Number.isInteger(Number(raw))) return `Invalid cell value “${raw}”. Use whole numbers without leading zeroes.`;
+  if (Number(raw) < min || Number(raw) > max) return `Cell value ${raw} is outside the allowed range ${min}–${max}.`;
+  return undefined;
+}
+
+export type CreatorGridParseResult = { values: string[]; error?: never } | { values?: never; error: string };
+/** Parse a compact single-character grid or a whitespace/comma separated numeric grid. */
+export function parseCreatorGridDetailed(text: string, rows: number, cols: number, range?: { min: number; max: number }): CreatorGridParseResult {
+  const trimmed = text.trim();
+  if (!trimmed) return { values: Array(rows * cols).fill("") };
+  const lines = trimmed.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  let values: string[] | undefined;
+  if (lines.length === rows) {
+    const tokens = lines.map((line) => line.split(/[\s,]+/).filter(Boolean));
+    if (tokens.every((parts) => parts.length === cols)) values = tokens.flat();
+    else if (lines.every((line) => Array.from(line.replace(/\s/g, "")).length === cols && !line.includes(","))) {
+      values = lines.flatMap((line) => Array.from(line.replace(/\s/g, "")));
+    } else return { error: `Expected ${cols} values in each of the ${rows} rows. For two-digit values, separate cells with spaces or commas.` };
+  }
+  if (!values) {
+    const tokens = trimmed.split(/[\s,]+/).filter(Boolean);
+    if (tokens.length === rows * cols) values = tokens;
+    else {
+      const compact = trimmed.replace(/\s/g, "");
+      if (!trimmed.includes(",") && Array.from(compact).length === rows * cols) values = Array.from(compact);
+    }
+  }
+  if (!values) return { error: `Expected exactly ${rows * cols} cells (${rows} rows × ${cols} columns). Separate two-digit values with spaces or commas.` };
+  const normalized = values.map((value) => value === "." || value === "0" ? "" : value);
+  if (range) for (let index = 0; index < normalized.length; index += 1) {
+    const value = normalized[index];
+    if (!value) continue;
+    const error = creatorGridValueError(value, range.min, range.max);
+    if (error) return { error: `${error} At R${Math.floor(index / cols) + 1}C${index % cols + 1}.` };
+  }
+  return { values: normalized };
+}
+
 const clone = <T,>(value: T): T => value == null ? value : JSON.parse(JSON.stringify(value)) as T;
 const key = (cell: CellRC) => `${cell.r}:${cell.c}`;
 const inBounds = (cell: CellRC, rows: number, cols: number) => cell.r >= 0 && cell.c >= 0 && cell.r < rows && cell.c < cols;
@@ -135,19 +228,7 @@ export function clearCreatorSolution(def: PuzzleDefinition) { return setCreatorS
 export function clearCreatorRegions(def: PuzzleDefinition) { return setCreatorRegionConfiguration(def, "none"); }
 
 export function parseCreatorGrid(text: string, rows: number, cols: number): string[] | null {
-  const trimmed = text.trim();
-  if (!trimmed) return Array(rows * cols).fill("");
-  const lines = trimmed.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
-  if (lines.length === rows) {
-    const tokenRows = lines.map((line) => line.split(/[\s,]+/).filter(Boolean));
-    if (tokenRows.every((tokens) => tokens.length === cols)) return tokenRows.flat().map((value) => (value === "." || value === "0") ? "" : value);
-    if (lines.every((line) => Array.from(line.replace(/\s/g, "")).length === cols)) return lines.flatMap((line) => Array.from(line.replace(/\s/g, "")).map((value) => (value === "." || value === "0") ? "" : value));
-  }
-  const compact = trimmed.replace(/\s/g, "");
-  if (Array.from(compact).length === rows * cols) return Array.from(compact).map((value) => (value === "." || value === "0") ? "" : value);
-  const tokens = trimmed.split(/[\s,]+/).filter(Boolean);
-  if (tokens.length === rows * cols) return tokens.map((value) => (value === "." || value === "0") ? "" : value);
-  return null;
+  return parseCreatorGridDetailed(text, rows, cols).values ?? null;
 }
 
 export function formatCreatorGrid(def: PuzzleDefinition, source: "givens" | "solution") {

@@ -1,7 +1,7 @@
 import { useCreatorBoardNavigation } from "./useCreatorBoardNavigation";
 import { startTransition, useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
-import { getCreatorProject, saveCreatorProject, setCreatorProjectPublished } from "../core/storage";
+import { getCreatorProject, setCreatorProjectPublished } from "../core/storage";
 import type { CellRC, LineStroke, PersistedPuzzle, PuzzleDefinition, PuzzleProgress } from "../core/model";
 import { makeInitialProgress } from "../core/scl";
 import { GridCanvas } from "./GridCanvas";
@@ -17,20 +17,24 @@ import { validateCreatorDefinition } from "../sudokupad/creator/checker";
 import { creatorProjectFromDefinition, definitionFromCreatorProject } from "../sudokupad/creator/project";
 import { applyCreatorProjectHistoryEntry, createCreatorProjectHistoryEntry, normalizeCreatorProjectHistory, type CreatorProjectHistoryEntry, type CreatorProjectHistoryState } from "../sudokupad/creator/history";
 import {
+  assignCreatorRegionCells,
   clearCreatorGivens,
   clearCreatorRegions,
   clearCreatorSolution,
   creatorDigitCount,
+  creatorGridValueError,
   creatorDigitRange,
   creatorRegionMode,
   formatCreatorGrid,
   getCreatorSolutionEntries,
+  getCreatorUnassignedRegionCells,
   inferCreatorBoxSize,
-  parseCreatorGrid,
+  parseCreatorGridDetailed,
   resizeCreatorDefinition,
   setCreatorDigitRange,
   setCreatorRegionConfiguration,
   setCreatorSolutionEntries,
+  validateCreatorStructureDraft,
   type CreatorRegionMode,
 } from "../sudokupad/creator/gridStructure";
 import {
@@ -52,6 +56,10 @@ import { getCellsSeenByCells, getComponents, validateConstraints, validateGrid, 
 import { findCreatorSolutions, solveCreatorLogically, type CreatorLogicalResult, type CreatorSolutionSearchResult } from "../sudokupad/creator/solver";
 import { authoredPuzzleJson, creatorProjectJson, exportCreatorInterchange, importCreatorInterchange, type CreatorInterchangeReport } from "../sudokupad/creator/interchange";
 import { makeCreatorPlaytestRouteState, readCreatorPlaytestRouteState } from "../sudokupad/creator/playtest";
+import type { CreatorSaveStatus } from "../sudokupad/creator/saveCoordinator";
+import { getCreatorEditorSaveQueue } from "../sudokupad/creator/persistence";
+import { describeCreatorStructureLoss } from "../sudokupad/creator/creatorSafety";
+import { creatorDigitTransition, type CreatorDigitSequence } from "../sudokupad/creator/digitEntry";
 import { alignCreatorCosmetics, creatorObjectClipboardJson, insertCreatorLinePathPoint, moveCreatorObjectsToEdge, nudgeCreatorLinePathPoint, parseCreatorObjectClipboard, pasteCreatorObjectClipboard, removeCreatorLinePathPoint, removeCreatorObjects, reorderCreatorLinePathPoint, setCreatorLinePathPoint, snapCreatorObjects, updateCreatorObjects, type CreatorAlignMode, type CreatorSnapMode } from "../sudokupad/creator/editingUx";
 
 type ElementKind = "given" | "cage" | "thermo" | "arrow" | "whisper" | "renban" | "palindrome" | "dot" | "region" | "fog";
@@ -107,14 +115,15 @@ function creatorDirectModeForElement(elementId: string | null): CreatorDirectMod
 }
 // Keep the user's intermediate text (including an empty numeric field) until it is
 // committed. Saving/normalizing on every keystroke previously made Backspace fail.
-function CreatorDraftInput(props: { value: string | number; onCommit: (value: string) => void; placeholder?: string; inputMode?: "decimal" | "numeric" | "text" | "url"; className?: string; ariaLabel?: string }) {
+function CreatorDraftInput(props: { value: string | number; onCommit: (value: string) => void; placeholder?: string; inputMode?: "decimal" | "numeric" | "text" | "url"; className?: string; ariaLabel?: string; onDraftChange?: (dirty: boolean) => void }) {
   const [editingDraft, setEditingDraft] = useState<string | null>(null);
   const cancel = useRef(false);
   const draft = editingDraft ?? String(props.value);
   return <input className={props.className ?? "url"} type="text" inputMode={props.inputMode} aria-label={props.ariaLabel} placeholder={props.placeholder} value={draft}
     onFocus={() => { cancel.current = false; setEditingDraft(String(props.value)); }}
-    onChange={(event) => setEditingDraft(event.target.value)}
+    onChange={(event) => { setEditingDraft(event.target.value); props.onDraftChange?.(event.target.value !== String(props.value)); }}
     onBlur={() => {
+      props.onDraftChange?.(false);
       setEditingDraft(null);
       if (cancel.current) { cancel.current = false; return; }
       if (draft !== String(props.value)) props.onCommit(draft);
@@ -124,6 +133,18 @@ function CreatorDraftInput(props: { value: string | number; onCommit: (value: st
       if (event.key === "Enter") { event.preventDefault(); event.stopPropagation(); event.currentTarget.blur(); }
     }} />;
 }
+// Large text fields commit as one undoable edit on blur, not one edit per keystroke.
+function CreatorDraftTextarea(props: { value: string; onCommit: (value: string) => void; className: string; ariaLabel: string; onDraftChange?: (dirty: boolean) => void }) {
+  const [editingDraft, setEditingDraft] = useState<string | null>(null);
+  const cancel = useRef(false);
+  const draft = editingDraft ?? props.value;
+  return <textarea className={props.className} aria-label={props.ariaLabel} value={draft}
+    onFocus={() => { cancel.current = false; setEditingDraft(props.value); }}
+    onChange={(event) => { setEditingDraft(event.target.value); props.onDraftChange?.(event.target.value !== props.value); }}
+    onBlur={() => { props.onDraftChange?.(false); setEditingDraft(null); if (cancel.current) { cancel.current = false; return; } if (draft !== props.value) props.onCommit(draft); }}
+    onKeyDown={(event) => { if (event.key === "Escape") { cancel.current = true; event.stopPropagation(); event.preventDefault(); event.currentTarget.blur(); } }} />;
+}
+
 function CreatorColorField(props: { label: string; value: string; placeholder?: string; onChange: (value: string) => void }) {
   const normalized = /^#[0-9a-f]{6}$/i.test(props.value) ? props.value : "#555555";
   return <label>{props.label}<span className="creatorColorControl"><input aria-label={`${props.label} picker`} type="color" value={normalized} onChange={(event) => props.onChange(event.target.value)} /><CreatorDraftInput value={props.value} onCommit={props.onChange} placeholder={props.placeholder ?? "#555555"} ariaLabel={`${props.label} value`} /></span></label>;
@@ -253,14 +274,16 @@ function sanitizeDefinition(input: PuzzleDefinition): PuzzleDefinition {
 }
 
 function validationMessages(def: PuzzleDefinition) { return validateCreatorDefinition(def); }
-async function persistCreatorDefinition(key: string, def: PuzzleDefinition, history?: CreatorProjectHistoryState) { return saveCreatorProject(key, creatorProjectFromDefinition(def), Date.now(), history); }
-
 export function PuzzleEditorPage() {
   const { puzzleId } = useParams();
   const key = decodeURIComponent(puzzleId ?? "");
   const navigate = useNavigate();
   const location = useLocation();
   const theme = useTheme();
+  const saveQueue = useMemo(() => getCreatorEditorSaveQueue(key), [key]);
+  const [saveStatus, setSaveStatus] = useState<CreatorSaveStatus>(() => saveQueue.getStatus());
+  const gridDraftBaselineRef = useRef({ key: "", givens: "", solution: "" });
+  const structureDraftBaselineRef = useRef({ key: "", signature: "" });
   const [data, setData] = useState<PersistedPuzzle | null>(null);
   const [selection, setSelection] = useState<CellRC[]>([{ r: 0, c: 0 }]);
   const [multiSelect, setMultiSelect] = useState(false);
@@ -286,6 +309,7 @@ export function PuzzleEditorPage() {
   const [canvasZoom, setCanvasZoom] = useState(1);
   const [canvasPan, setCanvasPan] = useState({ x: 0, y: 0 });
   const regionDigitEntryRef = useRef<{ selectionKey: string; value: string; at: number } | null>(null);
+  const creatorDigitSequenceRef = useRef<CreatorDigitSequence | null>(null);
   const beforePinchRef = useRef<{ selection: CellRC[]; selectedId: string | null; selectedIds: string[] } | null>(null);
   const creatorNavigation = useCreatorBoardNavigation(canvasZoom, canvasPan, setCanvasZoom, setCanvasPan,
     () => { beforePinchRef.current = { selection: selection.map((cell) => ({ ...cell })), selectedId: selectedObjectId, selectedIds: [...selectedObjectIds] }; },
@@ -306,6 +330,7 @@ export function PuzzleEditorPage() {
   const [testFuture, setTestFuture] = useState<PuzzleProgress[]>([]);
   const [givensText, setGivensText] = useState("");
   const [solutionText, setSolutionText] = useState("");
+  const [metadataDraftDirty, setMetadataDraftDirty] = useState(false);
   const [draftRows, setDraftRows] = useState(9);
   const [draftCols, setDraftCols] = useState(9);
   const [draftDigitMin, setDraftDigitMin] = useState(1);
@@ -343,17 +368,25 @@ export function PuzzleEditorPage() {
   const selectModeHoldTriggeredRef = useRef(false);
 
   useEffect(() => {
+    let active = true;
     void (async () => {
+      // A fast exit/reopen must not load a stale row while its final write is in flight.
+      if (saveQueue.getUncommitted()) {
+        try { await saveQueue.flush(); } catch { /* the unsaved snapshot remains available below */ }
+      }
       const stored = await getCreatorProject(key);
+      if (!active) return;
       if (!stored) {
         setMessage("This creator puzzle could not be found.");
         return;
       }
-      const def = ensureCreatorObjectIds(normalizeCreatorLineConstraints(definitionFromCreatorProject(stored.project, { id: key, sourceId: key })));
+      const unsaved = saveQueue.getUncommitted();
+      const def = unsaved?.def ?? ensureCreatorObjectIds(normalizeCreatorLineConstraints(definitionFromCreatorProject(stored.project, { id: key, sourceId: key })));
       setData({ def, progress: makeInitialProgress(def), undo: [], redo: [], createdAt: stored.createdAt, updatedAt: stored.updatedAt });
       setCreatorScratchProgress(makeInitialProgress(def));
-      editRevisionRef.current = 0;
-      setDirty(false);
+      editRevisionRef.current = saveQueue.getStatus().latestRevision;
+      setDirty(Boolean(unsaved));
+      if (unsaved) setMessage("Restored changes still waiting to be saved.");
       const returned = readCreatorPlaytestRouteState(location.state);
       const restored = returned?.projectKey === key ? returned.editorState : null;
       setSelection(restored?.selection?.filter((cell) => isInBounds(cell, def.rows, def.cols)) ?? [{ r: 0, c: 0 }]);
@@ -376,8 +409,8 @@ export function PuzzleEditorPage() {
       setEditorLineDouble(restored?.editorLineDouble ?? false);
       setCanvasZoom(Math.max(0.5, Math.min(4, restored?.canvasZoom ?? 1)));
       setCanvasPan(restored?.canvasPan ?? { x: 0, y: 0 });
-      const restoredUndo = normalizeCreatorProjectHistory(stored.undo);
-      const restoredRedo = normalizeCreatorProjectHistory(stored.redo);
+      const restoredUndo = normalizeCreatorProjectHistory(unsaved?.history.undo ?? stored.undo);
+      const restoredRedo = normalizeCreatorProjectHistory(unsaved?.history.redo ?? stored.redo);
       creatorHistoryRef.current = { undo: restoredUndo, redo: restoredRedo };
       setHistory(restoredUndo);
       setFuture(restoredRedo);
@@ -390,7 +423,8 @@ export function PuzzleEditorPage() {
       setSolutionSearch(null);
       setInterchangeReport(null);
     })();
-  }, [key, location.state]);
+    return () => { active = false; };
+  }, [key, location.state, saveQueue]);
 
   useEffect(() => {
     const viewport = window.visualViewport;
@@ -453,31 +487,36 @@ export function PuzzleEditorPage() {
 
   useEffect(() => {
     if (!data) return;
+    const givens = formatCreatorGrid(data.def, "givens"), solution = formatCreatorGrid(data.def, "solution");
+    const previous = gridDraftBaselineRef.current;
+    // A metadata/constraint edit must not erase an unapplied grid draft.
+    setGivensText((current) => previous.key !== key || current === previous.givens ? givens : current);
+    setSolutionText((current) => previous.key !== key || current === previous.solution ? solution : current);
+    gridDraftBaselineRef.current = { key, givens, solution };
     const range = creatorDigitRange(data.def), box = inferCreatorBoxSize(data.def);
-    setGivensText(formatCreatorGrid(data.def, "givens"));
-    setSolutionText(formatCreatorGrid(data.def, "solution"));
-    setDraftRows(data.def.rows); setDraftCols(data.def.cols);
-    setDraftDigitMin(range.min); setDraftDigitMax(range.max);
-    setDraftRegionMode(creatorRegionMode(data.def));
-    setDraftBoxRows(box?.rows ?? Math.max(1, Math.floor(Math.sqrt(creatorDigitCount(data.def)))));
-    setDraftBoxCols(box?.cols ?? Math.max(1, Math.ceil(creatorDigitCount(data.def) / Math.max(1, Math.floor(Math.sqrt(creatorDigitCount(data.def)))))));
-  }, [data]);
+    const mode = creatorRegionMode(data.def);
+    const signature = [data.def.rows, data.def.cols, range.min, range.max, mode, box?.rows, box?.cols].join(":");
+    if (structureDraftBaselineRef.current.key !== key || structureDraftBaselineRef.current.signature !== signature) {
+      setDraftRows(data.def.rows); setDraftCols(data.def.cols);
+      setDraftDigitMin(range.min); setDraftDigitMax(range.max);
+      setDraftRegionMode(mode);
+      setDraftBoxRows(box?.rows ?? Math.max(1, Math.floor(Math.sqrt(creatorDigitCount(data.def)))));
+      setDraftBoxCols(box?.cols ?? Math.max(1, Math.ceil(creatorDigitCount(data.def) / Math.max(1, Math.floor(Math.sqrt(creatorDigitCount(data.def)))))));
+    }
+    structureDraftBaselineRef.current = { key, signature };
+  }, [data, key]);
 
-  useEffect(() => {
-    if (!dirty || !data) return;
-    const revision = editRevisionRef.current;
-    const snapshot = data.def;
-    const historySnapshot = creatorHistoryRef.current;
-    const timer = window.setTimeout(() => {
-      void persistCreatorDefinition(key, snapshot, historySnapshot).then(() => {
-        if (editRevisionRef.current === revision) {
-          setDirty(false);
-          setMessage((current) => current.startsWith("Autosave failed") ? "" : current);
-        }
-      }).catch(() => setMessage("Autosave failed. Your current edits are still open and will retry on the next edit."));
-    }, 700);
-    return () => window.clearTimeout(timer);
-  }, [data, dirty, key]);
+  useEffect(() => saveQueue.subscribe((status) => {
+    setSaveStatus(status);
+    if (status.latestRevision > 0 && status.savedRevision >= editRevisionRef.current) {
+      setDirty(false);
+      setMessage((current) => current.startsWith("Autosave failed") || current.startsWith("Save failed") ? "" : current);
+    }
+    if (status.error) {
+      setDirty(true);
+      setMessage("Autosave failed. Your edits remain open; retry saving before leaving.");
+    }
+  }), [saveQueue]);
 
   useEffect(() => {
     const stop = () => {
@@ -486,20 +525,34 @@ export function PuzzleEditorPage() {
       creatorHoldDelayRef.current = creatorHoldIntervalRef.current = null;
       creatorHoldKindRef.current = null;
     };
-    const hidden = () => { if (document.hidden) stop(); };
+    const hidden = () => { if (document.hidden) { stop(); void saveQueue.flush().catch(() => { /* Retry remains available in the editor. */ }); } };
     window.addEventListener("pointerup", stop);
     window.addEventListener("pointercancel", stop);
     window.addEventListener("blur", stop);
     document.addEventListener("visibilitychange", hidden);
     return () => { stop(); window.removeEventListener("pointerup", stop); window.removeEventListener("pointercancel", stop); window.removeEventListener("blur", stop); document.removeEventListener("visibilitychange", hidden); };
-  }, []);
+  }, [saveQueue]);
 
+  const hasUnappliedGridDraft = Boolean(data) && (givensText !== gridDraftBaselineRef.current.givens || solutionText !== gridDraftBaselineRef.current.solution);
+  const hasUnappliedStructureDraft = Boolean(data) && (
+    draftRows !== data!.def.rows || draftCols !== data!.def.cols ||
+    draftDigitMin !== creatorDigitRange(data!.def).min || draftDigitMax !== creatorDigitRange(data!.def).max ||
+    draftRegionMode !== creatorRegionMode(data!.def) ||
+    (draftRegionMode === "regular" && (draftBoxRows !== (inferCreatorBoxSize(data!.def)?.rows ?? draftBoxRows) || draftBoxCols !== (inferCreatorBoxSize(data!.def)?.cols ?? draftBoxCols)))
+  );
   useEffect(() => {
-    if (!dirty) return;
+    if (!dirty && !hasUnappliedGridDraft && !hasUnappliedStructureDraft && !metadataDraftDirty) return;
     const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ""; };
     window.addEventListener("beforeunload", warn);
     return () => window.removeEventListener("beforeunload", warn);
-  }, [dirty]);
+  }, [dirty, hasUnappliedGridDraft, hasUnappliedStructureDraft, metadataDraftDirty]);
+
+  function confirmDiscardGridDrafts() {
+    return !hasUnappliedGridDraft || window.confirm("The Givens or Solution text has unapplied edits. Discard those unapplied text edits? (Already applied puzzle changes will be saved.)");
+  }
+  function confirmLeaveWithDrafts() {
+    return confirmDiscardGridDrafts() && (!hasUnappliedStructureDraft || window.confirm("There are unapplied grid structure edits. Discard those draft settings?"));
+  }
 
   function setCreatorHistoryState(undo: CreatorProjectHistoryEntry[], redo: CreatorProjectHistoryEntry[]) {
     const nextUndo = undo.slice(-100), nextRedo = redo.slice(-100);
@@ -523,8 +576,8 @@ export function PuzzleEditorPage() {
       redo: [],
       updatedAt: Date.now(),
     };
-    editRevisionRef.current += 1;
-    const revision = editRevisionRef.current;
+    const revision = saveQueue.enqueue({ def, history: creatorHistoryRef.current });
+    editRevisionRef.current = revision;
     setDirty(true);
     setMessage("");
     setWorkerValidation(null);
@@ -533,13 +586,6 @@ export function PuzzleEditorPage() {
     setSolutionSearch(null);
     setData(next);
     return { def, revision };
-  }
-
-  function persistCreatorHistoryNavigation(saved: { def: PuzzleDefinition; revision: number } | null, historyState: CreatorProjectHistoryState) {
-    if (!saved) return;
-    void persistCreatorDefinition(key, saved.def, historyState).then(() => {
-      if (editRevisionRef.current === saved.revision) setDirty(false);
-    }).catch(() => setMessage("Save failed. Your undo/redo change remains open and will retry on the next edit."));
   }
 
   function runWorkerValidation(source: "givens" | "solution" = "givens") {
@@ -642,17 +688,21 @@ export function PuzzleEditorPage() {
     if (!data) return false;
     const revision = editRevisionRef.current;
     try {
-      await persistCreatorDefinition(key, data.def, creatorHistoryRef.current);
-      if (editRevisionRef.current === revision) setDirty(false);
+      const savedRevision = await saveQueue.flush();
+      if (savedRevision < revision || editRevisionRef.current !== revision) {
+        setMessage("The puzzle changed during saving. Please save again before leaving.");
+        return false;
+      }
+      setDirty(false);
       return true;
     } catch {
-      setMessage("Save failed. Your edits remain open in the creator.");
+      setMessage("Save failed. Your edits remain open in the creator. Retry saving before leaving.");
       return false;
     }
   }
 
   async function exitCreator() {
-    if (dirty && !(await persistNow())) return;
+    if (!confirmLeaveWithDrafts() || !(await persistNow())) return;
     startTransition(() => navigate("/creator"));
   }
 
@@ -664,10 +714,8 @@ export function PuzzleEditorPage() {
     const project = applyCreatorProjectHistoryEntry(creatorProjectFromDefinition(data.def), entry, "undo");
     const nextUndo = undo.slice(0, -1);
     const nextRedo = [...creatorHistoryRef.current.redo, entry];
-    const nextHistory = { undo: nextUndo, redo: nextRedo };
     setCreatorHistoryState(nextUndo, nextRedo);
-    const saved = save(definitionFromCreatorProject(project, { id: key, sourceId: key }), { recordHistory: false });
-    persistCreatorHistoryNavigation(saved, nextHistory);
+    save(definitionFromCreatorProject(project, { id: key, sourceId: key }), { recordHistory: false });
   }
 
   function redoDefinition() {
@@ -678,10 +726,8 @@ export function PuzzleEditorPage() {
     const project = applyCreatorProjectHistoryEntry(creatorProjectFromDefinition(data.def), entry, "redo");
     const nextRedo = redo.slice(0, -1);
     const nextUndo = [...creatorHistoryRef.current.undo, entry];
-    const nextHistory = { undo: nextUndo, redo: nextRedo };
     setCreatorHistoryState(nextUndo, nextRedo);
-    const saved = save(definitionFromCreatorProject(project, { id: key, sourceId: key }), { recordHistory: false });
-    persistCreatorHistoryNavigation(saved, nextHistory);
+    save(definitionFromCreatorProject(project, { id: key, sourceId: key }), { recordHistory: false });
   }
 
   creatorUndoActionRef.current = undoDefinition;
@@ -1350,6 +1396,7 @@ export function PuzzleEditorPage() {
     if (element.id === "regions") next = setCreatorRegions(next, []);
     if (element.id === "antiking") next = setCreatorGlobalRule(next, "antiKing", false);
     if (element.id === "antiknight") next = setCreatorGlobalRule(next, "antiKnight", false);
+    if (!window.confirm(`Remove ${element.name} and its authored constraints/artwork? You can undo this action afterward.`)) return;
     save({ ...next, meta: { ...next.meta, creatorElements, creatorElementNames } });
     setActiveCatalogElement(null);
     setSelectedObjectId(null);
@@ -1373,7 +1420,7 @@ export function PuzzleEditorPage() {
 
   async function sharePuzzle() {
     if (!data) return;
-    if (dirty && !(await persistNow())) return;
+    if (!confirmLeaveWithDrafts() || !(await persistNow())) return;
     const url = new URL(`#/p/${encodeURIComponent(data.def.id)}`, window.location.href).href;
     try {
       if (navigator.share) await navigator.share({ title: data.def.meta.title || "SphenPad puzzle", text: data.def.meta.rules || "", url });
@@ -1389,7 +1436,7 @@ export function PuzzleEditorPage() {
 
   async function saveToMyPuzzles() {
     if (!data) return;
-    if (dirty && !(await persistNow())) return;
+    if (!confirmLeaveWithDrafts() || !(await persistNow())) return;
     try {
       const row = await setCreatorProjectPublished(key, true);
       const def = definitionFromCreatorProject(row.project, { id: key, sourceId: key });
@@ -1402,13 +1449,13 @@ export function PuzzleEditorPage() {
 
   async function openMyPuzzles() {
     if (!data) return;
-    if (dirty && !(await persistNow())) return;
+    if (!confirmLeaveWithDrafts() || !(await persistNow())) return;
     startTransition(() => navigate("/"));
   }
 
   async function openPlaytest() {
     if (!data) return;
-    if (dirty && !(await persistNow())) return;
+    if (!confirmLeaveWithDrafts() || !(await persistNow())) return;
     const routeState = makeCreatorPlaytestRouteState(key, {
       selection,
       multiSelect,
@@ -1433,18 +1480,21 @@ export function PuzzleEditorPage() {
 
   function applyGridStructure() {
     if (!data) return;
-    const rows = Math.max(1, Math.min(30, Math.trunc(draftRows)));
-    const cols = Math.max(1, Math.min(30, Math.trunc(draftCols)));
-    const min = Math.max(1, Math.min(64, Math.trunc(draftDigitMin)));
-    const max = Math.max(min, Math.min(64, Math.trunc(draftDigitMax)));
+    const rows = draftRows, cols = draftCols, min = draftDigitMin, max = draftDigitMax;
+    const problems = validateCreatorStructureDraft({
+      rows, cols, min, max, regionMode: draftRegionMode,
+      boxRows: draftBoxRows, boxCols: draftBoxCols,
+      sudokuRules: creatorSudokuRulesEnabled(data.def),
+    });
+    if (problems.length) { setMessage(problems.join(" ")); return; }
     let next = resizeCreatorDefinition(data.def, rows, cols);
     next = setCreatorDigitRange(next, min, max);
     if (draftRegionMode === "regular") {
-      const boxRows = Math.max(1, Math.trunc(draftBoxRows)), boxCols = Math.max(1, Math.trunc(draftBoxCols));
-      if (rows % boxRows || cols % boxCols) { setMessage("Regular box dimensions must divide the grid exactly."); return; }
-      if (boxRows * boxCols !== max - min + 1) { setMessage(`Regular boxes must contain ${max - min + 1} cells for this digit range.`); return; }
-      next = setCreatorRegionConfiguration(next, "regular", { rows: boxRows, cols: boxCols });
+      next = setCreatorRegionConfiguration(next, "regular", { rows: draftBoxRows, cols: draftBoxCols });
     } else next = setCreatorRegionConfiguration(next, draftRegionMode);
+    const losses = describeCreatorStructureLoss(data.def, next);
+    if (losses.length && !window.confirm(`Changing grid structure will remove or replace: ${losses.join(", ")}.\n\nContinue? You can undo this action afterward.`)) return;
+    if (!confirmDiscardGridDrafts()) return;
     save(next);
     setCreatorScratchProgress(makeInitialProgress(next));
     setSelection((current) => current.filter((cell) => isInBounds(cell, rows, cols)).slice(0, 1));
@@ -1482,93 +1532,88 @@ export function PuzzleEditorPage() {
   function clearEntries(kind: "givens" | "solution" | "both" | "regions") {
     if (!data) return;
     let next = data.def;
+    const countGivens = data.def.givens.length;
+    const countSolution = getCreatorSolutionEntries(data.def).length;
+    const countRegions = getCreatorRegions(data.def).length;
+    const changes = (kind === "givens" || kind === "both" ? countGivens : 0) + (kind === "solution" || kind === "both" ? countSolution : 0) + (kind === "regions" ? countRegions : 0);
+    if (changes && !window.confirm(`Clear ${kind === "both" ? "givens and solution" : kind}? This will remove ${changes} authored entr${changes === 1 ? "y" : "ies"}. You can undo afterward.`)) return;
+    if ((kind === "givens" || kind === "both") && givensText !== gridDraftBaselineRef.current.givens && !window.confirm("Discard unapplied givens text?")) return;
+    if ((kind === "solution" || kind === "both") && solutionText !== gridDraftBaselineRef.current.solution && !window.confirm("Discard unapplied solution text?")) return;
     if (kind === "givens" || kind === "both") next = clearCreatorGivens(next);
     if (kind === "solution" || kind === "both") next = clearCreatorSolution(next);
     if (kind === "regions") next = clearCreatorRegions(next);
     save(next);
+    if (kind === "givens" || kind === "both") setGivensText(formatCreatorGrid(next, "givens"));
+    if (kind === "solution" || kind === "both") setSolutionText(formatCreatorGrid(next, "solution"));
     setMessage(kind === "regions" ? "Regions cleared." : kind === "both" ? "Givens and solution cleared." : `${kind === "givens" ? "Givens" : "Solution"} cleared.`);
   }
 
-  function isAllowedDigitEntry(value: string, min: number, max: number) {
-    if (!/^\d{1,2}$/.test(value)) return false;
-    const numeric = Number(value);
-    if (Number.isInteger(numeric) && numeric >= min && numeric <= max) return true;
-    return Array.from({ length: max - min + 1 }, (_, index) => String(min + index)).some((candidate) => candidate.startsWith(value));
-  }
-
-  function setCellValue(value: string) {
+  function setCellValue(value: string, explicit = false) {
     if (!data || !selection.length) return;
-    if (activeCatalogElement === null) {
-      const range = creatorDigitRange(data.def);
-      const entries = getCreatorSolutionEntries(data.def);
-      const currentValue = selection.length === 1 ? entries.find((entry) => sameCell(entry.rc, selection[0]))?.value ?? "" : "";
-      const nextValue = value ? (range.max > 9 ? `${currentValue}${value}`.slice(-2) : value) : "";
-      if (nextValue && !isAllowedDigitEntry(nextValue, range.min, range.max)) {
-        setMessage(`Allowed digits are ${range.min}-${range.max}.`); return;
-      }
-      const withoutSelection = entries.filter((entry) => !selection.some((cell) => sameCell(cell, entry.rc)));
-      save(setCreatorSolutionEntries(data.def, nextValue ? [...withoutSelection, ...selection.map((rc) => ({ rc, value: nextValue }))] : withoutSelection));
-      return;
-    }
     if (activeCatalogElement === "regions") {
       const selectionKey = selection.map(rcKey).sort().join("|");
       const now = Date.now();
       const previous = regionDigitEntryRef.current;
       let nextLabel = "";
       if (value) {
-        const canAppend = Boolean(previous && previous.selectionKey === selectionKey && now - previous.at <= 900);
+        const canAppend = Boolean(previous && previous.selectionKey === selectionKey && now - previous.at <= 900 && !explicit);
         const appended = canAppend ? `${previous!.value}${value}` : value;
         nextLabel = /^\d{1,2}$/.test(appended) && Number(appended) >= 1 && Number(appended) <= 64 ? appended : value;
         if (!/^\d{1,2}$/.test(nextLabel) || Number(nextLabel) < 1 || Number(nextLabel) > 64) {
-          setMessage("Region numbers must be from 1 to 64.");
-          return;
+          setMessage("Region labels must be whole numbers from 1 to 64."); return;
         }
         regionDigitEntryRef.current = { selectionKey, value: nextLabel, at: now };
-      } else {
-        regionDigitEntryRef.current = null;
-      }
-      const regions = getCreatorRegions(data.def)
-        .map((region) => ({ ...region, cells: region.cells.filter((cell) => !selection.some((selected) => sameCell(selected, cell))) }))
-        .filter((region) => region.cells.length);
-      if (nextLabel) {
-        const matching = regions.find((region) => region.label === nextLabel);
-        if (matching) matching.cells.push(...selection.map((cell) => ({ ...cell })));
-        else regions.push({ cells: selection.map((cell) => ({ ...cell })), label: nextLabel });
-      }
-      regions.sort((a, b) => Number(a.label ?? 0) - Number(b.label ?? 0));
-      save(setCreatorRegions(data.def, regions));
+      } else regionDigitEntryRef.current = null;
+      save(assignCreatorRegionCells(data.def, selection, nextLabel));
       return;
     }
-    if (activeCatalogElement === "given-digits") {
-      const digitRange = creatorDigitRange(data.def);
-      const selectedGiven = selection.length === 1 ? data.def.givens.find((given) => sameCell(given.rc, selection[0]))?.v ?? "" : "";
-      const nextValue = value ? (digitRange.max > 9 ? `${selectedGiven}${value}`.slice(-2) : value) : "";
-      if (nextValue && !isAllowedDigitEntry(nextValue, digitRange.min, digitRange.max)) {
-        setMessage(`Allowed digits are ${digitRange.min}-${digitRange.max}.`);
-        return;
+    if (activeCatalogElement !== null && activeCatalogElement !== "given-digits") {
+      setMessage("Select Given digits/Regions, or deselect the active element to edit the solution.");
+      return;
+    }
+    const source = activeCatalogElement === "given-digits" ? "givens" : "solution";
+    const range = creatorDigitRange(data.def);
+    let nextValue = value;
+    if (explicit) {
+      creatorDigitSequenceRef.current = null;
+      if (nextValue) {
+        const error = creatorGridValueError(nextValue, range.min, range.max);
+        if (error) { setMessage(error); return; }
       }
+    } else {
+      const context = `${source}:${selection.map(rcKey).sort().join("|")}`;
+      const transition = creatorDigitTransition(value, context, range, creatorDigitSequenceRef.current, Date.now());
+      creatorDigitSequenceRef.current = transition.pending ?? null;
+      if (transition.error) { setMessage(transition.error); return; }
+      if (transition.value === undefined) { setMessage(`Enter the next digit (${range.min}–${range.max}).`); return; }
+      nextValue = transition.value;
+    }
+    if (source === "givens") {
       const withoutSelection = data.def.givens.filter((given) => !selection.some((cell) => sameCell(cell, given.rc)));
-      const givens = nextValue ? [...withoutSelection, ...selection.map((rc) => ({ rc, v: nextValue }))] : withoutSelection;
-      save(syncDefinitionGivens({ ...data.def, givens }));
-      return;
+      save(syncDefinitionGivens({ ...data.def, givens: nextValue ? [...withoutSelection, ...selection.map((rc) => ({ rc, v: nextValue }))] : withoutSelection }));
+    } else {
+      const withoutSelection = getCreatorSolutionEntries(data.def).filter((entry) => !selection.some((cell) => sameCell(cell, entry.rc)));
+      save(setCreatorSolutionEntries(data.def, nextValue ? [...withoutSelection, ...selection.map((rc) => ({ rc, value: nextValue }))] : withoutSelection));
     }
-    setMessage("Select Given digits/Regions, or deselect the active element to edit the solution.");
   }
 
   function pasteGrid(text: string, source: "givens" | "solution") {
     if (!data) return;
-    const symbols = parseCreatorGrid(text, data.def.rows, data.def.cols);
-    if (!symbols) {
-      setMessage(`Expected exactly ${data.def.rows * data.def.cols} symbols.`);
-      return;
-    }
+    const parsed = parseCreatorGridDetailed(text, data.def.rows, data.def.cols, creatorDigitRange(data.def));
+    if (!parsed.values) { setMessage(parsed.error ?? "Unable to parse grid."); return; }
+    const symbols = parsed.values;
+    if (!symbols.some(Boolean) && (source === "givens" ? data.def.givens.length : getCreatorSolutionEntries(data.def).length) &&
+        !window.confirm(`Applying an empty ${source} grid will clear all existing ${source}. Continue? You can undo this action.`)) return;
     if (source === "givens") {
       const givens = symbols.flatMap((symbol, index) => symbol ? [{ rc: { r: Math.floor(index / data.def.cols), c: index % data.def.cols }, v: symbol }] : []);
-      save(syncDefinitionGivens({ ...data.def, givens }));
+      const saved = save(syncDefinitionGivens({ ...data.def, givens }));
+      if (saved) setGivensText(formatCreatorGrid(saved.def, "givens"));
     } else {
       const entries = symbols.flatMap((symbol, index) => symbol ? [{ rc: { r: Math.floor(index / data.def.cols), c: index % data.def.cols }, value: symbol }] : []);
-      save(setCreatorSolutionEntries(data.def, entries));
+      const saved = save(setCreatorSolutionEntries(data.def, entries));
+      if (saved) setSolutionText(formatCreatorGrid(saved.def, "solution"));
     }
+    creatorDigitSequenceRef.current = null;
     setMessage(`${source === "givens" ? "Givens" : "Solution"} applied.`);
   }
 
@@ -1596,7 +1641,9 @@ export function PuzzleEditorPage() {
     const path = cells.length > 1 ? cells : [];
     if (elementKind === "given") {
       const value = constraintValue.trim();
-      if (!value) { setMessage("Enter a given digit or symbol."); return; }
+      if (!value) { setMessage("Enter a given digit."); return; }
+      const invalid = creatorGridValueError(value, creatorDigitRange(data.def).min, creatorDigitRange(data.def).max);
+      if (invalid) { setMessage(invalid); return; }
       const withoutSelection = data.def.givens.filter((given) => !selection.some((cell) => sameCell(cell, given.rc)));
       save(syncDefinitionGivens({ ...data.def, givens: [...withoutSelection, ...cells.map((rc) => ({ rc, v: value }))] }));
       setConstraintValue(""); setAddingElement(false); return;
@@ -1837,9 +1884,21 @@ export function PuzzleEditorPage() {
   async function copySudokuPadLink() { if (!data) return; const result = exportCreatorInterchange(data.def); try { await navigator.clipboard.writeText(result.sudokuPadUrl); setInterchangeReport(result.report); setMessage("SudokuPad link copied to clipboard."); } catch { setMessage("Unable to copy the SudokuPad link."); } }
   async function applyInterchangeImport(text: string) {
     if (!data) return;
+    const startingRevision = editRevisionRef.current;
     try {
       const result = await importCreatorInterchange(text, { id: data.def.id, sourceId: data.def.sourceId });
-      save({ ...result.def, meta: { ...result.def.meta, creatorPublished: data.def.meta.creatorPublished === true } }); setCreatorScratchProgress(makeInitialProgress(result.def)); setInterchangeReport(result.report); setSelection([{ r: 0, c: 0 }]); setSelectedObjectId(null); setMessage(`Imported ${result.report.format}.`);
+      if (editRevisionRef.current !== startingRevision) { setMessage("Puzzle changed while importing. Please retry the import."); return; }
+      const losses = result.report.issues.filter((issue) => issue.severity === "loss").length;
+      const details = losses ? `\n\nThe import reports ${losses} potential information loss issue${losses === 1 ? "" : "s"}.` : "";
+      if (!window.confirm(`Replace this creator puzzle with imported ${result.report.format} content?\n\nAll existing grid entries, constraints and artwork will be replaced. You can undo this replacement afterward.${details}`)) {
+        setInterchangeReport(result.report);
+        setMessage("Import canceled. Current project was not changed.");
+        return;
+      }
+      if (!confirmLeaveWithDrafts()) return;
+      const next = { ...result.def, meta: { ...result.def.meta, creatorPublished: data.def.meta.creatorPublished === true } };
+      save(next); setGivensText(formatCreatorGrid(next, "givens")); setSolutionText(formatCreatorGrid(next, "solution"));
+      setCreatorScratchProgress(makeInitialProgress(result.def)); setInterchangeReport(result.report); setSelection([{ r: 0, c: 0 }]); setSelectedObjectId(null); setMessage(`Imported ${result.report.format}.`);
     } catch (error) { setMessage(error instanceof Error ? `Import failed: ${error.message}` : "Import failed."); }
   }
   async function importPuzzle(file: File | undefined) { if (file) await applyInterchangeImport(await file.text()); }
@@ -2147,6 +2206,8 @@ export function PuzzleEditorPage() {
           <button className={creatorTab === "tools" ? "btn primary" : "btn"} onClick={() => { setCreatorTab("tools"); setAuthoringOpen(false); }} type="button">Tools</button>
         </nav>
         <div className="creatorTopbarActions">
+          <span role="status" title={saveStatus.error ? "Creator save failed. Your edits remain in memory." : saveStatus.latestRevision > saveStatus.savedRevision ? "Saving creator changes in the background" : "Creator changes saved"} style={{ fontSize: "0.75rem", whiteSpace: "nowrap" }}>{saveStatus.error ? "Save failed" : saveStatus.latestRevision > saveStatus.savedRevision ? "Saving…" : "Saved"}</span>
+          {saveStatus.error ? <button className="btn" type="button" onClick={() => void persistNow()}>Retry save</button> : null}
           {creatorTab !== "file" ? <button type="button" className="btn creatorCanvasViewButton creatorTopbarIconButton" aria-label="Fit puzzle to available space" title="Fit puzzle to available space" onClick={() => { creatorNavigation.setNavigate(false); setCanvasZoom(1); setCanvasPan({ x: 0, y: 0 }); }}><IconFitView /></button> : null}
           <button className="btn topbarSettingsButton" onClick={() => setSettingsOpen(true)} title="Settings" type="button"><IconSettings /></button>
         </div>
@@ -2155,13 +2216,13 @@ export function PuzzleEditorPage() {
         <div className="creatorFileContent">
           <div className="creatorFilePreview card"><GridCanvas def={data.def} progress={controlProgress} onSelection={NOOP} onLineStroke={NOOP} onLineTapCell={NOOP} onLineTapEdge={NOOP} onDoubleCell={NOOP} interactive={false} previewMode strictScale /></div>
           <div className="card creatorFileFields">
-            <div className="creatorFileSection"><h3>Puzzle details</h3><label>Title<input className="url" value={data.def.meta.title ?? ""} onChange={(event) => save({ ...data.def, meta: { ...data.def.meta, title: event.target.value } })} /></label><label>Author<input className="url" value={data.def.meta.author ?? ""} onChange={(event) => save({ ...data.def, meta: { ...data.def.meta, author: event.target.value } })} /></label><label>Rules<textarea className="url creatorRulesInput" value={data.def.meta.rules ?? ""} onChange={(event) => save({ ...data.def, meta: { ...data.def.meta, rules: event.target.value } })} /></label><label>Completion message<textarea className="url creatorRulesInput" value={data.def.meta.postSolveMessage ?? ""} onChange={(event) => save({ ...data.def, meta: { ...data.def.meta, postSolveMessage: event.target.value } })} /></label></div>
-            <div className="creatorFileSection"><h3>Grid structure</h3><div className="creatorStructureGrid"><label>Rows<CreatorDraftInput value={draftRows} inputMode="numeric" onCommit={(text) => { if (text.trim() && Number.isFinite(Number(text))) setDraftRows(Math.max(1, Math.trunc(Number(text)))); }} /></label><label>Columns<CreatorDraftInput value={draftCols} inputMode="numeric" onCommit={(text) => { if (text.trim() && Number.isFinite(Number(text))) setDraftCols(Math.max(1, Math.trunc(Number(text)))); }} /></label><label>Lowest digit<CreatorDraftInput value={draftDigitMin} inputMode="numeric" onCommit={(text) => { if (text.trim() && Number.isFinite(Number(text))) setDraftDigitMin(Math.max(1, Math.trunc(Number(text)))); }} /></label><label>Highest digit<CreatorDraftInput value={draftDigitMax} inputMode="numeric" onCommit={(text) => { if (text.trim() && Number.isFinite(Number(text))) setDraftDigitMax(Math.max(1, Math.trunc(Number(text)))); }} /></label><label>Digit count<CreatorDraftInput value={Math.max(1, draftDigitMax - draftDigitMin + 1)} inputMode="numeric" onCommit={(text) => { if (text.trim() && Number.isFinite(Number(text))) setDraftDigitMax(Math.min(64, draftDigitMin + Math.max(1, Math.trunc(Number(text))) - 1)); }} /></label><label>Region layout<select className="url" value={draftRegionMode} onChange={(event) => setDraftRegionMode(event.target.value as CreatorRegionMode)}><option value="regular">Regular boxes</option><option value="irregular">Irregular regions</option><option value="none">No regions</option></select></label>{draftRegionMode === "regular" ? <><label>Box rows<CreatorDraftInput value={draftBoxRows} inputMode="numeric" onCommit={(text) => { if (text.trim() && Number.isFinite(Number(text))) setDraftBoxRows(Math.max(1, Math.trunc(Number(text)))); }} /></label><label>Box columns<CreatorDraftInput value={draftBoxCols} inputMode="numeric" onCommit={(text) => { if (text.trim() && Number.isFinite(Number(text))) setDraftBoxCols(Math.max(1, Math.trunc(Number(text)))); }} /></label></> : null}</div><label className="creatorToggle"><input type="checkbox" checked={creatorSudokuRulesEnabled(data.def)} onChange={(event) => save(setCreatorSudokuRules(data.def, event.target.checked))} />Standard row/column Sudoku rules</label><div className="creatorFileActions"><button className="btn primary" onClick={applyGridStructure} type="button">Apply structure</button>{draftRegionMode === "irregular" ? <button className="btn" onClick={() => startCoreEditing("regions")} type="button">Edit regions on board</button> : null}<button className="btn" onClick={() => clearEntries("regions")} type="button">Clear regions</button></div><div className="creatorHelp">Resizing keeps in-bounds givens, solution cells, and regions. Constraints that reference removed cells are discarded.</div></div>
+            <div className="creatorFileSection"><h3>Puzzle details</h3><label>Title<CreatorDraftInput value={data.def.meta.title ?? ""} onDraftChange={setMetadataDraftDirty} onCommit={(title) => save({ ...data.def, meta: { ...data.def.meta, title } })} /></label><label>Author<CreatorDraftInput value={data.def.meta.author ?? ""} onDraftChange={setMetadataDraftDirty} onCommit={(author) => save({ ...data.def, meta: { ...data.def.meta, author } })} /></label><label>Rules<CreatorDraftTextarea ariaLabel="Puzzle rules" className="url creatorRulesInput" value={data.def.meta.rules ?? ""} onDraftChange={setMetadataDraftDirty} onCommit={(rules) => save({ ...data.def, meta: { ...data.def.meta, rules } })} /></label><label>Completion message<CreatorDraftTextarea ariaLabel="Completion message" className="url creatorRulesInput" value={data.def.meta.postSolveMessage ?? ""} onDraftChange={setMetadataDraftDirty} onCommit={(postSolveMessage) => save({ ...data.def, meta: { ...data.def.meta, postSolveMessage } })} /></label></div>
+            <div className="creatorFileSection"><h3>Grid structure</h3><div className="creatorStructureGrid"><label>Rows<CreatorDraftInput value={draftRows} inputMode="numeric" onCommit={(text) => { if (text.trim() && Number.isFinite(Number(text))) setDraftRows(Number(text)); }} /></label><label>Columns<CreatorDraftInput value={draftCols} inputMode="numeric" onCommit={(text) => { if (text.trim() && Number.isFinite(Number(text))) setDraftCols(Number(text)); }} /></label><label>Lowest digit<CreatorDraftInput value={draftDigitMin} inputMode="numeric" onCommit={(text) => { if (text.trim() && Number.isFinite(Number(text))) setDraftDigitMin(Number(text)); }} /></label><label>Highest digit<CreatorDraftInput value={draftDigitMax} inputMode="numeric" onCommit={(text) => { if (text.trim() && Number.isFinite(Number(text))) setDraftDigitMax(Number(text)); }} /></label><label>Digit count<CreatorDraftInput value={Math.max(1, draftDigitMax - draftDigitMin + 1)} inputMode="numeric" onCommit={(text) => { if (text.trim() && Number.isFinite(Number(text))) setDraftDigitMax(draftDigitMin + Number(text) - 1); }} /></label><label>Region layout<select className="url" value={draftRegionMode} onChange={(event) => setDraftRegionMode(event.target.value as CreatorRegionMode)}><option value="regular">Regular boxes</option><option value="irregular">Irregular regions</option><option value="none">No regions</option></select></label>{draftRegionMode === "regular" ? <><label>Box rows<CreatorDraftInput value={draftBoxRows} inputMode="numeric" onCommit={(text) => { if (text.trim() && Number.isFinite(Number(text))) setDraftBoxRows(Number(text)); }} /></label><label>Box columns<CreatorDraftInput value={draftBoxCols} inputMode="numeric" onCommit={(text) => { if (text.trim() && Number.isFinite(Number(text))) setDraftBoxCols(Number(text)); }} /></label></> : null}</div><label className="creatorToggle"><input type="checkbox" checked={creatorSudokuRulesEnabled(data.def)} onChange={(event) => save(setCreatorSudokuRules(data.def, event.target.checked))} />Standard row/column Sudoku rules</label><div className="creatorFileActions"><button className="btn primary" onClick={applyGridStructure} type="button">Apply structure</button>{draftRegionMode === "irregular" ? <><button className="btn" onClick={() => startCoreEditing("regions")} type="button">Edit regions on board</button><button className="btn" onClick={() => { const cells = getCreatorUnassignedRegionCells(data.def); if (!cells.length) { setMessage("All cells belong to a region."); return; } startCoreEditing("regions"); setSelection([cells[0]]); setMessage(`${cells.length} unassigned region cell${cells.length === 1 ? "" : "s"} remain. Selected ${cellLabel(cells[0])}; select adjacent cells as needed, then enter their region number.`); }} type="button">Find unassigned cell</button></> : null}<button className="btn" onClick={() => clearEntries("regions")} type="button">Clear regions</button></div><div className="creatorHelp">Resizing keeps in-bounds givens, solution cells, and regions. Constraints that reference removed cells are discarded.</div></div>
             <div className="creatorFileSection"><h3>Givens</h3><label>Grid<textarea className="url creatorGridInput" value={givensText} onChange={(event) => setGivensText(event.target.value)} /></label><div className="creatorFileActions"><button className="btn primary" onClick={() => pasteGrid(givensText, "givens")} type="button">Apply givens</button><button className="btn" onClick={() => startCoreEditing("given-digits")} type="button">Edit on board</button><button className="btn" onClick={() => clearEntries("givens")} type="button">Clear givens</button></div></div>
-            <div className="creatorFileSection"><h3>Solution</h3><label>Grid<textarea className="url creatorGridInput" value={solutionText} onChange={(event) => setSolutionText(event.target.value)} /></label><div className="creatorFileActions"><button className="btn primary" onClick={() => pasteGrid(solutionText, "solution")} type="button">Apply solution</button><button className="btn" onClick={startSolutionEditing} type="button">Edit on board</button><button className="btn" onClick={() => clearEntries("solution")} type="button">Clear solution</button><button className="btn danger" onClick={() => clearEntries("both")} type="button">Clear both</button></div><div className="creatorHelp">For values above 9, separate cells with spaces or commas. A compact one-character grid remains supported for ordinary Sudoku.</div></div>
+            <div className="creatorFileSection"><h3>Solution</h3><label>Grid<textarea className="url creatorGridInput" value={solutionText} onChange={(event) => setSolutionText(event.target.value)} /></label><div className="creatorFileActions"><button className="btn primary" onClick={() => pasteGrid(solutionText, "solution")} type="button">Apply solution</button><button className="btn" onClick={startSolutionEditing} type="button">Edit on board</button><button className="btn" onClick={() => clearEntries("solution")} type="button">Clear solution</button><button className="btn danger" onClick={() => clearEntries("both")} type="button">Clear both</button></div><div className="creatorHelp">Use . or 0 for blanks. Separate two-digit values with spaces or commas; compact single-character grids remain supported. Invalid or out-of-range values are rejected before saving.</div></div>
             <div className="creatorFileSection"><h3>Structure validation</h3><div className={validation.length ? "creatorValidation invalid" : "creatorValidation valid"}>{validation.length ? validation.map((item) => <div key={item}>{item}</div>) : "Puzzle structure looks valid."}</div></div>
             <div className="creatorFileSection"><h3>Worker validation &amp; solver</h3><div className="creatorFileActions"><button className="btn" onClick={() => runWorkerValidation("givens")} type="button">Validate givens</button><button className="btn" onClick={() => runWorkerValidation("solution")} type="button">Validate solution</button><button className="btn" onClick={runLogicalSolver} type="button">Logical solve</button><button className="btn" onClick={runSolutionSearch} type="button">Find solutions</button>{solutionSearch?.solutions[0] ? <button className="btn primary" onClick={useFoundSolution} type="button">Use found solution</button> : null}</div><div className="creatorPropertyGrid"><label>Max solutions<CreatorDraftInput value={solverSettings.maxSolutions} inputMode="numeric" onCommit={(text) => { if (text.trim() && Number.isFinite(Number(text))) updateSolverSetting("maxSolutions", Math.max(1, Math.min(20, Math.trunc(Number(text))))); }} /></label><label>Max search nodes<CreatorDraftInput value={solverSettings.maxNodes} inputMode="numeric" onCommit={(text) => { if (text.trim() && Number.isFinite(Number(text))) updateSolverSetting("maxNodes", Math.max(100, Math.min(5000000, Math.trunc(Number(text))))); }} /></label><label>Logical step limit<CreatorDraftInput value={solverSettings.logicalStepLimit} inputMode="numeric" onCommit={(text) => { if (text.trim() && Number.isFinite(Number(text))) updateSolverSetting("logicalStepLimit", Math.max(1, Math.min(100000, Math.trunc(Number(text))))); }} /></label></div>{workerConstraintErrors.length ? <div className="creatorValidation invalid">{workerConstraintErrors.map((item) => <div key={item.id}>{item.id}: {item.message}</div>)}</div> : null}{workerValidation ? <div className={workerValidation.diagnostics.length ? "creatorValidation invalid" : "creatorValidation valid"}>{workerValidation.diagnostics.length ? workerValidation.diagnostics.slice(0, 12).map((item, index) => <div key={`${item.code}-${index}`}>{item.message} {item.cells.length ? `(${item.cells.map(cellLabel).join(", ")})` : ""}</div>) : "Grid values satisfy the enabled worker constraints."}{workerValidation.thrownErrors.map((item, index) => <div key={`worker-error-${index}`}>{item}</div>)}</div> : null}{logicalResult ? <div className="creatorHelp">Logical solver: {logicalResult.status}; {logicalResult.steps.length} step{logicalResult.steps.length === 1 ? "" : "s"}.{logicalResult.message ? ` ${logicalResult.message}` : ""}</div> : null}{solutionSearch ? <div className="creatorHelp">Solution search: {solutionSearch.status}; {solutionSearch.solutions.length} solution{solutionSearch.solutions.length === 1 ? "" : "s"} returned after {solutionSearch.nodes.toLocaleString()} nodes.{solutionSearch.message ? ` ${solutionSearch.message}` : ""}</div> : null}<details className="creatorHelp"><summary>Worker components ({workerComponents.length})</summary>{workerComponents.slice(0, 100).map((component) => <div key={`${component.type}:${component.constraintId ?? component.name}:${component.cells.map(cellLabel).join("|")}`}>{component.name} — {component.type} — {component.cells.map(cellLabel).join(", ") || "no cells"}</div>)}{workerComponents.length > 100 ? <div>…and {workerComponents.length - 100} more.</div> : null}</details><div className="creatorHelp">Custom JavaScript is preserved but not executed locally.</div></div>
-            <div className="creatorFileSection"><h3>Import &amp; export</h3><div className="creatorFileActions"><button className="btn" onClick={exportCreatorProjectFile} type="button">CreatorProject JSON</button><button className="btn" onClick={exportAuthoredFile} type="button">SphenPad JSON</button><button className="btn" onClick={exportSclFile} type="button">SCL file</button><button className="btn" onClick={exportSudokuPadJsonFile} type="button">SudokuPad JSON</button><button className="btn" onClick={() => void copyScl()} type="button">Copy SCL</button><button className="btn primary" onClick={() => void copySudokuPadLink()} type="button">Copy SudokuPad link</button></div><div className="creatorFileActions"><label className="btn creatorImportButton">Import file<input type="file" accept="application/json,.json,.txt,.scl,text/plain" onChange={(event) => void importPuzzle(event.target.files?.[0])} /></label><button className="btn" onClick={() => void importClipboard()} type="button">Import clipboard</button></div><div className="creatorHelp">Imports accept CreatorProject/SphenPad JSON, native SudokuPad JSON, SCL/CTC payloads or SudokuPad links, and F-Puzzles JSON/fpuz payloads. The current project identity is retained.</div>{interchangeReport ? <div className={interchangeReport.issues.some((item) => item.severity === "loss") ? "creatorValidation invalid" : "creatorValidation valid"}><div><strong>{interchangeReport.format}</strong> · {interchangeReport.preserved.length ? `Preserved: ${interchangeReport.preserved.join(", ")}.` : "No preservation summary."}</div>{interchangeReport.issues.map((item, index) => <div key={`${item.code}-${index}`}>{item.severity.toUpperCase()}: {item.message}{item.path ? ` (${item.path})` : ""}</div>)}</div> : null}</div>
+            <div className="creatorFileSection"><h3>Import &amp; export</h3><div className="creatorFileActions"><button className="btn" onClick={exportCreatorProjectFile} type="button">CreatorProject JSON</button><button className="btn" onClick={exportAuthoredFile} type="button">SphenPad JSON</button><button className="btn" onClick={exportSclFile} type="button">SCL file</button><button className="btn" onClick={exportSudokuPadJsonFile} type="button">SudokuPad JSON</button><button className="btn" onClick={() => void copyScl()} type="button">Copy SCL</button><button className="btn primary" onClick={() => void copySudokuPadLink()} type="button">Copy SudokuPad link</button></div><div className="creatorFileActions"><label className="btn creatorImportButton">Import file<input type="file" accept="application/json,.json,.txt,.scl,text/plain" onChange={(event) => { const file = event.currentTarget.files?.[0]; event.currentTarget.value = ""; void importPuzzle(file); }} /></label><button className="btn" onClick={() => void importClipboard()} type="button">Import clipboard</button></div><div className="creatorHelp">Imports accept CreatorProject/SphenPad JSON, native SudokuPad JSON, SCL/CTC payloads or SudokuPad links, and F-Puzzles JSON/fpuz payloads. The current project identity is retained.</div>{interchangeReport ? <div className={interchangeReport.issues.some((item) => item.severity === "loss") ? "creatorValidation invalid" : "creatorValidation valid"}><div><strong>{interchangeReport.format}</strong> · {interchangeReport.preserved.length ? `Preserved: ${interchangeReport.preserved.join(", ")}.` : "No preservation summary."}</div>{interchangeReport.issues.map((item, index) => <div key={`${item.code}-${index}`}>{item.severity.toUpperCase()}: {item.message}{item.path ? ` (${item.path})` : ""}</div>)}</div> : null}</div>
             <div className="creatorFileActions"><button className="btn primary" onClick={() => void openPlaytest()} type="button">Playtest</button>{data.def.meta.creatorPublished ? <button className="btn" onClick={() => void openMyPuzzles()} type="button">Open My Puzzles</button> : <button className="btn" onClick={() => void saveToMyPuzzles()} type="button">Save to My Puzzles</button>}<button className="btn" onClick={() => void sharePuzzle()} type="button">Share SphenPad</button></div>
             <div className="creatorHelp">Creator projects stay in the Puzzle Creator until you explicitly save them to My Puzzles. Playtest uses an isolated fresh session, and normal solve progress remains separate from the authored project.</div>
           </div>
@@ -2225,6 +2286,10 @@ export function PuzzleEditorPage() {
             <button className={"btn panelBtn" + (controlProgress.multiSelect ? " primary" : "")} onPointerDown={startSelectModeHold} onPointerUp={stopSelectModeHold} onPointerLeave={stopSelectModeHold} onPointerCancel={stopSelectModeHold} onContextMenu={(event) => event.preventDefault()} onClick={clickSelectMode} title={`${controlProgress.multiSelect ? "Multi-touch selection enabled" : "Single-touch selection enabled"}; hold to select all cells`} type="button"><IconSelectMode multi={controlProgress.multiSelect} /></button>
           </div>
           <div className="creatorInspectorBody">
+            {creatorDigitRange(data.def).max > 9 && selection.length && (activeCatalogElement === "given-digits" || activeCatalogElement === null) && editorTool === "value" ?
+              <div className="creatorFileSection"><label>{activeCatalogElement === "given-digits" ? "Selected given" : "Selected solution"} ({selection.length === 1 ? cellLabel(selection[0]) : `${selection.length} cells`})
+                <CreatorDraftInput key={`direct-value:${activeCatalogElement ?? "solution"}:${selection.map(rcKey).join("|")}`} value={selection.length === 1 ? (activeCatalogElement === "given-digits" ? data.def.givens.find((entry) => sameCell(entry.rc, selection[0]))?.v : getCreatorSolutionEntries(data.def).find((entry) => sameCell(entry.rc, selection[0]))?.value) ?? "" : ""} onCommit={(value) => setCellValue(value.trim(), true)} inputMode="numeric" ariaLabel="Enter full cell value" />
+              </label><div className="creatorHelp">Enter a full value from {creatorDigitRange(data.def).min} to {creatorDigitRange(data.def).max}, or use consecutive keypad presses for two-digit values.</div></div> : null}
             {selectedCatalog ? <div className="creatorSelectedElement"><div><span>{selectedCatalog.description}</span></div>{CHECKABLE_ELEMENT_IDS.has(selectedCatalog.id) ? <label className="creatorToggle"><input type="checkbox" checked={data.def.meta.creatorConstraintChecks?.[selectedCatalog.id] !== false} onChange={(event) => setConstraintChecking(selectedCatalog, event.target.checked)} />Constraint checking</label> : null}</div> : <div className="muted">Select an active element above the puzzle to edit it.</div>}
             {selectedCatalog && (selectedCatalog.elementKind || VISUAL_EDITOR_IDS.has(selectedCatalog.id)) ? <div className="creatorObjectToolbar"><div className="creatorObjectToolbarButtons creatorInteractionModes">{!SINGLETON_GLOBAL_IDS.has(selectedCatalog.id) ? <button className={addingElement ? "btn primary" : "btn"} onClick={() => setCreatorInteractionMode("add")} type="button">Add</button> : null}<button className={!addingElement && !creatorDeleteMode ? "btn primary" : "btn"} onClick={() => setCreatorInteractionMode("edit")} type="button">Edit</button><button className={creatorDeleteMode ? "btn primary danger" : "btn danger"} disabled={!catalogObjects.length} onClick={() => setCreatorInteractionMode("delete")} type="button">Delete</button><button className="btn" disabled={!catalogObjects.length} onClick={selectAllCatalogObjects} type="button">Select all</button><button className="btn" disabled={!selectedObjectIds.length} onClick={() => void copySelectedObjects()} type="button">Copy</button><button className="btn" onClick={() => void pasteSelectedObjects()} type="button">Paste</button></div><span>{catalogObjects.length} authored object{catalogObjects.length === 1 ? "" : "s"}</span></div> : null}
             {selectedCatalog?.id === "custom-fog-clearing" && !creatorDeleteMode ? <div className="creatorFogRole"><div className="creatorInspectorSubheading">Fog paint</div><div className="creatorInteractionModes"><button className={fogPaintRole === "trigger" ? "btn primary" : "btn"} onClick={() => setFogPaintRole("trigger")} type="button">Trigger cells</button><button className={fogPaintRole === "effect" ? "btn primary" : "btn"} onClick={() => setFogPaintRole("effect")} type="button">Reveal cells</button></div><div className="creatorHelp">Paint trigger cells first, then reveal cells. Editing paints or erases the active set directly on the board.</div></div> : null}
