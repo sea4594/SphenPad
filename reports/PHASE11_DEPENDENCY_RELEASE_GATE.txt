@@ -1,10 +1,10 @@
-Phase 11 dependency-backed release gate — 2026-11-24T22:36:32Z
+Phase 11 dependency-backed release gate — 2026-11-24T22:42:22Z
 Node: v20.20.2
 npm: 10.8.2
 
 [1/11] Clean dependency install
 
-added 274 packages, and audited 275 packages in 5s
+added 274 packages, and audited 275 packages in 6s
 
 51 packages are looking for funding
   run `npm fund` for details
@@ -61,19 +61,19 @@ transforming...
 ✓ 185 modules transformed.
 rendering chunks...
 computing gzip size...
-dist/index.html                                2.05 kB │ gzip:   0.88 kB
+dist/index.html                                2.05 kB │ gzip:   0.89 kB
 dist/assets/solver.worker-OwlN0WxW.js         59.03 kB
 dist/assets/index-Bks0kLu0.css               100.73 kB │ gzip:  17.18 kB
-dist/assets/persistence-Bix0dykR.js            1.79 kB │ gzip:   0.71 kB
-dist/assets/PuzzleCreatorPage-V0lGEWqX.js      5.65 kB │ gzip:   1.96 kB
-dist/assets/PuzzleEditorPage-BBLikV8N.js     192.36 kB │ gzip:  54.08 kB
-dist/assets/index-aQ-ayDva.js              1,170.57 kB │ gzip: 357.44 kB
+dist/assets/persistence-CknH4e5b.js            1.79 kB │ gzip:   0.71 kB
+dist/assets/PuzzleCreatorPage-Cmw9vuP8.js      5.65 kB │ gzip:   1.96 kB
+dist/assets/PuzzleEditorPage-BbtKItQP.js     192.36 kB │ gzip:  54.08 kB
+dist/assets/index-DcCpJ4SP.js              1,170.57 kB │ gzip: 357.44 kB
 
 (!) Some chunks are larger than 500 kB after minification. Consider:
 - Using dynamic import() to code-split the application
 - Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
 - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
-✓ built in 5.20s
+✓ built in 5.15s
 [5/11] Complete Phase 11 creator regression matrix
 
 > sphenpad@0.0.0 test-creator-phase11
@@ -213,6 +213,6 @@ SudokuPad compatibility manifest: PASS (67 JS/CSS assets, 13 fonts)
 > node scripts/write-phase11-release-hashes.mjs
 
 Phase 11 release hash manifest: PASS (10761 production inputs, 20 creator tests, 10614 built files)
-releaseContentSha256=e15bdd070faf664f0caa8c8ddcb1e9b534106825a2bccd173ccc79ec8fdcc78b
+releaseContentSha256=9f11cefeb60e24a7200e1d5f4fcb572f1d88df6b1fee6c33f5fa16eef3a637f4
 
 PHASE 11 DEPENDENCY-BACKED RELEASE GATE PASSED
