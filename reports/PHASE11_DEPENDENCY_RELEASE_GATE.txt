@@ -1,4 +1,4 @@
-Phase 11 dependency-backed release gate — 2026-11-24T21:03:06Z
+Phase 11 dependency-backed release gate — 2026-11-24T21:26:03Z
 Node: v20.20.2
 npm: 10.8.2
 
@@ -58,22 +58,22 @@ npm audit: only the known Firebase/Firestore browser-only grpc advisories are pr
 
 vite v7.3.1 building client environment for production...
 transforming...
-✓ 184 modules transformed.
+✓ 185 modules transformed.
 rendering chunks...
 computing gzip size...
-dist/index.html                                2.05 kB │ gzip:   0.89 kB
-dist/assets/solver.worker-5Fzne-9g.js         53.97 kB
+dist/index.html                                2.05 kB │ gzip:   0.88 kB
+dist/assets/solver.worker-DFctazHT.js         58.45 kB
 dist/assets/index-Bks0kLu0.css               100.73 kB │ gzip:  17.18 kB
-dist/assets/persistence-BWrbukj3.js            1.79 kB │ gzip:   0.71 kB
-dist/assets/PuzzleCreatorPage-E31etVb7.js      5.65 kB │ gzip:   1.96 kB
-dist/assets/PuzzleEditorPage-BKGR6XZ_.js     186.70 kB │ gzip:  52.08 kB
-dist/assets/index-ba7R189z.js              1,170.57 kB │ gzip: 357.44 kB
+dist/assets/persistence-BotEQn5t.js            1.79 kB │ gzip:   0.71 kB
+dist/assets/PuzzleCreatorPage-DnH2eA39.js      5.65 kB │ gzip:   1.96 kB
+dist/assets/PuzzleEditorPage-BIBxOdtU.js     190.97 kB │ gzip:  53.65 kB
+dist/assets/index-BJbeC-vX.js              1,170.57 kB │ gzip: 357.44 kB
 
 (!) Some chunks are larger than 500 kB after minification. Consider:
 - Using dynamic import() to code-split the application
 - Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
 - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
-✓ built in 4.88s
+✓ built in 4.93s
 [5/11] Complete Phase 11 creator regression matrix
 
 > sphenpad@0.0.0 test-creator-phase11
@@ -121,6 +121,8 @@ creator global/outside/advanced constraint tests passed
 
 creator Phase 3 solver safety tests passed
 creator Phase 4 search/count/compare tests passed
+creator Phase 5 logical techniques, replay and soundness tests passed
+creator Phase 5 editor walkthrough integration checks passed
 creator worker/solver tests passed
 
 > sphenpad@0.0.0 test-creator-interchange
@@ -209,7 +211,7 @@ SudokuPad compatibility manifest: PASS (67 JS/CSS assets, 13 fonts)
 > sphenpad@0.0.0 write-phase11-release-hashes
 > node scripts/write-phase11-release-hashes.mjs
 
-Phase 11 release hash manifest: PASS (10760 production inputs, 18 creator tests, 10614 built files)
-releaseContentSha256=f2c1d52098f06e2ca4cdef37132bd8145e1ef26595c61c2c1abae8b6f38d89a1
+Phase 11 release hash manifest: PASS (10761 production inputs, 19 creator tests, 10614 built files)
+releaseContentSha256=1b9f6e298f5af8219147933145a995571e892dd3252e9e5bc8b846c49fc074e5
 
 PHASE 11 DEPENDENCY-BACKED RELEASE GATE PASSED

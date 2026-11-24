@@ -56,3 +56,6 @@ import "./test-creator-phase3-solver";
 
 // Phase 4: exact counts, safe bounds, proof semantics, and example comparison.
 import "./test-creator-phase4-solutions";
+
+// Phase 5: logical walkthrough snapshots and sound candidate eliminations.
+import "./test-creator-phase5-logical";
