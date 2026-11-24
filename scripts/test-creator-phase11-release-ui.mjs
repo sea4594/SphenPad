@@ -27,7 +27,7 @@ const workflowTokens = [
   [storage, "saveCreatorProject", "creator persistence"],
   [storage, "deleteCreatorProject", "creator tombstone deletion"],
   [editor, "validateGrid", "worker validation"],
-  [editor, "findCreatorSolutions", "solution finder"],
+  [editor, 'runCreatorSolverTask("search")', "background solution finder"],
   [editor, "importCreatorInterchange", "editable import"],
   [editor, "exportCreatorInterchange", "SudokuPad export"],
   [editor, "?creatorPlaytest=1", "real playtest route"],

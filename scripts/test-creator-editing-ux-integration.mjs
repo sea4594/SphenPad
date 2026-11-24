@@ -87,3 +87,15 @@ for (const token of [
   'creatorEditPathSnapped={props.creatorEditPathSnapped}',
 ]) if (!grid.includes(token)) throw new Error(`missing creator splitter clearance token: ${token}`);
 console.log('creator 11K editor integration checks passed');
+
+// Phase 3: creator solver runs in a cancellable worker, never on the editor thread.
+for (const token of [
+  'new Worker(new URL("../sudokupad/creator/solver.worker.ts", import.meta.url)',
+  'solverWorkerRef.current?.terminate()',
+  'function cancelCreatorSolver()',
+  'job !== solverJobRef.current',
+  'solverBusy ? <button',
+]) if (!editor.includes(token)) throw new Error(`missing creator background solver control: ${token}`);
+const solverWorker = fs.readFileSync(new URL('../src/sudokupad/creator/solver.worker.ts', import.meta.url), 'utf8');
+for (const token of ['self.onmessage', 'findCreatorSolutions(def, settings)', 'solveCreatorLogically(def, settings)']) if (!solverWorker.includes(token)) throw new Error(`missing creator worker entrypoint: ${token}`);
+console.log('creator Phase 3 background solver UI checks passed');

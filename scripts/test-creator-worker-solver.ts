@@ -50,3 +50,6 @@ def=withValues(base(),[[c(0,0),1],[c(0,1),1]]); search=findCreatorSolutions(def)
 made=addCreatorGlobalConstraint(base(),"custom-constraint",[c(0,0)]); search=findCreatorSolutions(made.def); equal(search.status,"unsupported");
 
 console.log("creator worker/solver tests passed");
+
+// Phase 3: proof semantics, unsupported constraints, and disabled-rule regressions.
+import "./test-creator-phase3-solver";

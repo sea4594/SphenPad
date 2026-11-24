@@ -45,10 +45,11 @@ export function getComponents(input: PuzzleDefinition): CreatorWorkerComponent[]
   const def = normalized(input), out: CreatorWorkerComponent[] = [];
   addAllDifferentComponents(def, out);
   const regions = getCreatorRegions(def);
-  if (def.logic?.antiKing) out.push({ type: "AntiKing", name: "anti-king", cells: allCells(def), exclusion: false });
-  if (def.logic?.antiKnight) out.push({ type: "AntiKnight", name: "anti-knight", cells: allCells(def), exclusion: false });
+  if (def.logic?.antiKing && checked(def, "antiking")) out.push({ type: "AntiKing", name: "anti-king", cells: allCells(def), exclusion: false });
+  if (def.logic?.antiKnight && checked(def, "antiknight")) out.push({ type: "AntiKnight", name: "anti-knight", cells: allCells(def), exclusion: false });
   for (const constraint of activeConstraints(def)) {
     const id = sourceId(constraint), cells = cellsOf(constraint);
+    if (!checked(def, id)) continue;
     if (constraint.type === "disjoint-groups" && regions.length > 1 && regions.every((region) => region.cells.length === regions[0].cells.length)) {
       for (let index = 0; index < regions[0].cells.length; index += 1) out.push({ type: "DisjointGroup", name: `disjoint group ${index + 1}`, cells: regions.map((region) => region.cells[index]).filter(Boolean), constraintId: constraint.id, sourceElementId: id, exclusion: true });
       continue;
@@ -76,8 +77,8 @@ function seenGraph(def: PuzzleDefinition) {
   for (const component of getComponents(def)) if (component.exclusion) addClique(graph, component.cells);
   if (def.logic?.antiKing && checked(def, "antiking")) for (const cell of allCells(def)) for (const dr of [-1, 1]) for (const dc of [-1, 1]) addPair(graph, cell, { r: cell.r + dr, c: cell.c + dc });
   if (def.logic?.antiKnight && checked(def, "antiknight")) for (const cell of allCells(def)) for (const [dr, dc] of [[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]]) addPair(graph, cell, { r: cell.r + dr, c: cell.c + dc });
-  const minimum = new Set(activeConstraints(def).filter((c) => c.type === "minimum").flatMap(cellsOf).map(key));
-  const maximum = new Set(activeConstraints(def).filter((c) => c.type === "maximum").flatMap(cellsOf).map(key));
+  const minimum = new Set(activeConstraints(def).filter((c) => c.type === "minimum" && checked(def, sourceId(c))).flatMap(cellsOf).map(key));
+  const maximum = new Set(activeConstraints(def).filter((c) => c.type === "maximum" && checked(def, sourceId(c))).flatMap(cellsOf).map(key));
   for (const constraint of activeConstraints(def)) {
     const id = sourceId(constraint); if (!checked(def, id)) continue; const cells = cellsOf(constraint);
     if (["difference", "ratio"].includes(constraint.type) && cells.length === 2) addPair(graph, cells[0], cells[1]);
