@@ -5,10 +5,31 @@ import { creatorSolverUnsupportedReason } from "./solverSupport";
 import { creatorConstraints } from "./nativeAuthoring";
 import { getCellsSeenByCells, getComponents, validateConstraints, validateGrid, type CreatorWorkerValue } from "./worker";
 
-export type CreatorSolverSettings = { maxSolutions?: number; maxNodes?: number; logicalStepLimit?: number };
+export type CreatorSolutionSearchMode = "first" | "unique" | "count";
+export type CreatorSolverSettings = { maxSolutions?: number; maxNodes?: number; logicalStepLimit?: number; searchMode?: CreatorSolutionSearchMode };
+export type CreatorSearchProgress = { nodes: number; solutionsFound: number };
+export type CreatorSolutionDifference = { rc: CellRC; first: CreatorWorkerValue["value"]; second: CreatorWorkerValue["value"] };
 export type CreatorLogicalStep = { rc: CellRC; value: number; reason: "naked single" | "hidden single"; house?: string };
 export type CreatorLogicalResult = { status: "solved" | "stuck" | "invalid" | "unsupported"; values: CreatorWorkerValue[]; steps: CreatorLogicalStep[]; message?: string };
-export type CreatorSolutionSearchResult = { status: "solved" | "multiple" | "none" | "invalid" | "unsupported" | "limit"; solutions: CreatorWorkerValue[][]; nodes: number; message?: string };
+export type CreatorSolutionSearchResult = {
+  status: "solved" | "multiple" | "none" | "found" | "invalid" | "unsupported" | "limit";
+  mode: CreatorSolutionSearchMode;
+  solutions: CreatorWorkerValue[][]; // At most two examples; never the full count.
+  solutionsFound: number;
+  exact: boolean; // True only after every branch was explored.
+  nodes: number;
+  stopReason?: "nodes" | "solutions";
+  message?: string;
+};
+
+/** Comparison is read-only: do not alter the authored givens or solution. */
+export function compareCreatorSolutions(first: CreatorWorkerValue[], second: CreatorWorkerValue[]): CreatorSolutionDifference[] {
+  const other = new Map(second.map((entry) => [key(entry.rc), entry.value]));
+  return first.flatMap(({ rc, value }) => {
+    const alternate = other.get(key(rc));
+    return alternate === undefined || alternate === value ? [] : [{ rc, first: value, second: alternate }];
+  });
+}
 
 const key = (cell: CellRC) => `${cell.r}:${cell.c}`;
 const fromKey = (value: string): CellRC => { const [r, c] = value.split(":").map(Number); return { r, c }; };
@@ -84,23 +105,45 @@ export function solveCreatorLogically(def: PuzzleDefinition, settings: CreatorSo
   return { status: values.size === def.rows * def.cols ? "solved" : "stuck", values: entries(values), steps, ...(values.size === def.rows * def.cols ? {} : { message: "No further naked or hidden singles were found." }) };
 }
 
-/** Backtracking solution finder with MRV and the same worker validation engine. */
-export function findCreatorSolutions(def: PuzzleDefinition, settings: CreatorSolverSettings = {}): CreatorSolutionSearchResult {
-  const unsupported = creatorSolverUnsupportedReason(def); if (unsupported) return { status: "unsupported", solutions: [], nodes: 0, message: unsupported };
-  const config = configurationError(def); if (config) return { status: "invalid", solutions: [], nodes: 0, message: config };
+/** Backtracking search for creator-only proof/count tools. Never mutates the puzzle. */
+export function findCreatorSolutions(
+  def: PuzzleDefinition,
+  settings: CreatorSolverSettings = {},
+  options: { onProgress?: (progress: CreatorSearchProgress) => void } = {},
+): CreatorSolutionSearchResult {
+  const mode = settings.searchMode ?? "unique";
+  const failed = (status: "invalid" | "unsupported", message: string): CreatorSolutionSearchResult =>
+    ({ status, mode, solutions: [], solutionsFound: 0, exact: false, nodes: 0, message });
+  const unsupported = creatorSolverUnsupportedReason(def); if (unsupported) return failed("unsupported", unsupported);
+  const config = configurationError(def); if (config) return failed("invalid", config);
   const values = initialValues(def), initial = validateGrid(def, entries(values));
-  if (initial.thrownErrors.length) return { status: "unsupported", solutions: [], nodes: 0, message: initial.thrownErrors[0] };
-  if (initial.diagnostics.length) return { status: "invalid", solutions: [], nodes: 0, message: initial.diagnostics[0].message };
-  const context = solverContext(def), maxSolutions = Math.max(1, Math.min(20, settings.maxSolutions ?? 2)), maxNodes = Math.max(1, settings.maxNodes ?? 250_000), solutions: CreatorWorkerValue[][] = [];
-  let nodes = 0;
-  // Return whether the entire subtree was visited. A solution count cap is not a
-  // mathematical proof of uniqueness even if only one solution was returned.
+  if (initial.thrownErrors.length) return failed("unsupported", initial.thrownErrors[0]);
+  if (initial.diagnostics.length) return failed("invalid", initial.diagnostics[0].message);
+
+  const context = solverContext(def);
+  // 'first' may stop after one answer, 'unique' after two; only 'count'
+  // uses the user's solution-count ceiling. Keep only two solutions in memory.
+  const configuredCap = typeof settings.maxSolutions === "number" && Number.isFinite(settings.maxSolutions) ? Math.trunc(settings.maxSolutions) : mode === "count" ? 10_000 : 2;
+  const cap = mode === "first" ? 1 : mode === "unique" ? Math.min(2, Math.max(1, configuredCap)) : Math.min(100_000, Math.max(1, configuredCap));
+  const maxNodes = Math.min(5_000_000, Math.max(1, typeof settings.maxNodes === "number" && Number.isFinite(settings.maxNodes) ? Math.trunc(settings.maxNodes) : 250_000));
+  const solutions: CreatorWorkerValue[][] = [];
+  let nodes = 0, solutionsFound = 0, progressAt = 0;
+  const reportProgress = () => {
+    if (nodes - progressAt >= 2_000) { progressAt = nodes; options.onProgress?.({ nodes, solutionsFound }); }
+  };
+
+  // "complete" means the entire subtree was visited, not that its solutions
+  // fit in the example buffer. A cap reached on the final branch can be exact.
   const search = (): "complete" | "nodes" | "solutions" => {
     if (nodes >= maxNodes) return "nodes";
     nodes += 1;
+    reportProgress();
     if (values.size === def.rows * def.cols) {
       const report = validateGrid(def, entries(values));
-      if (!report.diagnostics.length && !report.thrownErrors.length) solutions.push(entries(values));
+      if (!report.diagnostics.length && !report.thrownErrors.length) {
+        solutionsFound += 1;
+        if (solutions.length < 2) solutions.push(entries(values));
+      }
       return "complete";
     }
     const candidates = candidateMap(def, values, context);
@@ -111,20 +154,30 @@ export function findCreatorSolutions(def: PuzzleDefinition, settings: CreatorSol
     }
     if (!bestKey || !best) return "complete";
     for (let index = 0; index < best.length; index += 1) {
-      const value = best[index];
-      values.set(bestKey, value);
+      values.set(bestKey, best[index]);
       const state = search();
       values.delete(bestKey);
       if (state !== "complete") return state;
-      if (solutions.length >= maxSolutions && index < best.length - 1) return "solutions";
+      if (solutionsFound >= cap && index < best.length - 1) return "solutions";
     }
     return "complete";
   };
+
   const stopped = search();
-  if (solutions.length >= 2) return { status: "multiple", solutions, nodes, message: `Found at least ${solutions.length} distinct solutions${stopped === "complete" ? "." : " before stopping."}` };
-  if (stopped !== "complete") return { status: "limit", solutions, nodes, message: stopped === "nodes"
-    ? `Search reached the ${maxNodes.toLocaleString()}-node limit. ${solutions.length ? "One solution found; uniqueness is not proven." : "Solvability is not proven."}`
-    : `Reached the ${maxSolutions}-solution return limit. ${solutions.length === 1 ? "One solution found; uniqueness is not proven." : "Search is incomplete."}` };
-  if (!solutions.length) return { status: "none", solutions, nodes, message: "No solution satisfies the enabled, supported constraints." };
-  return { status: "solved", solutions, nodes, message: "Exactly one solution; all remaining branches were ruled out." };
+  const exact = stopped === "complete";
+  const stopReason = exact ? undefined : stopped;
+  const suffix = `${nodes.toLocaleString()} nodes searched.`;
+  if (exact) {
+    if (solutionsFound === 0) return { status: "none", mode, solutions, solutionsFound, exact, nodes, message: `No solution satisfies the enabled, supported constraints. ${suffix}` };
+    if (solutionsFound === 1) return { status: "solved", mode, solutions, solutionsFound, exact, nodes, message: `Exactly one solution; uniqueness proven. ${suffix}` };
+    return { status: "multiple", mode, solutions, solutionsFound, exact, nodes, message: `Exactly ${solutionsFound.toLocaleString()} solutions; all branches explored. ${suffix}` };
+  }
+  const reached = stopped === "nodes" ? `${maxNodes.toLocaleString()}-node limit` : `${cap.toLocaleString()}-solution limit`;
+  const message = solutionsFound
+    ? `At least ${solutionsFound.toLocaleString()} solution${solutionsFound === 1 ? "" : "s"} found; exact total is unknown${solutionsFound === 1 ? " and uniqueness is not proven" : " (multiple solutions proven)"} (${reached}). ${suffix}`
+    : `No solution found yet; unsolvability is not proven (${reached}). ${suffix}`;
+  return {
+    status: mode === "first" && solutionsFound > 0 ? "found" : solutionsFound >= 2 ? "multiple" : "limit",
+    mode, solutions, solutionsFound, exact, nodes, stopReason, message,
+  };
 }

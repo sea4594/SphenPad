@@ -97,5 +97,21 @@ for (const token of [
   'solverBusy ? <button',
 ]) if (!editor.includes(token)) throw new Error(`missing creator background solver control: ${token}`);
 const solverWorker = fs.readFileSync(new URL('../src/sudokupad/creator/solver.worker.ts', import.meta.url), 'utf8');
-for (const token of ['self.onmessage', 'findCreatorSolutions(def, settings)', 'solveCreatorLogically(def, settings)']) if (!solverWorker.includes(token)) throw new Error(`missing creator worker entrypoint: ${token}`);
+for (const token of ['self.onmessage', 'findCreatorSolutions(def, settings, {', 'solveCreatorLogically(def, settings)']) if (!solverWorker.includes(token)) throw new Error(`missing creator worker entrypoint: ${token}`);
 console.log('creator Phase 3 background solver UI checks passed');
+
+// Phase 4: separate creator search modes, bounded counting, live progress,
+// non-destructive example comparison, and selection of the adopted solution.
+for (const token of [
+  'function findOneCreatorSolution()', 'function runSolutionSearch()',
+  'function countCreatorSolutions()', 'Find one</button>', 'Check uniqueness</button>',
+  'Count solutions</button>', 'solutionSearch.solutionsFound',
+  'solutionSearch.exact', 'compareCreatorSolutions(', 'solutionExampleIndex',
+  'solverProgress', 'setSolverProgress(response.progress)',
+  'solutionSearch.solutions.map((example, index)',
+  'solutionSearch?.solutions[solutionExampleIndex]',
+]) if (!editor.includes(token)) throw new Error(`missing creator Phase 4 search UI behavior: ${token}`);
+for (const token of ['action: "progress"', 'onProgress: (progress)', 'findCreatorSolutions(def, settings, {']) {
+  if (!solverWorker.includes(token)) throw new Error(`missing creator Phase 4 worker progress behavior: ${token}`);
+}
+console.log('creator Phase 4 search/count/compare UI checks passed');

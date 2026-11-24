@@ -53,3 +53,6 @@ console.log("creator worker/solver tests passed");
 
 // Phase 3: proof semantics, unsupported constraints, and disabled-rule regressions.
 import "./test-creator-phase3-solver";
+
+// Phase 4: exact counts, safe bounds, proof semantics, and example comparison.
+import "./test-creator-phase4-solutions";
