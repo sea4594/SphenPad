@@ -28,6 +28,66 @@ function edgeCenter(a: CellRC, b: CellRC): [number, number] { return [(a.r + b.r
 function adjacent(a: CellRC, b: CellRC) { return Math.abs(a.r - b.r) + Math.abs(a.c - b.c) === 1; }
 function uniqueCells(cells: CellRC[]) { const seen = new Set<string>(); return cells.filter((cell) => { const key = `${cell.r}:${cell.c}`; if (seen.has(key)) return false; seen.add(key); return true; }); }
 function numeric(value: unknown, fallback: number) { const parsed = Number(value); return Number.isFinite(parsed) ? parsed : fallback; }
+/** Check newly authored cell/edge/corner shapes before persisting them. */
+export function creatorGroupCellsError(def: PuzzleDefinition, elementId: CreatorGroupElementId, cells: CellRC[], corner?: [number, number]): string | null {
+  if (!cells.length) return "Select at least one cell for this constraint.";
+  const unique = uniqueCells(cells);
+  if (unique.length !== cells.length) return "Group cells must not be repeated.";
+  if (cells.some(({ r, c }) => !Number.isInteger(r) || !Number.isInteger(c) || r < 0 || c < 0 || r >= def.rows || c >= def.cols)) return "Group contains a cell outside the puzzle grid.";
+  if (["difference-kropki", "ratio-kropki", "xv"].includes(elementId) && (cells.length !== 2 || !adjacent(cells[0], cells[1]))) return "Edge marks require exactly two orthogonally adjacent cells.";
+  if (elementId === "quadruples" && (cells.length < 2 || cells.length > 4 || !(corner ? validClueCorner(def, cells, corner) : sharedCorner(cells)))) return "A quadruple requires 2–4 cells sharing its marked grid corner.";
+  if (elementId === "clones" && cells.length < 2) return "A clone requires at least two corresponding cells.";
+  if (["killer-cages", "different-values", "extra-region"].includes(elementId) && cells.length > creatorDigitCount(def)) return `This all-different group cannot contain more than ${creatorDigitCount(def)} cells.`;
+  if (elementId === "extra-region" && cells.length !== creatorDigitCount(def)) return `An extra region requires exactly ${creatorDigitCount(def)} cells.`;
+  return null;
+}
+
+/** Two clone groups must be distinct, equal-shaped translations; their corresponding cells share values. */
+export function creatorCloneGroupsError(def: PuzzleDefinition, first: CellRC[], second: CellRC[]): string | null {
+  if (!Array.isArray(first) || !Array.isArray(second) || !first.length || first.length !== second.length) return "Clone groups A and B must have the same nonzero number of cells.";
+  const joined = [...first, ...second];
+  if (joined.some(({ r, c }) => !Number.isInteger(r) || !Number.isInteger(c) || r < 0 || c < 0 || r >= def.rows || c >= def.cols)) return "Clone groups contain an out-of-bounds cell.";
+  if (uniqueCells(joined).length !== joined.length) return "Clone groups cannot overlap or repeat cells.";
+  const normalized = (cells: CellRC[]) => {
+    const rows = cells.map(({ r }) => r), cols = cells.map(({ c }) => c);
+    const minR = Math.min(...rows), minC = Math.min(...cols);
+    return cells.map(({ r, c }) => `${r - minR}:${c - minC}`).sort().join("|");
+  };
+  if (normalized(first) !== normalized(second)) return "Clone groups must have the same shape and orientation (translation only).";
+  return null;
+}
+
+/** Strict clue parsing for creator inputs. Unlike legacy parsing, rejects partial/truncated values. */
+export function parseCreatorQuadrupleClue(text: string, def: PuzzleDefinition): number[] | null {
+  const raw = text.trim();
+  if (!raw) return null;
+  const range = creatorDigitRange(def);
+  const tokens = /[\s,]+/.test(raw) ? raw.split(/[\s,]+/).filter(Boolean) : raw.split("");
+  if (tokens.length < 1 || tokens.length > 4 || tokens.some((token) => !/^\d+$/.test(token))) return null;
+  const digits = tokens.map(Number);
+  return digits.every((digit) => Number.isInteger(digit) && digit >= range.min && digit <= range.max) ? digits : null;
+}
+
+export function creatorGroupClueError(def: PuzzleDefinition, elementId: CreatorGroupElementId, cells: CellRC[], value: string): string | null {
+  const raw = value.trim();
+  if (elementId === "killer-cages" && raw) {
+    if (!/^\d+$/.test(raw) || !Number.isSafeInteger(Number(raw)) || Number(raw) < 1) return "Killer cage sums must be positive integers, or blank for all-different only.";
+    const { min, max } = creatorDigitRange(def), count = cells.length;
+    const low = count * (2 * min + count - 1) / 2, high = count * (2 * max - count + 1) / 2;
+    if (count && (Number(raw) < low || Number(raw) > high)) return `A ${count}-cell all-different cage cannot sum to ${raw}.`;
+  }
+  if (elementId === "quadruples" && raw && !parseCreatorQuadrupleClue(raw, def)) return "Quadruple clues require 1–4 in-range digits (separate multi-digit values with commas).";
+  if (["difference-kropki", "ratio-kropki"].includes(elementId) && raw && (!/^\d+$/.test(raw) || !Number.isSafeInteger(Number(raw)) || Number(raw) < (elementId === "ratio-kropki" ? 2 : 1))) return "Dot values must be positive whole numbers (ratio at least 2).";
+  if (elementId === "look-and-say-cages" && raw) {
+    if (!/^\d{2}(\d{2})*$/.test(raw)) return "Look-and-say clues require count/digit pairs, such as 1522.";
+    const pairs = raw.match(/\d\d/g) ?? [];
+    const range = creatorDigitRange(def);
+    let total = 0; for (const pair of pairs) total += Number(pair[0]);
+    if (new Set(pairs.map((pair) => pair[1])).size !== pairs.length || pairs.some((pair) => Number(pair[1]) < range.min || Number(pair[1]) > range.max) || total > cells.length) return "Look-and-say pairs must use distinct, in-range digits and cannot count more cells than the cage contains.";
+  }
+  return null;
+}
+
 export function isCreatorGroupElementId(value: string | undefined): value is CreatorGroupElementId { return CREATOR_GROUP_ELEMENT_IDS.includes(value as CreatorGroupElementId); }
 export function isCreatorGroupConstraint(constraint: PuzzleLogicConstraint | undefined) {
   return Boolean(constraint && ["even", "odd", "minimum", "maximum", "difference", "ratio", "xv", "killer-cage", "clone", "quadruple", "look-and-say-cage", "different-values", "counting-circles"].includes(constraint.type));
@@ -44,8 +104,8 @@ function semanticType(elementId: CreatorGroupElementId) {
   return elementId;
 }
 
-function defaultConstraint(def: PuzzleDefinition, elementId: CreatorGroupElementId, cells: CellRC[], value?: string): PuzzleLogicConstraint {
-  const constraint: PuzzleLogicConstraint = { type: semanticType(elementId), sourceElementId: elementId, cells: uniqueCells(cells) };
+function defaultConstraint(def: PuzzleDefinition, elementId: CreatorGroupElementId, cells: CellRC[], value?: string, corner?: [number, number]): PuzzleLogicConstraint {
+  const constraint: PuzzleLogicConstraint = { type: semanticType(elementId), sourceElementId: elementId, cells: uniqueCells(cells), ...(elementId === "quadruples" && corner ? { corner: [...corner] } : {}) };
   if (elementId === "difference-kropki") { const difference = Math.max(1, numeric(value, 1)); constraint.difference = difference; constraint.value = difference; constraint.negativeValues = []; }
   if (elementId === "ratio-kropki") { const ratio = Math.max(2, numeric(value, 2)); constraint.ratio = ratio; constraint.value = ratio; constraint.negativeValues = []; }
   if (elementId === "xv") { const parsed = value?.trim().toUpperCase() === "V" ? 5 : value?.trim().toUpperCase() === "X" ? 10 : numeric(value, 10); const sum = parsed === 5 ? 5 : 10; constraint.sum = sum; constraint.value = sum; constraint.negativeValues = []; }
@@ -55,6 +115,10 @@ function defaultConstraint(def: PuzzleDefinition, elementId: CreatorGroupElement
   return constraint;
 }
 
+function validClueCorner(def: PuzzleDefinition, cells: CellRC[], corner: [number, number]): boolean {
+  const [r, c] = corner;
+  return Number.isInteger(r) && Number.isInteger(c) && r >= 0 && c >= 0 && r <= def.rows && c <= def.cols && cells.every((cell) => (r === cell.r || r === cell.r + 1) && (c === cell.c || c === cell.c + 1));
+}
 function sharedCorner(cells: CellRC[]): [number, number] | undefined {
   if (!cells.length) return undefined;
   const vertices = (cell: CellRC) => [[cell.r, cell.c], [cell.r, cell.c + 1], [cell.r + 1, cell.c], [cell.r + 1, cell.c + 1]] as [number, number][];
@@ -80,9 +144,9 @@ function visualsFor(constraint: PuzzleLogicConstraint): Visuals {
   if (constraint.type === "killer-cage" || constraint.type === "look-and-say-cage") return { cages: [{ cells: cells.map((cell): [number, number] => [cell.r, cell.c]), value: String(constraint.value ?? ""), style: "killer", unique: constraint.type === "killer-cage", outlineC: "#555555" }] };
   if (constraint.type === "clone") return { underlays: cells.map((cell) => ({ center: center(cell), width: 0.84, height: 0.84, rounded: false, backgroundColor: "rgba(91,141,205,0.20)", borderColor: "#5b8dcd", borderSize: 1.1 })) };
   if (constraint.type === "quadruple") {
-    const corner = sharedCorner(cells); if (!corner) return {};
+    const corner = Array.isArray(constraint.corner) && constraint.corner.length === 2 ? constraint.corner as [number, number] : sharedCorner(cells); if (!corner) return {};
     const digits = Array.isArray(constraint.digits) ? (constraint.digits as unknown[]).map(Number).filter(Number.isFinite) : [];
-    return { overlays: [{ center: corner, width: 0.72, height: 0.72, rounded: true, backgroundColor: "rgba(255,255,255,0.90)", borderColor: "#444444", borderSize: 1.3, text: digits.join(""), fontSize: 13, textColor: "#222222" }] };
+    return { overlays: [{ center: corner, width: 0.72, height: 0.72, rounded: true, backgroundColor: "rgba(255,255,255,0.90)", borderColor: "#444444", borderSize: 1.3, text: formatDigitList(digits), fontSize: 13, textColor: "#222222" }] };
   }
   if (constraint.type === "different-values") return { cages: [{ cells: cells.map((cell): [number, number] => [cell.r, cell.c]), style: "extraregion", unique: true, outlineC: "#b6b6b6" }] };
   if (constraint.type === "counting-circles") return { underlays: cells.map((cell) => ({ center: center(cell), width: 0.75, height: 0.75, rounded: true, backgroundColor: "#ffffff", borderColor: "#000000", borderSize: 1.2 })) };
@@ -90,8 +154,8 @@ function visualsFor(constraint: PuzzleLogicConstraint): Visuals {
   return {};
 }
 
-export function addCreatorGroupConstraint(def: PuzzleDefinition, elementId: CreatorGroupElementId, cells: CellRC[], value?: string): { def: PuzzleDefinition; constraintId: string } {
-  const input = defaultConstraint(def, elementId, cells, value);
+export function addCreatorGroupConstraint(def: PuzzleDefinition, elementId: CreatorGroupElementId, cells: CellRC[], value?: string, corner?: [number, number]): { def: PuzzleDefinition; constraintId: string } {
+  const input = defaultConstraint(def, elementId, cells, value, corner);
   // Single-location markers cannot stack duplicates. Kropki variants share
   // an edge location; other families remain independently editable.
   const uniqueFamilies: Record<string, string> = {
@@ -102,10 +166,12 @@ export function addCreatorGroupConstraint(def: PuzzleDefinition, elementId: Crea
   const family = uniqueFamilies[elementId];
   if (family) {
     const location = (items: CellRC[]) => items.map((item) => `${item.r},${item.c}`).sort().join("|");
-    const target = location(cells);
+    const markedLocation = (items: CellRC[], point?: [number, number]) => family === "quadruple" ? JSON.stringify(point ?? sharedCorner(items) ?? location(items)) : location(items);
+    const target = markedLocation(cells, corner);
     const existing = creatorConstraints(def).find((constraint) => {
       const existingType = String(constraint.sourceElementId ?? ({ difference: "difference-kropki", ratio: "ratio-kropki", quadruple: "quadruples" } as Record<string, string>)[constraint.type] ?? constraint.type);
-      return uniqueFamilies[existingType] === family && location((constraint.cells ?? []) as CellRC[]) === target;
+      const savedCorner = Array.isArray(constraint.corner) && constraint.corner.length === 2 ? constraint.corner as [number, number] : undefined;
+      return uniqueFamilies[existingType] === family && markedLocation((constraint.cells ?? []) as CellRC[], savedCorner) === target;
     });
     if (existing) return { def, constraintId: existing.id };
   }
@@ -162,7 +228,7 @@ function preserveGroupStyles(def: PuzzleDefinition, constraintId: string, previo
   return { ...def, scene: { ...def.scene, cages: apply(def.scene.cages, previous[0] ?? []), underlays: apply(def.scene.underlays, previous[1] ?? []), overlays: apply(def.scene.overlays, previous[2] ?? []) } };
 }
 
-export function replaceCreatorGroupCells(def: PuzzleDefinition, constraintId: string, cells: CellRC[]): PuzzleDefinition {
+export function replaceCreatorGroupCells(def: PuzzleDefinition, constraintId: string, cells: CellRC[], corner?: [number, number]): PuzzleDefinition {
   const existing = creatorConstraints(def).find((constraint) => constraint.id === constraintId);
   if (!existing) return def;
   const previous = def.scene ? [
@@ -170,10 +236,23 @@ export function replaceCreatorGroupCells(def: PuzzleDefinition, constraintId: st
     def.scene.underlays.filter((part) => creatorPartConstraint(part as Record<string, unknown>) === constraintId).map((part) => clone(part) as Record<string, unknown>),
     def.scene.overlays.filter((part) => creatorPartConstraint(part as Record<string, unknown>) === constraintId).map((part) => clone(part) as Record<string, unknown>),
   ] : [[], [], []];
-  const nextConstraint = { ...clone(existing), cells: uniqueCells(cells) };
+  const nextConstraint: PuzzleLogicConstraint = { ...clone(existing), cells: uniqueCells(cells) };
+  if (nextConstraint.type === "quadruple") { if (corner) nextConstraint.corner = [...corner]; else delete nextConstraint.corner; }
+  if (nextConstraint.type === "clone") delete nextConstraint.cloneGroups;
   let next = removeCreatorConstraint(def, constraintId);
   next = addCreatorConstraint(next, { ...nextConstraint, id: constraintId, type: nextConstraint.type }, visualsFor(nextConstraint));
   return preserveGroupStyles(next, constraintId, previous);
+}
+
+/** Upgrade a selected clone to an explicit pair of corresponding translated groups. */
+export function replaceCreatorCloneGroups(def: PuzzleDefinition, constraintId: string, first: CellRC[], second: CellRC[]): PuzzleDefinition {
+  const existing = creatorConstraints(def).find((constraint) => constraint.id === constraintId);
+  if (!existing || existing.type !== "clone") return def;
+  const error = creatorCloneGroupsError(def, first, second);
+  if (error) throw new Error(error);
+  const next = replaceCreatorGroupCells(def, constraintId, [...first, ...second]);
+  const groups = [clone(first), clone(second)];
+  return { ...next, logic: { ...(next.logic ?? {}), constraints: (next.logic?.constraints ?? []).map((constraint) => constraint.id === constraintId ? { ...constraint, cloneGroups: groups } : constraint) } };
 }
 
 export function normalizeCreatorGroupConstraints(def: PuzzleDefinition): PuzzleDefinition {
@@ -208,10 +287,24 @@ export function parseIntegerList(text: string, min = 1): number[] | null {
 export function formatIntegerList(value: unknown): string { return Array.isArray(value) ? (value as unknown[]).map(Number).filter(Number.isFinite).join(", ") : ""; }
 export function validateGroupConstraintShape(def: PuzzleDefinition, constraint: PuzzleLogicConstraint): string[] {
   const messages: string[] = [], cells = (constraint.cells ?? []) as CellRC[], count = creatorDigitCount(def);
+  const source = String(constraint.sourceElementId ?? constraint.type);
+  if (isCreatorGroupElementId(source)) {
+    const markerCorner = source === "quadruples" && Array.isArray(constraint.corner) && constraint.corner.length === 2 ? constraint.corner as [number, number] : undefined;
+    const groupError = creatorGroupCellsError(def, source, cells, markerCorner);
+    if (groupError) messages.push(groupError);
+    const clueError = creatorGroupClueError(def, source, cells, String(constraint.value ?? ""));
+    // Legacy quadruples can hold their clue in `digits` only.
+    if (clueError && !(source === "quadruples" && Array.isArray(constraint.digits) && constraint.digits.length)) messages.push(clueError);
+  }
+  if (constraint.type === "clone" && Array.isArray(constraint.cloneGroups)) {
+    const groups = constraint.cloneGroups as CellRC[][];
+    const error = groups.length === 2 ? creatorCloneGroupsError(def, groups[0], groups[1]) : "A clone needs exactly two groups.";
+    if (error) messages.push(error);
+  }
   if (["difference", "ratio", "xv"].includes(constraint.type) && (cells.length !== 2 || !adjacent(cells[0], cells[1]))) messages.push(`${constraint.sourceElementId ?? constraint.type} requires exactly two orthogonally adjacent cells.`);
   if (constraint.type === "clone" && cells.length < 2) messages.push("Each clone link needs at least two corresponding cells.");
   if (constraint.type === "killer-cage" && cells.length > count) messages.push(`Killer cages cannot contain more than ${count} cells when digits may not repeat.`);
-  if (constraint.type === "quadruple") { if (cells.length < 2 || cells.length > 4 || !sharedCorner(cells)) messages.push("A quadruple must use 2-4 cells sharing one corner."); const digits = Array.isArray(constraint.digits) ? constraint.digits as unknown[] : []; if (!digits.length || digits.length > 4) messages.push("A quadruple needs 1-4 clue digits."); }
+  if (constraint.type === "quadruple") { if (cells.length < 2 || cells.length > 4 || !(Array.isArray(constraint.corner) ? validClueCorner(def, cells, constraint.corner as [number, number]) : sharedCorner(cells))) messages.push("A quadruple must use 2-4 cells sharing one corner."); const digits = Array.isArray(constraint.digits) ? constraint.digits as unknown[] : []; if (!digits.length || digits.length > 4) messages.push("A quadruple needs 1-4 clue digits."); }
   if (constraint.type === "different-values" && cells.length > count) messages.push(`Different Values cannot contain more than ${count} cells.`);
   if (constraint.type === "look-and-say-cage") { const clue = String(constraint.value ?? ""); const pairs = clue.match(/\d\d/g) ?? []; if (!clue || clue.length % 2 || pairs.join("") !== clue || new Set(pairs.map((pair) => pair[1])).size !== pairs.length) messages.push("Look-and-say cage clues must be unique count/digit pairs such as 1522."); }
   return messages;

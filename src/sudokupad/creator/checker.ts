@@ -2,7 +2,7 @@ import type { CellRC, PuzzleDefinition } from "../../core/model";
 import { creatorConstraints, getCreatorRegions } from "./nativeAuthoring";
 import { creatorDigitCount, creatorDigitRange, creatorRegionMode, getCreatorSolutionEntries, inferCreatorBoxSize } from "./gridStructure";
 import { creatorLinePathError, isCreatorLineElementId, normalizeCreatorLineConstraints } from "./lineConstraints";
-import { normalizeCreatorGroupConstraints, validateGroupConstraintShape } from "./groupConstraints";
+import { creatorCloneGroupsError, normalizeCreatorGroupConstraints, validateGroupConstraintShape } from "./groupConstraints";
 import { creatorSudokuRulesEnabled, normalizeCreatorGlobalConstraints, validateGlobalConstraintShape } from "./globalConstraints";
 
 function key(cell: CellRC) { return `${cell.r}:${cell.c}`; }
@@ -117,6 +117,15 @@ export function validateCreatorDefinition(input: PuzzleDefinition): string[] {
   const enabledConstraints = creatorConstraints(def).filter((constraint) => constraint.enabled !== false && constraint.ignoreInSolver !== true);
   const groupCells = (type: string) => enabledConstraints.filter((constraint) => constraint.type === type).flatMap((constraint) => (constraint.cells ?? []) as CellRC[]);
   const cellSet = (cells: CellRC[]) => new Set(cells.map(key));
+  // Counting circles are a puzzle-wide set, even when authored as individual marks.
+  if (checked("counting-circles")) {
+    const circled = [...new Map(groupCells("counting-circles").map((cell) => [key(cell), cell])).values()];
+    const counts = new Map<number, number>();
+    for (const cell of circled) if (has(cell)) counts.set(num(cell), (counts.get(num(cell)) ?? 0) + 1);
+    for (const [digit, count] of counts) if (digit < 1 || count > digit || (circled.every(has) && count !== digit)) {
+      messages.push("Counting Circles conflict."); break;
+    }
+  }
   const minimumCells = cellSet(groupCells("minimum")), maximumCells = cellSet(groupCells("maximum"));
   if ([...minimumCells].some((cellKey) => maximumCells.has(cellKey))) messages.push("Minimum and maximum cells cannot overlap.");
   const orthogonal = (cell: CellRC) => [{ r: cell.r - 1, c: cell.c }, { r: cell.r + 1, c: cell.c }, { r: cell.r, c: cell.c - 1 }, { r: cell.r, c: cell.c + 1 }].filter((other) => other.r >= 0 && other.c >= 0 && other.r < def.rows && other.c < def.cols);
@@ -170,11 +179,22 @@ export function validateCreatorDefinition(input: PuzzleDefinition): string[] {
     if (constraint.type === "difference" && checked(sourceId) && cells.length === 2 && has(cells[0]) && has(cells[1])) { const difference = Math.max(1, Number(constraint.difference ?? constraint.value ?? 1)); if (Math.abs(num(cells[0]) - num(cells[1])) !== difference) messages.push(`Difference dot conflict (difference ${difference}).`); }
     if (constraint.type === "ratio" && checked(sourceId) && cells.length === 2 && has(cells[0]) && has(cells[1])) { const ratio = Math.max(2, Number(constraint.ratio ?? constraint.value ?? 2)), low = Math.min(num(cells[0]), num(cells[1])), high = Math.max(num(cells[0]), num(cells[1])); if (low === 0 || high !== low * ratio) messages.push(`Ratio dot conflict (${ratio}:1).`); }
     if (constraint.type === "xv" && checked(sourceId) && cells.length === 2 && has(cells[0]) && has(cells[1])) { const sum = Number(constraint.sum ?? constraint.value ?? 10); if (num(cells[0]) + num(cells[1]) !== sum) messages.push(`${sum === 5 ? "V" : "X"} conflict.`); }
-    if (constraint.type === "clone" && checked(sourceId)) { const nums = cells.filter(has).map(num); if (nums.length > 1 && nums.some((value) => value !== nums[0])) messages.push("Clone conflict."); }
+    if (constraint.type === "clone" && checked(sourceId)) {
+      const groups = Array.isArray(constraint.cloneGroups) ? constraint.cloneGroups as CellRC[][] : null;
+      if (groups?.length === 2) {
+        if (!creatorCloneGroupsError(def, groups[0], groups[1])) {
+          const ordered = groups.map((group) => [...group].sort((a, b) => a.r - b.r || a.c - b.c));
+          if (ordered[0].some((cell, index) => has(cell) && has(ordered[1][index]) && num(cell) !== num(ordered[1][index]))) messages.push("Clone conflict.");
+        }
+      } else if (!groups) {
+        // Old creator projects use one equal-digit group; preserve their semantics.
+        const nums = cells.filter(has).map(num);
+        if (nums.length > 1 && nums.some((value) => value !== nums[0])) messages.push("Clone conflict.");
+      }
+    }
     if (constraint.type === "different-values" && checked(sourceId)) { const nums = cells.filter(has).map(num); if (new Set(nums).size !== nums.length) messages.push("Different Values conflict."); }
     if (constraint.type === "quadruple" && checked(sourceId) && cells.every(has)) { const required = Array.isArray(constraint.digits) ? (constraint.digits as unknown[]).map(Number) : []; const available = cells.map(num); const need = new Map<number, number>(); const got = new Map<number, number>(); required.forEach((value) => need.set(value, (need.get(value) ?? 0) + 1)); available.forEach((value) => got.set(value, (got.get(value) ?? 0) + 1)); if ([...need].some(([value, count]) => (got.get(value) ?? 0) < count)) messages.push("Quadruple conflict."); }
     if (constraint.type === "look-and-say-cage" && checked(sourceId)) { const clue = String(constraint.value ?? ""), pairs = clue.match(/\d\d/g) ?? []; if (pairs.join("") === clue) { const actual = new Map<number, number>(); cells.filter(has).map(num).forEach((value) => actual.set(value, (actual.get(value) ?? 0) + 1)); for (const pair of pairs) { const count = Number(pair[0]), digit = Number(pair[1]), seenCount = actual.get(digit) ?? 0; if (count === 0 && seenCount > 0) messages.push("Look-and-say cage conflict."); else if (seenCount > count || (cells.every(has) && seenCount !== count)) messages.push("Look-and-say cage conflict."); } } }
-    if (constraint.type === "counting-circles" && checked(sourceId)) { const nums = cells.filter(has).map(num), counts = new Map<number, number>(); nums.forEach((value) => counts.set(value, (counts.get(value) ?? 0) + 1)); for (const value of nums) { const count = counts.get(value) ?? 0; if (value < 0 || value > cells.length || count > value || (cells.every(has) && count !== value)) { messages.push("Counting Circles conflict."); break; } } }
     if (isCreatorLineElementId(sourceId)) {
       const pathError = creatorLinePathError(def, sourceId, cells);
       if (pathError && !pathError.includes("requires at least")) messages.push(`${sourceId}: ${pathError}`);

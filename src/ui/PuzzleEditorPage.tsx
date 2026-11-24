@@ -50,7 +50,7 @@ import {
 import type { SudokuPadSourceCage, SudokuPadSourceGraphic, SudokuPadSourceLine } from "../sudokupad/types/source";
 import { addCreatorCosmetic, creatorObjectVisualParts, duplicateCreatorObject, ensureCreatorObjectIds, listCreatorObjects, moveCreatorObject, removeCreatorObject, setCreatorBackground, setCreatorObjectGraphicLayer, updateCreatorObject, updateCreatorObjectVisuals, type CreatorEditableObject, type CreatorObjectPatch, type CreatorVisualCollection } from "../sudokupad/creator/objectEditing";
 import { addCreatorLineConstraint, creatorLinePathError, CREATOR_LINE_ELEMENT_IDS, dutchWhisperDifference, formatCreatorDigitGroups, germanWhisperDifference, lockoutMinimumDifference, isCreatorLineConstraint, isCreatorLineElementId, normalizeCreatorLineConstraints, parseCreatorDigitGroups, replaceCreatorLinePath, reverseCreatorLinePath, updateCreatorLineConstraint } from "../sudokupad/creator/lineConstraints";
-import { addCreatorGroupConstraint, CREATOR_GROUP_ELEMENT_IDS, formatDigitList, formatIntegerList, isCreatorGroupConstraint, isCreatorGroupElementId, normalizeCreatorGroupConstraints, parseDigitList, parseIntegerList, replaceCreatorGroupCells, updateCreatorGroupConstraint } from "../sudokupad/creator/groupConstraints";
+import { addCreatorGroupConstraint, creatorCloneGroupsError, creatorGroupCellsError, creatorGroupClueError, CREATOR_GROUP_ELEMENT_IDS, formatDigitList, formatIntegerList, isCreatorGroupConstraint, isCreatorGroupElementId, normalizeCreatorGroupConstraints, parseCreatorQuadrupleClue, parseIntegerList, replaceCreatorCloneGroups, replaceCreatorGroupCells, updateCreatorGroupConstraint } from "../sudokupad/creator/groupConstraints";
 import { addCreatorGlobalConstraint, CREATOR_GLOBAL_ELEMENT_IDS, creatorOutsideRayFromSelection, creatorSudokuRulesEnabled, isCreatorGlobalConstraint, isCreatorGlobalElementId, normalizeCreatorGlobalConstraints, replaceCreatorGlobalCells, setCreatorSudokuRules, syncCreatorFog, updateCreatorGlobalConstraint } from "../sudokupad/creator/globalConstraints";
 import { getCellsSeenByCells, getComponents, validateConstraints, validateGrid, workerValuesFromDefinition, type CreatorGridValidation } from "../sudokupad/creator/worker";
 import { compareCreatorSolutions, type CreatorLogicalResult, type CreatorSearchProgress, type CreatorSolutionSearchMode, type CreatorSolutionSearchResult } from "../sudokupad/creator/solver";
@@ -306,6 +306,7 @@ export function PuzzleEditorPage() {
   const [activeCatalogElement, setActiveCatalogElement] = useState<string | null>(null);
   const [selectedObjectId, setSelectedObjectId] = useState<string | null>(null);
   const [selectedObjectIds, setSelectedObjectIds] = useState<string[]>([]);
+  const [cloneSourceDraft, setCloneSourceDraft] = useState<{ id: string; cells: CellRC[] } | null>(null);
   const [selectedPathPointIndex, setSelectedPathPointIndex] = useState<number | null>(null);
   const [pathDragIndex, setPathDragIndex] = useState<number | null>(null);
   const [canvasZoom, setCanvasZoom] = useState(1);
@@ -903,16 +904,25 @@ export function PuzzleEditorPage() {
     setSelectedObjectId(objectId); setSelectedObjectIds([objectId]); setSelectedPathPointIndex(null); setCreatorDeleteMode(false); setMessage(text);
   }
 
-  function createOrEditGroupFromBoard(cells: CellRC[]) {
+  function groupAuthoringError(elementId: string, cells: CellRC[], value: string, corner?: [number, number]): string | null {
+    if (!data || !isCreatorGroupElementId(elementId)) return null;
+    return creatorGroupCellsError(data.def, elementId, cells, corner) ?? creatorGroupClueError(data.def, elementId, cells, value);
+  }
+
+  function createOrEditGroupFromBoard(cells: CellRC[], corner?: [number, number]) {
     if (!data || !activeCatalogElement || !cells.length) return;
     const elementId = activeCatalogElement;
     if (isCreatorGroupElementId(elementId)) {
+      const clue = !addingElement && selectedGroupConstraint ? String(selectedGroupConstraint.value ?? "") : constraintValue;
+      const error = groupAuthoringError(elementId, cells, clue, corner);
+      if (error) { setMessage(error); return; }
       if (!addingElement && selectedObject?.id && selectedObject.elementId === elementId && selectedGroupConstraint) {
-        save(replaceCreatorGroupCells(data.def, selectedObject.id, cells));
+        if (selectedGroupConstraint.type === "clone" && Array.isArray(selectedGroupConstraint.cloneGroups)) { setMessage("Use the group A/B controls to edit paired clones without losing their correspondence."); return; }
+        save(replaceCreatorGroupCells(data.def, selectedObject.id, cells, corner));
         finishDirectObject(selectedObject.id, `${selectedObject.name} cells updated.`);
         return;
       }
-      const created = addCreatorGroupConstraint(data.def, elementId, cells, constraintValue);
+      const created = addCreatorGroupConstraint(data.def, elementId, cells, constraintValue, corner);
       if (created.def === data.def) { setAddingElement(false); finishDirectObject(created.constraintId, "A mark already occupies this location; selected the existing mark."); return; }
       save(applyToolDefaults(created.def, created.constraintId, elementId));
       finishDirectObject(created.constraintId, `${CATALOG.find((entry) => entry.id === elementId)?.name ?? "Element"} added.`);
@@ -951,7 +961,7 @@ export function PuzzleEditorPage() {
       { r: corner.r - 1, c: corner.c - 1 }, { r: corner.r - 1, c: corner.c },
       { r: corner.r, c: corner.c - 1 }, { r: corner.r, c: corner.c },
     ].filter((cell) => isInBounds(cell, data.def.rows, data.def.cols));
-    if (cells.length === 4) createOrEditGroupFromBoard(cells);
+    if (cells.length >= 2 && cells.length <= 4) createOrEditGroupFromBoard(cells, [corner.r, corner.c]);
   }
 
   function handleCreatorOutsideRay(cells: CellRC[]) {
@@ -1738,6 +1748,8 @@ export function PuzzleEditorPage() {
       save(applyToolDefaults(created.def, created.constraintId, activeElementId)); setSelectedObjectId(created.constraintId); setAddingElement(false); setConstraintValue(""); return;
     }
     if (isCreatorGroupElementId(activeElementId)) {
+      const error = groupAuthoringError(activeElementId, cells, constraintValue);
+      if (error) { setMessage(error); return; }
       const created = addCreatorGroupConstraint(data.def, activeElementId, cells, constraintValue);
       save(applyToolDefaults(created.def, created.constraintId, activeElementId)); setSelectedObjectId(created.constraintId); setAddingElement(false); setConstraintValue(""); return;
     }
@@ -1789,6 +1801,8 @@ export function PuzzleEditorPage() {
       save(applyToolDefaults(created.def, created.constraintId, element.id)); setSelectedObjectId(created.constraintId); setAddingElement(false); setConstraintValue(""); return;
     }
     if (isCreatorGroupElementId(element.id)) {
+      const error = groupAuthoringError(element.id, cells, constraintValue);
+      if (error) { setMessage(error); return; }
       const created = addCreatorGroupConstraint(data.def, element.id, cells, constraintValue);
       save(applyToolDefaults(created.def, created.constraintId, element.id)); setSelectedObjectId(created.constraintId); setAddingElement(false); setConstraintValue(""); return;
     }
@@ -1864,6 +1878,14 @@ export function PuzzleEditorPage() {
 
   function editGroupConstraint(objectId: string, patch: Parameters<typeof updateCreatorGroupConstraint>[2]) {
     if (!data) return;
+    const current = creatorConstraints(data.def).find((constraint) => constraint.id === objectId);
+    const elementId = String(current?.sourceElementId ?? current?.type ?? "");
+    if (current && isCreatorGroupElementId(elementId)) {
+      const value = patch.value !== undefined ? String(patch.value) : String(current.value ?? "");
+      const cells = (current.cells ?? []) as CellRC[];
+      const error = creatorGroupClueError(data.def, elementId, cells, value);
+      if (error) { setMessage(error); return; }
+    }
     save(updateCreatorGroupConstraint(data.def, objectId, patch));
     setSelectedObjectId(objectId);
   }
@@ -1894,9 +1916,22 @@ export function PuzzleEditorPage() {
 
   function applySelectionForGroup(objectId: string) {
     if (!data || !selection.length) { setMessage("Select at least one cell to replace this constraint's cells."); return; }
+    const current = creatorConstraints(data.def).find((constraint) => constraint.id === objectId);
+    const elementId = String(current?.sourceElementId ?? current?.type ?? "");
+    const error = groupAuthoringError(elementId, selection, String(current?.value ?? ""));
+    if (error) { setMessage(error); return; }
     save(replaceCreatorGroupCells(data.def, objectId, selection));
     setSelectedObjectId(objectId);
     setMessage("Constraint cells updated from the current selection.");
+  }
+
+  function applyClonePairFromSelection(objectId: string) {
+    if (!data || !selection.length || cloneSourceDraft?.id !== objectId) { setMessage("Select clone group A first, then select the corresponding group B."); return; }
+    const error = creatorCloneGroupsError(data.def, cloneSourceDraft.cells, selection);
+    if (error) { setMessage(error); return; }
+    save(replaceCreatorCloneGroups(data.def, objectId, cloneSourceDraft.cells, selection));
+    setCloneSourceDraft(null);
+    setMessage("Both clone groups saved. Corresponding cells now share digits.");
   }
 
   function applySelectionForLine(objectId: string) {
@@ -2426,13 +2461,13 @@ export function PuzzleEditorPage() {
               {selectedGroupConstraint ? <div className="creatorLineProperties">
                 <div className="creatorInspectorSubheading">Cell/group/edge</div>
                 <div className="creatorSelection">Cells: {selectedGroupCells.length ? selectedGroupCells.map(cellLabel).join(", ") : "none"}</div>
-                <div className="creatorFileActions"><button className="btn" onClick={() => applySelectionForGroup(selectedObject.id)} type="button">Use current selection</button></div>
+                {selectedGroupConstraint.type !== "clone" ? <div className="creatorFileActions"><button className="btn" onClick={() => applySelectionForGroup(selectedObject.id)} type="button">Use current selection</button></div> : null}
                 {selectedGroupConstraint.type === "difference" ? <><label>Difference<CreatorDraftInput key={`${selectedObject.id}-difference`} value={Number(selectedGroupConstraint.difference ?? selectedGroupConstraint.value ?? 1)} inputMode="numeric" onCommit={(text) => { if (text.trim() && Number.isFinite(Number(text))) editGroupConstraint(selectedObject.id, { difference: Math.max(1, Math.trunc(Number(text))) }); }} /></label><label>Negative differences<input className="url" defaultValue={formatIntegerList(selectedGroupConstraint.negativeValues)} onBlur={(event) => { const values = parseIntegerList(event.target.value); if (!values) { setMessage("Negative differences must be positive integers separated by commas."); return; } editGroupGlobalSettings("difference", { negativeValues: values }); }} placeholder="e.g. 1" /></label><label className="creatorToggle"><input type="checkbox" checked={selectedGroupConstraint.overrideNegativeRatios === true} onChange={(event) => editGroupGlobalSettings("difference", { overrideNegativeRatios: event.target.checked })} />Marked difference dots override negative ratio restrictions</label><div className="creatorHelp">Negative differences apply to unmarked orthogonal edges puzzle-wide.</div></> : null}
                 {selectedGroupConstraint.type === "ratio" ? <><label>Ratio<CreatorDraftInput key={`${selectedObject.id}-ratio`} value={Number(selectedGroupConstraint.ratio ?? selectedGroupConstraint.value ?? 2)} inputMode="numeric" onCommit={(text) => { if (text.trim() && Number.isFinite(Number(text))) editGroupConstraint(selectedObject.id, { ratio: Math.max(2, Math.trunc(Number(text))) }); }} /></label><label>Negative ratios<input className="url" defaultValue={formatIntegerList(selectedGroupConstraint.negativeValues)} onBlur={(event) => { const values = parseIntegerList(event.target.value, 2); if (!values) { setMessage("Negative ratios must be integers of 2 or greater separated by commas."); return; } editGroupGlobalSettings("ratio", { negativeValues: values }); }} placeholder="e.g. 2" /></label><label className="creatorToggle"><input type="checkbox" checked={selectedGroupConstraint.overrideNegativeDifferences === true} onChange={(event) => editGroupGlobalSettings("ratio", { overrideNegativeDifferences: event.target.checked })} />Marked ratio dots override negative difference restrictions</label><div className="creatorHelp">Negative ratios apply to unmarked orthogonal edges puzzle-wide.</div></> : null}
                 {selectedGroupConstraint.type === "xv" ? <><label>Mark<select className="url" value={Number(selectedGroupConstraint.sum ?? selectedGroupConstraint.value ?? 10) === 5 ? "V" : "X"} onChange={(event) => editGroupConstraint(selectedObject.id, { sum: event.target.value === "V" ? 5 : 10 })}><option value="X">X — sum 10</option><option value="V">V — sum 5</option></select></label><label className="creatorToggle"><input type="checkbox" checked={selectedGroupNegativeValues.has(10)} onChange={(event) => { const values = new Set(selectedGroupNegativeValues); if (event.target.checked) values.add(10); else values.delete(10); editGroupGlobalSettings("xv", { negativeValues: [...values] }); }} />Negative X: unmarked edges cannot sum to 10</label><label className="creatorToggle"><input type="checkbox" checked={selectedGroupNegativeValues.has(5)} onChange={(event) => { const values = new Set(selectedGroupNegativeValues); if (event.target.checked) values.add(5); else values.delete(5); editGroupGlobalSettings("xv", { negativeValues: [...values] }); }} />Negative V: unmarked edges cannot sum to 5</label></> : null}
                 {selectedGroupConstraint.type === "killer-cage" ? <><label>Sum / clue<CreatorDraftInput key={`${selectedObject.id}-cageValue`} value={String(selectedGroupConstraint.value ?? "")} onCommit={(value) => editGroupConstraint(selectedObject.id, { value })} placeholder="blank = all-different only" /></label><div className="creatorHelp">Digits in the cage cannot repeat. A positive clue additionally fixes the cage sum.</div></> : null}
-                {selectedGroupConstraint.type === "clone" ? <div className="creatorHelp">Every cell in this clone group must contain the same digit. Create another clone object for another corresponding group.</div> : null}
-                {selectedGroupConstraint.type === "quadruple" ? <><label>Clue digits<CreatorDraftInput key={`${selectedObject.id}-digits`} value={formatDigitList(selectedGroupConstraint.digits)} onCommit={(text) => editGroupConstraint(selectedObject.id, { digits: parseDigitList(text, data.def) })} placeholder="e.g. 1255" /></label><div className="creatorHelp">The listed digits, including repeats, must occur among the 2–4 cells touching the marked corner.</div></> : null}
+                {selectedGroupConstraint.type === "clone" ? <><div className="creatorHelp">Clones use two identical translated shapes. Corresponding positions have equal digits. Existing single-group clones retain their original equal-digit behavior until you define a pair.</div><div className="creatorSelection">{Array.isArray(selectedGroupConstraint.cloneGroups) && selectedGroupConstraint.cloneGroups.length === 2 && Array.isArray(selectedGroupConstraint.cloneGroups[0]) && Array.isArray(selectedGroupConstraint.cloneGroups[1]) ? `Group A: ${(selectedGroupConstraint.cloneGroups[0] as CellRC[]).map(cellLabel).join(", ")} | Group B: ${(selectedGroupConstraint.cloneGroups[1] as CellRC[]).map(cellLabel).join(", ")}` : "Legacy equal-digit clone group"}</div><div className="creatorFileActions"><button type="button" className="btn" onClick={() => { if (!selection.length) { setMessage("Select group A cells first."); return; } setCloneSourceDraft({ id: selectedObject.id, cells: selection.map((cell) => ({ ...cell })) }); setMessage("Clone group A remembered. Select an equal-shaped group B and apply it."); }}>Remember selected group A</button><button type="button" className="btn" disabled={cloneSourceDraft?.id !== selectedObject.id} onClick={() => applyClonePairFromSelection(selectedObject.id)}>Set selected group B</button></div>{cloneSourceDraft?.id === selectedObject.id ? <div className="creatorHelp">Group A: {cloneSourceDraft.cells.map(cellLabel).join(", ")}. Now select group B and apply.</div> : null}</> : null}
+                {selectedGroupConstraint.type === "quadruple" ? <><label>Clue digits<CreatorDraftInput key={`${selectedObject.id}-digits`} value={formatDigitList(selectedGroupConstraint.digits)} onCommit={(text) => { const digits = parseCreatorQuadrupleClue(text, data.def); if (!digits) { setMessage("Enter 1–4 valid clue digits; separate values of 10 or greater with commas."); return; } editGroupConstraint(selectedObject.id, { digits }); }} placeholder="e.g. 1255" /></label><div className="creatorHelp">The listed digits, including repeats, must occur among the 2–4 cells touching the marked corner.</div></> : null}
                 {selectedGroupConstraint.type === "look-and-say-cage" ? <><label>Count/digit pairs<CreatorDraftInput key={`${selectedObject.id}-looksay`} value={String(selectedGroupConstraint.value ?? "")} onCommit={(value) => editGroupConstraint(selectedObject.id, { value: value.replace(/\s+/g, "") })} placeholder="e.g. 1522" /></label><div className="creatorHelp">Pairs are count then digit: 1522 means one 5 and two 2s; 05 means no 5s.</div></> : null}
                 {selectedGroupConstraint.type === "different-values" ? <div className="creatorHelp">All selected cells must contain different values. Selecting one full digit-set-sized group is equivalent to an extra region.</div> : null}
                 {selectedGroupConstraint.type === "counting-circles" ? <div className="creatorHelp">A digit written in a circle equals the total number of circles containing that digit.</div> : null}

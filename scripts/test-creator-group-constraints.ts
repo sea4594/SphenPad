@@ -66,3 +66,6 @@ def=updateCreatorGroupConstraint(def,made.constraintId,{negativeValues:[2,3],ove
 
 let legacy=add(base(),"difference-kropki",[a,b],"1").def; legacy={...legacy,logic:{...(legacy.logic??{}),constraints:creatorConstraints(legacy).map((constraint)=>({...constraint,type:"difference-kropki",sourceElementId:undefined,difference:undefined,value:undefined}))}}; legacy=normalizeCreatorGroupConstraints(legacy); equal(creatorConstraints(legacy)[0].type,"difference"); equal(Number(creatorConstraints(legacy)[0].difference),1);
 console.log("creator group constraint tests passed");
+
+// Phase 7 acceptance tests run as part of the existing creator group release gate.
+import "./test-creator-phase7-groups";
