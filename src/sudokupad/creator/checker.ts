@@ -1,7 +1,7 @@
 import type { CellRC, PuzzleDefinition } from "../../core/model";
 import { creatorConstraints, getCreatorRegions } from "./nativeAuthoring";
 import { creatorDigitCount, creatorDigitRange, creatorRegionMode, getCreatorSolutionEntries, inferCreatorBoxSize } from "./gridStructure";
-import { normalizeCreatorLineConstraints } from "./lineConstraints";
+import { creatorLinePathError, isCreatorLineElementId, normalizeCreatorLineConstraints } from "./lineConstraints";
 import { normalizeCreatorGroupConstraints, validateGroupConstraintShape } from "./groupConstraints";
 import { creatorSudokuRulesEnabled, normalizeCreatorGlobalConstraints, validateGlobalConstraintShape } from "./globalConstraints";
 
@@ -175,6 +175,10 @@ export function validateCreatorDefinition(input: PuzzleDefinition): string[] {
     if (constraint.type === "quadruple" && checked(sourceId) && cells.every(has)) { const required = Array.isArray(constraint.digits) ? (constraint.digits as unknown[]).map(Number) : []; const available = cells.map(num); const need = new Map<number, number>(); const got = new Map<number, number>(); required.forEach((value) => need.set(value, (need.get(value) ?? 0) + 1)); available.forEach((value) => got.set(value, (got.get(value) ?? 0) + 1)); if ([...need].some(([value, count]) => (got.get(value) ?? 0) < count)) messages.push("Quadruple conflict."); }
     if (constraint.type === "look-and-say-cage" && checked(sourceId)) { const clue = String(constraint.value ?? ""), pairs = clue.match(/\d\d/g) ?? []; if (pairs.join("") === clue) { const actual = new Map<number, number>(); cells.filter(has).map(num).forEach((value) => actual.set(value, (actual.get(value) ?? 0) + 1)); for (const pair of pairs) { const count = Number(pair[0]), digit = Number(pair[1]), seenCount = actual.get(digit) ?? 0; if (count === 0 && seenCount > 0) messages.push("Look-and-say cage conflict."); else if (seenCount > count || (cells.every(has) && seenCount !== count)) messages.push("Look-and-say cage conflict."); } } }
     if (constraint.type === "counting-circles" && checked(sourceId)) { const nums = cells.filter(has).map(num), counts = new Map<number, number>(); nums.forEach((value) => counts.set(value, (counts.get(value) ?? 0) + 1)); for (const value of nums) { const count = counts.get(value) ?? 0; if (value < 0 || value > cells.length || count > value || (cells.every(has) && count !== value)) { messages.push("Counting Circles conflict."); break; } } }
+    if (isCreatorLineElementId(sourceId)) {
+      const pathError = creatorLinePathError(def, sourceId, cells);
+      if (pathError && !pathError.includes("requires at least")) messages.push(`${sourceId}: ${pathError}`);
+    }
     if (["thermometer", "whisper", "renban", "palindrome", "between-line", "region-sum-line", "sequence-line", "entropy-line", "lockout-line", "arrow", "double-arrow"].includes(constraint.type) && cells.length < 2) messages.push(`${sourceId} needs at least two cells.`);
     if (["between-line", "lockout-line", "double-arrow"].includes(constraint.type) && cells.length < 3) messages.push(`${sourceId} needs at least three cells.`);
     if (constraint.type === "arrow" && Number(constraint.bulbCellCount ?? 1) >= cells.length) messages.push("Arrow needs at least one shaft cell after its bulb.");

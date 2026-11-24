@@ -165,15 +165,32 @@ function lineLogic(def: PuzzleDefinition, elementId: CreatorLineElementId, cells
     case "entropic-lines": return { ...base, type: "entropy-line", groups: patch?.groups ?? defaultCreatorDigitGroups(def, "entropy") };
     case "3-modular-lines": return { ...base, type: "entropy-line", groups: patch?.groups ?? defaultCreatorDigitGroups(def, "mod3") };
     case "parity-lines": return { ...base, type: "entropy-line", groups: patch?.groups ?? defaultCreatorDigitGroups(def, "parity") };
-    case "lockout-lines": return { ...base, type: "lockout-line", minDifference: lockoutMinimumDifference(def) };
+    case "lockout-lines": return { ...base, type: "lockout-line", minDifference: patch?.minDifference ?? lockoutMinimumDifference(def) };
     case "arrows": return { ...base, type: "arrow", bulbCellCount: Math.max(1, Math.min(cells.length - 1, Math.trunc(patch?.bulbCellCount ?? 1))) };
     case "double-arrows": return { ...base, type: "double-arrow" };
     default: throw new Error(`Unsupported line element: ${elementId}`);
   }
 }
 
+/** Validates interactive creator paths without changing imported or existing artwork. */
+export function creatorLinePathError(def: PuzzleDefinition, elementId: CreatorLineElementId, cells: CellRC[]): string | null {
+  const minimum = ["between-lines", "lockout-lines", "double-arrows"].includes(elementId) ? 3 : 2;
+  if (cells.length < minimum) return `${elementId} requires at least ${minimum} path cells.`;
+  const seen = new Set<string>();
+  for (const cell of cells) {
+    if (!Number.isInteger(cell.r) || !Number.isInteger(cell.c) || cell.r < 0 || cell.c < 0 || cell.r >= def.rows || cell.c >= def.cols) {
+      return "Line path contains a cell outside the puzzle grid.";
+    }
+    const key = `${cell.r}:${cell.c}`;
+    if (seen.has(key)) return "A line path cannot visit the same cell twice. Backtrack or select a different cell.";
+    seen.add(key);
+  }
+  return null;
+}
+
 export function addCreatorLineConstraint(def: PuzzleDefinition, elementId: CreatorLineElementId, cells: CellRC[], patch?: CreatorLineConstraintPatch): { def: PuzzleDefinition; constraintId: string } {
-  if (cells.length < 2) throw new Error("Line constraints need at least two cells");
+  const error = creatorLinePathError(def, elementId, cells);
+  if (error) throw new Error(error);
   const constraintId = id(elementId.replace(/s$/, ""));
   const logic = lineLogic(def, elementId, cells, patch);
   return { def: addCreatorConstraint(def, { ...logic, id: constraintId }, lineVisuals(elementId, cells, patch)), constraintId };
@@ -200,11 +217,20 @@ export function updateCreatorLineConstraint(def: PuzzleDefinition, constraintId:
   }
   const constraints = (def.logic?.constraints ?? []).map((constraint) => constraint.id === constraintId ? { ...constraint, ...nextPatch, ...(sourceElementId ? { sourceElementId } : {}) } : constraint);
   let next: PuzzleDefinition = { ...def, logic: { ...(def.logic ?? {}), constraints } };
-  if (next.scene && sourceElementId) next = { ...next, scene: {
-    ...next.scene,
-    lines: retagElement(next.scene.lines, constraintId, sourceElementId), arrows: retagElement(next.scene.arrows, constraintId, sourceElementId), cages: retagElement(next.scene.cages, constraintId, sourceElementId),
-    underlays: retagElement(next.scene.underlays, constraintId, sourceElementId), overlays: retagElement(next.scene.overlays, constraintId, sourceElementId),
-  } };
+  if (next.scene && sourceElementId) {
+    const previousElementId = isCreatorLineElementId(current.sourceElementId) ? current.sourceElementId : undefined;
+    const oldDefault = previousElementId ? lineVisuals(previousElementId, (current.path ?? current.cells ?? []) as CellRC[]).lines?.[0]?.color : undefined;
+    const newDefault = lineVisuals(sourceElementId, (current.path ?? current.cells ?? []) as CellRC[]).lines?.[0]?.color;
+    next = { ...next, scene: {
+      ...next.scene,
+      lines: mapConstraintParts(next.scene.lines, constraintId, (part) => ({
+        ...part, [TAG_ELEMENT]: sourceElementId,
+        ...(previousElementId !== sourceElementId && oldDefault && newDefault && part.color === oldDefault ? { color: newDefault } : {}),
+      })),
+      arrows: retagElement(next.scene.arrows, constraintId, sourceElementId), cages: retagElement(next.scene.cages, constraintId, sourceElementId),
+      underlays: retagElement(next.scene.underlays, constraintId, sourceElementId), overlays: retagElement(next.scene.overlays, constraintId, sourceElementId),
+    } };
+  }
   if (current.type === "arrow" && patch.bulbCellCount !== undefined) return replaceCreatorLinePath(next, constraintId, (current.path ?? current.cells ?? []) as CellRC[]);
   return next;
 }
@@ -222,6 +248,7 @@ export function replaceCreatorLinePath(def: PuzzleDefinition, constraintId: stri
   const current = creatorConstraints(def).find((constraint) => constraint.id === constraintId);
   if (!current || !isCreatorLineConstraint(current) || !isCreatorLineElementId(current.sourceElementId)) return def;
   const elementId = current.sourceElementId;
+  if (creatorLinePathError(def, elementId, cells)) return def;
   const visual = lineVisuals(elementId, cells, { bulbCellCount: Number(current.bulbCellCount ?? 1) });
   const old = {
     lines: def.scene.lines.filter((part) => creatorPartConstraint(part as Record<string, unknown>) === constraintId),
@@ -230,7 +257,7 @@ export function replaceCreatorLinePath(def: PuzzleDefinition, constraintId: stri
     overlays: def.scene.overlays.filter((part) => creatorPartConstraint(part as Record<string, unknown>) === constraintId),
   };
   const keep = <T extends Record<string, unknown>>(part: T) => creatorPartConstraint(part) !== constraintId;
-  const add = <T extends Record<string, unknown>>(items: T[] | undefined, oldItems: Record<string, unknown>[]) => (items ?? []).map((part, index) => tagged(preserveLineStyle(part, oldItems[Math.min(index, oldItems.length - 1)]), elementId, constraintId));
+  const add = <T extends Record<string, unknown>>(items: T[] | undefined, oldItems: Record<string, unknown>[]) => (items ?? []).map((part, index) => tagged(preserveLineStyle(part, oldItems[index] ?? oldItems[oldItems.length - 1]), elementId, constraintId));
   return {
     ...def,
     scene: {

@@ -49,7 +49,7 @@ import {
 } from "../sudokupad/creator/nativeAuthoring";
 import type { SudokuPadSourceCage, SudokuPadSourceGraphic, SudokuPadSourceLine } from "../sudokupad/types/source";
 import { addCreatorCosmetic, creatorObjectVisualParts, duplicateCreatorObject, ensureCreatorObjectIds, listCreatorObjects, moveCreatorObject, removeCreatorObject, setCreatorBackground, setCreatorObjectGraphicLayer, updateCreatorObject, updateCreatorObjectVisuals, type CreatorEditableObject, type CreatorObjectPatch, type CreatorVisualCollection } from "../sudokupad/creator/objectEditing";
-import { addCreatorLineConstraint, CREATOR_LINE_ELEMENT_IDS, dutchWhisperDifference, formatCreatorDigitGroups, germanWhisperDifference, isCreatorLineConstraint, isCreatorLineElementId, normalizeCreatorLineConstraints, parseCreatorDigitGroups, replaceCreatorLinePath, reverseCreatorLinePath, updateCreatorLineConstraint } from "../sudokupad/creator/lineConstraints";
+import { addCreatorLineConstraint, creatorLinePathError, CREATOR_LINE_ELEMENT_IDS, dutchWhisperDifference, formatCreatorDigitGroups, germanWhisperDifference, lockoutMinimumDifference, isCreatorLineConstraint, isCreatorLineElementId, normalizeCreatorLineConstraints, parseCreatorDigitGroups, replaceCreatorLinePath, reverseCreatorLinePath, updateCreatorLineConstraint } from "../sudokupad/creator/lineConstraints";
 import { addCreatorGroupConstraint, CREATOR_GROUP_ELEMENT_IDS, formatDigitList, formatIntegerList, isCreatorGroupConstraint, isCreatorGroupElementId, normalizeCreatorGroupConstraints, parseDigitList, parseIntegerList, replaceCreatorGroupCells, updateCreatorGroupConstraint } from "../sudokupad/creator/groupConstraints";
 import { addCreatorGlobalConstraint, CREATOR_GLOBAL_ELEMENT_IDS, creatorOutsideRayFromSelection, creatorSudokuRulesEnabled, isCreatorGlobalConstraint, isCreatorGlobalElementId, normalizeCreatorGlobalConstraints, replaceCreatorGlobalCells, setCreatorSudokuRules, syncCreatorFog, updateCreatorGlobalConstraint } from "../sudokupad/creator/globalConstraints";
 import { getCellsSeenByCells, getComponents, validateConstraints, validateGrid, workerValuesFromDefinition, type CreatorGridValidation } from "../sudokupad/creator/worker";
@@ -883,7 +883,9 @@ export function PuzzleEditorPage() {
   }
 
   function addCreatorPathFromBoard(path: CellRC[]) {
-    if (!data || !activeCatalogElement || path.length < 2 || !isCreatorLineElementId(activeCatalogElement)) return;
+    if (!data || !activeCatalogElement || !isCreatorLineElementId(activeCatalogElement)) return;
+    const error = creatorLinePathError(data.def, activeCatalogElement, path);
+    if (error) { setMessage(error); return; }
     if (!addingElement && selectedObject?.id && selectedObject.elementId === activeCatalogElement && selectedLineConstraint) {
       save(replaceCreatorLinePath(data.def, selectedObject.id, path));
       setSelectedPathPointIndex(null);
@@ -979,8 +981,7 @@ export function PuzzleEditorPage() {
     }
 
     if (!data || !selectedObject?.id || !selectedLineConstraint || selectedObject.elementId !== activeCatalogElement) return;
-    save(setCreatorLinePathPoint(data.def, selectedObject.id, index, cell));
-    setSelectedPathPointIndex(index);
+    if (saveLinePathEdit(setCreatorLinePathPoint(data.def, selectedObject.id, index, cell))) setSelectedPathPointIndex(index);
     setMessage(`${selectedObject.name} point ${index + 1} moved.`);
   }
 
@@ -1097,34 +1098,42 @@ export function PuzzleEditorPage() {
     setMessage(edge === "back" ? "Selected objects sent to back." : "Selected objects brought to front.");
   }
 
+  function saveLinePathEdit(next: PuzzleDefinition): boolean {
+    if (!data || !selectedLineConstraint) return false;
+    const current = (selectedLineConstraint.path ?? selectedLineConstraint.cells ?? []) as CellRC[];
+    const modified = creatorConstraints(next).find((item) => item.id === selectedLineConstraint.id);
+    const path = (modified?.path ?? modified?.cells ?? []) as CellRC[];
+    if (JSON.stringify(current) === JSON.stringify(path)) {
+      setMessage("No valid path change was made.");
+      return false;
+    }
+    save(next);
+    return true;
+  }
+
   function setLinePoint(index: number, cell: CellRC) {
     if (!data || !selectedLineConstraint || !selectedObjectId) return;
-    save(setCreatorLinePathPoint(data.def, selectedObjectId, index, cell));
-    setSelectedPathPointIndex(index);
+    if (saveLinePathEdit(setCreatorLinePathPoint(data.def, selectedObjectId, index, cell))) setSelectedPathPointIndex(index);
   }
 
   function nudgeLinePoint(index: number, dr: number, dc: number) {
     if (!data || !selectedLineConstraint || !selectedObjectId) return;
-    save(nudgeCreatorLinePathPoint(data.def, selectedObjectId, index, dr, dc));
-    setSelectedPathPointIndex(index);
+    if (saveLinePathEdit(nudgeCreatorLinePathPoint(data.def, selectedObjectId, index, dr, dc))) setSelectedPathPointIndex(index);
   }
 
   function reorderLinePoint(from: number, to: number) {
     if (!data || !selectedLineConstraint || !selectedObjectId) return;
-    save(reorderCreatorLinePathPoint(data.def, selectedObjectId, from, to));
-    setSelectedPathPointIndex(to);
+    if (saveLinePathEdit(reorderCreatorLinePathPoint(data.def, selectedObjectId, from, to))) setSelectedPathPointIndex(to);
   }
 
   function deleteLinePoint(index: number) {
     if (!data || !selectedLineConstraint || !selectedObjectId) return;
-    save(removeCreatorLinePathPoint(data.def, selectedObjectId, index));
-    setSelectedPathPointIndex((current) => current == null ? null : Math.max(0, Math.min(current, selectedLinePath.length - 2)));
+    if (saveLinePathEdit(removeCreatorLinePathPoint(data.def, selectedObjectId, index))) setSelectedPathPointIndex((current) => current == null ? null : Math.max(0, Math.min(current, selectedLinePath.length - 2)));
   }
 
   function insertLinePoint(index: number) {
     if (!data || !selectedLineConstraint || !selectedObjectId || selection.length !== 1) { setMessage("Select exactly one board cell to insert as a path point."); return; }
-    save(insertCreatorLinePathPoint(data.def, selectedObjectId, index, selection[0]));
-    setSelectedPathPointIndex(index + 1);
+    if (saveLinePathEdit(insertCreatorLinePathPoint(data.def, selectedObjectId, index, selection[0]))) setSelectedPathPointIndex(index + 1);
   }
 
   function saveToolDefaultsForSelected() {
@@ -1891,7 +1900,9 @@ export function PuzzleEditorPage() {
   }
 
   function applySelectionForLine(objectId: string) {
-    if (!data || selection.length < 2) { setMessage("Select at least two cells to replace the path."); return; }
+    if (!data || !selectedObject || !isCreatorLineElementId(selectedObject.elementId)) return;
+    const error = creatorLinePathError(data.def, selectedObject.elementId, selection);
+    if (error) { setMessage(error); return; }
     save(replaceCreatorLinePath(data.def, objectId, selection));
     setSelectedObjectId(objectId);
     setMessage("Line path updated from the current selection.");
@@ -2409,7 +2420,7 @@ export function PuzzleEditorPage() {
                 {selectedLineConstraint.type === "arrow" ? <label>Bulb cells<CreatorDraftInput key={`${selectedObject.id}-bulbCount`} value={Math.max(1, Number(selectedLineConstraint.bulbCellCount ?? 1))} inputMode="numeric" onCommit={(text) => { if (text.trim() && Number.isFinite(Number(text))) editLineConstraint(selectedObject.id, { bulbCellCount: Math.max(1, Math.min(selectedLinePath.length - 1, Math.trunc(Number(text)))) }); }} /></label> : null}
                 {selectedLineConstraint.type === "sequence-line" ? <div className="creatorHelp">Sequence digits must appear in path order with one constant difference; zero difference is allowed.</div> : null}
                 {selectedLineConstraint.type === "between-line" ? <div className="creatorHelp">Every interior digit must lie strictly between the two circled endpoint digits.</div> : null}
-                {selectedLineConstraint.type === "lockout-line" ? <div className="creatorHelp">Endpoint digits must differ by at least {Math.floor(creatorDigitCount(data.def) / 2)}; interior digits cannot lie between them.</div> : null}
+                {selectedLineConstraint.type === "lockout-line" ? <><label>Minimum endpoint difference<CreatorDraftInput key={`${selectedObject.id}-lockoutDifference`} value={Number(selectedLineConstraint.minDifference ?? lockoutMinimumDifference(data.def))} inputMode="numeric" onCommit={(text) => { const value = Number(text); if (text.trim() && Number.isInteger(value) && value >= 1 && value <= creatorDigitCount(data.def)) editLineConstraint(selectedObject.id, { minDifference: value }); else setMessage("Minimum difference must be a whole number within the digit range."); }} /></label><div className="creatorHelp">Endpoints must differ by at least the specified amount; interior digits cannot lie between them.</div></> : null}
                 {selectedLineConstraint.type === "double-arrow" ? <div className="creatorHelp">The interior line sum must equal the sum of the two circled endpoint digits.</div> : null}
               </div> : null}
               {selectedGroupConstraint ? <div className="creatorLineProperties">

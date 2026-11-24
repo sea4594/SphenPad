@@ -67,3 +67,4 @@ let malformed = add(base(), "entropic-lines", row3).def;
 malformed = { ...malformed, logic: { ...(malformed.logic ?? {}), constraints: creatorConstraints(malformed).map((constraint) => ({ ...constraint, groups: [[1,2],[2,3]] })) } };
 ok(validateCreatorDefinition(malformed).includes("Grouped line digit groups are invalid or overlap."));
 console.log("creator line constraint tests passed");
+await import("./test-creator-phase6-lines.ts");
