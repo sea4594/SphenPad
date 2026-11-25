@@ -56,3 +56,6 @@ for (const [source, token, label] of [
 ]) if (!source.includes(token)) throw new Error(`missing ${label}: ${token}`);
 
 console.log(`Phase 11 release UI/workflow audit passed: ${entries.length}/47 inventory rows exposed and critical workflows wired.`);
+
+// Creator-only usability and background-analysis regressions.
+await import("./test-creator-editor-ui-hardening.mjs");

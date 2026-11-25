@@ -38,3 +38,52 @@
   .creatorEditorShell .creatorUxHelpButton { min-width: 30px; }
 }
 .creatorEditorShell .creatorUxDialog:not(.creatorUxHelpDialog) { grid-template-rows: auto auto minmax(0, 1fr); }
+
+/* Creator-only layout: live status belongs in the solver inspector, not the top bar. */
+.creatorEditorShell .creatorEditorTopbar { width: 100%; min-width: 0; max-width: 100%; box-sizing: border-box; gap: 6px; overflow: hidden; }
+.creatorEditorShell .creatorExitButton { flex: 0 0 40px; min-width: 40px; width: 40px; padding: 0; text-align: center; font-size: 22px; }
+.creatorEditorShell .creatorTopTabs { flex: 1 1 0; min-width: 0; }
+.creatorEditorShell .creatorTopTabs .btn { min-width: 0; flex: 1 1 0; padding-inline: 5px; }
+.creatorEditorShell .creatorTopbarActions { flex: 0 0 auto; gap: 4px; min-width: 0; }
+.creatorEditorShell .creatorPuzzlePage,
+.creatorEditorShell .creatorElementsPageLayout,
+.creatorEditorShell .creatorGridLayout,
+.creatorEditorShell .creatorGridLayout > .kbdPanel { min-width: 0; max-width: 100%; box-sizing: border-box; }
+.creatorEditorShell .creatorSolverInspector { display: flex; flex-direction: column; min-width: 0; min-height: 0; height: 100%; overflow: hidden; }
+.creatorEditorShell .creatorSolverInspector .creatorInspectorBody { overflow-y: auto; overflow-x: hidden; min-height: 0; padding: 12px; }
+.creatorEditorShell .creatorSolverInspector .creatorFileSection { display: grid; gap: 10px; min-width: 0; }
+.creatorEditorShell .creatorSolverInspector .creatorFileActions { display: flex; flex-wrap: wrap; min-width: 0; gap: 6px; }
+.creatorEditorShell .creatorSolverInspector .creatorPropertyGrid { min-width: 0; }
+.creatorEditorShell .creatorSolverInspector pre { max-width: 100%; overflow-x: auto; }
+.creatorEditorShell .creatorSolverFeedback { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; overflow-wrap: anywhere; padding: 8px 0; font-size: 13px; }
+.creatorEditorShell .creatorSolverFeedback > span:last-of-type { min-width: 0; }
+.creatorEditorShell .creatorSolverSpinner { flex: 0 0 15px; height: 15px; width: 15px; border-radius: 50%; border: 2px solid var(--ui-border); border-top-color: var(--accent); animation: creator-solver-spin .75s linear infinite; }
+@keyframes creator-solver-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .creatorEditorShell .creatorSolverSpinner { animation: none; } }
+@media (max-width: 520px) {
+  .creatorEditorShell .creatorEditorTopbar { gap: 3px; padding-left: max(4px, var(--safe-left)); padding-right: max(4px, var(--safe-right)); }
+  .creatorEditorShell .creatorExitButton { flex-basis: 34px; min-width: 34px; width: 34px; height: 36px; }
+  .creatorEditorShell .creatorTopTabs { gap: 2px; }
+  .creatorEditorShell .creatorTopTabs .btn { font-size: 12px; padding-inline: 3px; }
+  .creatorEditorShell .creatorTopbarActions .btn { width: 34px; min-width: 34px !important; height: 36px; }
+}
+
+/* Long analysis messages and solution grids must never expand the creator canvas. */
+.creatorEditorShell .creatorStatus,
+.creatorEditorShell .creatorSolverInspector .creatorHelp,
+.creatorEditorShell .creatorSolverInspector .creatorValidation,
+.creatorEditorShell .creatorFileFields { min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
+.creatorEditorShell .creatorSolverInspector :is(.creatorFileSection, .creatorPropertyGrid, label) { min-width: 0; max-width: 100%; box-sizing: border-box; }
+.creatorEditorShell .creatorSolverInspector :is(input, textarea, select) { max-width: 100%; box-sizing: border-box; }
+@media (hover: hover) and (pointer: fine) and (max-width: 720px) {
+  .creatorEditorShell .creatorGridLayout,
+  .creatorEditorShell[data-layout-mode="phone-portrait"] .creatorGridLayout,
+  .creatorEditorShell[data-layout-mode="phone-landscape"] .creatorGridLayout,
+  .creatorEditorShell[data-layout-mode="tablet-portrait"] .creatorGridLayout,
+  .creatorEditorShell[data-layout-mode="tablet-landscape"] .creatorGridLayout {
+    grid-template-columns: minmax(0, 1fr) minmax(200px, 42%);
+  }
+}
+
+.creatorEditorShell .creatorToolsTab { position: relative; }
+.creatorEditorShell .creatorSolverDot { position: absolute; top: 2px; right: 2px; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); pointer-events: none; }

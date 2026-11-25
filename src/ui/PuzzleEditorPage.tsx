@@ -52,7 +52,7 @@ import { addCreatorCosmetic, creatorObjectVisualParts, duplicateCreatorObject, e
 import { addCreatorLineConstraint, creatorLinePathError, CREATOR_LINE_ELEMENT_IDS, dutchWhisperDifference, formatCreatorDigitGroups, germanWhisperDifference, lockoutMinimumDifference, isCreatorLineConstraint, isCreatorLineElementId, normalizeCreatorLineConstraints, parseCreatorDigitGroups, replaceCreatorLinePath, reverseCreatorLinePath, updateCreatorLineConstraint } from "../sudokupad/creator/lineConstraints";
 import { addCreatorGroupConstraint, creatorCloneGroupsError, creatorGroupCellsError, creatorGroupClueError, CREATOR_GROUP_ELEMENT_IDS, formatDigitList, formatIntegerList, isCreatorGroupConstraint, isCreatorGroupElementId, normalizeCreatorGroupConstraints, parseCreatorQuadrupleClue, parseIntegerList, replaceCreatorCloneGroups, replaceCreatorGroupCells, updateCreatorGroupConstraint } from "../sudokupad/creator/groupConstraints";
 import { addCreatorGlobalConstraint, CREATOR_GLOBAL_ELEMENT_IDS, creatorOutsideClueError, creatorOutsideDirections, creatorOutsideRayInDirection, creatorGlobalCellsError, creatorOutsideRayFromSelection, creatorSudokuRulesEnabled, isCreatorGlobalConstraint, isCreatorGlobalElementId, normalizeCreatorGlobalConstraints, replaceCreatorGlobalCells, setCreatorSudokuRules, syncCreatorFog, updateCreatorGlobalConstraint } from "../sudokupad/creator/globalConstraints";
-import { getCellsSeenByCells, getComponents, validateConstraints, validateGrid, workerValuesFromDefinition, type CreatorGridValidation } from "../sudokupad/creator/worker";
+import { getCellsSeenByCells, validateGrid, type CreatorGridValidation } from "../sudokupad/creator/worker";
 import { compareCreatorSolutions, type CreatorLogicalResult, type CreatorSearchProgress, type CreatorSolutionSearchMode, type CreatorSolutionSearchResult } from "../sudokupad/creator/solver";
 import type { CreatorSolveResponse } from "../sudokupad/creator/solver.worker";
 import { CreatorLogicalWalkthrough } from "./CreatorLogicalWalkthrough";
@@ -361,7 +361,7 @@ export function PuzzleEditorPage() {
   const [solutionSearch, setSolutionSearch] = useState<CreatorSolutionSearchResult | null>(null);
   const [solverProgress, setSolverProgress] = useState<CreatorSearchProgress | null>(null);
   const [solutionExampleIndex, setSolutionExampleIndex] = useState(0);
-  const [solverBusy, setSolverBusy] = useState<"search" | "logical" | null>(null);
+  const [solverBusy, setSolverBusy] = useState<"search" | "logical" | "validate" | null>(null);
   const solverWorkerRef = useRef<Worker | null>(null);
   const solverJobRef = useRef(0);
   const [interchangeReport, setInterchangeReport] = useState<CreatorInterchangeReport | null>(null);
@@ -627,19 +627,7 @@ export function PuzzleEditorPage() {
   }
 
   function runWorkerValidation(source: "givens" | "solution" = "givens") {
-    if (!data) return;
-    if (solverWorkerRef.current) { solverJobRef.current += 1; solverWorkerRef.current.terminate(); solverWorkerRef.current = null; setSolverBusy(null); }
-    const values = workerValuesFromDefinition(data.def, source);
-    if (source === "solution" && !values.length) { setMessage("No authored solution is available to validate."); return; }
-    const report = validateGrid(data.def, values);
-    const constraintErrors = [...validateConstraints(data.def)].filter(([, error]) => error.trim()).map(([id, error]) => ({ id, message: error }));
-    setWorkerValidation(report);
-    setWorkerConstraintErrors(constraintErrors);
-    setLogicalResult(null);
-    setSolutionSearch(null);
-    const firstConstraintIssue = report.diagnostics.find((item) => item.constraintId) ?? (constraintErrors[0] ? { constraintId: constraintErrors[0].id, sourceElementId: undefined } : undefined);
-    if (firstConstraintIssue?.constraintId) { setSelectedObjectId(firstConstraintIssue.constraintId); if (firstConstraintIssue.sourceElementId) setActiveCatalogElement(firstConstraintIssue.sourceElementId); }
-    setMessage(constraintErrors.length ? `${constraintErrors.length} invalid constraint configuration${constraintErrors.length === 1 ? "" : "s"} found.` : report.diagnostics.length ? `${report.invalidCells.length} invalid cell${report.invalidCells.length === 1 ? "" : "s"} found.` : report.thrownErrors.length ? report.thrownErrors[0] : `${source === "solution" ? "Solution" : "Givens"} passes worker validation.`);
+    runCreatorSolverTask("validate", "unique", source);
   }
 
   function cancelCreatorSolver() {
@@ -651,16 +639,30 @@ export function PuzzleEditorPage() {
     setMessage("Creator solver calculation cancelled.");
   }
 
-  function runCreatorSolverTask(action: "search" | "logical", searchMode: CreatorSolutionSearchMode = "unique") {
+  function runCreatorSolverTask(action: "search" | "logical" | "validate", searchMode: CreatorSolutionSearchMode = "unique", source: "givens" | "solution" = "givens") {
     if (!data) return;
+    if (action === "validate" && source === "solution" && !getCreatorSolutionEntries(data.def).length) {
+      setMessage("No authored solution is available to validate.");
+      setWorkerValidation(null);
+      setWorkerConstraintErrors([]);
+      return;
+    }
     solverWorkerRef.current?.terminate();
+    solverWorkerRef.current = null;
     const job = ++solverJobRef.current;
-    const worker = new Worker(new URL("../sudokupad/creator/solver.worker.ts", import.meta.url), { type: "module" });
+    let worker: Worker;
+    try {
+      worker = new Worker(new URL("../sudokupad/creator/solver.worker.ts", import.meta.url), { type: "module" });
+    } catch (error) {
+      setSolverBusy(null);
+      setMessage(`Unable to start creator analysis: ${error instanceof Error ? error.message : "Worker unavailable."}`);
+      return;
+    }
     solverWorkerRef.current = worker;
     setSolverBusy(action);
     setSolutionSearch(null); setLogicalResult(null); setWorkerValidation(null); setWorkerConstraintErrors([]);
     setSolverProgress(null); setSolutionExampleIndex(0);
-    setMessage(action === "search" ? searchMode === "count" ? "Counting solutions…" : searchMode === "first" ? "Finding a solution…" : "Checking uniqueness…" : "Building logical walkthrough…");
+    setMessage(action === "validate" ? `Validating ${source}…` : action === "search" ? searchMode === "count" ? "Counting solutions…" : searchMode === "first" ? "Finding a solution…" : "Checking uniqueness…" : "Building logical walkthrough…");
     const finish = () => {
       if (job !== solverJobRef.current) return false;
       worker.terminate();
@@ -670,12 +672,23 @@ export function PuzzleEditorPage() {
       return true;
     };
     worker.onmessage = (event: MessageEvent<CreatorSolveResponse>) => {
-      if (job !== solverJobRef.current) return; // Ignore older puzzle revisions.
+      if (job !== solverJobRef.current) return;
       const response = event.data;
       if (response.action === "progress") { setSolverProgress(response.progress); return; }
       if (!finish()) return;
-      if (response.action === "error") { setMessage(`Creator solver error: ${response.message}`); return; }
-      if (response.action === "logical") {
+      if (response.action === "error") { setMessage(`Creator analysis failed: ${response.message}`); return; }
+      if (response.action === "validate") {
+        setWorkerValidation(response.result);
+        setWorkerConstraintErrors(response.constraintErrors);
+        const firstDiagnostic = response.result.diagnostics.find((item) => item.constraintId);
+        const firstConstraintId = firstDiagnostic?.constraintId ?? response.constraintErrors[0]?.id;
+        if (firstConstraintId) setSelectedObjectId(firstConstraintId);
+        if (firstDiagnostic?.sourceElementId) setActiveCatalogElement(firstDiagnostic.sourceElementId);
+        if (response.constraintErrors.length) setMessage(`${response.constraintErrors.length} invalid constraint configuration(s) found.`);
+        else if (response.result.thrownErrors.length) setMessage(response.result.thrownErrors[0]);
+        else if (response.result.diagnostics.length) setMessage(`${response.result.invalidCells.length} invalid cell(s) found.`);
+        else setMessage(`${source === "solution" ? "Solution" : "Givens"} passes validation.`);
+      } else if (response.action === "logical") {
         const result = response.result;
         setLogicalResult(result);
         setMessage(result.status === "solved" ? `Logical solver completed the grid in ${result.steps.length} step${result.steps.length === 1 ? "" : "s"}.` : result.message ?? `Logical solver: ${result.status}.`);
@@ -687,14 +700,18 @@ export function PuzzleEditorPage() {
     };
     worker.onerror = (event) => {
       event.preventDefault();
-      if (finish()) setMessage("Creator solver worker failed. No result was applied.");
+      if (finish()) setMessage("Creator analysis worker failed. No result was applied.");
     };
-    worker.onmessageerror = () => { if (finish()) setMessage("Creator solver worker returned an unreadable result."); };
-    // A structured clone is the entire analysis snapshot; the worker never saves.
+    worker.onmessageerror = () => { if (finish()) setMessage("Creator analysis worker returned an unreadable result."); };
     const storedSettings = data.def.meta.creatorSolverSettings ?? {};
-    worker.postMessage({ action, def: data.def, settings: { ...storedSettings, searchMode,
-      ...(action === "search" && searchMode === "unique" ? { maxSolutions: 2 } : {}),
-    } });
+    try {
+      if (action === "validate") worker.postMessage({ action, def: data.def, source });
+      else worker.postMessage({ action, def: data.def, settings: { ...storedSettings, searchMode,
+        ...(action === "search" && searchMode === "unique" ? { maxSolutions: 2 } : {}),
+      } });
+    } catch (error) {
+      if (finish()) setMessage(`Unable to analyze puzzle: ${error instanceof Error ? error.message : "Could not send puzzle to worker."}`);
+    }
   }
 
   function runLogicalSolver() { runCreatorSolverTask("logical"); }
@@ -2277,7 +2294,6 @@ export function PuzzleEditorPage() {
 
   if (!data || !progress) return <div className="shell creatorEditorShell"><div className="creatorLoading">{message || "Opening puzzle creator..."}</div></div>;
 
-  const workerComponents = getComponents(data.def);
   const solverSettings = { maxSolutions: data.def.meta.creatorSolverSettings?.maxSolutions ?? 10000, maxNodes: data.def.meta.creatorSolverSettings?.maxNodes ?? 250000, logicalStepLimit: data.def.meta.creatorSolverSettings?.logicalStepLimit ?? data.def.rows * data.def.cols * 2 };
   const solutionDifferences = solutionSearch && solutionSearch.solutions.length > 1
     ? compareCreatorSolutions(solutionSearch.solutions[0], solutionSearch.solutions[1]) : [];
@@ -2335,7 +2351,7 @@ export function PuzzleEditorPage() {
     lineCenterMarks: scratchProgress.lineCenterMarks,
     lineEdgeMarks: scratchProgress.lineEdgeMarks,
   };
-  const displayedProgress = testPlay ? testProgress ?? makeInitialProgress(data.def) : activeCatalogElement === "regions"
+  const displayedProgress = testPlay ? testProgress ?? makeInitialProgress(data.def) : creatorTab === "tools" ? progress : activeCatalogElement === "regions"
     ? {
       ...progress,
       cells: progress.cells.map((row, rowIndex) => row.map((cell, colIndex) => ({
@@ -2379,7 +2395,7 @@ export function PuzzleEditorPage() {
   const creatorGridStyle = creatorResizableLayout ? ({ "--creator-controls-size": `${(creatorControlSplit * 100).toFixed(2)}%` } as CSSProperties) : undefined;
   const selectedElementUsesSolverControls = activeCatalogElement === null || CREATOR_SOLVER_CONTROL_ELEMENT_IDS.has(activeCatalogElement);
   const showElementControls = creatorTab === "elements" && activeCatalogElement !== null && !testPlay && creatorControlView === "element";
-  const showSolverControls = testPlay || creatorTab !== "elements" || activeCatalogElement === null || creatorControlView === "solver";
+  const showSolverControls = creatorTab === "elements" && (testPlay || activeCatalogElement === null || creatorControlView === "solver");
   const creatorHistoryButton = (kind: "undo" | "redo") => {
     const enabled = kind === "undo" ? history.length > 0 : future.length > 0;
     return <button className={`btn panelBtn panel${kind === "undo" ? "Undo" : "Redo"}`} disabled={!enabled}
@@ -2450,6 +2466,12 @@ export function PuzzleEditorPage() {
     return <div className="creatorAppearanceSection"><div className="creatorInspectorSubheading">Appearance</div><div className="creatorPropertyGrid">{!textOnly && !image ? <><CreatorColorField label="Fill color" value={String(graphic.backgroundColor ?? "transparent")} placeholder="transparent" onChange={(value) => changeAppearance(elementId, collection, { backgroundColor: value })} /><CreatorColorField label="Outline color" value={String(graphic.borderColor ?? "#555555")} onChange={(value) => changeAppearance(elementId, collection, { borderColor: value })} /><label>Outline weight<CreatorDraftInput value={Number(graphic.borderSize ?? 0)} inputMode="decimal" onCommit={(text) => { if (text.trim() && Number.isFinite(Number(text))) changeAppearance(elementId, collection, { thickness: Math.max(0, Number(text)) }); }} /></label></> : null}{hasText ? <><CreatorColorField label="Text color" value={String(graphic.textColor ?? "#555555")} onChange={(value) => changeAppearance(elementId, collection, { textColor: value })} /><label>Font size<CreatorDraftInput value={Number(graphic.fontSize ?? 16)} inputMode="numeric" onCommit={(text) => { if (text.trim() && Number.isFinite(Number(text))) changeAppearance(elementId, collection, { fontSize: Math.max(1, Number(text)) }); }} /></label></> : null}<label>Width<CreatorDraftInput value={Number(graphic.width ?? 1)} inputMode="decimal" onCommit={(text) => { if (text.trim() && Number.isFinite(Number(text))) changeAppearance(elementId, collection, { width: Math.max(0.05, Number(text)) }); }} /></label><label>Height<CreatorDraftInput value={Number(graphic.height ?? 1)} inputMode="decimal" onCommit={(text) => { if (text.trim() && Number.isFinite(Number(text))) changeAppearance(elementId, collection, { height: Math.max(0.05, Number(text)) }); }} /></label>{(DIRECT_POINT_IDS.has(elementId) || image) ? <label>Angle<CreatorDraftInput value={Number(graphic.angle ?? 0)} inputMode="decimal" onCommit={(text) => { if (text.trim() && Number.isFinite(Number(text))) changeAppearance(elementId, collection, { angle: Number(text) }); }} /></label> : null}{image ? <><label>Opacity<CreatorDraftInput value={Number(graphic.opacity ?? 1)} inputMode="decimal" onCommit={(text) => { if (text.trim() && Number.isFinite(Number(text))) changeAppearance(elementId, collection, { opacity: Math.max(0, Math.min(1, Number(text))) }); }} /></label><label>Image fit<select className="url" aria-label="Image fit" value={String(graphic.preserveAspectRatio ?? "none")} onChange={(event) => changeAppearance(elementId, collection, { preserveAspectRatio: event.target.value as "none" | "xMidYMid meet" | "xMidYMid slice" })}><option value="xMidYMid meet">Contain (no distortion)</option><option value="xMidYMid slice">Cover (crop)</option><option value="none">Stretch</option></select></label></> : null}</div>{elementId === "cosmetic-shapes" ? <label className="creatorToggle"><input type="checkbox" checked={Boolean(graphic.rounded)} onChange={(event) => changeAppearance(elementId, collection, { rounded: event.target.checked })} />Rounded shape</label> : null}{renderDrawingSettings(elementId)}</div>;
   }
 
+  const renderCreatorSolverPanel = () => (
+<div className="creatorFileSection"><h3>Solver and validation</h3><div className="creatorFileActions"><button className="btn" onClick={() => runWorkerValidation("givens")} disabled={solverBusy !== null} type="button">Validate givens</button><button className="btn" onClick={() => runWorkerValidation("solution")} disabled={solverBusy !== null} type="button">Validate solution</button><button className="btn" onClick={runLogicalSolver} disabled={solverBusy !== null} type="button">Logical solve</button><button className="btn" onClick={findOneCreatorSolution} disabled={solverBusy !== null} type="button">Find one</button><button className="btn" onClick={runSolutionSearch} disabled={solverBusy !== null} type="button">Check uniqueness</button><button className="btn" onClick={countCreatorSolutions} disabled={solverBusy !== null} type="button">Count solutions</button>{solutionSearch?.solutions[0] ? <button className="btn primary" onClick={useFoundSolution} type="button">Use selected example</button> : null}</div>{creatorTab === "tools" ? <div className="creatorFileActions"><button className="btn" onClick={selectCellsSeen} disabled={!selection.length} type="button">Select cells seen</button></div> : null}
+              <div className="creatorSolverFeedback" role="status" aria-live="polite">{solverBusy ? <><span className="creatorSolverSpinner" aria-hidden="true" /> <strong>{solverBusy === "validate" ? "Validating puzzle" : solverBusy === "logical" ? "Logical solver running" : "Solution search running"}</strong><span>{solverProgress ? `${solverProgress.nodes.toLocaleString()} nodes · ${solverProgress.solutionsFound.toLocaleString()} solutions found` : "Working in the background"}</span><button className="btn" onClick={cancelCreatorSolver} type="button">Cancel</button></> : <span>{message || "Choose an analysis tool to see its results here."}</span>}</div>
+              <div className="creatorPropertyGrid"><label>Count limit (1–100,000)<CreatorDraftInput value={solverSettings.maxSolutions} inputMode="numeric" onCommit={(text) => { if (text.trim() && Number.isFinite(Number(text))) updateSolverSetting("maxSolutions", Math.max(1, Math.min(100000, Math.trunc(Number(text))))); }} /></label><label>Max search nodes<CreatorDraftInput value={solverSettings.maxNodes} inputMode="numeric" onCommit={(text) => { if (text.trim() && Number.isFinite(Number(text))) updateSolverSetting("maxNodes", Math.max(100, Math.min(5000000, Math.trunc(Number(text))))); }} /></label><label>Logical step limit (max 500)<CreatorDraftInput value={solverSettings.logicalStepLimit} inputMode="numeric" onCommit={(text) => { if (text.trim() && Number.isFinite(Number(text))) updateSolverSetting("logicalStepLimit", Math.max(1, Math.min(500, Math.trunc(Number(text))))); }} /></label></div>{workerConstraintErrors.length ? <div className="creatorValidation invalid">{workerConstraintErrors.map((item) => <div key={item.id}>{item.id}: {item.message}</div>)}</div> : null}{workerValidation ? <div className={workerValidation.diagnostics.length ? "creatorValidation invalid" : "creatorValidation valid"}>{workerValidation.diagnostics.length ? workerValidation.diagnostics.slice(0, 12).map((item, index) => <div key={`${item.code}-${index}`}>{item.message} {item.cells.length ? `(${item.cells.map(cellLabel).join(", ")})` : ""}</div>) : "Grid values satisfy the enabled worker constraints."}{workerValidation.thrownErrors.map((item, index) => <div key={`worker-error-${index}`}>{item}</div>)}</div> : null}{logicalResult ? <CreatorLogicalWalkthrough def={data.def} result={logicalResult} onSelectCell={(rc) => setSelection([rc])} /> : null}{solutionSearch ? <div className="creatorHelp" role="status"><strong>{solutionSearch.exact ? `Exact: ${solutionSearch.solutionsFound.toLocaleString()}` : `At least ${solutionSearch.solutionsFound.toLocaleString()}`} solution{solutionSearch.solutionsFound === 1 ? "" : "s"}</strong> · {solutionSearch.nodes.toLocaleString()} nodes · {solutionSearch.mode === "count" ? "Counting" : solutionSearch.mode === "first" ? "Find one" : "Uniqueness"}. {solutionSearch.message}{solutionSearch.solutions.length > 0 ? <div className="creatorFileActions">{solutionSearch.solutions.map((_, index) => <button className={solutionExampleIndex === index ? "btn primary" : "btn"} key={index} onClick={() => setSolutionExampleIndex(index)} type="button">Example {index + 1}</button>)}</div> : null}{solutionSearch.solutions.length > 0 ? <div className="creatorPropertyGrid">{solutionSearch.solutions.map((example, index) => <div key={index}><strong>Example {index + 1}{solutionExampleIndex === index ? " (selected)" : ""}</strong><pre style={{ whiteSpace: "pre", overflowX: "auto" }}>{formatCreatorGrid({ ...data.def, givens: example.map((entry) => ({ rc: entry.rc, v: String(entry.value) })) }, "givens")}</pre></div>)}</div> : null}{solutionDifferences.length > 0 ? <div>Examples differ in {solutionDifferences.length} cell{solutionDifferences.length === 1 ? "" : "s"}: {solutionDifferences.slice(0, 30).map((difference) => <button className="btn" key={`${difference.rc.r}-${difference.rc.c}`} type="button" onClick={() => { setSelection([difference.rc]); setMessage(`${cellLabel(difference.rc)}: ${difference.first} vs ${difference.second}`); }}>{cellLabel(difference.rc)}: {difference.first} / {difference.second}</button>)}{solutionDifferences.length > 30 ? ` …and ${solutionDifferences.length - 30} more` : ""}</div> : null}</div> : null}<div className="creatorHelp">Custom JavaScript is preserved but not executed locally.</div></div>
+  );
+
   return (
     <div className={`shell puzzleShell creatorEditorShell${creatorLayoutClass}`} data-layout-mode={viewportLayoutKind}
       onKeyDownCapture={(event) => {
@@ -2461,14 +2483,14 @@ export function PuzzleEditorPage() {
         }
       }}>
       <header className="topbar puzzleTopbar creatorEditorTopbar">
-        <button className="btn creatorExitButton" onClick={() => void exitCreator()} type="button">Exit</button>
+        <button className="btn creatorExitButton" onClick={() => void exitCreator()} type="button" aria-label="Back" title="Back to Puzzle Creator">←</button>
         <nav className="creatorTopTabs" aria-label="Puzzle creator">
           <button className={creatorTab === "file" ? "btn primary" : "btn"} onClick={() => { setCreatorTab("file"); setAuthoringOpen(false); }} type="button">File</button>
           <button className={creatorTab === "elements" ? "btn primary" : "btn"} onClick={() => { setCreatorTab("elements"); setAuthoringOpen(false); }} type="button">Elements</button>
-          <button className={creatorTab === "tools" ? "btn primary" : "btn"} onClick={() => { setCreatorTab("tools"); setAuthoringOpen(false); }} type="button">Tools</button>
+          <button className={(creatorTab === "tools" ? "btn primary" : "btn") + " creatorToolsTab"} onClick={() => { setCreatorTab("tools"); setAuthoringOpen(false); }} aria-busy={solverBusy !== null} title={solverBusy ? "Analysis running — open Tools to cancel" : "Creator analysis tools"} type="button">Tools{solverBusy ? <span className="creatorSolverDot" aria-hidden="true" /> : null}</button>
         </nav>
         <div className="creatorTopbarActions">
-          <span role="status" title={saveStatus.error ? "Creator save failed. Your edits remain in memory." : saveStatus.latestRevision > saveStatus.savedRevision ? "Saving creator changes in the background" : "Creator changes saved"} style={{ fontSize: "0.75rem", whiteSpace: "nowrap" }}>{saveStatus.error ? "Save failed" : saveStatus.latestRevision > saveStatus.savedRevision ? "Saving…" : "Saved"}</span>
+
           {saveStatus.error ? <button className="btn" type="button" onClick={() => void persistNow()}>Retry save</button> : null}
           {creatorTab !== "file" ? <button type="button" className="btn creatorCanvasViewButton creatorTopbarIconButton" aria-label="Fit puzzle to available space" title="Fit puzzle to available space" onClick={() => { creatorNavigation.setNavigate(false); setCanvasZoom(1); setCanvasPan({ x: 0, y: 0 }); }}><IconFitView /></button> : null}
           <button className="btn creatorUxHelpButton" type="button" aria-label="Creator keyboard shortcuts" title="Keyboard shortcuts (?)" onClick={() => setShortcutHelpOpen(true)}>?</button>
@@ -2484,7 +2506,7 @@ export function PuzzleEditorPage() {
             <div className="creatorFileSection"><h3>Givens</h3><label>Grid<textarea className="url creatorGridInput" value={givensText} onChange={(event) => setGivensText(event.target.value)} /></label><div className="creatorFileActions"><button className="btn primary" onClick={() => pasteGrid(givensText, "givens")} type="button">Apply givens</button><button className="btn" onClick={() => startCoreEditing("given-digits")} type="button">Edit on board</button><button className="btn" onClick={() => clearEntries("givens")} type="button">Clear givens</button></div></div>
             <div className="creatorFileSection"><h3>Solution</h3><label>Grid<textarea className="url creatorGridInput" value={solutionText} onChange={(event) => setSolutionText(event.target.value)} /></label><div className="creatorFileActions"><button className="btn primary" onClick={() => pasteGrid(solutionText, "solution")} type="button">Apply solution</button><button className="btn" onClick={startSolutionEditing} type="button">Edit on board</button><button className="btn" onClick={() => clearEntries("solution")} type="button">Clear solution</button><button className="btn danger" onClick={() => clearEntries("both")} type="button">Clear both</button></div><div className="creatorHelp">Use . or 0 for blanks. Separate two-digit values with spaces or commas; compact single-character grids remain supported. Invalid or out-of-range values are rejected before saving.</div></div>
             <div className="creatorFileSection"><h3>Structure validation</h3><div className={validation.length ? "creatorValidation invalid" : "creatorValidation valid"}>{validation.length ? validation.map((item) => <div key={item}>{item}</div>) : "Puzzle structure looks valid."}</div></div>
-            <div className="creatorFileSection"><h3>Worker validation &amp; solver</h3><div className="creatorFileActions"><button className="btn" onClick={() => runWorkerValidation("givens")} type="button">Validate givens</button><button className="btn" onClick={() => runWorkerValidation("solution")} type="button">Validate solution</button><button className="btn" onClick={runLogicalSolver} disabled={solverBusy !== null} type="button">Logical solve</button><button className="btn" onClick={findOneCreatorSolution} disabled={solverBusy !== null} type="button">Find one</button><button className="btn" onClick={runSolutionSearch} disabled={solverBusy !== null} type="button">Check uniqueness</button><button className="btn" onClick={countCreatorSolutions} disabled={solverBusy !== null} type="button">Count solutions</button>{solverBusy ? <button className="btn" onClick={cancelCreatorSolver} type="button">Cancel calculation</button> : null}{solutionSearch?.solutions[0] ? <button className="btn primary" onClick={useFoundSolution} type="button">Use selected example</button> : null}</div><div className="creatorPropertyGrid"><label>Count limit (1–100,000)<CreatorDraftInput value={solverSettings.maxSolutions} inputMode="numeric" onCommit={(text) => { if (text.trim() && Number.isFinite(Number(text))) updateSolverSetting("maxSolutions", Math.max(1, Math.min(100000, Math.trunc(Number(text))))); }} /></label><label>Max search nodes<CreatorDraftInput value={solverSettings.maxNodes} inputMode="numeric" onCommit={(text) => { if (text.trim() && Number.isFinite(Number(text))) updateSolverSetting("maxNodes", Math.max(100, Math.min(5000000, Math.trunc(Number(text))))); }} /></label><label>Logical step limit (max 500)<CreatorDraftInput value={solverSettings.logicalStepLimit} inputMode="numeric" onCommit={(text) => { if (text.trim() && Number.isFinite(Number(text))) updateSolverSetting("logicalStepLimit", Math.max(1, Math.min(500, Math.trunc(Number(text))))); }} /></label></div>{solverBusy ? <div className="creatorHelp" role="status">{solverBusy === "search" ? `Searching in the background… ${solverProgress ? `${solverProgress.nodes.toLocaleString()} nodes; at least ${solverProgress.solutionsFound.toLocaleString()} solutions` : ""}` : "Logical solving in the background…"}</div> : null}{workerConstraintErrors.length ? <div className="creatorValidation invalid">{workerConstraintErrors.map((item) => <div key={item.id}>{item.id}: {item.message}</div>)}</div> : null}{workerValidation ? <div className={workerValidation.diagnostics.length ? "creatorValidation invalid" : "creatorValidation valid"}>{workerValidation.diagnostics.length ? workerValidation.diagnostics.slice(0, 12).map((item, index) => <div key={`${item.code}-${index}`}>{item.message} {item.cells.length ? `(${item.cells.map(cellLabel).join(", ")})` : ""}</div>) : "Grid values satisfy the enabled worker constraints."}{workerValidation.thrownErrors.map((item, index) => <div key={`worker-error-${index}`}>{item}</div>)}</div> : null}{logicalResult ? <CreatorLogicalWalkthrough def={data.def} result={logicalResult} onSelectCell={(rc) => setSelection([rc])} /> : null}{solutionSearch ? <div className="creatorHelp" role="status"><strong>{solutionSearch.exact ? `Exact: ${solutionSearch.solutionsFound.toLocaleString()}` : `At least ${solutionSearch.solutionsFound.toLocaleString()}`} solution{solutionSearch.solutionsFound === 1 ? "" : "s"}</strong> · {solutionSearch.nodes.toLocaleString()} nodes · {solutionSearch.mode === "count" ? "Counting" : solutionSearch.mode === "first" ? "Find one" : "Uniqueness"}. {solutionSearch.message}{solutionSearch.solutions.length > 0 ? <div className="creatorFileActions">{solutionSearch.solutions.map((_, index) => <button className={solutionExampleIndex === index ? "btn primary" : "btn"} key={index} onClick={() => setSolutionExampleIndex(index)} type="button">Example {index + 1}</button>)}</div> : null}{solutionSearch.solutions.length > 0 ? <div className="creatorPropertyGrid">{solutionSearch.solutions.map((example, index) => <div key={index}><strong>Example {index + 1}{solutionExampleIndex === index ? " (selected)" : ""}</strong><pre style={{ whiteSpace: "pre", overflowX: "auto" }}>{formatCreatorGrid({ ...data.def, givens: example.map((entry) => ({ rc: entry.rc, v: String(entry.value) })) }, "givens")}</pre></div>)}</div> : null}{solutionDifferences.length > 0 ? <div>Examples differ in {solutionDifferences.length} cell{solutionDifferences.length === 1 ? "" : "s"}: {solutionDifferences.slice(0, 30).map((difference) => <button className="btn" key={`${difference.rc.r}-${difference.rc.c}`} type="button" onClick={() => { setSelection([difference.rc]); setMessage(`${cellLabel(difference.rc)}: ${difference.first} vs ${difference.second}`); }}>{cellLabel(difference.rc)}: {difference.first} / {difference.second}</button>)}{solutionDifferences.length > 30 ? ` …and ${solutionDifferences.length - 30} more` : ""}</div> : null}</div> : null}<details className="creatorHelp"><summary>Worker components ({workerComponents.length})</summary>{workerComponents.slice(0, 100).map((component) => <div key={`${component.type}:${component.constraintId ?? component.name}:${component.cells.map(cellLabel).join("|")}`}>{component.name} — {component.type} — {component.cells.map(cellLabel).join(", ") || "no cells"}</div>)}{workerComponents.length > 100 ? <div>…and {workerComponents.length - 100} more.</div> : null}</details><div className="creatorHelp">Custom JavaScript is preserved but not executed locally.</div></div>
+            {renderCreatorSolverPanel()}
             <div className="creatorFileSection"><h3>Import &amp; export</h3><div className="creatorFileActions"><button className="btn" onClick={exportCreatorProjectFile} type="button">CreatorProject JSON</button><button className="btn" onClick={exportAuthoredFile} type="button">SphenPad JSON</button><button className="btn" onClick={exportSclFile} type="button">SCL file</button><button className="btn" onClick={exportSudokuPadJsonFile} type="button">SudokuPad JSON</button><button className="btn" onClick={() => void copyScl()} type="button">Copy SCL</button><button className="btn primary" onClick={() => void copySudokuPadLink()} type="button">Copy SudokuPad link</button></div><div className="creatorFileActions"><label className="btn creatorImportButton">Import file<input type="file" accept="application/json,.json,.txt,.scl,text/plain" disabled={importBusy} onChange={(event) => { const file = event.currentTarget.files?.[0]; event.currentTarget.value = ""; void importPuzzle(file); }} /></label><button className="btn" disabled={importBusy} onClick={() => void importClipboard()} type="button">Import clipboard</button></div><div className="creatorHelp">Imports accept CreatorProject/SphenPad JSON, native SudokuPad JSON, SCL/CTC payloads or SudokuPad links, and F-Puzzles JSON/fpuz payloads. Review imported content before replacing this project, or import into a new project.</div>{pendingImport && pendingImportSummary && pendingImportProgress ? <div className={pendingImportSummary.losses ? "creatorValidation invalid" : "creatorValidation valid"} role="region" aria-label="Import review"><strong>Review imported puzzle</strong><div>{pendingImportSummary.title} · {pendingImportSummary.dimensions}</div><div>{pendingImportSummary.givens} givens · {pendingImportSummary.constraints} constraints · {pendingImportSummary.graphics} graphics</div><div>{pendingImportSummary.warnings} warnings · {pendingImportSummary.losses} reported losses. Review the report below before proceeding.</div><div className="creatorFilePreview card" style={{ width: "min(100%, 240px)" }}><GridCanvas def={pendingImport.result.def} progress={pendingImportProgress} onSelection={NOOP} onLineStroke={NOOP} onLineTapCell={NOOP} onLineTapEdge={NOOP} onDoubleCell={NOOP} interactive={false} previewMode strictScale /></div><div className="creatorFileActions"><button className="btn primary" disabled={importBusy} onClick={() => void finishInterchangeImport("new")} type="button">Import as new project</button><button className="btn" disabled={importBusy} onClick={() => void finishInterchangeImport("replace")} type="button">Replace current (undoable)</button><button className="btn" onClick={() => { setPendingImport(null); setMessage("Import canceled; no project changed."); }} type="button">Cancel</button></div></div> : null}{interchangeReport ? <div className={interchangeReport.issues.some((item) => item.severity === "loss") ? "creatorValidation invalid" : "creatorValidation valid"}><div><strong>{interchangeReport.format}</strong> · {interchangeReport.preserved.length ? `Preserved: ${interchangeReport.preserved.join(", ")}.` : "No preservation summary."}</div>{interchangeReport.issues.map((item, index) => <div key={`${item.code}-${index}`}>{item.severity.toUpperCase()}: {item.message}{item.path ? ` (${item.path})` : ""}</div>)}</div> : null}</div>
             <div className="creatorFileActions"><button className="btn primary" onClick={() => void openPlaytest()} type="button">Playtest</button>{data.def.meta.creatorPublished ? <button className="btn" onClick={() => void openMyPuzzles()} type="button">Open My Puzzles</button> : <button className="btn" onClick={() => void saveToMyPuzzles()} type="button">Save to My Puzzles</button>}<button className="btn" onClick={() => void sharePuzzle()} type="button">Share portable SudokuPad link</button></div>
             <div className="creatorHelp">Creator projects stay in the Puzzle Creator until saved to My Puzzles. Playtest opens a fresh, isolated solving session. Portable links open in SudokuPad; local SphenPad project IDs are not shareable across devices. Use CreatorProject JSON to transfer a fully editable project.</div>
@@ -2497,7 +2519,7 @@ export function PuzzleEditorPage() {
             <div className="creatorActiveElementStrip">{activeCatalog.map((element) => <div className={activeCatalogElement === element.id ? "creatorActiveElementEntry active" : "creatorActiveElementEntry"} key={element.id}><button className="creatorActiveElement" onClick={() => activateCatalogElement(element)} type="button" aria-pressed={activeCatalogElement === element.id} title={displayElementName(element)}><span className="creatorActiveElementIcon">{element.icon}</span><span className="creatorActiveElementName">{displayElementName(element)}</span></button>{!element.core && activeCatalogElement === element.id ? <PopupMenuButton className="btn creatorElementMoreButton" ariaLabel={`More actions for ${displayElementName(element)}`} title={`More actions for ${displayElementName(element)}`} items={[{ label: "Rename", onSelect: () => renameCatalogElement(element) }, { label: "Delete", onSelect: () => removeCatalogElement(element), tone: "danger" }]} /> : null}</div>)}</div>
             <button className="btn primary creatorAddElement" onClick={() => setCatalogOpen(true)} type="button" title="Find or add an element (Ctrl/Cmd+K)" aria-label="Find or add a puzzle element">+</button>
           </div> : null}
-          {creatorTab === "tools" ? <div className="creatorToolStrip"><button className="btn" onClick={() => runWorkerValidation("givens")} type="button">Check validity</button><button className="btn" onClick={runLogicalSolver} disabled={solverBusy !== null} type="button">Logical solve</button><button className="btn" onClick={findOneCreatorSolution} disabled={solverBusy !== null} type="button">Find one</button><button className="btn" onClick={runSolutionSearch} disabled={solverBusy !== null} type="button">Check uniqueness</button><button className="btn" onClick={countCreatorSolutions} disabled={solverBusy !== null} type="button">Count solutions</button>{solverBusy ? <button className="btn" onClick={cancelCreatorSolver} type="button">Cancel calculation</button> : null}<button className="btn" onClick={selectCellsSeen} disabled={!selection.length} type="button">Select cells seen</button><button className="btn" onClick={() => { setCreatorTab("file"); setMessage(`${workerComponents.length} registered worker components; expand Worker components to inspect them.`); }} type="button">Inspect components</button>{solutionSearch?.solutions[0] ? <button className="btn primary" onClick={useFoundSolution} type="button">Use example</button> : null}</div> : null}
+
 
         <div ref={creatorGridLayoutRef} className="gridLayout creatorGridLayout" style={creatorGridStyle}>
           <section className="boardColumn creatorBoardColumn">
@@ -2640,6 +2662,7 @@ export function PuzzleEditorPage() {
           <div className="creatorStatus">{message ? <span role="status" aria-live="polite">{message}</span> : (selectionKey(selection) || "no selection")}</div>
         </aside>
       </section> : null}
+          {creatorTab === "tools" ? <aside className="creatorInspector card creatorSolverInspector" aria-label="Creator solver tools"><div className="creatorInspectorBody">{renderCreatorSolverPanel()}</div></aside> : null}
           {showSolverControls ? <div className="card controlStack mobileControlPanel creatorControls">
             {testPlay ? <button className="btn panelBtn panelUndo" onClick={undoTest} disabled={!testHistory.length} type="button"><IconUndo /></button> : creatorHistoryButton("undo")}
             {testPlay ? <button className="btn panelBtn panelRedo" onClick={redoTest} disabled={!testFuture.length} type="button"><IconRedo /></button> : creatorHistoryButton("redo")}

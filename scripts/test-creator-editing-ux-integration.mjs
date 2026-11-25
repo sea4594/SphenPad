@@ -94,7 +94,7 @@ for (const token of [
   'solverWorkerRef.current?.terminate()',
   'function cancelCreatorSolver()',
   'job !== solverJobRef.current',
-  'solverBusy ? <button',
+  'creatorSolverFeedback', 'solverBusy ? <>', 'onClick={cancelCreatorSolver}',
 ]) if (!editor.includes(token)) throw new Error(`missing creator background solver control: ${token}`);
 const solverWorker = fs.readFileSync(new URL('../src/sudokupad/creator/solver.worker.ts', import.meta.url), 'utf8');
 for (const token of ['self.onmessage', 'findCreatorSolutions(def, settings, {', 'solveCreatorLogically(def, settings)']) if (!solverWorker.includes(token)) throw new Error(`missing creator worker entrypoint: ${token}`);

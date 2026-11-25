@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-25T11:32:48.760Z",
+  "generatedAt": "2026-11-25T15:48:23.727Z",
   "phase": "11L",
   "target": "SphenPad Phase 11 / SudokuMaker creator parity on pinned SudokuPad 0.612.0",
   "productionInputs": [
@@ -53390,8 +53390,8 @@
     },
     {
       "path": "src/sudokupad/creator/solver.worker.ts",
-      "bytes": 1420,
-      "sha256": "f5e24c6dcd854582dd1a156ec60bda76de8da07f2456d78ac13d25f9f5dfb7ac"
+      "bytes": 2165,
+      "sha256": "f95f280de94c616796148e375680b8319d25d6c97d1aaee793db3da5b0d29ab4"
     },
     {
       "path": "src/sudokupad/creator/solverSupport.ts",
@@ -53670,8 +53670,8 @@
     },
     {
       "path": "src/ui/CreatorEditorUx.css",
-      "bytes": 3766,
-      "sha256": "13d43617c119ca2457fb7e18e7d0e2669db73211fecfb1db414869b9d40250d0"
+      "bytes": 7851,
+      "sha256": "65c2e150d3e0daf3a69d45b691b0170790b658c0e9139b0ef6d01a5b7eaae65e"
     },
     {
       "path": "src/ui/CreatorLogicalWalkthrough.tsx",
@@ -53745,8 +53745,8 @@
     },
     {
       "path": "src/ui/PuzzleEditorPage.tsx",
-      "bytes": 236705,
-      "sha256": "d94602380e4235e332607fd4df9a889274d0562d7e279c588cea2b693455c13f"
+      "bytes": 235873,
+      "sha256": "b6a38f50ea43413da9cc5e7bcec1ad8853e228aa92866e75ad2ef718b69c9ebc"
     },
     {
       "path": "src/ui/PuzzleListPreview.tsx",
@@ -53842,13 +53842,18 @@
     },
     {
       "path": "scripts/test-creator-editing-ux-integration.mjs",
-      "bytes": 10785,
-      "sha256": "75820cde39fe7a487e4a69598090afe9050f1192662aa8192241aa576ef9a817"
+      "bytes": 10838,
+      "sha256": "16994a6126930ce438134c462614fe662e52b73442720c2e8deba3de6ed3bf3b"
     },
     {
       "path": "scripts/test-creator-editing-ux.ts",
       "bytes": 8236,
       "sha256": "273f5352e07afeace1d0720f68da3ca46717389628d45a3f3cc2f54dafb72b0c"
+    },
+    {
+      "path": "scripts/test-creator-editor-ui-hardening.mjs",
+      "bytes": 3952,
+      "sha256": "3ea4b361547b904f9e5b0c9af6bf2ede913b52d409f1e1718d847ebc35c9c104"
     },
     {
       "path": "scripts/test-creator-global-constraints.ts",
@@ -53892,8 +53897,8 @@
     },
     {
       "path": "scripts/test-creator-phase11-release-ui.mjs",
-      "bytes": 3738,
-      "sha256": "315dee93b02e53206bfe0a8ad1a73d4ddd5bf92d35b4d8af585b325fe0d6c14b"
+      "bytes": 3858,
+      "sha256": "d2260509eeb61d1cfca8fee0a4b509308984c77eb7a8abc87c54ec79c5cbef12"
     },
     {
       "path": "scripts/test-creator-phase11-release.ts",
@@ -75808,34 +75813,34 @@
       "sha256": "d167f36d027e4aae1afc6fa8bcec970421049d5cfc2d631c3afb20d12097354a"
     },
     {
-      "path": "dist/assets/index-BWGx6TBa.js",
+      "path": "dist/assets/index-CkNUrYhC.js",
       "bytes": 1187162,
-      "sha256": "1f3908de71996bcce2fc501d329635d7c24cbee4a4dc2cfeac7002d7a9ae9266"
+      "sha256": "59360725dd9347cdd13e61e31b35a74dc0e6afb39910f69d45946ef83a3df69c"
     },
     {
-      "path": "dist/assets/persistence-Bv4eWv_b.js",
+      "path": "dist/assets/persistence-D8sSDNJK.js",
       "bytes": 1788,
-      "sha256": "5dee5c4e7f79c399cdc4fb8171d83aebb10c574389e507eeeb553fe46e3e2693"
+      "sha256": "5ce2aee1377e0bd30bfaebb59af090a29a3d4049bad2b1ace201bc0c1b8847f4"
     },
     {
-      "path": "dist/assets/PuzzleCreatorPage-D64L0HVO.js",
+      "path": "dist/assets/PuzzleCreatorPage-BnPTiLFK.js",
       "bytes": 6161,
-      "sha256": "84033c03c177037cc71b5a7d70816315741f224c355efa1836dd9d9e098bca65"
+      "sha256": "bd78da3e59bf27b23cf0f0ce3c80c6d08342bacffb44720eb9f736adb43359dd"
     },
     {
-      "path": "dist/assets/PuzzleEditorPage-2n0BqNMu.css",
-      "bytes": 3329,
-      "sha256": "3001b85e11dcff5584c2e201af4efd0d34b37bde13827e5c64a05f19ebc01a94"
+      "path": "dist/assets/PuzzleEditorPage-DezS-PdD.css",
+      "bytes": 6861,
+      "sha256": "dcdaf422eac6236003683bcba23888070fe731c6a234a4a1921c587e293c9f03"
     },
     {
-      "path": "dist/assets/PuzzleEditorPage-BCmhSnJA.js",
-      "bytes": 201568,
-      "sha256": "19ef6b396fc25758a2e80bf845aa7c083ef1b4acbda8d40d376677dbdd33e494"
+      "path": "dist/assets/PuzzleEditorPage-vyXkKsJT.js",
+      "bytes": 199584,
+      "sha256": "cd13e28769e9e6281a24d1b25e4f564619a3da0c77ab361f73084e75614b8bf0"
     },
     {
-      "path": "dist/assets/solver.worker-Bo5GoFr1.js",
-      "bytes": 67743,
-      "sha256": "3d516be61d4298a61614c10412e7a553baee7f7a04ecbb59cc7b9bb0f68904d1"
+      "path": "dist/assets/solver.worker-BxTSKx6e.js",
+      "bytes": 68196,
+      "sha256": "df6661806ae8de4ad06f66818854e19d94ac2bc37b459468e0662daaf4c54797"
     },
     {
       "path": "dist/assets/sudokupad-compatibility-manifest.json",
@@ -75850,7 +75855,7 @@
     {
       "path": "dist/index.html",
       "bytes": 2045,
-      "sha256": "66dec5929b90ff9c1d7db48e95c732d47367a46fb051f967f53044e36dd71172"
+      "sha256": "29b595750d93552a89fb05c20fdbf6e5cb9cf36d0273c4aca763e3b788eefa1e"
     },
     {
       "path": "dist/lmg/lmg-manifest.json",
@@ -107044,5 +107049,5 @@
     }
   ],
   "bundleBuilt": true,
-  "releaseContentSha256": "8b128be162a5671c4e1d7ade192c400f7c91dde6dd1c097db3cd8a910187e9c7"
+  "releaseContentSha256": "f79991139830b23a30894d3bf619228d5d96c0e49f261fbf0322fad3344a85bb"
 }
