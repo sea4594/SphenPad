@@ -6,6 +6,8 @@ import { addCreatorLineConstraint } from "../src/sudokupad/creator/lineConstrain
 import { addCreatorCosmetic, listCreatorObjects } from "../src/sudokupad/creator/objectEditing";
 import { alignCreatorCosmetics, creatorObjectClipboardJson, insertCreatorLinePathPoint, moveCreatorObjectsToEdge, nudgeCreatorLinePathPoint, parseCreatorObjectClipboard, pasteCreatorObjectClipboard, removeCreatorLinePathPoint, removeCreatorObjects, reorderCreatorLinePathPoint, setCreatorLinePathPoint, snapCreatorObjects, updateCreatorObjects } from "../src/sudokupad/creator/editingUx";
 import { creatorProjectFromDefinition, definitionFromCreatorProject } from "../src/sudokupad/creator/project";
+import { CREATOR_CATALOG_CATEGORIES, creatorCatalogCategory, filterCreatorCatalog } from "../src/ui/CreatorCatalogUx";
+import { readFileSync } from "node:fs";
 
 let def = createAuthoredPuzzleDefinition({ id: "ux", rows: 4, cols: 4, subgrid: { r: 2, c: 2 }, digitRange: { min: 1, max: 4 }, meta: {} });
 const line = addCreatorLineConstraint(def, "renban-lines", [{ r: 0, c: 0 }, { r: 0, c: 1 }, { r: 0, c: 2 }]);
@@ -71,4 +73,33 @@ const roundTrip = definitionFromCreatorProject(project);
 equal(roundTrip.meta.creatorToolDefaults?.["cosmetic-text"]?.constraintValue, "Label");
 equal(roundTrip.meta.creatorToolDefaults?.["cosmetic-text"]?.patch?.opacity, 0.75);
 
+// Phase 11 creator catalog filtering and category coverage.
+const uxItems = [
+  { id: "renban-lines", name: "Renban lines", description: "Consecutive line digits" },
+  { id: "difference-kropki", name: "Difference Kropki", description: "Adjacent cells" },
+  { id: "cosmetic-backgrounds", name: "Background image", description: "Puzzle artwork" },
+  { id: "little-killers", name: "Little killers", description: "Outside clue" },
+  { id: "custom-fog-clearing", name: "Fog clearing", description: "Reveal cells" },
+];
+equal(CREATOR_CATALOG_CATEGORIES.length, 5);
+equal(creatorCatalogCategory("renban-lines"), "Lines & paths");
+equal(creatorCatalogCategory("difference-kropki"), "Cells, edges & cages");
+equal(creatorCatalogCategory("little-killers"), "Outside & global");
+equal(creatorCatalogCategory("cosmetic-backgrounds"), "Artwork");
+equal(creatorCatalogCategory("custom-fog-clearing"), "Fog & advanced");
+equal(filterCreatorCatalog(uxItems, "white dot")[0]?.id, "difference-kropki");
+equal(filterCreatorCatalog(uxItems, "picture", "Artwork")[0]?.id, "cosmetic-backgrounds");
+equal(filterCreatorCatalog(uxItems, "outside SUM")[0]?.id, "little-killers");
+equal(filterCreatorCatalog(uxItems, "", "Lines & paths").length, 1);
+equal(filterCreatorCatalog(uxItems, "missing thing").length, 0);
+equal(filterCreatorCatalog(uxItems, "").length, uxItems.length);
+const creatorUxDialogSource = readFileSync(new URL("../src/ui/CreatorEditorDialogs.tsx", import.meta.url), "utf8");
+const creatorEditorSource = readFileSync(new URL("../src/ui/PuzzleEditorPage.tsx", import.meta.url), "utf8");
+for (const token of ['role="dialog"', 'aria-modal="true"', 'event.key === "Escape"', 'event.key === "Tab"', 'props.onSelect(filtered[0].id)', 'creatorUxCategory']) {
+  ok(creatorUxDialogSource.includes(token), `Missing creator dialog keyboard/accessibility behavior: ${token}`);
+}
+for (const token of ['<CreatorCatalogDialog', '<CreatorKeyboardHelp', 'key === "k"', 'event.key === "?"', 'closest(".creatorUxDialog")']) {
+  ok(creatorEditorSource.includes(token), `Missing creator editor shortcut/modal integration: ${token}`);
+}
+console.log("creator Phase 11 catalog UX tests passed");
 console.log("creator 11K editing UX tests passed");

@@ -56,6 +56,7 @@ import { getCellsSeenByCells, getComponents, validateConstraints, validateGrid, 
 import { compareCreatorSolutions, type CreatorLogicalResult, type CreatorSearchProgress, type CreatorSolutionSearchMode, type CreatorSolutionSearchResult } from "../sudokupad/creator/solver";
 import type { CreatorSolveResponse } from "../sudokupad/creator/solver.worker";
 import { CreatorLogicalWalkthrough } from "./CreatorLogicalWalkthrough";
+import { CreatorCatalogDialog, CreatorKeyboardHelp } from "./CreatorEditorDialogs";
 import { authoredPuzzleJson, creatorProjectJson, exportCreatorInterchange, importCreatorInterchange, type CreatorImportResult, type CreatorInterchangeReport } from "../sudokupad/creator/interchange";
 import { creatorExportLossWarning, creatorProjectForNewImport, MAX_CREATOR_IMPORT_CHARACTERS, summarizeCreatorImport } from "../sudokupad/creator/interchangePreview";
 import { makeCreatorPlaytestRouteState, readCreatorPlaytestRouteState } from "../sudokupad/creator/playtest";
@@ -303,6 +304,7 @@ export function PuzzleEditorPage() {
   const [fogPaintRole, setFogPaintRole] = useState<"trigger" | "effect">("trigger");
   const [authoringOpen, setAuthoringOpen] = useState(false);
   const [catalogOpen, setCatalogOpen] = useState(false);
+  const [shortcutHelpOpen, setShortcutHelpOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [activeCatalogElement, setActiveCatalogElement] = useState<string | null>(null);
   const [selectedObjectId, setSelectedObjectId] = useState<string | null>(null);
@@ -2181,9 +2183,12 @@ export function PuzzleEditorPage() {
     const onKeyDown = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
       const typing = Boolean(target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.tagName === "SELECT" || target.isContentEditable));
-      if (typing) return;
       const key = event.key.toLowerCase();
       const mod = event.metaKey || event.ctrlKey;
+      if (catalogOpen || shortcutHelpOpen) return;
+      if (mod && !event.altKey && key === "k") { event.preventDefault(); setCatalogOpen(true); return; }
+      if (!typing && event.key === "?" && !event.altKey && !mod) { event.preventDefault(); setShortcutHelpOpen(true); return; }
+      if (typing) return;
 
       if (!event.altKey && !event.ctrlKey && !event.metaKey && (key === "n" || key === "m")) { event.preventDefault(); if (key === "n") undoDefinition(); else redoDefinition(); return; }
       if (mod && !event.altKey && key === "z") { event.preventDefault(); if (event.shiftKey) redoDefinition(); else undoDefinition(); return; }
@@ -2448,6 +2453,7 @@ export function PuzzleEditorPage() {
       onKeyDownCapture={(event) => {
         if (event.key !== "Enter" || event.nativeEvent.isComposing) return;
         const target = event.target;
+        if (target instanceof Element && target.closest(".creatorUxDialog")) return;
         if (target instanceof HTMLInputElement && target.type !== "checkbox" && target.type !== "radio" && target.type !== "button" && target.type !== "file") {
           event.preventDefault(); target.blur(); // Dismiss the virtual keyboard without submitting the editor.
         }
@@ -2463,6 +2469,7 @@ export function PuzzleEditorPage() {
           <span role="status" title={saveStatus.error ? "Creator save failed. Your edits remain in memory." : saveStatus.latestRevision > saveStatus.savedRevision ? "Saving creator changes in the background" : "Creator changes saved"} style={{ fontSize: "0.75rem", whiteSpace: "nowrap" }}>{saveStatus.error ? "Save failed" : saveStatus.latestRevision > saveStatus.savedRevision ? "Saving…" : "Saved"}</span>
           {saveStatus.error ? <button className="btn" type="button" onClick={() => void persistNow()}>Retry save</button> : null}
           {creatorTab !== "file" ? <button type="button" className="btn creatorCanvasViewButton creatorTopbarIconButton" aria-label="Fit puzzle to available space" title="Fit puzzle to available space" onClick={() => { creatorNavigation.setNavigate(false); setCanvasZoom(1); setCanvasPan({ x: 0, y: 0 }); }}><IconFitView /></button> : null}
+          <button className="btn creatorUxHelpButton" type="button" aria-label="Creator keyboard shortcuts" title="Keyboard shortcuts (?)" onClick={() => setShortcutHelpOpen(true)}>?</button>
           <button className="btn topbarSettingsButton" onClick={() => setSettingsOpen(true)} title="Settings" type="button"><IconSettings /></button>
         </div>
       </header>
@@ -2486,7 +2493,7 @@ export function PuzzleEditorPage() {
         <div className="creatorElementsPageLayout">
           {creatorTab === "elements" ? <div className="creatorActiveElements">
             <div className="creatorActiveElementStrip">{activeCatalog.map((element) => <div className={activeCatalogElement === element.id ? "creatorActiveElementEntry active" : "creatorActiveElementEntry"} key={element.id}><button className="creatorActiveElement" onClick={() => activateCatalogElement(element)} type="button" aria-pressed={activeCatalogElement === element.id} title={displayElementName(element)}><span className="creatorActiveElementIcon">{element.icon}</span><span className="creatorActiveElementName">{displayElementName(element)}</span></button>{!element.core && activeCatalogElement === element.id ? <PopupMenuButton className="btn creatorElementMoreButton" ariaLabel={`More actions for ${displayElementName(element)}`} title={`More actions for ${displayElementName(element)}`} items={[{ label: "Rename", onSelect: () => renameCatalogElement(element) }, { label: "Delete", onSelect: () => removeCatalogElement(element), tone: "danger" }]} /> : null}</div>)}</div>
-            <button className="btn primary creatorAddElement" onClick={() => setCatalogOpen(true)} type="button" title="Add element">+</button>
+            <button className="btn primary creatorAddElement" onClick={() => setCatalogOpen(true)} type="button" title="Find or add an element (Ctrl/Cmd+K)" aria-label="Find or add a puzzle element">+</button>
           </div> : null}
           {creatorTab === "tools" ? <div className="creatorToolStrip"><button className="btn" onClick={() => runWorkerValidation("givens")} type="button">Check validity</button><button className="btn" onClick={runLogicalSolver} disabled={solverBusy !== null} type="button">Logical solve</button><button className="btn" onClick={findOneCreatorSolution} disabled={solverBusy !== null} type="button">Find one</button><button className="btn" onClick={runSolutionSearch} disabled={solverBusy !== null} type="button">Check uniqueness</button><button className="btn" onClick={countCreatorSolutions} disabled={solverBusy !== null} type="button">Count solutions</button>{solverBusy ? <button className="btn" onClick={cancelCreatorSolver} type="button">Cancel calculation</button> : null}<button className="btn" onClick={selectCellsSeen} disabled={!selection.length} type="button">Select cells seen</button><button className="btn" onClick={() => { setCreatorTab("file"); setMessage(`${workerComponents.length} registered worker components; expand Worker components to inspect them.`); }} type="button">Inspect components</button>{solutionSearch?.solutions[0] ? <button className="btn primary" onClick={useFoundSolution} type="button">Use example</button> : null}</div> : null}
 
@@ -2628,7 +2635,7 @@ export function PuzzleEditorPage() {
               <div className="creatorObjectActions"><button className="btn" onClick={() => reorderObject(selectedObject.id, -1)} type="button">Backward</button><button className="btn" onClick={() => reorderObject(selectedObject.id, 1)} type="button">Forward</button><button className="btn" onClick={() => { if (data) save(moveCreatorObjectsToEdge(data.def, [selectedObject.id], "back")); }} type="button">To back</button><button className="btn" onClick={() => { if (data) save(moveCreatorObjectsToEdge(data.def, [selectedObject.id], "front")); }} type="button">To front</button><button className="btn" disabled={selectedObject.kind === "background" || SINGLETON_GLOBAL_IDS.has(selectedObject.elementId)} onClick={() => duplicateObject(selectedObject.id)} type="button">Duplicate</button><button className="btn" disabled={selectedObject.kind === "background"} onClick={() => void copyObjectById(selectedObject.id)} type="button">Copy</button><button className="btn" disabled={selectedObject.kind === "background"} onClick={saveToolDefaultsForSelected} type="button">Use as defaults</button><button className="btn danger" onClick={() => deleteObject(selectedObject.id)} type="button">Delete</button></div>
             </div> : null}
           </div>
-          <div className="creatorStatus">{message || (selectionKey(selection) || "no selection")}</div>
+          <div className="creatorStatus">{message ? <span role="status" aria-live="polite">{message}</span> : (selectionKey(selection) || "no selection")}</div>
         </aside>
       </section> : null}
           {showSolverControls ? <div className="card controlStack mobileControlPanel creatorControls">
@@ -2654,7 +2661,8 @@ export function PuzzleEditorPage() {
       {testPlay ? <div className="creatorTestNotice creatorFloatingNotice">Test play is isolated from your authored puzzle.</div> : null}
       {objectContextMenu ? <div className="card creatorObjectContextMenu" style={{ left: objectContextMenu.x, top: objectContextMenu.y }} onMouseLeave={() => setObjectContextMenu(null)}><button className="btn" onClick={() => { void copyObjectById(objectContextMenu.id); setObjectContextMenu(null); }} type="button">Copy</button><button className="btn" onClick={() => { duplicateObject(objectContextMenu.id); setObjectContextMenu(null); }} type="button">Duplicate</button><button className="btn" onClick={() => { if (data) save(moveCreatorObjectsToEdge(data.def, [objectContextMenu.id], "back")); setObjectContextMenu(null); }} type="button">Send to back</button><button className="btn" onClick={() => { if (data) save(moveCreatorObjectsToEdge(data.def, [objectContextMenu.id], "front")); setObjectContextMenu(null); }} type="button">Bring to front</button><button className="btn danger" onClick={() => { deleteObject(objectContextMenu.id); setObjectContextMenu(null); }} type="button">Delete</button></div> : null}
       {settingsOpen ? <SettingsOverlay onClose={() => setSettingsOpen(false)} /> : null}
-      {catalogOpen ? <div className="overlayBackdrop creatorCatalogBackdrop" role="dialog" aria-modal="true" aria-label="Add puzzle element"><div className="card creatorCatalog"><div className="creatorOverlayHeader"><div className="creatorInspectorHeading">Add element</div><div className="creatorOverlayActions"><button className="btn" onClick={() => setCatalogOpen(false)} type="button">Close</button></div></div><div className="creatorCatalogList">{CATALOG.filter((element) => !element.core).map((element) => <button className="creatorCatalogOption" key={element.id} onClick={() => selectCatalogElement(element)} type="button"><span>{element.icon}</span><div><strong>{element.name}</strong><small>{element.description}</small></div></button>)}</div></div></div> : null}
+      {catalogOpen ? <CreatorCatalogDialog items={CATALOG.filter((element) => !element.core).map((element) => ({ ...element, name: displayElementName(element) }))} activeId={activeCatalogElement} onSelect={(id) => { const element = CATALOG.find((item) => item.id === id); if (element) selectCatalogElement(element); }} onClose={() => setCatalogOpen(false)} /> : null}
+      {shortcutHelpOpen ? <CreatorKeyboardHelp onClose={() => setShortcutHelpOpen(false)} /> : null}
     </div>
   );
 }

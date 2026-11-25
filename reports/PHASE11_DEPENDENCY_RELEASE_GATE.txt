@@ -1,4 +1,4 @@
-Phase 11 dependency-backed release gate — 2026-11-25T02:27:56Z
+Phase 11 dependency-backed release gate — 2026-11-25T03:04:07Z
 Node: v20.20.2
 npm: 10.8.2
 
@@ -44,7 +44,7 @@ npm audit: only the known Firebase/Firestore browser-only grpc advisories are pr
   103:6  warning  React Hook useEffect has a missing dependency: 'positionMenu'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
 
 /Users/sea/Desktop/SphenPad/src/ui/PuzzleEditorPage.tsx
-  2152:6  warning  React Hook useEffect has a missing dependency: 'selectedObjectIds'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  2154:6  warning  React Hook useEffect has a missing dependency: 'selectedObjectIds'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
 
 /Users/sea/Desktop/SphenPad/src/ui/SelectControl.tsx
   51:9  warning  The 'selectedValues' conditional could make the dependencies of useMemo Hook (at line 53) change on every render. Move it inside the useMemo callback. Alternatively, wrap the initialization of 'selectedValues' in its own useMemo() Hook  react-hooks/exhaustive-deps
@@ -58,22 +58,23 @@ npm audit: only the known Firebase/Firestore browser-only grpc advisories are pr
 
 vite v7.3.1 building client environment for production...
 transforming...
-✓ 186 modules transformed.
+✓ 189 modules transformed.
 rendering chunks...
 computing gzip size...
-dist/index.html                                2.05 kB │ gzip:   0.89 kB
+dist/index.html                                2.05 kB │ gzip:   0.88 kB
 dist/assets/solver.worker-Bg2F71R1.js         64.41 kB
+dist/assets/PuzzleEditorPage-2n0BqNMu.css      3.33 kB │ gzip:   0.92 kB
 dist/assets/index-Bks0kLu0.css               100.73 kB │ gzip:  17.18 kB
-dist/assets/persistence-DTCkRRzj.js            1.79 kB │ gzip:   0.71 kB
-dist/assets/PuzzleCreatorPage-YosACsC1.js      5.65 kB │ gzip:   1.96 kB
-dist/assets/PuzzleEditorPage-Pymge7nn.js     207.25 kB │ gzip:  58.68 kB
-dist/assets/index-CP6Zw8Ng.js              1,173.32 kB │ gzip: 358.29 kB
+dist/assets/persistence-D0aYSy0t.js            1.79 kB │ gzip:   0.71 kB
+dist/assets/PuzzleCreatorPage-1N8d-KTQ.js      5.65 kB │ gzip:   1.96 kB
+dist/assets/PuzzleEditorPage-HYOidXot.js     214.10 kB │ gzip:  60.89 kB
+dist/assets/index-bcA5Su_I.js              1,173.36 kB │ gzip: 358.31 kB
 
 (!) Some chunks are larger than 500 kB after minification. Consider:
 - Using dynamic import() to code-split the application
 - Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
 - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
-✓ built in 5.07s
+✓ built in 5.06s
 [5/11] Complete Phase 11 creator regression matrix
 
 > sphenpad@0.0.0 test-creator-phase11
@@ -148,6 +149,7 @@ creator playtest / My Puzzles UI integration checks passed
 > sphenpad@0.0.0 test-creator-editing-ux
 > tsx scripts/test-creator-editing-ux.ts
 
+creator Phase 11 catalog UX tests passed
 creator 11K editing UX tests passed
 
 > sphenpad@0.0.0 test-creator-editing-ux-ui
@@ -190,7 +192,7 @@ Production smoke: PASS (2 built asset references checked)
 > sphenpad@0.0.0 verify-production-bundle-clean
 > node scripts/verify-production-bundle-clean.mjs
 
-Production bundle cleanliness: PASS (10614 files, no test/debug/conformance leakage)
+Production bundle cleanliness: PASS (10615 files, no test/debug/conformance leakage)
 [8/11] Built-app browser smoke
 
 > sphenpad@0.0.0 verify-production-browser
@@ -216,7 +218,7 @@ SudokuPad compatibility manifest: PASS (67 JS/CSS assets, 13 fonts)
 > sphenpad@0.0.0 write-phase11-release-hashes
 > node scripts/write-phase11-release-hashes.mjs
 
-Phase 11 release hash manifest: PASS (10762 production inputs, 24 creator tests, 10614 built files)
-releaseContentSha256=16486fa496df3bd87f614d38e164007ae6909d8027cdee87ee23e79becdd4542
+Phase 11 release hash manifest: PASS (10765 production inputs, 24 creator tests, 10615 built files)
+releaseContentSha256=7f8da7c129331b2e55102fc4e36453b105d0cae541cfa4ff6450021c6ec618f9
 
 PHASE 11 DEPENDENCY-BACKED RELEASE GATE PASSED
