@@ -1,7 +1,7 @@
 import { useCreatorBoardNavigation } from "./useCreatorBoardNavigation";
 import { startTransition, useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
-import { getCreatorProject, setCreatorProjectPublished } from "../core/storage";
+import { createCreatorProject, createCreatorProjectKey, getCreatorProject, setCreatorProjectPublished } from "../core/storage";
 import type { CellRC, LineStroke, PersistedPuzzle, PuzzleDefinition, PuzzleProgress } from "../core/model";
 import { makeInitialProgress } from "../core/scl";
 import { GridCanvas } from "./GridCanvas";
@@ -56,7 +56,8 @@ import { getCellsSeenByCells, getComponents, validateConstraints, validateGrid, 
 import { compareCreatorSolutions, type CreatorLogicalResult, type CreatorSearchProgress, type CreatorSolutionSearchMode, type CreatorSolutionSearchResult } from "../sudokupad/creator/solver";
 import type { CreatorSolveResponse } from "../sudokupad/creator/solver.worker";
 import { CreatorLogicalWalkthrough } from "./CreatorLogicalWalkthrough";
-import { authoredPuzzleJson, creatorProjectJson, exportCreatorInterchange, importCreatorInterchange, type CreatorInterchangeReport } from "../sudokupad/creator/interchange";
+import { authoredPuzzleJson, creatorProjectJson, exportCreatorInterchange, importCreatorInterchange, type CreatorImportResult, type CreatorInterchangeReport } from "../sudokupad/creator/interchange";
+import { creatorExportLossWarning, creatorProjectForNewImport, MAX_CREATOR_IMPORT_CHARACTERS, summarizeCreatorImport } from "../sudokupad/creator/interchangePreview";
 import { makeCreatorPlaytestRouteState, readCreatorPlaytestRouteState } from "../sudokupad/creator/playtest";
 import type { CreatorSaveStatus } from "../sudokupad/creator/saveCoordinator";
 import { getCreatorEditorSaveQueue } from "../sudokupad/creator/persistence";
@@ -362,6 +363,10 @@ export function PuzzleEditorPage() {
   const solverWorkerRef = useRef<Worker | null>(null);
   const solverJobRef = useRef(0);
   const [interchangeReport, setInterchangeReport] = useState<CreatorInterchangeReport | null>(null);
+  const [pendingImport, setPendingImport] = useState<{ result: CreatorImportResult; revision: number } | null>(null);
+  const [importBusy, setImportBusy] = useState(false);
+  const pendingImportSummary = useMemo(() => pendingImport ? summarizeCreatorImport(pendingImport.result) : null, [pendingImport]);
+  const pendingImportProgress = useMemo(() => pendingImport ? makeInitialProgress(pendingImport.result.def) : null, [pendingImport]);
   const editRevisionRef = useRef(0);
   const creatorHistoryRef = useRef<CreatorProjectHistoryState>({ undo: [], redo: [] });
   const creatorGridLayoutRef = useRef<HTMLDivElement | null>(null);
@@ -1520,15 +1525,20 @@ export function PuzzleEditorPage() {
   async function sharePuzzle() {
     if (!data) return;
     if (!confirmLeaveWithDrafts() || !(await persistNow())) return;
-    const url = new URL(`#/p/${encodeURIComponent(data.def.id)}`, window.location.href).href;
+    // Local /p/<project-id> URLs cannot open on another device. SudokuPad SCL
+    // embeds the playable content and is the existing supported portable URL.
+    const result = exportCreatorInterchange(data.def);
+    setInterchangeReport(result.report);
+    const warning = creatorExportLossWarning(result.report);
+    if (warning && !window.confirm(warning)) return;
     try {
-      if (navigator.share) await navigator.share({ title: data.def.meta.title || "SphenPad puzzle", text: data.def.meta.rules || "", url });
+      if (navigator.share) await navigator.share({ title: data.def.meta.title || "Sudoku puzzle", text: data.def.meta.rules || "", url: result.sudokuPadUrl });
       else {
-        await navigator.clipboard.writeText(url);
-        setMessage("Puzzle link copied to clipboard.");
+        await navigator.clipboard.writeText(result.sudokuPadUrl);
+        setMessage("Portable SudokuPad puzzle link copied. This is not a SphenPad editor-project link.");
       }
     } catch (error) {
-      if ((error as DOMException).name !== "AbortError") setMessage("Unable to share this puzzle.");
+      if ((error as DOMException).name !== "AbortError") setMessage("Unable to share the portable puzzle link.");
     }
   }
 
@@ -2069,28 +2079,72 @@ export function PuzzleEditorPage() {
   function exportSclFile() { if (!data) return; const result = exportCreatorInterchange(data.def); downloadText(`${exportBaseName()}.scl`, result.scl); setInterchangeReport(result.report); setMessage("SudokuPad SCL exported."); }
   function exportSudokuPadJsonFile() { if (!data) return; const result = exportCreatorInterchange(data.def); downloadText(`${exportBaseName()}-sudokupad.json`, JSON.stringify(result.sourcePuzzle, null, 2)); setInterchangeReport(result.report); setMessage("SudokuPad JSON exported."); }
   async function copyScl() { if (!data) return; const result = exportCreatorInterchange(data.def); try { await navigator.clipboard.writeText(result.scl); setInterchangeReport(result.report); setMessage("SudokuPad SCL copied to clipboard."); } catch { setMessage("Unable to copy SCL to the clipboard."); } }
-  async function copySudokuPadLink() { if (!data) return; const result = exportCreatorInterchange(data.def); try { await navigator.clipboard.writeText(result.sudokuPadUrl); setInterchangeReport(result.report); setMessage("SudokuPad link copied to clipboard."); } catch { setMessage("Unable to copy the SudokuPad link."); } }
-  async function applyInterchangeImport(text: string) {
+  async function copySudokuPadLink() {
     if (!data) return;
+    const result = exportCreatorInterchange(data.def);
+    setInterchangeReport(result.report);
+    const warning = creatorExportLossWarning(result.report);
+    if (warning && !window.confirm(warning)) return;
+    try { await navigator.clipboard.writeText(result.sudokuPadUrl); setMessage("Portable SudokuPad link copied."); }
+    catch { setMessage("Unable to copy the SudokuPad link."); }
+  }
+  async function applyInterchangeImport(text: string) {
+    if (!data || importBusy) return;
+    if (text.length > MAX_CREATOR_IMPORT_CHARACTERS) { setMessage("Import is too large to review safely (10 million characters maximum)."); return; }
     const startingRevision = editRevisionRef.current;
+    setImportBusy(true);
     try {
       const result = await importCreatorInterchange(text, { id: data.def.id, sourceId: data.def.sourceId });
-      if (editRevisionRef.current !== startingRevision) { setMessage("Puzzle changed while importing. Please retry the import."); return; }
-      const losses = result.report.issues.filter((issue) => issue.severity === "loss").length;
-      const details = losses ? `\n\nThe import reports ${losses} potential information loss issue${losses === 1 ? "" : "s"}.` : "";
-      if (!window.confirm(`Replace this creator puzzle with imported ${result.report.format} content?\n\nAll existing grid entries, constraints and artwork will be replaced. You can undo this replacement afterward.${details}`)) {
-        setInterchangeReport(result.report);
-        setMessage("Import canceled. Current project was not changed.");
-        return;
-      }
-      if (!confirmLeaveWithDrafts()) return;
-      const next = { ...result.def, meta: { ...result.def.meta, creatorPublished: data.def.meta.creatorPublished === true } };
-      save(next); setGivensText(formatCreatorGrid(next, "givens")); setSolutionText(formatCreatorGrid(next, "solution"));
-      setCreatorScratchProgress(makeInitialProgress(result.def)); setInterchangeReport(result.report); setSelection([{ r: 0, c: 0 }]); setSelectedObjectId(null); setMessage(`Imported ${result.report.format}.`);
+      if (editRevisionRef.current !== startingRevision) { setMessage("Puzzle changed while preparing the import. Please retry."); return; }
+      setPendingImport({ result, revision: startingRevision });
+      setInterchangeReport(result.report);
+      setMessage("Import ready for review. Your current puzzle is unchanged.");
     } catch (error) { setMessage(error instanceof Error ? `Import failed: ${error.message}` : "Import failed."); }
+    finally { setImportBusy(false); }
   }
-  async function importPuzzle(file: File | undefined) { if (file) await applyInterchangeImport(await file.text()); }
-  async function importClipboard() { try { await applyInterchangeImport(await navigator.clipboard.readText()); } catch { setMessage("Unable to read puzzle data from the clipboard."); } }
+  async function finishInterchangeImport(destination: "new" | "replace") {
+    if (!data || !pendingImport || importBusy) return;
+    if (editRevisionRef.current !== pendingImport.revision) {
+      setPendingImport(null);
+      setMessage("The puzzle changed after import preview. Please import again to prevent overwriting newer edits.");
+      return;
+    }
+    if (!confirmLeaveWithDrafts()) return;
+    if (destination === "new") {
+      setImportBusy(true);
+      try {
+        if (!(await persistNow())) return;
+        if (editRevisionRef.current !== pendingImport.revision) { setMessage("Puzzle changed while saving. Please import again."); return; }
+        const newKey = createCreatorProjectKey();
+        await createCreatorProject(creatorProjectForNewImport(pendingImport.result, newKey));
+        setPendingImport(null);
+        navigate(`/creator/${encodeURIComponent(newKey)}`);
+      } catch (error) { setMessage(error instanceof Error ? `Could not create imported project: ${error.message}` : "Could not create imported project."); }
+      finally { setImportBusy(false); }
+      return;
+    }
+    if (!window.confirm("Replace this creator project with the reviewed import? Current entries, constraints, and artwork will be replaced. You can undo the replacement afterward.")) return;
+    const result = pendingImport.result;
+    const next = { ...result.def, meta: { ...result.def.meta, creatorPublished: data.def.meta.creatorPublished === true } };
+    save(next);
+    setGivensText(formatCreatorGrid(next, "givens"));
+    setSolutionText(formatCreatorGrid(next, "solution"));
+    setCreatorScratchProgress(makeInitialProgress(next));
+    setSelection([{ r: 0, c: 0 }]);
+    setSelectedObjectId(null);
+    setPendingImport(null);
+    setMessage(`Imported ${result.report.format} into the current project (undo available).`);
+  }
+  async function importPuzzle(file: File | undefined) {
+    if (!file) return;
+    if (file.size > MAX_CREATOR_IMPORT_CHARACTERS * 2) { setMessage("Import file is too large to review safely."); return; }
+    try { await applyInterchangeImport(await file.text()); }
+    catch (error) { setMessage(error instanceof Error ? error.message : "Unable to read the import file."); }
+  }
+  async function importClipboard() {
+    try { await applyInterchangeImport(await navigator.clipboard.readText()); }
+    catch { setMessage("Unable to read puzzle data from the clipboard."); }
+  }
 
   useEffect(() => {
     if (!selectedObjectId) { if (selectedObjectIds.length) setSelectedObjectIds([]); return; }
@@ -2422,9 +2476,9 @@ export function PuzzleEditorPage() {
             <div className="creatorFileSection"><h3>Solution</h3><label>Grid<textarea className="url creatorGridInput" value={solutionText} onChange={(event) => setSolutionText(event.target.value)} /></label><div className="creatorFileActions"><button className="btn primary" onClick={() => pasteGrid(solutionText, "solution")} type="button">Apply solution</button><button className="btn" onClick={startSolutionEditing} type="button">Edit on board</button><button className="btn" onClick={() => clearEntries("solution")} type="button">Clear solution</button><button className="btn danger" onClick={() => clearEntries("both")} type="button">Clear both</button></div><div className="creatorHelp">Use . or 0 for blanks. Separate two-digit values with spaces or commas; compact single-character grids remain supported. Invalid or out-of-range values are rejected before saving.</div></div>
             <div className="creatorFileSection"><h3>Structure validation</h3><div className={validation.length ? "creatorValidation invalid" : "creatorValidation valid"}>{validation.length ? validation.map((item) => <div key={item}>{item}</div>) : "Puzzle structure looks valid."}</div></div>
             <div className="creatorFileSection"><h3>Worker validation &amp; solver</h3><div className="creatorFileActions"><button className="btn" onClick={() => runWorkerValidation("givens")} type="button">Validate givens</button><button className="btn" onClick={() => runWorkerValidation("solution")} type="button">Validate solution</button><button className="btn" onClick={runLogicalSolver} disabled={solverBusy !== null} type="button">Logical solve</button><button className="btn" onClick={findOneCreatorSolution} disabled={solverBusy !== null} type="button">Find one</button><button className="btn" onClick={runSolutionSearch} disabled={solverBusy !== null} type="button">Check uniqueness</button><button className="btn" onClick={countCreatorSolutions} disabled={solverBusy !== null} type="button">Count solutions</button>{solverBusy ? <button className="btn" onClick={cancelCreatorSolver} type="button">Cancel calculation</button> : null}{solutionSearch?.solutions[0] ? <button className="btn primary" onClick={useFoundSolution} type="button">Use selected example</button> : null}</div><div className="creatorPropertyGrid"><label>Count limit (1–100,000)<CreatorDraftInput value={solverSettings.maxSolutions} inputMode="numeric" onCommit={(text) => { if (text.trim() && Number.isFinite(Number(text))) updateSolverSetting("maxSolutions", Math.max(1, Math.min(100000, Math.trunc(Number(text))))); }} /></label><label>Max search nodes<CreatorDraftInput value={solverSettings.maxNodes} inputMode="numeric" onCommit={(text) => { if (text.trim() && Number.isFinite(Number(text))) updateSolverSetting("maxNodes", Math.max(100, Math.min(5000000, Math.trunc(Number(text))))); }} /></label><label>Logical step limit (max 500)<CreatorDraftInput value={solverSettings.logicalStepLimit} inputMode="numeric" onCommit={(text) => { if (text.trim() && Number.isFinite(Number(text))) updateSolverSetting("logicalStepLimit", Math.max(1, Math.min(500, Math.trunc(Number(text))))); }} /></label></div>{solverBusy ? <div className="creatorHelp" role="status">{solverBusy === "search" ? `Searching in the background… ${solverProgress ? `${solverProgress.nodes.toLocaleString()} nodes; at least ${solverProgress.solutionsFound.toLocaleString()} solutions` : ""}` : "Logical solving in the background…"}</div> : null}{workerConstraintErrors.length ? <div className="creatorValidation invalid">{workerConstraintErrors.map((item) => <div key={item.id}>{item.id}: {item.message}</div>)}</div> : null}{workerValidation ? <div className={workerValidation.diagnostics.length ? "creatorValidation invalid" : "creatorValidation valid"}>{workerValidation.diagnostics.length ? workerValidation.diagnostics.slice(0, 12).map((item, index) => <div key={`${item.code}-${index}`}>{item.message} {item.cells.length ? `(${item.cells.map(cellLabel).join(", ")})` : ""}</div>) : "Grid values satisfy the enabled worker constraints."}{workerValidation.thrownErrors.map((item, index) => <div key={`worker-error-${index}`}>{item}</div>)}</div> : null}{logicalResult ? <CreatorLogicalWalkthrough def={data.def} result={logicalResult} onSelectCell={(rc) => setSelection([rc])} /> : null}{solutionSearch ? <div className="creatorHelp" role="status"><strong>{solutionSearch.exact ? `Exact: ${solutionSearch.solutionsFound.toLocaleString()}` : `At least ${solutionSearch.solutionsFound.toLocaleString()}`} solution{solutionSearch.solutionsFound === 1 ? "" : "s"}</strong> · {solutionSearch.nodes.toLocaleString()} nodes · {solutionSearch.mode === "count" ? "Counting" : solutionSearch.mode === "first" ? "Find one" : "Uniqueness"}. {solutionSearch.message}{solutionSearch.solutions.length > 0 ? <div className="creatorFileActions">{solutionSearch.solutions.map((_, index) => <button className={solutionExampleIndex === index ? "btn primary" : "btn"} key={index} onClick={() => setSolutionExampleIndex(index)} type="button">Example {index + 1}</button>)}</div> : null}{solutionSearch.solutions.length > 0 ? <div className="creatorPropertyGrid">{solutionSearch.solutions.map((example, index) => <div key={index}><strong>Example {index + 1}{solutionExampleIndex === index ? " (selected)" : ""}</strong><pre style={{ whiteSpace: "pre", overflowX: "auto" }}>{formatCreatorGrid({ ...data.def, givens: example.map((entry) => ({ rc: entry.rc, v: String(entry.value) })) }, "givens")}</pre></div>)}</div> : null}{solutionDifferences.length > 0 ? <div>Examples differ in {solutionDifferences.length} cell{solutionDifferences.length === 1 ? "" : "s"}: {solutionDifferences.slice(0, 30).map((difference) => <button className="btn" key={`${difference.rc.r}-${difference.rc.c}`} type="button" onClick={() => { setSelection([difference.rc]); setMessage(`${cellLabel(difference.rc)}: ${difference.first} vs ${difference.second}`); }}>{cellLabel(difference.rc)}: {difference.first} / {difference.second}</button>)}{solutionDifferences.length > 30 ? ` …and ${solutionDifferences.length - 30} more` : ""}</div> : null}</div> : null}<details className="creatorHelp"><summary>Worker components ({workerComponents.length})</summary>{workerComponents.slice(0, 100).map((component) => <div key={`${component.type}:${component.constraintId ?? component.name}:${component.cells.map(cellLabel).join("|")}`}>{component.name} — {component.type} — {component.cells.map(cellLabel).join(", ") || "no cells"}</div>)}{workerComponents.length > 100 ? <div>…and {workerComponents.length - 100} more.</div> : null}</details><div className="creatorHelp">Custom JavaScript is preserved but not executed locally.</div></div>
-            <div className="creatorFileSection"><h3>Import &amp; export</h3><div className="creatorFileActions"><button className="btn" onClick={exportCreatorProjectFile} type="button">CreatorProject JSON</button><button className="btn" onClick={exportAuthoredFile} type="button">SphenPad JSON</button><button className="btn" onClick={exportSclFile} type="button">SCL file</button><button className="btn" onClick={exportSudokuPadJsonFile} type="button">SudokuPad JSON</button><button className="btn" onClick={() => void copyScl()} type="button">Copy SCL</button><button className="btn primary" onClick={() => void copySudokuPadLink()} type="button">Copy SudokuPad link</button></div><div className="creatorFileActions"><label className="btn creatorImportButton">Import file<input type="file" accept="application/json,.json,.txt,.scl,text/plain" onChange={(event) => { const file = event.currentTarget.files?.[0]; event.currentTarget.value = ""; void importPuzzle(file); }} /></label><button className="btn" onClick={() => void importClipboard()} type="button">Import clipboard</button></div><div className="creatorHelp">Imports accept CreatorProject/SphenPad JSON, native SudokuPad JSON, SCL/CTC payloads or SudokuPad links, and F-Puzzles JSON/fpuz payloads. The current project identity is retained.</div>{interchangeReport ? <div className={interchangeReport.issues.some((item) => item.severity === "loss") ? "creatorValidation invalid" : "creatorValidation valid"}><div><strong>{interchangeReport.format}</strong> · {interchangeReport.preserved.length ? `Preserved: ${interchangeReport.preserved.join(", ")}.` : "No preservation summary."}</div>{interchangeReport.issues.map((item, index) => <div key={`${item.code}-${index}`}>{item.severity.toUpperCase()}: {item.message}{item.path ? ` (${item.path})` : ""}</div>)}</div> : null}</div>
-            <div className="creatorFileActions"><button className="btn primary" onClick={() => void openPlaytest()} type="button">Playtest</button>{data.def.meta.creatorPublished ? <button className="btn" onClick={() => void openMyPuzzles()} type="button">Open My Puzzles</button> : <button className="btn" onClick={() => void saveToMyPuzzles()} type="button">Save to My Puzzles</button>}<button className="btn" onClick={() => void sharePuzzle()} type="button">Share SphenPad</button></div>
-            <div className="creatorHelp">Creator projects stay in the Puzzle Creator until you explicitly save them to My Puzzles. Playtest uses an isolated fresh session, and normal solve progress remains separate from the authored project.</div>
+            <div className="creatorFileSection"><h3>Import &amp; export</h3><div className="creatorFileActions"><button className="btn" onClick={exportCreatorProjectFile} type="button">CreatorProject JSON</button><button className="btn" onClick={exportAuthoredFile} type="button">SphenPad JSON</button><button className="btn" onClick={exportSclFile} type="button">SCL file</button><button className="btn" onClick={exportSudokuPadJsonFile} type="button">SudokuPad JSON</button><button className="btn" onClick={() => void copyScl()} type="button">Copy SCL</button><button className="btn primary" onClick={() => void copySudokuPadLink()} type="button">Copy SudokuPad link</button></div><div className="creatorFileActions"><label className="btn creatorImportButton">Import file<input type="file" accept="application/json,.json,.txt,.scl,text/plain" disabled={importBusy} onChange={(event) => { const file = event.currentTarget.files?.[0]; event.currentTarget.value = ""; void importPuzzle(file); }} /></label><button className="btn" disabled={importBusy} onClick={() => void importClipboard()} type="button">Import clipboard</button></div><div className="creatorHelp">Imports accept CreatorProject/SphenPad JSON, native SudokuPad JSON, SCL/CTC payloads or SudokuPad links, and F-Puzzles JSON/fpuz payloads. Review imported content before replacing this project, or import into a new project.</div>{pendingImport && pendingImportSummary && pendingImportProgress ? <div className={pendingImportSummary.losses ? "creatorValidation invalid" : "creatorValidation valid"} role="region" aria-label="Import review"><strong>Review imported puzzle</strong><div>{pendingImportSummary.title} · {pendingImportSummary.dimensions}</div><div>{pendingImportSummary.givens} givens · {pendingImportSummary.constraints} constraints · {pendingImportSummary.graphics} graphics</div><div>{pendingImportSummary.warnings} warnings · {pendingImportSummary.losses} reported losses. Review the report below before proceeding.</div><div className="creatorFilePreview card" style={{ width: "min(100%, 240px)" }}><GridCanvas def={pendingImport.result.def} progress={pendingImportProgress} onSelection={NOOP} onLineStroke={NOOP} onLineTapCell={NOOP} onLineTapEdge={NOOP} onDoubleCell={NOOP} interactive={false} previewMode strictScale /></div><div className="creatorFileActions"><button className="btn primary" disabled={importBusy} onClick={() => void finishInterchangeImport("new")} type="button">Import as new project</button><button className="btn" disabled={importBusy} onClick={() => void finishInterchangeImport("replace")} type="button">Replace current (undoable)</button><button className="btn" onClick={() => { setPendingImport(null); setMessage("Import canceled; no project changed."); }} type="button">Cancel</button></div></div> : null}{interchangeReport ? <div className={interchangeReport.issues.some((item) => item.severity === "loss") ? "creatorValidation invalid" : "creatorValidation valid"}><div><strong>{interchangeReport.format}</strong> · {interchangeReport.preserved.length ? `Preserved: ${interchangeReport.preserved.join(", ")}.` : "No preservation summary."}</div>{interchangeReport.issues.map((item, index) => <div key={`${item.code}-${index}`}>{item.severity.toUpperCase()}: {item.message}{item.path ? ` (${item.path})` : ""}</div>)}</div> : null}</div>
+            <div className="creatorFileActions"><button className="btn primary" onClick={() => void openPlaytest()} type="button">Playtest</button>{data.def.meta.creatorPublished ? <button className="btn" onClick={() => void openMyPuzzles()} type="button">Open My Puzzles</button> : <button className="btn" onClick={() => void saveToMyPuzzles()} type="button">Save to My Puzzles</button>}<button className="btn" onClick={() => void sharePuzzle()} type="button">Share portable SudokuPad link</button></div>
+            <div className="creatorHelp">Creator projects stay in the Puzzle Creator until saved to My Puzzles. Playtest opens a fresh, isolated solving session. Portable links open in SudokuPad; local SphenPad project IDs are not shareable across devices. Use CreatorProject JSON to transfer a fully editable project.</div>
           </div>
         </div>
       </main> : <>

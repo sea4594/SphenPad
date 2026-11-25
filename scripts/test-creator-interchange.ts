@@ -46,3 +46,6 @@ async function main() {
   const project=creatorProjectFromDefinition(def); ok(project.constraints.length>=3); console.log("creator interchange tests passed");
 }
 void main().catch((error) => { console.error(error); throw error; });
+
+// Phase 10 creator import/export and portable sharing regressions.
+import "./test-creator-phase10-interchange";

@@ -174,6 +174,16 @@ export function exportCreatorInterchange(def: PuzzleDefinition): CreatorExportRe
   outReport.preserved.push("grid", "givens", "regions", "metadata", "solution", "render scene", "fog", "supported global flags");
   const custom = (def.logic?.constraints ?? []).filter((constraint) => constraint.type === "custom" && constraint.enabled !== false);
   if (custom.length) issue(outReport, "loss", "custom-runtime-not-exported", `${custom.length} custom constraint backend${custom.length === 1 ? " is" : "s are"} not executable in SudokuPad. Their visible graphics are exported, but SphenPad-only backend code is not embedded as SudokuPad logic.`);
+  // Native SudokuPad payloads encode graphics and a small set of global rule flags,
+  // not SphenPad's entire executable constraint model. Never claim those semantics
+  // round-trip merely because the corresponding artwork does.
+  const nativeTypes = new Set(["diagonal", "disjoint-groups", "nonconsecutive", "foglight", "fog-trigger"]);
+  const visualOnly = (def.logic?.constraints ?? []).filter((constraint) => constraint.enabled !== false && constraint.type !== "custom" && !nativeTypes.has(constraint.type));
+  if (visualOnly.length) {
+    const families = [...new Set(visualOnly.map((constraint) => constraint.type))].sort();
+    issue(outReport, "warning", "creator-checker-semantics-not-exported", `${visualOnly.length} creator constraint${visualOnly.length === 1 ? "" : "s"} (${families.join(", ")}) have SphenPad-only checker/authoring semantics. Their graphics are exported when present, but the SudokuPad payload does not include SphenPad's executable checker definitions.`);
+  }
+  if ((def.logic?.constraints ?? []).some((constraint) => constraint.enabled === false)) issue(outReport, "warning", "disabled-authoring-constraints", "Disabled creator constraints remain in editable project files, but the SudokuPad export does not preserve their enabled/disabled editor state.");
   if ((def.logic?.constraints ?? []).some((constraint) => constraint.ignoreInSolver)) issue(outReport, "warning", "solver-ignore-local", "SphenPad 'ignore in solver/checker' flags are authoring metadata and are not represented in SudokuPad links.");
   return { sourcePuzzle, scl, sudokuPadUrl: `https://sudokupad.app/${scl}`, report: outReport };
 }
