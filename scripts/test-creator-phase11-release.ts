@@ -131,3 +131,6 @@ for (const item of SUDOKUMAKER_TOOL_INVENTORY) {
 equal(SUDOKUMAKER_TOOL_INVENTORY.length, 47);
 equal(auditedUpstream.size, 47);
 console.log(`Phase 11 release parity audit passed: ${auditedUpstream.size}/47 upstream tools exercised (${createdIds.size} SphenPad mappings).`);
+
+// Phase 12 production-hardening tests run as part of the existing full gate.
+import "./test-creator-phase12-hardening";

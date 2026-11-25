@@ -1,4 +1,4 @@
-import { startTransition, useEffect, useState } from "react";
+import { startTransition, useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { createCreatorProject, createCreatorProjectKey, deleteCreatorProject, duplicateCreatorProject, listCreatorProjects, renameCreatorProject, type CreatorProjectStorageRow } from "../core/storage";
 import type { PuzzleDefinition } from "../core/model";
@@ -23,6 +23,38 @@ function defaultSubgrid(size: number) {
 }
 
 
+// Mount full SVG previews only when their list item approaches the viewport.
+// Once revealed, keep them mounted to avoid repeated font/image loading on scroll.
+function CreatorProjectPreview(props: { project: StoredPuzzle["project"] }) {
+  const holder = useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const target = holder.current;
+    if (!target || visible) return;
+    if (typeof IntersectionObserver === "undefined") {
+      let active = true;
+      queueMicrotask(() => { if (active) setVisible(true); });
+      return () => { active = false; };
+    }
+    const observer = new IntersectionObserver((entries) => {
+      if (entries.some((entry) => entry.isIntersecting)) {
+        setVisible(true);
+        observer.disconnect();
+      }
+    }, { rootMargin: "250px" });
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [visible]);
+  return <div ref={holder} className="menuPuzzlePreview" aria-hidden="true">
+    {visible ? <CreatorProjectPreviewCanvas project={props.project} /> : null}
+  </div>;
+}
+
+function CreatorProjectPreviewCanvas(props: { project: StoredPuzzle["project"] }) {
+  const def = definitionFromCreatorProject(props.project);
+  return <GridCanvas def={def} progress={{ ...makeInitialProgress(def), selection: [] }} onSelection={NOOP} onLineStroke={NOOP} onLineTapCell={NOOP} onLineTapEdge={NOOP} onDoubleCell={NOOP} interactive={false} previewMode strictScale />;
+}
+
 export function PuzzleCreatorPage() {
   const nav = useNavigate();
   const [rows, setRows] = useState<StoredPuzzle[]>([]);
@@ -35,15 +67,22 @@ export function PuzzleCreatorPage() {
   const [lowestDigit, setLowestDigit] = useState(1);
   const [highestDigit, setHighestDigit] = useState(9);
 
-  const refresh = async () => setRows(await listCreatorProjects());
+  const refreshRevisionRef = useRef(0);
+  const refresh = useCallback(async () => {
+    const revision = ++refreshRevisionRef.current;
+    const projects = await listCreatorProjects();
+    // Background sync may finish an older request after a newer refresh.
+    if (revision === refreshRevisionRef.current) setRows(projects);
+  }, []);
   useEffect(() => {
     const initialRefresh = window.setTimeout(() => void refresh(), 0);
     const unsubscribe = onStorageRefreshNeeded(() => void refresh());
     return () => {
+      ++refreshRevisionRef.current;
       window.clearTimeout(initialRefresh);
       unsubscribe();
     };
-  }, []);
+  }, [refresh]);
 
   async function createPuzzle() {
     const now = Date.now();
@@ -112,13 +151,10 @@ export function PuzzleCreatorPage() {
     startTransition(() => nav(`/creator/${encodeURIComponent(row.key)}`));
   }
 
-  function projectDefinition(row: StoredPuzzle) { return definitionFromCreatorProject(row.project); }
-
   const projectRow = (row: StoredPuzzle) => {
-    const def = projectDefinition(row);
     return <div key={row.key} className="card menuPuzzleRow" onClick={() => openPuzzle(row)}>
       <div className="menuPuzzleSummary"><div className="menuPuzzleTitle">{row.project.metadata.title || "(untitled)"}</div>{row.project.metadata.author ? <div className="muted menuPuzzleAuthor">{row.project.metadata.author}</div> : null}<div className="muted">{row.project.grid.rows} x {row.project.grid.cols}</div></div>
-      <div className="menuPuzzleDeleteStack"><div className="menuPuzzlePreview" aria-hidden="true"><GridCanvas def={def} progress={{ ...makeInitialProgress(def), selection: [] }} onSelection={NOOP} onLineStroke={NOOP} onLineTapCell={NOOP} onLineTapEdge={NOOP} onDoubleCell={NOOP} interactive={false} previewMode strictScale /></div><div className="row menuPuzzleActions" onClick={(event) => event.stopPropagation()}><PopupMenuButton ariaLabel={`Options for ${row.project.metadata.title || "puzzle"}`} title="Puzzle options" items={[{ label: "Open", onSelect: () => openPuzzle(row) }, { label: "Duplicate", onSelect: () => void duplicatePuzzle(row) }, { label: "Rename", onSelect: () => void renamePuzzle(row) }, { label: "Delete", onSelect: () => void removePuzzle(row), tone: "danger" }]} /></div></div>
+      <div className="menuPuzzleDeleteStack"><CreatorProjectPreview project={row.project} /><div className="row menuPuzzleActions" onClick={(event) => event.stopPropagation()}><PopupMenuButton ariaLabel={`Options for ${row.project.metadata.title || "puzzle"}`} title="Puzzle options" items={[{ label: "Open", onSelect: () => openPuzzle(row) }, { label: "Duplicate", onSelect: () => void duplicatePuzzle(row) }, { label: "Rename", onSelect: () => void renamePuzzle(row) }, { label: "Delete", onSelect: () => void removePuzzle(row), tone: "danger" }]} /></div></div>
     </div>;
   };
 

@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-25T03:04:51.056Z",
+  "generatedAt": "2026-11-25T03:41:06.179Z",
   "phase": "11L",
   "target": "SphenPad Phase 11 / SudokuMaker creator parity on pinned SudokuPad 0.612.0",
   "productionInputs": [
@@ -53355,8 +53355,8 @@
     },
     {
       "path": "src/sudokupad/creator/objectEditing.ts",
-      "bytes": 19924,
-      "sha256": "1e71c2f32f8bff9b4cc4d50516c207a827b367a421a55a12d66ce2ecb1817f1c"
+      "bytes": 20409,
+      "sha256": "5f5521a45d2e61b1c3174195ce2a38175abb2b55fe4032adf51fb5e2b785c5ef"
     },
     {
       "path": "src/sudokupad/creator/persistence.ts",
@@ -53740,13 +53740,13 @@
     },
     {
       "path": "src/ui/PuzzleCreatorPage.tsx",
-      "bytes": 8806,
-      "sha256": "fd283db16961d02a88ad793a04f3073f7972d75c79fd91e57d4d91d6aa125b9b"
+      "bytes": 10230,
+      "sha256": "e9e593b6030564792187d1f0eadc4f1974b5dba203090022a6c940a04f1479df"
     },
     {
       "path": "src/ui/PuzzleEditorPage.tsx",
-      "bytes": 236507,
-      "sha256": "2306422a6c0e0d9e22f2ae4aeb2c57653afddd525015db9f4744c77e52c73730"
+      "bytes": 236705,
+      "sha256": "d94602380e4235e332607fd4df9a889274d0562d7e279c588cea2b693455c13f"
     },
     {
       "path": "src/ui/PuzzleListPreview.tsx",
@@ -53887,8 +53887,13 @@
     },
     {
       "path": "scripts/test-creator-phase11-release.ts",
-      "bytes": 8939,
-      "sha256": "b0d2e374490d3b7eda714e129bd37182fd7ec90046062790f79a2b805ecc8d55"
+      "bytes": 9061,
+      "sha256": "f74e37bed7b9354cef64c35ab29693cee0ed62b7b087168a62f024139603b7d7"
+    },
+    {
+      "path": "scripts/test-creator-phase12-hardening.ts",
+      "bytes": 7767,
+      "sha256": "42f44d09a25918a08ed6e4e6a81ba7e8c5e1d71f03b971749240bf4e076c85d5"
     },
     {
       "path": "scripts/test-creator-phase3-solver.ts",
@@ -75788,24 +75793,24 @@
       "sha256": "2b65f5c8666353856cdd758cfa048a233969ff472fea6b6c5ae74b76b9d73f76"
     },
     {
-      "path": "dist/assets/index-bcA5Su_I.js",
-      "bytes": 1173357,
-      "sha256": "004ddd20a8fbd7c76acf1d9541f5f54e40c37d86f777fe48a877f8d5066b45e2"
-    },
-    {
       "path": "dist/assets/index-Bks0kLu0.css",
       "bytes": 100727,
       "sha256": "d167f36d027e4aae1afc6fa8bcec970421049d5cfc2d631c3afb20d12097354a"
     },
     {
-      "path": "dist/assets/persistence-D0aYSy0t.js",
-      "bytes": 1788,
-      "sha256": "8d9721621672ebc64b08eea35f55e2abaeea57ab3a87cac7e181ad2cab77591a"
+      "path": "dist/assets/index-DFLe7BOm.js",
+      "bytes": 1173433,
+      "sha256": "c0d4c328e0d425289234a63678e69d4471a4ad21c8cdefe27116ca9ecfb307ee"
     },
     {
-      "path": "dist/assets/PuzzleCreatorPage-1N8d-KTQ.js",
-      "bytes": 5651,
-      "sha256": "41e749b6432e213ea0481e201f25bd852cbc5d5059d600162fcd730018ce0362"
+      "path": "dist/assets/persistence-BTlAx07Y.js",
+      "bytes": 1788,
+      "sha256": "569c193de808a8cae079daf9604e7314afd69c8c903b3bf8d5bc42bd46ca5856"
+    },
+    {
+      "path": "dist/assets/PuzzleCreatorPage-BpQDNA7Z.js",
+      "bytes": 6161,
+      "sha256": "43619cd28f17699c332f4d01e73bc5ad80f197e565d9afb153fc7471f15a01dd"
     },
     {
       "path": "dist/assets/PuzzleEditorPage-2n0BqNMu.css",
@@ -75813,9 +75818,9 @@
       "sha256": "3001b85e11dcff5584c2e201af4efd0d34b37bde13827e5c64a05f19ebc01a94"
     },
     {
-      "path": "dist/assets/PuzzleEditorPage-HYOidXot.js",
-      "bytes": 214096,
-      "sha256": "10699c22f3c99f72b422bfcc3e6b60c738572229046ad7f48fbc51394a199b3c"
+      "path": "dist/assets/PuzzleEditorPage-DGIrrRHH.js",
+      "bytes": 214125,
+      "sha256": "def4f51fb23e3291371de64a85c8b36aac4467cffb30f15336e57ca8e65b9f73"
     },
     {
       "path": "dist/assets/solver.worker-Bg2F71R1.js",
@@ -75835,7 +75840,7 @@
     {
       "path": "dist/index.html",
       "bytes": 2045,
-      "sha256": "0640129a5874944cd04fa24cfb0afb4b7754aacf69d859ecd2682c0823a618c3"
+      "sha256": "9ee84215d073ee585f61b2a2d374f1a8077c7f89b05d7c2fff193ca87980ea0c"
     },
     {
       "path": "dist/lmg/lmg-manifest.json",
@@ -107029,5 +107034,5 @@
     }
   ],
   "bundleBuilt": true,
-  "releaseContentSha256": "7f8da7c129331b2e55102fc4e36453b105d0cae541cfa4ff6450021c6ec618f9"
+  "releaseContentSha256": "4fac4f992bcd093b81c7f58381ef29fcd52dda361e39e1075fed4dce47b75f8d"
 }

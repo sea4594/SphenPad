@@ -195,20 +195,30 @@ export function setCreatorBackground(def: PuzzleDefinition, input: { url?: strin
 export function listCreatorObjects(input: PuzzleDefinition): CreatorEditableObject[] {
   const def = ensureCreatorObjectIds(input);
   const out: CreatorEditableObject[] = [];
-  for (const constraint of creatorConstraints(def)) {
-    const parts = visualPartsFor(def, constraint.id);
-    const elementId = constraint.sourceElementId ?? constraint.type;
-    const name = typeof constraint[CREATOR_OBJECT_NAME] === "string" ? String(constraint[CREATOR_OBJECT_NAME]) : elementId;
-    out.push({ id: constraint.id, kind: "constraint", elementId, name, enabled: constraint.enabled !== false, visualCount: parts.length, collections: [...new Set(parts.map((item) => item.collection))], constraint, sample: parts[0]?.part });
-  }
-  const groups = new Map<string, { elementId: string; name: string; parts: Array<{ collection: CreatorVisualCollection; part: Record<string, unknown> }> }>();
+  // One scene traversal instead of scanning every graphic for each constraint.
+  // Preserve scene collection order and per-object first-part/collection semantics.
+  type ObjectPart = { collection: CreatorVisualCollection; part: Record<string, unknown> };
+  const constraintParts = new Map<string, ObjectPart[]>();
+  const groups = new Map<string, { elementId: string; name: string; parts: ObjectPart[] }>();
   for (const [collection, parts] of sceneCollections(def)) for (const part of parts) {
     const record = part as Record<string, unknown>;
-    if (creatorPartConstraint(record)) continue;
+    const constraintId = creatorPartConstraint(record);
+    if (constraintId) {
+      const taggedParts = constraintParts.get(constraintId) ?? [];
+      taggedParts.push({ collection, part: record });
+      constraintParts.set(constraintId, taggedParts);
+      continue;
+    }
     const key = objectId(record);
     if (!key) continue;
     const group = groups.get(key) ?? { elementId: creatorPartElement(record) ?? "cosmetic", name: objectName(record) ?? creatorPartElement(record) ?? "Cosmetic", parts: [] };
     group.parts.push({ collection, part: record }); groups.set(key, group);
+  }
+  for (const constraint of creatorConstraints(def)) {
+    const parts = constraintParts.get(constraint.id) ?? [];
+    const elementId = constraint.sourceElementId ?? constraint.type;
+    const name = typeof constraint[CREATOR_OBJECT_NAME] === "string" ? String(constraint[CREATOR_OBJECT_NAME]) : elementId;
+    out.push({ id: constraint.id, kind: "constraint", elementId, name, enabled: constraint.enabled !== false, visualCount: parts.length, collections: [...new Set(parts.map((item) => item.collection))], constraint, sample: parts[0]?.part });
   }
   for (const [object, group] of groups) out.push({ id: object, kind: "cosmetic", elementId: group.elementId, name: group.name, enabled: !group.parts.every((item) => isDisabled(item.part)), visualCount: group.parts.length, collections: [...new Set(group.parts.map((item) => item.collection))], sample: group.parts[0]?.part });
   const metadata = def.scene?.metadata as Record<string, unknown> | undefined;

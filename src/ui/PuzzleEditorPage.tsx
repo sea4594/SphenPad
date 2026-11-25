@@ -567,6 +567,9 @@ export function PuzzleEditorPage() {
     return () => { stop(); window.removeEventListener("pointerup", stop); window.removeEventListener("pointercancel", stop); window.removeEventListener("blur", stop); document.removeEventListener("visibilitychange", hidden); };
   }, [saveQueue]);
 
+  // Tool selection, pointer movement, and inspector state must not rescan hundreds
+  // of authored graphics when the underlying definition has not changed.
+  const editableObjects = useMemo(() => data ? listCreatorObjects(data.def) : [], [data?.def]);
   const hasUnappliedGridDraft = Boolean(data) && (givensText !== gridDraftBaselineRef.current.givens || solutionText !== gridDraftBaselineRef.current.solution);
   const hasUnappliedStructureDraft = Boolean(data) && (
     draftRows !== data!.def.rows || draftCols !== data!.def.cols ||
@@ -2286,7 +2289,6 @@ export function PuzzleEditorPage() {
   ]);
   const activeCatalog = CATALOG.filter((element) => activeCatalogIds.has(element.id));
   const selectedCatalog = CATALOG.find((element) => element.id === activeCatalogElement) ?? null;
-  const editableObjects = listCreatorObjects(data.def);
   const catalogObjects = activeCatalogElement ? editableObjects.filter((object) => object.elementId === activeCatalogElement) : [];
   const selectedObject = selectedObjectId ? editableObjects.find((object) => object.id === selectedObjectId) ?? null : null;
   const selectedObjects = editableObjects.filter((object) => selectedObjectIds.includes(object.id));
