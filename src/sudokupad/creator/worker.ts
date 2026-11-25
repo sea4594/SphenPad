@@ -3,7 +3,7 @@ import type { PuzzleLogicConstraint } from "../types/logic";
 import { creatorDigitCount, creatorDigitRange } from "./gridStructure";
 import { creatorConstraints, getCreatorRegions } from "./nativeAuthoring";
 import { normalizeCreatorLineConstraints } from "./lineConstraints";
-import { normalizeCreatorGroupConstraints, validateGroupConstraintShape } from "./groupConstraints";
+import { creatorCloneGroupsError, normalizeCreatorGroupConstraints, validateGroupConstraintShape } from "./groupConstraints";
 import { creatorSudokuRulesEnabled, normalizeCreatorGlobalConstraints, validateGlobalConstraintShape } from "./globalConstraints";
 
 export type CreatorWorkerValue = { rc: CellRC; value: string | number };
@@ -85,7 +85,17 @@ function seenGraph(def: PuzzleDefinition) {
     if (constraint.type === "whisper") for (let i = 1; i < cells.length; i += 1) addPair(graph, cells[i - 1], cells[i]);
     if (constraint.type === "lockout-line" && cells.length >= 2) addPair(graph, cells[0], cells[cells.length - 1]);
     if (constraint.type === "minimum" || constraint.type === "maximum") { const marked = constraint.type === "minimum" ? minimum : maximum; for (const cell of cells) for (const other of orthogonal(def, cell)) if (!marked.has(key(other))) addPair(graph, cell, other); }
-    if (constraint.type === "clone") addEquivalence(eq, cells);
+    if (constraint.type === "clone") {
+      const groups = Array.isArray(constraint.cloneGroups) ? constraint.cloneGroups as CellRC[][] : null;
+      if (groups) {
+        // Phase 7 paired clones equate corresponding positions, NOT every
+        // cell in both shapes. Invalid shapes are reported by validateConstraints.
+        if (groups.length === 2 && !creatorCloneGroupsError(def, groups[0], groups[1])) {
+          const sorted = groups.map((group) => [...group].sort((a, b) => a.r - b.r || a.c - b.c));
+          sorted[0].forEach((cell, i) => addEquivalence(eq, [cell, sorted[1][i]]));
+        }
+      } else addEquivalence(eq, cells); // Preserve true legacy one-group clones.
+    }
     if (constraint.type === "palindrome") for (let i = 0; i < Math.floor(cells.length / 2); i += 1) addEquivalence(eq, [cells[i], cells[cells.length - 1 - i]]);
   }
   return { graph, eq };
@@ -156,6 +166,18 @@ export function validateGrid(input: PuzzleDefinition, grid?: CreatorWorkerValue[
     if (negativeXv.has(sum) && !xvEdges.has(edge)) add("negative-xv", `Unmarked edge has forbidden sum ${sum}.`, [a, other], "xv");
   }
   const regionFor = (cell: CellRC) => regions.findIndex((region) => region.cells.some((entry) => key(entry) === key(cell)));
+  // Counting Circles is a single puzzle-wide constraint, even when marks were
+  // authored as independent one-cell objects. Disabled marks do not count.
+  const circleCells = uniq(constraints.filter((constraint) => constraint.type === "counting-circles" && checked(def, sourceId(constraint))).flatMap(cellsOf));
+  if (circleCells.length) {
+    const filled = circleCells.filter(has), complete = filled.length === circleCells.length;
+    const counts = new Map<number, number>();
+    for (const cell of filled) counts.set(num(cell), (counts.get(num(cell)) ?? 0) + 1);
+    if (filled.some((cell) => {
+      const digit = num(cell), count = counts.get(digit) ?? 0;
+      return digit < 1 || digit > circleCells.length || count > digit || (complete && count !== digit);
+    })) add("counting-circles", "A circled digit must equal its total frequency across all enabled circles.", circleCells, "counting-circles");
+  }
   for (const constraint of constraints) {
     const id = sourceId(constraint); if (!checked(def, id)) continue; const cells = cellsOf(constraint), full = cells.length > 0 && cells.every(has);
     if (constraint.type === "global-entropy") { const groups = Array.isArray(constraint.groups) ? (constraint.groups as unknown[]).filter(Array.isArray).map((group) => new Set((group as unknown[]).map(Number))) : []; if (groups.length) for (let r = 0; r + 1 < def.rows; r += 1) for (let c = 0; c + 1 < def.cols; c += 1) { const block = [{ r, c }, { r: r + 1, c }, { r, c: c + 1 }, { r: r + 1, c: c + 1 }]; if (!block.every(has)) continue; const memberships = new Set(block.map((cell) => groups.findIndex((group) => group.has(num(cell))))); if (memberships.has(-1) || groups.some((_, index) => !memberships.has(index))) add("global-group", `${id} conflict.`, block, constraint); } }
@@ -168,12 +190,27 @@ export function validateGrid(input: PuzzleDefinition, grid?: CreatorWorkerValue[
     if (constraint.type === "difference" && cells.length === 2 && full) { const expected = Math.max(1, Number(constraint.difference ?? constraint.value ?? 1)); if (Math.abs(num(cells[0]) - num(cells[1])) !== expected) add("difference", `Difference must be ${expected}.`, cells, constraint); }
     if (constraint.type === "ratio" && cells.length === 2 && full) { const expected = Math.max(2, Number(constraint.ratio ?? constraint.value ?? 2)), low = Math.min(num(cells[0]), num(cells[1])), high = Math.max(num(cells[0]), num(cells[1])); if (!low || high !== low * expected) add("ratio", `Ratio must be ${expected}:1.`, cells, constraint); }
     if (constraint.type === "xv" && cells.length === 2 && full) { const expected = Number(constraint.sum ?? constraint.value ?? 10); if (num(cells[0]) + num(cells[1]) !== expected) add("xv", `Pair must sum to ${expected}.`, cells, constraint); }
-    if (constraint.type === "clone") { const filled = cells.filter(has); if (filled.length > 1 && filled.some((cell) => num(cell) !== num(filled[0]))) add("clone", "Clone cells must match.", filled, constraint); }
+    if (constraint.type === "clone") {
+      const groups = Array.isArray(constraint.cloneGroups) ? constraint.cloneGroups as CellRC[][] : null;
+      if (groups) {
+        if (groups.length === 2 && !creatorCloneGroupsError(def, groups[0], groups[1])) {
+          const sorted = groups.map((group) => [...group].sort((a, b) => a.r - b.r || a.c - b.c));
+          sorted[0].forEach((cell, i) => {
+            const other = sorted[1][i];
+            if (has(cell) && has(other) && num(cell) !== num(other))
+              add("clone", "Corresponding clone cells must match.", [cell, other], constraint);
+          });
+        }
+      } else { // Old projects intentionally mean all marked cells share one digit.
+        const filled = cells.filter(has);
+        if (filled.length > 1 && filled.some((cell) => num(cell) !== num(filled[0])))
+          add("clone", "Clone cells must match.", filled, constraint);
+      }
+    }
     if (constraint.type === "different-values") allDifferent(cells, "Different Values", constraint);
     if (constraint.type === "killer-cage") { const filled = cells.filter(has); allDifferent(filled, "Killer cage", constraint); const target = Number(constraint.value); if (Number.isFinite(target) && target > 0) { const sum = filled.reduce((total, cell) => total + num(cell), 0); if (sum > target || (full && sum !== target)) add("killer-sum", `Killer cage must sum to ${target}.`, filled, constraint); } }
     if (constraint.type === "quadruple" && full) { const required = Array.isArray(constraint.digits) ? (constraint.digits as unknown[]).map(Number) : [], actual = cells.map(num), need = new Map<number, number>(), got = new Map<number, number>(); required.forEach((value) => need.set(value, (need.get(value) ?? 0) + 1)); actual.forEach((value) => got.set(value, (got.get(value) ?? 0) + 1)); if ([...need].some(([value, count]) => (got.get(value) ?? 0) < count)) add("quadruple", "Quadruple clue is not represented in the surrounding cells.", cells, constraint); }
     if (constraint.type === "look-and-say-cage") { const clue = String(constraint.value ?? ""), pairs = clue.match(/\d\d/g) ?? []; if (pairs.join("") === clue) { const actual = new Map<number, number>(); cells.filter(has).forEach((cell) => actual.set(num(cell), (actual.get(num(cell)) ?? 0) + 1)); for (const pair of pairs) { const count = Number(pair[0]), digit = Number(pair[1]), seen = actual.get(digit) ?? 0; if ((count === 0 && seen > 0) || seen > count || (full && seen !== count)) { add("look-and-say", "Look-and-say cage clue is not satisfied.", cells, constraint); break; } } } }
-    if (constraint.type === "counting-circles") { const filled = cells.filter(has), counts = new Map<number, number>(); filled.forEach((cell) => counts.set(num(cell), (counts.get(num(cell)) ?? 0) + 1)); for (const cell of filled) { const value = num(cell), count = counts.get(value) ?? 0; if (value < 0 || value > cells.length || count > value || (full && count !== value)) { add("counting-circles", "A circled digit must equal the number of circles containing that digit.", cells, constraint); break; } } }
     if (constraint.type === "thermometer") for (let i = 1; i < cells.length; i += 1) if (has(cells[i - 1]) && has(cells[i]) && (constraint.slow === true ? num(cells[i - 1]) > num(cells[i]) : num(cells[i - 1]) >= num(cells[i]))) add("thermometer", constraint.slow === true ? "Slow thermometer cannot decrease." : "Thermometer must strictly increase.", [cells[i - 1], cells[i]], constraint);
     if (constraint.type === "whisper") { const minimum = Math.max(1, Number(constraint.minDifference ?? (id === "dutch-whispers" ? Math.floor((creatorDigitCount(def) - 1) / 2) : Math.floor((creatorDigitCount(def) + 1) / 2)))); for (let i = 1; i < cells.length; i += 1) if (has(cells[i - 1]) && has(cells[i]) && Math.abs(num(cells[i - 1]) - num(cells[i])) < minimum) add("whisper", `Adjacent whisper digits must differ by at least ${minimum}.`, [cells[i - 1], cells[i]], constraint); }
     if (constraint.type === "palindrome") for (let i = 0; i < Math.floor(cells.length / 2); i += 1) { const other = cells.length - 1 - i; if (has(cells[i]) && has(cells[other]) && num(cells[i]) !== num(cells[other])) add("palindrome", "Mirrored palindrome cells must match.", [cells[i], cells[other]], constraint); }

@@ -1,5 +1,5 @@
 import type { CellRC, PuzzleDefinition } from "../../core/model";
-import { creatorDigitRange } from "./gridStructure";
+import { creatorDigitCount, creatorDigitRange } from "./gridStructure";
 import { validateCreatorDefinition } from "./checker";
 import { creatorSolverUnsupportedReason } from "./solverSupport";
 import { creatorConstraints } from "./nativeAuthoring";
@@ -9,7 +9,7 @@ export type CreatorSolutionSearchMode = "first" | "unique" | "count";
 export type CreatorSolverSettings = { maxSolutions?: number; maxNodes?: number; logicalStepLimit?: number; searchMode?: CreatorSolutionSearchMode };
 export type CreatorSearchProgress = { nodes: number; solutionsFound: number };
 export type CreatorSolutionDifference = { rc: CellRC; first: CreatorWorkerValue["value"]; second: CreatorWorkerValue["value"] };
-export type CreatorLogicalTechnique = "naked single" | "hidden single" | "naked pair" | "naked triple" | "hidden pair" | "hidden triple" | "locked candidate" | "x-wing";
+export type CreatorLogicalTechnique = "naked single" | "hidden single" | "naked pair" | "naked triple" | "hidden pair" | "hidden triple" | "locked candidate" | "x-wing" | "cage sum" | "arrow sum" | "thermometer bound" | "whisper support" | "renban interval";
 export type CreatorLogicalElimination = { rc: CellRC; value: number };
 export type CreatorLogicalStep = {
   rc: CellRC; value: number; reason: CreatorLogicalTechnique; house?: string;
@@ -93,6 +93,7 @@ export function solveCreatorLogically(def: PuzzleDefinition, settings: CreatorSo
   if (initialReport.thrownErrors.length) return failed("unsupported", initialReport.thrownErrors[0]);
   if (initialReport.diagnostics.length) return failed("invalid", initialReport.diagnostics[0].message);
   const context = solverContext(def), steps: CreatorLogicalStep[] = [], frames: CreatorLogicalFrame[] = [];
+  const logicalConstraints = creatorConstraints(def).filter((constraint) => constraint.enabled !== false && constraint.ignoreInSolver !== true && def.meta.creatorConstraintChecks?.[String(constraint.sourceElementId ?? constraint.type)] !== false);
   const removed = new Map<string, Set<number>>();
   const requested = typeof settings.logicalStepLimit === "number" && Number.isFinite(settings.logicalStepLimit) ? Math.trunc(settings.logicalStepLimit) : def.rows * def.cols * 4;
   // Bounded snapshots prevent multi-thousand-step puzzles from exhausting worker memory.
@@ -111,7 +112,7 @@ export function solveCreatorLogically(def: PuzzleDefinition, settings: CreatorSo
     frames.push({ values: entries(values), candidates: [...candidates].map(([cell, values]) => ({ rc: fromKey(cell), values: [...values] })) });
   };
   const summary = (status: CreatorLogicalResult["status"], message?: string): CreatorLogicalResult => {
-    const levels: Record<CreatorLogicalTechnique, number> = { "naked single": 1, "hidden single": 1, "naked pair": 2, "naked triple": 2, "hidden pair": 2, "hidden triple": 2, "locked candidate": 2, "x-wing": 3 };
+    const levels: Record<CreatorLogicalTechnique, number> = { "naked single": 1, "hidden single": 1, "naked pair": 2, "naked triple": 2, "hidden pair": 2, "hidden triple": 2, "locked candidate": 2, "x-wing": 3, "cage sum": 1, "arrow sum": 2, "thermometer bound": 2, "whisper support": 2, "renban interval": 2 };
     const techniques: CreatorLogicalDifficulty["techniques"] = {};
     for (const step of steps) techniques[step.reason] = (techniques[step.reason] ?? 0) + 1;
     const hardest = [...steps].sort((a, b) => levels[b.reason] - levels[a.reason])[0]?.reason;
@@ -129,6 +130,42 @@ export function solveCreatorLogically(def: PuzzleDefinition, settings: CreatorSo
   while (values.size < def.rows * def.cols && steps.length < limit) {
     const empty = [...candidates].find(([, list]) => list.length === 0);
     if (empty) return summary("invalid", `No candidates remain for ${describe(empty[0])}; deductions have reached a contradiction.`);
+    // Use a named variant rule when it directly justifies the last remaining
+    // value. This is a real arithmetic deduction, not backtracking or a guess.
+    let sumPlacement: CreatorLogicalStep | undefined;
+    for (const constraint of logicalConstraints) {
+      const path = (constraint.path ?? constraint.cells ?? []) as CellRC[];
+      const remaining = path.filter((cell) => !values.has(key(cell)));
+      if (remaining.length !== 1 || path.length < 2) continue;
+      const target = key(remaining[0]);
+      let needed: number | undefined;
+      let reason: CreatorLogicalTechnique = "cage sum";
+      if (constraint.type === "killer-cage") {
+        const total = Number(constraint.value);
+        if (Number.isSafeInteger(total) && total > 0)
+          needed = total - path.filter((cell) => key(cell) !== target).reduce((sum, cell) => sum + (values.get(key(cell)) ?? 0), 0);
+      } else if (constraint.type === "arrow" || constraint.type === "double-arrow") {
+        reason = "arrow sum";
+        const bulbs = constraint.type === "arrow" ? Math.max(1, Math.min(path.length - 1, Math.trunc(Number(constraint.bulbCellCount ?? 1)))) : 0;
+        const positive = constraint.type === "arrow" ? path.slice(0, bulbs) : [path[0], path[path.length - 1]];
+        const negative = constraint.type === "arrow" ? path.slice(bulbs) : path.slice(1, -1);
+        const side = positive.some((cell) => key(cell) === target) ? 1 : negative.some((cell) => key(cell) === target) ? -1 : 0;
+        if (side) {
+          const knownPositive = positive.filter((cell) => key(cell) !== target).reduce((sum, cell) => sum + (values.get(key(cell)) ?? 0), 0);
+          const knownNegative = negative.filter((cell) => key(cell) !== target).reduce((sum, cell) => sum + (values.get(key(cell)) ?? 0), 0);
+          needed = side === 1 ? knownNegative - knownPositive : knownPositive - knownNegative;
+        }
+      }
+      if (needed !== undefined && candidates.get(target)?.includes(needed)) {
+        sumPlacement = { kind: "place", rc: remaining[0], value: needed, reason, focusCells: path,
+          explanation: `${reason === "cage sum" ? "The killer cage total requires" : "The arrow sums require"} ${describe(target)} = ${needed} after subtracting the other filled cells.` };
+        break;
+      }
+    }
+    if (sumPlacement) {
+      values.set(key(sumPlacement.rc), sumPlacement.value); steps.push(sumPlacement);
+      candidates = currentCandidates(); snapshot(candidates); continue;
+    }
     const naked = [...candidates].find(([, list]) => list.length === 1);
     if (naked) {
       const [cell, list] = naked, value = list[0]; values.set(cell, value);
@@ -161,6 +198,45 @@ export function solveCreatorLogically(def: PuzzleDefinition, settings: CreatorSo
       if (eliminations.length) { deduction = { reason, house, sources, eliminations, explanation }; return true; }
       return false;
     };
+    // Variant candidate deductions use only necessary consequences of each
+    // enabled constraint. They never assume a complete grid or uniqueness.
+    for (const constraint of logicalConstraints) {
+      const path = (constraint.path ?? constraint.cells ?? []) as CellRC[];
+      if (constraint.type === "thermometer" && constraint.slow !== true && path.length >= 2) {
+        const range = creatorDigitRange(def);
+        const proposed = path.flatMap((cell, index) => (candidates.get(key(cell)) ?? []).filter((digit) =>
+          digit < range.min + index || digit > range.max - (path.length - index - 1)).map((digit) => ({ cell: key(cell), digit })));
+        if (choose("thermometer bound", "thermometer", path.map(key), proposed,
+          `A strictly increasing thermometer of ${path.length} cells must leave room for every digit before and after each position.`)) break;
+      }
+      if (constraint.type === "whisper" && path.length >= 2) {
+        const count = creatorDigitCount(def);
+        const minimum = Math.max(1, Number(constraint.minDifference ?? (String(constraint.sourceElementId) === "dutch-whispers" ? Math.floor((count - 1) / 2) : Math.floor((count + 1) / 2))));
+        for (let i = 1; i < path.length; i += 1) {
+          const pair = [path[i - 1], path[i]];
+          const proposed = pair.flatMap((cell, index) => (candidates.get(key(cell)) ?? []).filter((digit) => {
+            const neighbor = pair[1 - index], assigned = values.get(key(neighbor));
+            const support = assigned !== undefined ? [assigned] : candidates.get(key(neighbor)) ?? [];
+            return !support.some((other) => Math.abs(digit - other) >= minimum);
+          }).map((digit) => ({ cell: key(cell), digit })));
+          if (choose("whisper support", "whisper", pair.map(key), proposed,
+            `Each adjacent whisper pair must differ by at least ${minimum}; eliminated digits have no supporting neighbor candidate.`)) break;
+        }
+        if (deduction) break;
+      }
+      if (constraint.type === "renban" && path.length >= 2) {
+        const range = creatorDigitRange(def), occupied = path.map((cell) => values.get(key(cell))).filter((value): value is number => value !== undefined);
+        const windows: number[][] = [];
+        for (let start = range.min; start <= range.max - path.length + 1; start += 1) {
+          const interval = Array.from({ length: path.length }, (_, i) => start + i);
+          if (occupied.every((digit) => interval.includes(digit))) windows.push(interval);
+        }
+        const possible = new Set(windows.flat());
+        const proposed = path.flatMap((cell) => (candidates.get(key(cell)) ?? []).filter((digit) => !possible.has(digit)).map((digit) => ({ cell: key(cell), digit })));
+        if (choose("renban interval", "renban", path.map(key), proposed,
+          `A renban line must use one consecutive interval of ${path.length} distinct digits, consistent with its placed digits.`)) break;
+      }
+    }
     // All-different houses of exactly N cells over N digits are complete houses.
     // Naked/hidden subset and intersection deductions are sound only in those houses.
     for (const house of fullHouses) {
@@ -251,7 +327,7 @@ export function solveCreatorLogically(def: PuzzleDefinition, settings: CreatorSo
   }
   return summary("stuck", steps.length >= limit
     ? `Logical step limit reached (${limit}); no uniqueness or full logical completion claim.`
-    : "No further deductions found using supported singles, subsets, locked candidates or X-Wing. This does not mean the puzzle is unsolvable.");
+    : "No further deductions found using supported standard or variant techniques. This does not mean the puzzle is unsolvable.");
 }
 
 /** Backtracking search for creator-only proof/count tools. Never mutates the puzzle. */

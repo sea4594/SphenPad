@@ -31,7 +31,10 @@ export function summarizeCreatorImport(result: CreatorImportResult): CreatorImpo
 
 export function creatorExportLossWarning(report: CreatorInterchangeReport): string | null {
   const losses = report.issues.filter((item) => item.severity === "loss");
-  if (losses.length) return `This format cannot preserve everything in your creator project (${losses.length} reported loss${losses.length === 1 ? "" : "es"}). Review the report before sharing. Continue?`;
+  if (losses.length) {
+    const semantics = losses.some((item) => item.code === "creator-checker-semantics-not-exported");
+    return `${semantics ? "IMPORTANT: This SudokuPad link may show the constraints without enforcing the original checker rules. " : ""}This export loses creator information (${losses.length} reported loss${losses.length === 1 ? "" : "es"}). Review the report before sharing. Continue?`;
+  }
   if (report.issues.some((item) => item.code === "creator-checker-semantics-not-exported")) {
     return "This link includes the puzzle artwork but not all SphenPad creator-specific checker rules. Review the export report before sharing. Continue?";
   }

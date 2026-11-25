@@ -13,6 +13,7 @@ import { creatorProjectFromDefinition, definitionFromCreatorProject, parseCreato
 import { authoredPuzzleFile, definitionFromAuthoredPuzzleFile, type SphenPadAuthoredPuzzleFile } from "./nativeAuthoring";
 import { ensureCreatorObjectIds } from "./objectEditing";
 import { syncCreatorFog } from "./globalConstraints";
+import { creatorCloneGroupsError } from "./groupConstraints";
 
 export type CreatorInterchangeFormat = "creator-project" | "sphenpad-authored" | "scl" | "sudokupad" | "fpuzzles" | "sudokupad-json";
 export type CreatorInterchangeSeverity = "info" | "warning" | "loss";
@@ -133,8 +134,15 @@ function addFpuzzlesSemantics(defInput: PuzzleDefinition, fpuzzle: FpuzzlesPuzzl
     const cells = part.cell ? [parseRc(part.cell)].filter((cell): cell is CellRC => Boolean(cell)) : cellsFromPart(part);
     if (cells.length) add(make(part, cells), elementId);
   }
-  for (const part of fpuzzle.clone ?? []) {
-    const cells = [...(part.cells ?? []), ...(part.cloneCells ?? [])].map(parseRc).filter((cell): cell is CellRC => Boolean(cell)); if (cells.length > 1) add({ type: "clone", cells }, "clones");
+  for (const [cloneIndex, part] of (fpuzzle.clone ?? []).entries()) {
+    const first = (part.cells ?? []).map(parseRc).filter((cell): cell is CellRC => Boolean(cell));
+    const second = (part.cloneCells ?? []).map(parseRc).filter((cell): cell is CellRC => Boolean(cell));
+    const error = creatorCloneGroupsError(def, first, second);
+    if (error) {
+      // Never silently convert a malformed paired clone into the unrelated
+      // legacy all-equal rule. Imported SudokuPad artwork remains intact.
+      issue(outReport, "loss", "fpuzzles-clone-correspondence", `Clone ${cloneIndex + 1} could not be reconstructed: ${error}`, `clone[${cloneIndex}]`);
+    } else add({ type: "clone", cells: [...first, ...second], cloneGroups: [first, second] }, "clones");
   }
   if (Array.isArray(fpuzzle.negative)) issue(outReport, "warning", "negative-fpuzzles-rules", "F-Puzzles negative-constraint settings are preserved by the SudokuPad rendering import, but some per-family negative authoring switches may need review after import.", "negative");
   issue(outReport, "warning", "fpuzzles-visual-linkage", "Recognized F-Puzzles constraints are reconstructed semantically while their converted SudokuPad graphics are preserved as separately editable cosmetics. This preserves appearance and checking, but editing a semantic constraint does not automatically restyle the imported cosmetic graphic.");
@@ -181,7 +189,7 @@ export function exportCreatorInterchange(def: PuzzleDefinition): CreatorExportRe
   const visualOnly = (def.logic?.constraints ?? []).filter((constraint) => constraint.enabled !== false && constraint.type !== "custom" && !nativeTypes.has(constraint.type));
   if (visualOnly.length) {
     const families = [...new Set(visualOnly.map((constraint) => constraint.type))].sort();
-    issue(outReport, "warning", "creator-checker-semantics-not-exported", `${visualOnly.length} creator constraint${visualOnly.length === 1 ? "" : "s"} (${families.join(", ")}) have SphenPad-only checker/authoring semantics. Their graphics are exported when present, but the SudokuPad payload does not include SphenPad's executable checker definitions.`);
+    issue(outReport, "loss", "creator-checker-semantics-not-exported", `${visualOnly.length} creator constraint${visualOnly.length === 1 ? "" : "s"} (${families.join(", ")}) lose SphenPad's executable checker semantics in the SudokuPad link. Artwork may remain visible, but equivalent rule enforcement is NOT guaranteed. Share the editable CreatorProject JSON to preserve the full constraint model.`);
   }
   if ((def.logic?.constraints ?? []).some((constraint) => constraint.enabled === false)) issue(outReport, "warning", "disabled-authoring-constraints", "Disabled creator constraints remain in editable project files, but the SudokuPad export does not preserve their enabled/disabled editor state.");
   if ((def.logic?.constraints ?? []).some((constraint) => constraint.ignoreInSolver)) issue(outReport, "warning", "solver-ignore-local", "SphenPad 'ignore in solver/checker' flags are authoring metadata and are not represented in SudokuPad links.");

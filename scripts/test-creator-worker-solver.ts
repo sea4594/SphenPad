@@ -59,3 +59,6 @@ import "./test-creator-phase4-solutions";
 
 // Phase 5: logical walkthrough snapshots and sound candidate eliminations.
 import "./test-creator-phase5-logical";
+
+// Post-Phase-12 variant-specific logical solving regressions.
+import "./test-creator-audit-logical";

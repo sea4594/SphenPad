@@ -49,3 +49,6 @@ void main().catch((error) => { console.error(error); throw error; });
 
 // Phase 10 creator import/export and portable sharing regressions.
 import "./test-creator-phase10-interchange";
+
+// Post-Phase-12 semantic parity checks for creator constraints and interchange.
+import "./test-creator-audit-correctness";
