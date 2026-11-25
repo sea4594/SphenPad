@@ -130,18 +130,43 @@ function mapSelectedVisuals(def: PuzzleDefinition, ids: Set<string>, mapper: (pa
   });
   return { ...def, scene };
 }
-function pointsOfPart(part: Record<string, unknown>): Array<[number, number]> {
-  const out: Array<[number, number]> = [];
-  if (Array.isArray(part.center) && part.center.length >= 2) out.push([Number(part.center[0]), Number(part.center[1])]);
-  if (Array.isArray(part.wayPoints)) for (const point of part.wayPoints) if (Array.isArray(point) && point.length >= 2) out.push([Number(point[0]), Number(point[1])]);
-  if (Array.isArray(part.cells)) for (const cell of part.cells) if (Array.isArray(cell) && cell.length >= 2) out.push([Number(cell[0]) + 0.5, Number(cell[1]) + 0.5]);
-  return out.filter(([r, c]) => Number.isFinite(r) && Number.isFinite(c));
+type CosmeticBounds = { top: number; bottom: number; left: number; right: number; centerR: number; centerC: number };
+function partBounds(part: Record<string, unknown>): CosmeticBounds | undefined {
+  let minR = Infinity, maxR = -Infinity, minC = Infinity, maxC = -Infinity;
+  const add = (r: number, c: number) => {
+    if (!Number.isFinite(r) || !Number.isFinite(c)) return;
+    minR = Math.min(minR, r); maxR = Math.max(maxR, r);
+    minC = Math.min(minC, c); maxC = Math.max(maxC, c);
+  };
+  if (Array.isArray(part.center) && part.center.length >= 2) {
+    const r = Number(part.center[0]), c = Number(part.center[1]);
+    const width = Number(part.width ?? 0), height = Number(part.height ?? 0);
+    const angle = Number(part.angle ?? 0);
+    if (Number.isFinite(width) && Number.isFinite(height) && width >= 0 && height >= 0 && Number.isFinite(angle)) {
+      const radians = angle * Math.PI / 180;
+      const halfWidth = (Math.abs(width * Math.cos(radians)) + Math.abs(height * Math.sin(radians))) / 2;
+      const halfHeight = (Math.abs(height * Math.cos(radians)) + Math.abs(width * Math.sin(radians))) / 2;
+      add(r - halfHeight, c - halfWidth); add(r + halfHeight, c + halfWidth);
+    } else add(r, c);
+  }
+  if (Array.isArray(part.wayPoints)) for (const point of part.wayPoints) {
+    if (Array.isArray(point) && point.length >= 2) add(Number(point[0]), Number(point[1]));
+  }
+  if (Array.isArray(part.cells)) for (const cell of part.cells) {
+    if (Array.isArray(cell) && cell.length >= 2) {
+      const r = Number(cell[0]), c = Number(cell[1]);
+      add(r, c); add(r + 1, c + 1);
+    }
+  }
+  if (!Number.isFinite(minR)) return undefined;
+  return { top: minR, bottom: maxR, left: minC, right: maxC, centerR: (minR + maxR) / 2, centerC: (minC + maxC) / 2 };
 }
-function objectAnchor(def: PuzzleDefinition, id: string) {
-  const points = visualEntries(def, id).flatMap((entry) => pointsOfPart(entry.value as Record<string, unknown>));
-  if (!points.length) return undefined;
-  const rs = points.map(([r]) => r), cs = points.map(([, c]) => c);
-  return { top: Math.min(...rs), bottom: Math.max(...rs), left: Math.min(...cs), right: Math.max(...cs), centerR: (Math.min(...rs) + Math.max(...rs)) / 2, centerC: (Math.min(...cs) + Math.max(...cs)) / 2 };
+function objectAnchor(def: PuzzleDefinition, id: string): CosmeticBounds | undefined {
+  const bounds = visualEntries(def, id).map((entry) => partBounds(entry.value as Record<string, unknown>)).filter((entry): entry is CosmeticBounds => Boolean(entry));
+  if (!bounds.length) return undefined;
+  const top = Math.min(...bounds.map((b) => b.top)), bottom = Math.max(...bounds.map((b) => b.bottom));
+  const left = Math.min(...bounds.map((b) => b.left)), right = Math.max(...bounds.map((b) => b.right));
+  return { top, bottom, left, right, centerR: (top + bottom) / 2, centerC: (left + right) / 2 };
 }
 function translatePart(part: Record<string, unknown>, dr: number, dc: number) {
   const next = clone(part);
@@ -151,7 +176,7 @@ function translatePart(part: Record<string, unknown>, dr: number, dc: number) {
   return next;
 }
 export function alignCreatorCosmetics(def: PuzzleDefinition, ids: string[], mode: CreatorAlignMode): PuzzleDefinition {
-  const cosmetics = listCreatorObjects(def).filter((object) => ids.includes(object.id) && object.kind === "cosmetic");
+  const cosmetics = listCreatorObjects(def).filter((object) => ids.includes(object.id) && object.kind === "cosmetic" && object.elementId !== "cosmetic-cages");
   if (cosmetics.length < 2) return def;
   const anchors = cosmetics.map((object) => ({ id: object.id, anchor: objectAnchor(def, object.id) })).filter((entry): entry is { id: string; anchor: NonNullable<ReturnType<typeof objectAnchor>> } => Boolean(entry.anchor));
   if (anchors.length < 2) return def;
@@ -163,6 +188,15 @@ export function alignCreatorCosmetics(def: PuzzleDefinition, ids: string[], mode
     next = mapSelectedVisuals(next, new Set([id]), (part) => translatePart(part, dr, dc));
   }
   return next;
+}
+
+/** Translate free artwork without quantizing the coordinates or clipping at grid edges. */
+export function nudgeCreatorCosmetics(def: PuzzleDefinition, ids: string[], dr: number, dc: number): PuzzleDefinition {
+  if (!Number.isFinite(dr) || !Number.isFinite(dc) || Math.abs(dr) > 100 || Math.abs(dc) > 100) return def;
+  const movable = new Set(listCreatorObjects(def)
+    .filter((object) => object.kind === "cosmetic" && object.elementId !== "cosmetic-cages" && ids.includes(object.id))
+    .map((object) => object.id));
+  return mapSelectedVisuals(def, movable, (part) => translatePart(part, dr, dc));
 }
 
 function snapNumber(value: number, mode: CreatorSnapMode) { return mode === "cell-center" ? Math.round(value - 0.5) + 0.5 : Math.round(value); }

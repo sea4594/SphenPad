@@ -62,7 +62,7 @@ import type { CreatorSaveStatus } from "../sudokupad/creator/saveCoordinator";
 import { getCreatorEditorSaveQueue } from "../sudokupad/creator/persistence";
 import { describeCreatorStructureLoss } from "../sudokupad/creator/creatorSafety";
 import { creatorDigitTransition, type CreatorDigitSequence } from "../sudokupad/creator/digitEntry";
-import { alignCreatorCosmetics, creatorObjectClipboardJson, insertCreatorLinePathPoint, moveCreatorObjectsToEdge, nudgeCreatorLinePathPoint, parseCreatorObjectClipboard, pasteCreatorObjectClipboard, removeCreatorLinePathPoint, removeCreatorObjects, reorderCreatorLinePathPoint, setCreatorLinePathPoint, snapCreatorObjects, updateCreatorObjects, type CreatorAlignMode, type CreatorSnapMode } from "../sudokupad/creator/editingUx";
+import { alignCreatorCosmetics, creatorObjectClipboardJson, insertCreatorLinePathPoint, moveCreatorObjectsToEdge, nudgeCreatorCosmetics, nudgeCreatorLinePathPoint, parseCreatorObjectClipboard, pasteCreatorObjectClipboard, removeCreatorLinePathPoint, removeCreatorObjects, reorderCreatorLinePathPoint, setCreatorLinePathPoint, snapCreatorObjects, updateCreatorObjects, type CreatorAlignMode, type CreatorSnapMode } from "../sudokupad/creator/editingUx";
 
 type ElementKind = "given" | "cage" | "thermo" | "arrow" | "whisper" | "renban" | "palindrome" | "dot" | "region" | "fog";
 type CreatorTab = "file" | "elements" | "tools";
@@ -1016,7 +1016,7 @@ export function PuzzleEditorPage() {
     else if (elementId === "cosmetic-shapes") visual.underlays = [{ center, width: 0.8, height: 0.8, rounded: false, backgroundColor: "rgba(120,120,120,0.12)", borderColor: "#777777", borderSize: 1.5 }];
     else if (elementId === "cosmetic-images") {
       const url = constraintValue.trim(); if (!url) { setMessage("Enter an image URL or data URL first."); return; }
-      visual.overlays = [{ center, width: 1, height: 1, imageUrl: url, opacity: 1, preserveAspectRatio: "none" }];
+      visual.overlays = [{ center, width: 1, height: 1, imageUrl: url, opacity: 1, preserveAspectRatio: "xMidYMid meet" }];
     }
     const created = addCreatorCosmetic(data.def, elementId, visual, { name: CATALOG.find((entry) => entry.id === elementId)?.name ?? "Cosmetic" });
     save(applyToolDefaults(created.def, created.objectId, elementId));
@@ -1866,7 +1866,7 @@ export function PuzzleEditorPage() {
       if (!url) { setMessage("Enter an image URL or data URL."); return; }
       const rs = cells.map((cell) => cell.r), cs = cells.map((cell) => cell.c);
       const minR = Math.min(...rs), maxR = Math.max(...rs), minC = Math.min(...cs), maxC = Math.max(...cs);
-      visual.overlays = [{ center: [(minR + maxR + 1) / 2, (minC + maxC + 1) / 2], width: maxC - minC + 1, height: maxR - minR + 1, imageUrl: url, opacity: 1, preserveAspectRatio: "none" }];
+      visual.overlays = [{ center: [(minR + maxR + 1) / 2, (minC + maxC + 1) / 2], width: maxC - minC + 1, height: maxR - minR + 1, imageUrl: url, opacity: 1, preserveAspectRatio: "xMidYMid meet" }];
     } else if (element.id === "cosmetic-shapes") {
       const rs = cells.map((cell) => cell.r), cs = cells.map((cell) => cell.c);
       const minR = Math.min(...rs), maxR = Math.max(...rs), minC = Math.min(...cs), maxC = Math.max(...cs);
@@ -2026,6 +2026,26 @@ export function PuzzleEditorPage() {
     if (!data) return;
     save(setCreatorObjectGraphicLayer(data.def, objectId, layer));
     setSelectedObjectId(objectId);
+  }
+
+  function renderCreatorCosmeticPosition(object: CreatorEditableObject) {
+    if (!data || object.kind !== "cosmetic" || object.elementId === "cosmetic-cages") return null;
+    const part = creatorObjectVisualParts(data.def, object.id).find((entry) => entry.collection === "underlays" || entry.collection === "overlays")?.part;
+    const center = Array.isArray(part?.center) && part.center.length >= 2 ? [Number(part.center[0]), Number(part.center[1])] : null;
+    const changeCoordinate = (index: 0 | 1, text: string) => {
+      if (!data || !center) return;
+      const value = Number(text);
+      if (!text.trim() || !Number.isFinite(value) || Math.abs(value) > 1000) { setMessage("Enter a finite position between -1000 and 1000."); return; }
+      const next: [number, number] = [center[0], center[1]];
+      next[index] = value;
+      save(updateCreatorObjectVisuals(data.def, object.id, ["underlays", "overlays"], { center: next }));
+    };
+    const nudge = (dr: number, dc: number) => save(nudgeCreatorCosmetics(data.def, [object.id], dr, dc));
+    return <div className="creatorAppearanceSection"><div className="creatorInspectorSubheading">Position</div>
+      {center ? <div className="creatorPropertyGrid"><label>Row (grid units)<CreatorDraftInput key={`${object.id}-row`} value={center[0]} inputMode="decimal" onCommit={(text) => changeCoordinate(0, text)} /></label><label>Column (grid units)<CreatorDraftInput key={`${object.id}-col`} value={center[1]} inputMode="decimal" onCommit={(text) => changeCoordinate(1, text)} /></label></div> : null}
+      <div className="creatorFileActions" role="group" aria-label="Nudge artwork"><button className="btn" type="button" onClick={() => nudge(-0.25, 0)}>Up</button><button className="btn" type="button" onClick={() => nudge(0, -0.25)}>Left</button><button className="btn" type="button" onClick={() => nudge(0, 0.25)}>Right</button><button className="btn" type="button" onClick={() => nudge(0.25, 0)}>Down</button></div>
+      <div className="creatorHelp">Coordinates are measured from the upper-left grid edge. Negative values place artwork outside the grid; nudges move by ¼ cell.</div>
+    </div>;
   }
 
   function objectDetail(object: CreatorEditableObject) {
@@ -2314,7 +2334,13 @@ export function PuzzleEditorPage() {
   function appearancePartSample(elementId: string, collection: CreatorVisualCollection): Record<string, unknown> {
     if (!data) return {};
     const editing = !addingElement && selectedObject?.elementId === elementId ? selectedObject : null;
-    if (editing) return creatorObjectVisualParts(data.def, editing.id).find((entry) => entry.collection === collection)?.part ?? {};
+    if (editing) {
+      const visuals = creatorObjectVisualParts(data.def, editing.id);
+      return visuals.find((entry) => entry.collection === collection)?.part
+        ?? (editing.kind === "cosmetic" && (collection === "underlays" || collection === "overlays")
+          ? visuals.find((entry) => entry.collection === "underlays" || entry.collection === "overlays")?.part : undefined)
+        ?? {};
+    }
     const defaults = data.def.meta.creatorToolDefaults?.[elementId];
     const latest = catalogObjects.at(-1);
     const latestPart = latest ? creatorObjectVisualParts(data.def, latest.id).find((entry) => entry.collection === collection)?.part ?? {} : {};
@@ -2324,7 +2350,11 @@ export function PuzzleEditorPage() {
   function changeAppearance(elementId: string, collection: CreatorVisualCollection, patch: CreatorObjectPatch) {
     if (!data) return;
     if (!addingElement && selectedObject?.elementId === elementId) {
-      save(updateCreatorObjectVisuals(data.def, selectedObject.id, [collection], patch));
+      const graphics = creatorObjectVisualParts(data.def, selectedObject.id);
+      const actual = selectedObject.kind === "cosmetic" && (collection === "underlays" || collection === "overlays")
+        ? graphics.filter((entry) => entry.collection === "underlays" || entry.collection === "overlays").map((entry) => entry.collection)
+        : [collection];
+      save(updateCreatorObjectVisuals(data.def, selectedObject.id, actual, patch));
       return;
     }
     updateToolAppearanceDefault(patch, collection);
@@ -2356,7 +2386,7 @@ export function PuzzleEditorPage() {
     const textOnly = ["minimum", "maximum", "cosmetic-symbols", "cosmetic-text"].includes(elementId);
     const image = elementId === "cosmetic-images";
     const hasText = textOnly || ["difference-kropki", "ratio-kropki", "xv", "quadruples"].includes(elementId);
-    return <div className="creatorAppearanceSection"><div className="creatorInspectorSubheading">Appearance</div><div className="creatorPropertyGrid">{!textOnly && !image ? <><CreatorColorField label="Fill color" value={String(graphic.backgroundColor ?? "transparent")} placeholder="transparent" onChange={(value) => changeAppearance(elementId, collection, { backgroundColor: value })} /><CreatorColorField label="Outline color" value={String(graphic.borderColor ?? "#555555")} onChange={(value) => changeAppearance(elementId, collection, { borderColor: value })} /><label>Outline weight<CreatorDraftInput value={Number(graphic.borderSize ?? 0)} inputMode="decimal" onCommit={(text) => { if (text.trim() && Number.isFinite(Number(text))) changeAppearance(elementId, collection, { thickness: Math.max(0, Number(text)) }); }} /></label></> : null}{hasText ? <><CreatorColorField label="Text color" value={String(graphic.textColor ?? "#555555")} onChange={(value) => changeAppearance(elementId, collection, { textColor: value })} /><label>Font size<CreatorDraftInput value={Number(graphic.fontSize ?? 16)} inputMode="numeric" onCommit={(text) => { if (text.trim() && Number.isFinite(Number(text))) changeAppearance(elementId, collection, { fontSize: Math.max(1, Number(text)) }); }} /></label></> : null}<label>Width<CreatorDraftInput value={Number(graphic.width ?? 1)} inputMode="decimal" onCommit={(text) => { if (text.trim() && Number.isFinite(Number(text))) changeAppearance(elementId, collection, { width: Math.max(0.05, Number(text)) }); }} /></label><label>Height<CreatorDraftInput value={Number(graphic.height ?? 1)} inputMode="decimal" onCommit={(text) => { if (text.trim() && Number.isFinite(Number(text))) changeAppearance(elementId, collection, { height: Math.max(0.05, Number(text)) }); }} /></label>{(DIRECT_POINT_IDS.has(elementId) || image) ? <label>Angle<CreatorDraftInput value={Number(graphic.angle ?? 0)} inputMode="decimal" onCommit={(text) => { if (text.trim() && Number.isFinite(Number(text))) changeAppearance(elementId, collection, { angle: Number(text) }); }} /></label> : null}{image ? <label>Opacity<CreatorDraftInput value={Number(graphic.opacity ?? 1)} inputMode="decimal" onCommit={(text) => { if (text.trim() && Number.isFinite(Number(text))) changeAppearance(elementId, collection, { opacity: Math.max(0, Math.min(1, Number(text))) }); }} /></label> : null}</div>{elementId === "cosmetic-shapes" ? <label className="creatorToggle"><input type="checkbox" checked={Boolean(graphic.rounded)} onChange={(event) => changeAppearance(elementId, collection, { rounded: event.target.checked })} />Rounded shape</label> : null}{renderDrawingSettings(elementId)}</div>;
+    return <div className="creatorAppearanceSection"><div className="creatorInspectorSubheading">Appearance</div><div className="creatorPropertyGrid">{!textOnly && !image ? <><CreatorColorField label="Fill color" value={String(graphic.backgroundColor ?? "transparent")} placeholder="transparent" onChange={(value) => changeAppearance(elementId, collection, { backgroundColor: value })} /><CreatorColorField label="Outline color" value={String(graphic.borderColor ?? "#555555")} onChange={(value) => changeAppearance(elementId, collection, { borderColor: value })} /><label>Outline weight<CreatorDraftInput value={Number(graphic.borderSize ?? 0)} inputMode="decimal" onCommit={(text) => { if (text.trim() && Number.isFinite(Number(text))) changeAppearance(elementId, collection, { thickness: Math.max(0, Number(text)) }); }} /></label></> : null}{hasText ? <><CreatorColorField label="Text color" value={String(graphic.textColor ?? "#555555")} onChange={(value) => changeAppearance(elementId, collection, { textColor: value })} /><label>Font size<CreatorDraftInput value={Number(graphic.fontSize ?? 16)} inputMode="numeric" onCommit={(text) => { if (text.trim() && Number.isFinite(Number(text))) changeAppearance(elementId, collection, { fontSize: Math.max(1, Number(text)) }); }} /></label></> : null}<label>Width<CreatorDraftInput value={Number(graphic.width ?? 1)} inputMode="decimal" onCommit={(text) => { if (text.trim() && Number.isFinite(Number(text))) changeAppearance(elementId, collection, { width: Math.max(0.05, Number(text)) }); }} /></label><label>Height<CreatorDraftInput value={Number(graphic.height ?? 1)} inputMode="decimal" onCommit={(text) => { if (text.trim() && Number.isFinite(Number(text))) changeAppearance(elementId, collection, { height: Math.max(0.05, Number(text)) }); }} /></label>{(DIRECT_POINT_IDS.has(elementId) || image) ? <label>Angle<CreatorDraftInput value={Number(graphic.angle ?? 0)} inputMode="decimal" onCommit={(text) => { if (text.trim() && Number.isFinite(Number(text))) changeAppearance(elementId, collection, { angle: Number(text) }); }} /></label> : null}{image ? <><label>Opacity<CreatorDraftInput value={Number(graphic.opacity ?? 1)} inputMode="decimal" onCommit={(text) => { if (text.trim() && Number.isFinite(Number(text))) changeAppearance(elementId, collection, { opacity: Math.max(0, Math.min(1, Number(text))) }); }} /></label><label>Image fit<select className="url" aria-label="Image fit" value={String(graphic.preserveAspectRatio ?? "none")} onChange={(event) => changeAppearance(elementId, collection, { preserveAspectRatio: event.target.value as "none" | "xMidYMid meet" | "xMidYMid slice" })}><option value="xMidYMid meet">Contain (no distortion)</option><option value="xMidYMid slice">Cover (crop)</option><option value="none">Stretch</option></select></label></> : null}</div>{elementId === "cosmetic-shapes" ? <label className="creatorToggle"><input type="checkbox" checked={Boolean(graphic.rounded)} onChange={(event) => changeAppearance(elementId, collection, { rounded: event.target.checked })} />Rounded shape</label> : null}{renderDrawingSettings(elementId)}</div>;
   }
 
   return (
@@ -2540,7 +2570,7 @@ export function PuzzleEditorPage() {
               {selectedObject.kind === "cosmetic" && selectedObject.elementId === "cosmetic-images" ? <label>Image URL<CreatorDraftInput key={`${selectedObject.id}-imageUrl`} value={String(objectSample.imageUrl ?? "")} inputMode="url" onCommit={(url) => editObject(selectedObject.id, { url })} /></label> : null}
               {selectedObject.kind === "cosmetic" && (selectedObject.elementId === "cosmetic-text" || selectedObject.elementId === "cosmetic-symbols") ? <label>{selectedObject.elementId === "cosmetic-text" ? "Text" : "Symbol"}<CreatorDraftInput key={`${selectedObject.id}-text`} value={String(objectSample.text ?? "")} onCommit={(text) => save(updateCreatorObjectVisuals(data.def, selectedObject.id, ["underlays", "overlays"], { text }))} /></label> : null}
               {selectedObject.kind === "cosmetic" && selectedObject.elementId === "cosmetic-cages" ? <label>Clue / label<CreatorDraftInput key={`${selectedObject.id}-value`} value={String(objectSample.value ?? "")} onCommit={(value) => editObject(selectedObject.id, { value })} /></label> : null}
-              {selectedObject.kind !== "background" ? <>{renderAppearanceSettings(selectedObject.elementId)}{selectedObject.kind === "cosmetic" && (selectedObject.collections.includes("underlays") || selectedObject.collections.includes("overlays")) ? <label>Graphic layer<select className="url" value={selectedObject.collections.includes("overlays") ? "overlay" : "underlay"} onChange={(event) => changeObjectLayer(selectedObject.id, event.target.value as "underlay" | "overlay")}><option value="underlay">Under grid content</option><option value="overlay">Over grid content</option></select></label> : null}</> : <><label>Opacity<CreatorDraftInput key={`${selectedObject.id}-opacity`} value={Number(objectSample.opacity ?? 1)} inputMode="decimal" onCommit={(text) => { if (text.trim() && Number.isFinite(Number(text))) editObject(selectedObject.id, { opacity: Math.max(0, Math.min(1, Number(text))) }); }} /></label><label>Image layer<select className="url" value={String(objectSample.target ?? "background")} onChange={(event) => editObject(selectedObject.id, { target: event.target.value })}><option value="background">Background</option><option value="underlay">Underlay</option><option value="overlay">Overlay</option></select></label></>}
+              {selectedObject.kind !== "background" ? <>{renderCreatorCosmeticPosition(selectedObject)}{renderAppearanceSettings(selectedObject.elementId)}{selectedObject.kind === "cosmetic" && (selectedObject.collections.includes("underlays") || selectedObject.collections.includes("overlays")) ? <label>Graphic layer<select className="url" value={selectedObject.collections.includes("overlays") ? "overlay" : "underlay"} onChange={(event) => changeObjectLayer(selectedObject.id, event.target.value as "underlay" | "overlay")}><option value="underlay">Under grid content</option><option value="overlay">Over grid content</option></select></label> : null}</> : <><label>Opacity<CreatorDraftInput key={`${selectedObject.id}-opacity`} value={Number(objectSample.opacity ?? 1)} inputMode="decimal" onCommit={(text) => { if (text.trim() && Number.isFinite(Number(text))) editObject(selectedObject.id, { opacity: Math.max(0, Math.min(1, Number(text))) }); }} /></label><label>Image layer<select className="url" value={String(objectSample.target ?? "background")} onChange={(event) => editObject(selectedObject.id, { target: event.target.value })}><option value="background">Background</option><option value="underlay">Underlay</option><option value="overlay">Overlay</option></select></label></>}
               <div className="creatorObjectActions"><button className="btn" onClick={() => reorderObject(selectedObject.id, -1)} type="button">Backward</button><button className="btn" onClick={() => reorderObject(selectedObject.id, 1)} type="button">Forward</button><button className="btn" onClick={() => { if (data) save(moveCreatorObjectsToEdge(data.def, [selectedObject.id], "back")); }} type="button">To back</button><button className="btn" onClick={() => { if (data) save(moveCreatorObjectsToEdge(data.def, [selectedObject.id], "front")); }} type="button">To front</button><button className="btn" disabled={selectedObject.kind === "background" || SINGLETON_GLOBAL_IDS.has(selectedObject.elementId)} onClick={() => duplicateObject(selectedObject.id)} type="button">Duplicate</button><button className="btn" disabled={selectedObject.kind === "background"} onClick={() => void copyObjectById(selectedObject.id)} type="button">Copy</button><button className="btn" disabled={selectedObject.kind === "background"} onClick={saveToolDefaultsForSelected} type="button">Use as defaults</button><button className="btn danger" onClick={() => deleteObject(selectedObject.id)} type="button">Delete</button></div>
             </div> : null}
           </div>

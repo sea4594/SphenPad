@@ -48,6 +48,7 @@ export type CreatorObjectPatch = {
   center?: [number, number];
   wayPoints?: [number, number][];
   headLength?: number;
+  preserveAspectRatio?: "none" | "xMidYMid meet" | "xMidYMid slice";
   cells?: [number, number][];
 };
 export type CreatorCosmeticVisuals = Partial<Record<CreatorVisualCollection, VisualPart[]>>;
@@ -100,8 +101,13 @@ function applyPartEnabled(part: Record<string, unknown>, enabled: boolean, colle
 }
 function patchPart(part: Record<string, unknown>, patch: CreatorObjectPatch) {
   const next = { ...part };
-  const keys: Array<keyof CreatorObjectPatch> = ["color", "backgroundColor", "borderColor", "textColor", "text", "fontSize", "thickness", "opacity", "width", "height", "angle", "rounded", "target", "center", "wayPoints", "headLength", "cells"];
+  const keys: Array<keyof CreatorObjectPatch> = ["color", "backgroundColor", "borderColor", "textColor", "text", "fontSize", "thickness", "opacity", "width", "height", "angle", "rounded", "target", "center", "wayPoints", "headLength", "preserveAspectRatio", "cells"];
   for (const key of keys) if (patch[key] !== undefined) next[key] = patch[key];
+  // Keep disabled artwork dim even when its authored opacity changes.
+  if (patch.opacity !== undefined && isDisabled(part)) {
+    next[CREATOR_STORED_OPACITY] = patch.opacity;
+    next.opacity = 0.18;
+  }
   if (patch.url !== undefined && ("imageUrl" in next || String(next[TAG_ELEMENT] ?? "") === "cosmetic-images")) next.imageUrl = patch.url;
   if (patch.borderColor !== undefined && Array.isArray(next.cells)) next.outlineC = patch.borderColor;
   if (patch.textColor !== undefined && Array.isArray(next.cells)) next.fontC = patch.textColor;
@@ -206,7 +212,7 @@ export function listCreatorObjects(input: PuzzleDefinition): CreatorEditableObje
   }
   for (const [object, group] of groups) out.push({ id: object, kind: "cosmetic", elementId: group.elementId, name: group.name, enabled: !group.parts.every((item) => isDisabled(item.part)), visualCount: group.parts.length, collections: [...new Set(group.parts.map((item) => item.collection))], sample: group.parts[0]?.part });
   const metadata = def.scene?.metadata as Record<string, unknown> | undefined;
-  if (typeof metadata?.bgimage === "string" && metadata.bgimage.trim()) out.push({ id: "creator-background", kind: "background", elementId: typeof metadata.creatorBackgroundElementId === "string" ? metadata.creatorBackgroundElementId : "cosmetic-backgrounds", name: typeof metadata.creatorBackgroundName === "string" ? metadata.creatorBackgroundName : "Background image", enabled: metadata.creatorBackgroundEnabled !== false, visualCount: 1, collections: [], sample: { url: metadata.bgimage, opacity: metadata.bgimageopacity, target: metadata.bgimagetarget } });
+  if (typeof metadata?.bgimage === "string" && metadata.bgimage.trim()) out.push({ id: "creator-background", kind: "background", elementId: typeof metadata.creatorBackgroundElementId === "string" ? metadata.creatorBackgroundElementId : "cosmetic-backgrounds", name: typeof metadata.creatorBackgroundName === "string" ? metadata.creatorBackgroundName : "Background image", enabled: metadata.creatorBackgroundEnabled !== false, visualCount: 1, collections: [], sample: { url: metadata.bgimage, opacity: metadata.creatorBackgroundEnabled === false ? (metadata.creatorBackgroundStoredOpacity ?? metadata.bgimageopacity ?? 1) : metadata.bgimageopacity, target: metadata.bgimagetarget } });
   return out;
 }
 
@@ -216,12 +222,24 @@ export function updateCreatorObject(def: PuzzleDefinition, targetId: string, pat
     const metadata = { ...def.scene.metadata } as Record<string, unknown>;
     if (patch.name !== undefined) metadata.creatorBackgroundName = patch.name;
     if (patch.url !== undefined) metadata.bgimage = patch.url.trim();
-    if (patch.opacity !== undefined) metadata.bgimageopacity = Math.max(0, Math.min(1, patch.opacity));
+    if (patch.opacity !== undefined) {
+      const opacity = Math.max(0, Math.min(1, patch.opacity));
+      if (metadata.creatorBackgroundEnabled === false) {
+        metadata.creatorBackgroundStoredOpacity = opacity;
+        metadata.bgimageopacity = 0;
+      } else metadata.bgimageopacity = opacity;
+    }
     if (patch.target !== undefined) metadata.bgimagetarget = patch.target;
     if (patch.enabled !== undefined) {
+      if (!patch.enabled && metadata.creatorBackgroundEnabled !== false) {
+        metadata.creatorBackgroundStoredOpacity = metadata.bgimageopacity ?? 1;
+      }
       metadata.creatorBackgroundEnabled = patch.enabled;
-      if (!patch.enabled) { if (metadata.creatorBackgroundStoredOpacity === undefined) metadata.creatorBackgroundStoredOpacity = metadata.bgimageopacity ?? 1; metadata.bgimageopacity = 0; }
-      else if (metadata.creatorBackgroundStoredOpacity !== undefined) { metadata.bgimageopacity = metadata.creatorBackgroundStoredOpacity; delete metadata.creatorBackgroundStoredOpacity; }
+      if (!patch.enabled) metadata.bgimageopacity = 0;
+      else if (metadata.creatorBackgroundStoredOpacity !== undefined) {
+        metadata.bgimageopacity = metadata.creatorBackgroundStoredOpacity;
+        delete metadata.creatorBackgroundStoredOpacity;
+      }
     }
     return { ...def, scene: { ...def.scene, metadata } };
   }

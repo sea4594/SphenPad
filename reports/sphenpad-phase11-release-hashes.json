@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-25T00:10:08.528Z",
+  "generatedAt": "2026-11-25T01:08:27.304Z",
   "phase": "11L",
   "target": "SphenPad Phase 11 / SudokuMaker creator parity on pinned SudokuPad 0.612.0",
   "productionInputs": [
@@ -53310,8 +53310,8 @@
     },
     {
       "path": "src/sudokupad/creator/editingUx.ts",
-      "bytes": 14987,
-      "sha256": "3aeb028909682e86248cdb9e466dda0c8415d9afa226a4b6c276a6959cb9b7dc"
+      "bytes": 16871,
+      "sha256": "8f6902109bc4ee2afa94bf07df6377e3520f442be2a8682408fdd6f8c49cecdb"
     },
     {
       "path": "src/sudokupad/creator/globalConstraints.ts",
@@ -53350,8 +53350,8 @@
     },
     {
       "path": "src/sudokupad/creator/objectEditing.ts",
-      "bytes": 19248,
-      "sha256": "acdfad08c5cded344537f6362617517a397fec83d04f604a2b5d980f3662180b"
+      "bytes": 19924,
+      "sha256": "1e71c2f32f8bff9b4cc4d50516c207a827b367a421a55a12d66ce2ecb1817f1c"
     },
     {
       "path": "src/sudokupad/creator/persistence.ts",
@@ -53725,8 +53725,8 @@
     },
     {
       "path": "src/ui/PuzzleEditorPage.tsx",
-      "bytes": 228433,
-      "sha256": "2e5e8ea60294f60c955484e664bfdeb4a027be3eb71089c05708ad880a5e8d44"
+      "bytes": 231759,
+      "sha256": "6968ef7d3b35fced98fc575d64457e0cd90b6f30670c8690ef90ae927ab94e94"
     },
     {
       "path": "src/ui/PuzzleListPreview.tsx",
@@ -53847,8 +53847,8 @@
     },
     {
       "path": "scripts/test-creator-object-editing.ts",
-      "bytes": 6490,
-      "sha256": "1d344987844e179e234568ac7b6be2b94bf16fedceb202f9e0b556e657fdbbb7"
+      "bytes": 6609,
+      "sha256": "d202e4b651893ab5b7ab65ab4c936514b8ef367ec669f26c9b9c3eb1aba1fd0e"
     },
     {
       "path": "scripts/test-creator-phase1-safety.ts",
@@ -53894,6 +53894,11 @@
       "path": "scripts/test-creator-phase8-advanced.ts",
       "bytes": 7802,
       "sha256": "4187554962edaa42573fcae5b9666da2ac8001600b3945e917d7335bb079f283"
+    },
+    {
+      "path": "scripts/test-creator-phase9-artwork.ts",
+      "bytes": 5965,
+      "sha256": "f35c0608dd4f189b033e6d96b98a8fe26cf5d6518a60fae1b53b48830e466f65"
     },
     {
       "path": "scripts/test-creator-playtest-integration.mjs",
@@ -75758,29 +75763,29 @@
       "sha256": "2b65f5c8666353856cdd758cfa048a233969ff472fea6b6c5ae74b76b9d73f76"
     },
     {
+      "path": "dist/assets/index-BCTeqG5j.js",
+      "bytes": 1172526,
+      "sha256": "00515f50d8e95c9d9f06ec74640400296d8ea317d8e78a0ede8c0521817cb9b4"
+    },
+    {
       "path": "dist/assets/index-Bks0kLu0.css",
       "bytes": 100727,
       "sha256": "d167f36d027e4aae1afc6fa8bcec970421049d5cfc2d631c3afb20d12097354a"
     },
     {
-      "path": "dist/assets/index-D2HIs4kw.js",
-      "bytes": 1172260,
-      "sha256": "bf629a409b0adb7d26bb1e57ad17621bba936e29315fc0b9b3f93048be0e3da5"
-    },
-    {
-      "path": "dist/assets/persistence-WRX5iXvm.js",
+      "path": "dist/assets/persistence-B1uZ8cby.js",
       "bytes": 1788,
-      "sha256": "a15ab4d913704c479c750ab6dc26555de83ec0beda453637362fb36d6ebfe701"
+      "sha256": "8c1ca0de000ba7bb2e7c41bb1464ce147e24ab6cb31b3677b82fbf72c1ef3fd6"
     },
     {
-      "path": "dist/assets/PuzzleCreatorPage-BR5BSXPr.js",
+      "path": "dist/assets/PuzzleCreatorPage-CvNJqwgU.js",
       "bytes": 5651,
-      "sha256": "5b1fbb34ea15663af6d09b4793d31c4debefd59bf567c9270663489fe1c77b29"
+      "sha256": "2ac466253220577734a5363d884660ae154b51675aeba739dfaa080e3bd78b64"
     },
     {
-      "path": "dist/assets/PuzzleEditorPage-QlwplOVQ.js",
-      "bytes": 200658,
-      "sha256": "33c9b88fe510fdb0a6ef0d8be1b6a2677cfdb65bd293d4c62bca34126f1ae854"
+      "path": "dist/assets/PuzzleEditorPage-Drg4om1v.js",
+      "bytes": 203834,
+      "sha256": "43495d5912d554670a8fc5e58853b928e96595c5c5131cfc5b7e3c05704e272e"
     },
     {
       "path": "dist/assets/solver.worker-Bg2F71R1.js",
@@ -75800,7 +75805,7 @@
     {
       "path": "dist/index.html",
       "bytes": 2045,
-      "sha256": "c6b5ee75356bbfd93eb2c13f9ffc8da19b4c06f84ad2d4470c370128bede5103"
+      "sha256": "e85259e132fb35679fcf1602e08c5d3d7d10cec0ae698d5bf086a7c8d4883e81"
     },
     {
       "path": "dist/lmg/lmg-manifest.json",
@@ -106994,5 +106999,5 @@
     }
   ],
   "bundleBuilt": true,
-  "releaseContentSha256": "8d61202c0b07a213fcb754b17e813f2c9f541fd4f87442dff0ce1f503352819e"
+  "releaseContentSha256": "1cbc26c9f917d7789e65980cfec61f4cb6b159e89496c9f2992986005314305f"
 }

@@ -69,3 +69,6 @@ ok(typeof legacy.scene?.overlays[0][CREATOR_OBJECT_ID] === "string");
 legacy = removeCreatorObject(legacy, String(legacy.scene?.overlays[0][CREATOR_OBJECT_ID]));
 equal(legacy.scene?.overlays.length, 0);
 console.log("creator object editing tests passed");
+
+// Phase 9 creator-only artwork, layer, position and persistence regressions.
+import "./test-creator-phase9-artwork";
