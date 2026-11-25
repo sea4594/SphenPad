@@ -1,4 +1,4 @@
-Phase 11 dependency-backed release gate — 2026-11-24T23:12:35Z
+Phase 11 dependency-backed release gate — 2026-11-25T00:09:28Z
 Node: v20.20.2
 npm: 10.8.2
 
@@ -44,7 +44,7 @@ npm audit: only the known Firebase/Firestore browser-only grpc advisories are pr
   103:6  warning  React Hook useEffect has a missing dependency: 'positionMenu'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
 
 /Users/sea/Desktop/SphenPad/src/ui/PuzzleEditorPage.tsx
-  2030:6  warning  React Hook useEffect has a missing dependency: 'selectedObjectIds'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  2078:6  warning  React Hook useEffect has a missing dependency: 'selectedObjectIds'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
 
 /Users/sea/Desktop/SphenPad/src/ui/SelectControl.tsx
   51:9  warning  The 'selectedValues' conditional could make the dependencies of useMemo Hook (at line 53) change on every render. Move it inside the useMemo callback. Alternatively, wrap the initialization of 'selectedValues' in its own useMemo() Hook  react-hooks/exhaustive-deps
@@ -62,18 +62,18 @@ transforming...
 rendering chunks...
 computing gzip size...
 dist/index.html                                2.05 kB │ gzip:   0.88 kB
-dist/assets/solver.worker-BFLf8VvK.js         62.92 kB
+dist/assets/solver.worker-Bg2F71R1.js         64.41 kB
 dist/assets/index-Bks0kLu0.css               100.73 kB │ gzip:  17.18 kB
-dist/assets/persistence-C2BfBclX.js            1.79 kB │ gzip:   0.71 kB
-dist/assets/PuzzleCreatorPage-DKoI8g7F.js      5.65 kB │ gzip:   1.96 kB
-dist/assets/PuzzleEditorPage-Cd2eCFM5.js     199.05 kB │ gzip:  56.37 kB
-dist/assets/index-BMPnznzz.js              1,170.57 kB │ gzip: 357.44 kB
+dist/assets/persistence-WRX5iXvm.js            1.79 kB │ gzip:   0.71 kB
+dist/assets/PuzzleCreatorPage-BR5BSXPr.js      5.65 kB │ gzip:   1.96 kB
+dist/assets/PuzzleEditorPage-QlwplOVQ.js     200.66 kB │ gzip:  56.81 kB
+dist/assets/index-D2HIs4kw.js              1,172.26 kB │ gzip: 358.01 kB
 
 (!) Some chunks are larger than 500 kB after minification. Consider:
 - Using dynamic import() to code-split the application
 - Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
 - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
-✓ built in 5.25s
+✓ built in 5.05s
 [5/11] Complete Phase 11 creator regression matrix
 
 > sphenpad@0.0.0 test-creator-phase11
@@ -116,6 +116,7 @@ creator group constraint tests passed
 > sphenpad@0.0.0 test-creator-globals
 > tsx scripts/test-creator-global-constraints.ts
 
+creator Phase 8 global, outside-ray, fog and advanced tests passed
 creator global/outside/advanced constraint tests passed
 
 > sphenpad@0.0.0 test-creator-worker
@@ -213,7 +214,7 @@ SudokuPad compatibility manifest: PASS (67 JS/CSS assets, 13 fonts)
 > sphenpad@0.0.0 write-phase11-release-hashes
 > node scripts/write-phase11-release-hashes.mjs
 
-Phase 11 release hash manifest: PASS (10761 production inputs, 21 creator tests, 10614 built files)
-releaseContentSha256=f020f14be962952d107ab42b97be6385bae06e30ad1dbc96fc769027222c2a28
+Phase 11 release hash manifest: PASS (10761 production inputs, 22 creator tests, 10614 built files)
+releaseContentSha256=8d61202c0b07a213fcb754b17e813f2c9f541fd4f87442dff0ce1f503352819e
 
 PHASE 11 DEPENDENCY-BACKED RELEASE GATE PASSED

@@ -51,7 +51,7 @@ import type { SudokuPadSourceCage, SudokuPadSourceGraphic, SudokuPadSourceLine }
 import { addCreatorCosmetic, creatorObjectVisualParts, duplicateCreatorObject, ensureCreatorObjectIds, listCreatorObjects, moveCreatorObject, removeCreatorObject, setCreatorBackground, setCreatorObjectGraphicLayer, updateCreatorObject, updateCreatorObjectVisuals, type CreatorEditableObject, type CreatorObjectPatch, type CreatorVisualCollection } from "../sudokupad/creator/objectEditing";
 import { addCreatorLineConstraint, creatorLinePathError, CREATOR_LINE_ELEMENT_IDS, dutchWhisperDifference, formatCreatorDigitGroups, germanWhisperDifference, lockoutMinimumDifference, isCreatorLineConstraint, isCreatorLineElementId, normalizeCreatorLineConstraints, parseCreatorDigitGroups, replaceCreatorLinePath, reverseCreatorLinePath, updateCreatorLineConstraint } from "../sudokupad/creator/lineConstraints";
 import { addCreatorGroupConstraint, creatorCloneGroupsError, creatorGroupCellsError, creatorGroupClueError, CREATOR_GROUP_ELEMENT_IDS, formatDigitList, formatIntegerList, isCreatorGroupConstraint, isCreatorGroupElementId, normalizeCreatorGroupConstraints, parseCreatorQuadrupleClue, parseIntegerList, replaceCreatorCloneGroups, replaceCreatorGroupCells, updateCreatorGroupConstraint } from "../sudokupad/creator/groupConstraints";
-import { addCreatorGlobalConstraint, CREATOR_GLOBAL_ELEMENT_IDS, creatorOutsideRayFromSelection, creatorSudokuRulesEnabled, isCreatorGlobalConstraint, isCreatorGlobalElementId, normalizeCreatorGlobalConstraints, replaceCreatorGlobalCells, setCreatorSudokuRules, syncCreatorFog, updateCreatorGlobalConstraint } from "../sudokupad/creator/globalConstraints";
+import { addCreatorGlobalConstraint, CREATOR_GLOBAL_ELEMENT_IDS, creatorOutsideClueError, creatorOutsideDirections, creatorOutsideRayInDirection, creatorGlobalCellsError, creatorOutsideRayFromSelection, creatorSudokuRulesEnabled, isCreatorGlobalConstraint, isCreatorGlobalElementId, normalizeCreatorGlobalConstraints, replaceCreatorGlobalCells, setCreatorSudokuRules, syncCreatorFog, updateCreatorGlobalConstraint } from "../sudokupad/creator/globalConstraints";
 import { getCellsSeenByCells, getComponents, validateConstraints, validateGrid, workerValuesFromDefinition, type CreatorGridValidation } from "../sudokupad/creator/worker";
 import { compareCreatorSolutions, type CreatorLogicalResult, type CreatorSearchProgress, type CreatorSolutionSearchMode, type CreatorSolutionSearchResult } from "../sudokupad/creator/solver";
 import type { CreatorSolveResponse } from "../sudokupad/creator/solver.worker";
@@ -929,6 +929,9 @@ export function PuzzleEditorPage() {
       return;
     }
     if (isCreatorGlobalElementId(elementId) && DIRECT_PAINT_IDS.has(elementId)) {
+      const role = elementId === "custom-fog-clearing" && !addingElement ? fogPaintRole : "cells";
+      const error = creatorGlobalCellsError(data.def, elementId, cells, role);
+      if (error) { setMessage(error); return; }
       if (!addingElement && selectedObject?.id && selectedObject.elementId === elementId && selectedGlobalConstraint) {
         const role = elementId === "custom-fog-clearing" ? fogPaintRole : "cells";
         save(replaceCreatorGlobalCells(data.def, selectedObject.id, cells, role));
@@ -966,9 +969,12 @@ export function PuzzleEditorPage() {
 
   function handleCreatorOutsideRay(cells: CellRC[]) {
     if (!data || !activeCatalogElement || !DIRECT_OUTSIDE_IDS.has(activeCatalogElement) || cells.length < 2) return;
-    if (!Number.isFinite(Number(constraintValue.trim())) && addingElement) { setMessage("Enter a numeric outside clue first."); return; }
     const elementId = activeCatalogElement;
     if (!isCreatorGlobalElementId(elementId)) return;
+    const clueError = creatorOutsideClueError(elementId, addingElement ? constraintValue : selectedGlobalConstraint?.value);
+    if (clueError) { setMessage(clueError); return; }
+    const cellsError = creatorGlobalCellsError(data.def, elementId, cells);
+    if (cellsError) { setMessage(cellsError); return; }
     if (!addingElement && selectedObject?.id && selectedObject.elementId === elementId && selectedGlobalConstraint?.type === "outside-clue") {
       save(replaceCreatorGlobalCells(data.def, selectedObject.id, cells));
       finishDirectObject(selectedObject.id, `${selectedObject.name} ray updated.`);
@@ -1710,14 +1716,38 @@ export function PuzzleEditorPage() {
     setMessage(`${source === "givens" ? "Givens" : "Solution"} applied.`);
   }
 
+  function chooseOutsideDirection(elementId: string, start: CellRC, dr: number, dc: number, objectId?: string) {
+    if (!data || !isCreatorGlobalElementId(elementId)) return;
+    const cells = creatorOutsideRayInDirection(data.def, elementId, start, dr, dc);
+    if (!cells.length) { setMessage("Choose an inward direction from a boundary cell."); return; }
+    if (objectId) {
+      const current = creatorConstraints(data.def).find((entry) => entry.id === objectId);
+      const error = creatorOutsideClueError(elementId, current?.value);
+      if (error) { setMessage(error); return; }
+      save(replaceCreatorGlobalCells(data.def, objectId, cells));
+      setSelectedObjectId(objectId);
+      setMessage("Outside clue direction updated.");
+      return;
+    }
+    const error = creatorOutsideClueError(elementId, constraintValue);
+    if (error) { setMessage(error); return; }
+    const created = addCreatorGlobalConstraint(data.def, elementId, cells, constraintValue);
+    save(applyToolDefaults(created.def, created.constraintId, elementId));
+    setSelectedObjectId(created.constraintId);
+    setAddingElement(false);
+    setConstraintValue("");
+    setMessage("Outside clue added.");
+  }
+
   function addGlobalElement(elementId: string) {
     if (!data || !isCreatorGlobalElementId(elementId)) return false;
     const cells = selection.map((cell) => ({ ...cell }));
     const outside = ["little-killers", "sandwich-sums", "x-sums", "skyscrapers", "numbered-rooms"].includes(elementId);
-    if (outside && !Number.isFinite(Number(constraintValue.trim()))) { setMessage("Enter a numeric outside clue."); return true; }
+    if (outside) { const error = creatorOutsideClueError(elementId, constraintValue); if (error) { setMessage(error); return true; } }
     if (elementId === "little-killers" && cells.length < 2) { setMessage("Select an ordered diagonal ray of at least two cells."); return true; }
     if (["sandwich-sums", "x-sums", "skyscrapers", "numbered-rooms", "row-indexers", "column-indexers", "fog-lights", "custom-fog-clearing"].includes(elementId) && !cells.length) { setMessage("Select at least one cell first."); return true; }
     const ray = outside ? creatorOutsideRayFromSelection(data.def, elementId, cells) : cells;
+    if (outside || cells.length) { const error = creatorGlobalCellsError(data.def, elementId, ray); if (error) { setMessage(error); return true; } }
     const created = addCreatorGlobalConstraint(data.def, elementId, ray, constraintValue);
     save(applyToolDefaults(created.def, created.constraintId, elementId));
     setSelectedObjectId(created.constraintId);
@@ -1892,6 +1922,20 @@ export function PuzzleEditorPage() {
 
   function editGlobalConstraint(objectId: string, patch: Parameters<typeof updateCreatorGlobalConstraint>[2]) {
     if (!data) return;
+    const current = creatorConstraints(data.def).find((constraint) => constraint.id === objectId);
+    const source = String(current?.sourceElementId ?? "");
+    if (isCreatorGlobalElementId(source)) {
+      if (patch.value !== undefined && current?.type === "outside-clue") {
+        const error = creatorOutsideClueError(source, patch.value);
+        if (error) { setMessage(error); return; }
+      }
+      for (const [role, changed] of [["cells", patch.cells], ["trigger", patch.triggerCells], ["effect", patch.effectCells]] as const) {
+        if (changed !== undefined) {
+          const error = creatorGlobalCellsError(data.def, source, changed, role);
+          if (error) { setMessage(error); return; }
+        }
+      }
+    }
     save(updateCreatorGlobalConstraint(data.def, objectId, patch));
     setSelectedObjectId(objectId);
   }
@@ -1901,6 +1945,10 @@ export function PuzzleEditorPage() {
     const current = creatorConstraints(data.def).find((constraint) => constraint.id === objectId);
     const source = String(current?.sourceElementId ?? "");
     const cells = role === "cells" && isCreatorGlobalElementId(source) ? creatorOutsideRayFromSelection(data.def, source, selection) : selection;
+    if (isCreatorGlobalElementId(source)) {
+      const error = creatorGlobalCellsError(data.def, source, cells, role);
+      if (error) { setMessage(error); return; }
+    }
     save(replaceCreatorGlobalCells(data.def, objectId, cells, role));
     setSelectedObjectId(objectId);
     setMessage(role === "trigger" ? "Fog trigger cells updated." : role === "effect" ? "Fog reveal cells updated." : "Constraint cells updated from the current selection.");
@@ -2426,6 +2474,7 @@ export function PuzzleEditorPage() {
               {selectedCatalog.id === "ratio-kropki" ? <label>Ratio<input className="url" type="number" min="2" value={constraintValue} placeholder="2" onChange={(event) => setConstraintValue(event.target.value)} /></label> : null}
               {selectedCatalog.id === "xv" ? <label>Mark<select className="url" value={constraintValue || "X"} onChange={(event) => setConstraintValue(event.target.value)}><option value="X">X — sum 10</option><option value="V">V — sum 5</option></select></label> : null}
               {["little-killers", "sandwich-sums", "x-sums", "skyscrapers", "numbered-rooms"].includes(selectedCatalog.id) ? <label>Outside clue<input className="url" type="number" value={constraintValue} onChange={(event) => setConstraintValue(event.target.value)} placeholder="e.g. 23" /></label> : null}
+              {isCreatorGlobalElementId(selectedCatalog.id) && ["little-killers", "sandwich-sums", "x-sums", "skyscrapers", "numbered-rooms"].includes(selectedCatalog.id) && selection.length === 1 ? <div className="creatorFileSection"><div className="creatorHelp">Create a complete outside ray from {cellLabel(selection[0])}:</div><div className="creatorFileActions">{creatorOutsideDirections(data.def, selectedCatalog.id, selection[0]).map(({ dr, dc, label }) => <button key={`${dr}:${dc}`} className="btn" onClick={() => chooseOutsideDirection(selectedCatalog.id, selection[0], dr, dc)} type="button">{label}</button>)}</div></div> : null}
               {selectedCatalog.id === "little-killers" ? <div className="creatorHelp">Enter the clue, then press near a board edge and drag diagonally inward. A tap chooses the inward diagonal toward the board center.</div> : null}
               {["sandwich-sums", "x-sums", "skyscrapers", "numbered-rooms"].includes(selectedCatalog.id) ? <div className="creatorHelp">Enter the clue, then click or tap near the relevant outer board edge to place the full inward row/column ray.</div> : null}
               {selectedCatalog.id === "custom-constraint" ? <div className="creatorHelp">The definition and backend code can be edited after the object is created. Creator mode stores code but does not execute it.</div> : null}
@@ -2482,7 +2531,7 @@ export function PuzzleEditorPage() {
                 {selectedGlobalConstraint.type === "disjoint-groups" ? <div className="creatorHelp">Cells in the same relative position of every active region form an all-different group.</div> : null}
                 {selectedGlobalConstraint.type === "nonconsecutive" ? <div className="creatorHelp">Every orthogonally adjacent pair on the board is forbidden from differing by exactly 1.</div> : null}
                 {selectedGlobalConstraint.type === "global-entropy" ? <><label>Digit groups<textarea className="url creatorLineGroupsInput" key={`${selectedObject.id}-${formatCreatorDigitGroups(selectedGlobalConstraint.groups)}`} defaultValue={formatCreatorDigitGroups(selectedGlobalConstraint.groups)} onBlur={(event) => { const groups = parseCreatorDigitGroups(event.target.value, data.def); if (!groups) { setMessage("Digit groups must be disjoint in-range groups separated by |."); return; } editGlobalConstraint(selectedObject.id, { groups }); }} /></label><div className="creatorHelp">Every 2×2 box must contain at least one digit from every group. The groups must cover the full digit range.</div></> : null}
-                {selectedGlobalConstraint.type === "outside-clue" ? <><div className="creatorSelection">Ray: {selectedGlobalCells.length ? selectedGlobalCells.map(cellLabel).join(" → ") : "none"}</div><div className="creatorFileActions"><button className="btn" onClick={() => applySelectionForGlobal(selectedObject.id)} type="button">Use current selection</button></div><label>Clue<CreatorDraftInput key={`${selectedObject.id}-outside`} value={String(selectedGlobalConstraint.value ?? "")} inputMode="decimal" onCommit={(value) => editGlobalConstraint(selectedObject.id, { value })} /></label>{selectedGlobalSource === "little-killers" ? <div className="creatorHelp">The ordered diagonal ray sums to the clue.</div> : selectedGlobalSource === "sandwich-sums" ? <div className="creatorHelp">Digits strictly between the minimum and maximum digits in the ray sum to the clue.</div> : selectedGlobalSource === "x-sums" ? <div className="creatorHelp">The first digit gives X; the first X digits sum to the clue.</div> : selectedGlobalSource === "skyscrapers" ? <div className="creatorHelp">The clue is the number of successively taller digits visible from this side.</div> : <div className="creatorHelp">The first digit gives N; the Nth digit in the ray equals the clue.</div>}</> : null}
+                {selectedGlobalConstraint.type === "outside-clue" ? <><div className="creatorSelection">Ray: {selectedGlobalCells.length ? selectedGlobalCells.map(cellLabel).join(" → ") : "none"}</div><div className="creatorFileActions"><button className="btn" onClick={() => applySelectionForGlobal(selectedObject.id)} type="button">Use current selection</button>{selectedGlobalCells[0] && isCreatorGlobalElementId(selectedGlobalSource) ? creatorOutsideDirections(data.def, selectedGlobalSource, selectedGlobalCells[0]).map(({ dr, dc, label }) => <button className="btn" key={`${dr}:${dc}`} onClick={() => chooseOutsideDirection(selectedGlobalSource, selectedGlobalCells[0], dr, dc, selectedObject.id)} type="button">{label}</button>) : null}</div><label>Clue<CreatorDraftInput key={`${selectedObject.id}-outside`} value={String(selectedGlobalConstraint.value ?? "")} inputMode="decimal" onCommit={(value) => editGlobalConstraint(selectedObject.id, { value })} /></label>{selectedGlobalSource === "little-killers" ? <div className="creatorHelp">The ordered diagonal ray sums to the clue.</div> : selectedGlobalSource === "sandwich-sums" ? <div className="creatorHelp">Digits strictly between the minimum and maximum digits in the ray sum to the clue.</div> : selectedGlobalSource === "x-sums" ? <div className="creatorHelp">The first digit gives X; the first X digits sum to the clue.</div> : selectedGlobalSource === "skyscrapers" ? <div className="creatorHelp">The clue is the number of successively taller digits visible from this side.</div> : <div className="creatorHelp">The first digit gives N; the Nth digit in the ray equals the clue.</div>}</> : null}
                 {selectedGlobalConstraint.type === "indexer" ? <><div className="creatorSelection">Markers: {selectedGlobalCells.length ? selectedGlobalCells.map(cellLabel).join(", ") : "none"}</div><div className="creatorFileActions"><button className="btn" onClick={() => applySelectionForGlobal(selectedObject.id)} type="button">Use current selection</button></div><div className="creatorHelp">{selectedGlobalSource === "row-indexers" ? "A marker digit points to that row in its column, where the marker's own row number must appear." : "A marker digit points to that column in its row, where the marker's own column number must appear."}</div></> : null}
                 {selectedGlobalConstraint.type === "custom" ? <><label>Definition name<CreatorDraftInput key={`${selectedObject.id}-customName`} value={String(selectedCustomDefinition?.name ?? "")} onCommit={(definitionName) => editGlobalConstraint(selectedObject.id, { definitionName })} /></label><label>Backend code<textarea className="url creatorRulesInput" key={`${selectedObject.id}-backend`} defaultValue={String(selectedCustomBackend?.code ?? "")} onBlur={(event) => { const code = event.target.value; if (code !== String(selectedCustomBackend?.code ?? "")) editGlobalConstraint(selectedObject.id, { code }); }} /></label><label>Input values (JSON)<textarea className="url creatorRulesInput" key={`${selectedObject.id}-custom-input`} defaultValue={JSON.stringify(selectedGlobalConstraint.input ?? {}, null, 2)} onBlur={(event) => { try { const parsed = JSON.parse(event.target.value); if (!parsed || Array.isArray(parsed) || typeof parsed !== "object") throw new Error(); editGlobalConstraint(selectedObject.id, { input: parsed as Record<string, unknown> }); } catch { setMessage("Custom constraint input must be a JSON object."); } }} /></label><label>Input schema (JSON array)<textarea className="url creatorRulesInput" key={`${selectedObject.id}-custom-schema`} defaultValue={JSON.stringify(selectedCustomDefinition?.input ?? [], null, 2)} onBlur={(event) => { try { const parsed = JSON.parse(event.target.value); if (!Array.isArray(parsed)) throw new Error(); editGlobalConstraint(selectedObject.id, { inputSchema: parsed }); } catch { setMessage("Custom constraint input schema must be a JSON array."); } }} /></label><label>Components (JSON array)<textarea className="url creatorRulesInput" key={`${selectedObject.id}-custom-components`} defaultValue={JSON.stringify(selectedCustomDefinition?.components ?? [], null, 2)} onBlur={(event) => { try { const parsed = JSON.parse(event.target.value); if (!Array.isArray(parsed)) throw new Error(); editGlobalConstraint(selectedObject.id, { components: parsed }); } catch { setMessage("Custom constraint components must be a JSON array."); } }} /></label><div className="creatorHelp">SphenPad preserves SudokuMaker-style custom definitions and backend code. Arbitrary author code is preserved but intentionally not executed by creator validation or the local solver; mark it Ignore in solver/checker when solving without it.</div></> : null}
                 {selectedGlobalConstraint.type === "foglight" ? <><div className="creatorSelection">Initial light cells: {selectedGlobalCells.length ? selectedGlobalCells.map(cellLabel).join(", ") : "none"}</div><div className="creatorFileActions"><button className="btn" onClick={() => applySelectionForGlobal(selectedObject.id)} type="button">Use current selection</button></div></> : null}

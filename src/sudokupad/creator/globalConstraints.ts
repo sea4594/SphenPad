@@ -77,6 +77,45 @@ function rayStep(cells: CellRC[]): [number, number] | null {
   if (Math.abs(dr) > 1 || Math.abs(dc) > 1) return null;
   return [dr, dc];
 }
+// Valid outside rays point inward: the cell just before their first cell must
+// be outside the grid. These helpers are shared by direct drawing and the
+// direction picker; neither assumes a particular grid size.
+export type CreatorOutsideDirection = { dr: number; dc: number; label: string };
+export function creatorOutsideDirections(def: PuzzleDefinition, elementId: CreatorGlobalElementId, start: CellRC): CreatorOutsideDirection[] {
+  if (!inBounds(start, def)) return [];
+  const diagonal = elementId === "little-killers";
+  if (!diagonal && !["sandwich-sums", "x-sums", "skyscrapers", "numbered-rooms"].includes(elementId)) return [];
+  const directions: CreatorOutsideDirection[] = diagonal
+    ? [{ dr: 1, dc: 1, label: "Down-right" }, { dr: 1, dc: -1, label: "Down-left" }, { dr: -1, dc: 1, label: "Up-right" }, { dr: -1, dc: -1, label: "Up-left" }]
+    : [{ dr: 1, dc: 0, label: "Down" }, { dr: -1, dc: 0, label: "Up" }, { dr: 0, dc: 1, label: "Right" }, { dr: 0, dc: -1, label: "Left" }];
+  return directions.filter(({ dr, dc }) => !inBounds({ r: start.r - dr, c: start.c - dc }, def)
+    && inBounds({ r: start.r + dr, c: start.c + dc }, def));
+}
+export function creatorOutsideRayInDirection(def: PuzzleDefinition, elementId: CreatorGlobalElementId, start: CellRC, dr: number, dc: number): CellRC[] {
+  if (!creatorOutsideDirections(def, elementId, start).some((direction) => direction.dr === dr && direction.dc === dc)) return [];
+  const result: CellRC[] = [];
+  for (let r = start.r, c = start.c; inBounds({ r, c }, def); r += dr, c += dc) result.push({ r, c });
+  return result;
+}
+export function creatorOutsideClueError(elementId: CreatorGlobalElementId, value: unknown): string | null {
+  const raw = String(value ?? "").trim();
+  if (!/^(0|[1-9]\d*)$/.test(raw) || !Number.isSafeInteger(Number(raw))) return `${elementId} needs a nonnegative whole-number clue.`;
+  if (["x-sums", "skyscrapers", "numbered-rooms"].includes(elementId) && Number(raw) < 1) return `${elementId} needs a positive clue.`;
+  return null;
+}
+export function creatorGlobalCellsError(def: PuzzleDefinition, elementId: CreatorGlobalElementId, cells: CellRC[], role: "cells" | "trigger" | "effect" = "cells"): string | null {
+  if (!Array.isArray(cells) || !cells.length) return `${elementId} needs at least one cell.`;
+  if (cells.some((cell) => !Number.isInteger(cell.r) || !Number.isInteger(cell.c) || !inBounds(cell, def))) return `${elementId} includes cells outside the grid.`;
+  if (new Set(cells.map(key)).size !== cells.length) return `${elementId} contains duplicate cells.`;
+  if (role !== "cells") return elementId === "custom-fog-clearing" ? null : `${elementId} cannot edit ${role} cells.`;
+  if (["little-killers", "sandwich-sums", "x-sums", "skyscrapers", "numbered-rooms"].includes(elementId)) {
+    if (cells.length < 2) return `${elementId} needs a ray of at least two cells.`;
+    const step = rayStep(cells);
+    if (!step || !creatorOutsideDirections(def, elementId, cells[0]).some(({ dr, dc }) => dr === step[0] && dc === step[1])
+      || cells.some((cell, index) => index > 0 && (cell.r !== cells[0].r + index * step[0] || cell.c !== cells[0].c + index * step[1]))) return `${elementId} needs an ordered, inward ray starting at the board edge.`;
+  }
+  return null;
+}
 function outsidePoint(cells: CellRC[]): SudokuPadPoint {
   const step = rayStep(cells) ?? [1, 0];
   return [cells[0].r + 0.5 - step[0] * 0.72, cells[0].c + 0.5 - step[1] * 0.72];
@@ -227,9 +266,17 @@ export function validateGlobalConstraintShape(def: PuzzleDefinition, constraint:
     else if (source === "little-killers" && Math.abs(step[0]) !== Math.abs(step[1])) messages.push("Little killer must point along a diagonal.");
     const first = cells[0];
     if (first && first.r !== 0 && first.c !== 0 && first.r !== def.rows - 1 && first.c !== def.cols - 1) messages.push(`${source} ray must begin at the board edge.`);
-    if (constraint.value === "" || !Number.isFinite(Number(constraint.value))) messages.push(`${source} needs a numeric clue.`);
+    if (isCreatorGlobalElementId(source)) {
+      const clueError = creatorOutsideClueError(source, constraint.value);
+      if (clueError) messages.push(clueError);
+      const cellsError = creatorGlobalCellsError(def, source, cells);
+      if (cellsError) messages.push(cellsError);
+    } else if (constraint.value === "" || !Number.isFinite(Number(constraint.value))) messages.push(`${source} needs a numeric clue.`);
   }
-  if (constraint.type === "indexer" && !cells.length) messages.push(`${source} needs at least one marked cell.`);
+  if (constraint.type === "indexer" && isCreatorGlobalElementId(source)) {
+    const cellError = creatorGlobalCellsError(def, source, cells);
+    if (cellError) messages.push(cellError);
+  }
   if (constraint.type === "global-entropy") {
     const groups = Array.isArray(constraint.groups) ? (constraint.groups as unknown[]).filter(Array.isArray).map((group) => (group as unknown[]).map(Number)) : [];
     const { min, max } = creatorDigitRange(def), flat = groups.flat();
@@ -237,10 +284,17 @@ export function validateGlobalConstraintShape(def: PuzzleDefinition, constraint:
     const expected = max - min + 1;
     if (new Set(flat).size !== expected) messages.push(`${source} digit groups must cover the full digit range.`);
   }
-  if (constraint.type === "foglight" && !cells.length) messages.push("Fog lights need at least one cell.");
+  if (constraint.type === "foglight") {
+    const error = creatorGlobalCellsError(def, "fog-lights", cells);
+    if (error) messages.push(error);
+  }
   if (constraint.type === "fog-trigger") {
-    if (!Array.isArray(constraint.triggerCells) || !(constraint.triggerCells as unknown[]).length) messages.push("Fog trigger needs at least one trigger cell.");
-    if (!Array.isArray(constraint.effectCells) || !(constraint.effectCells as unknown[]).length) messages.push("Fog trigger needs at least one cell to reveal.");
+    const triggers = (constraint.triggerCells ?? constraint.cells ?? []) as CellRC[];
+    const effects = (constraint.effectCells ?? []) as CellRC[];
+    const triggerError = creatorGlobalCellsError(def, "custom-fog-clearing", triggers, "trigger");
+    const effectError = creatorGlobalCellsError(def, "custom-fog-clearing", effects, "effect");
+    if (triggerError) messages.push(`Fog trigger: ${triggerError}`);
+    if (effectError) messages.push(`Fog reveal: ${effectError}`);
   }
   if (constraint.type === "custom") {
     const definition = constraint.definition as Record<string, unknown> | undefined, backend = definition?.backend as Record<string, unknown> | undefined;

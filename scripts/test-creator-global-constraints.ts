@@ -70,3 +70,6 @@ legacy=add(base(),"custom-fog-clearing",[c(1,1)]).def; legacy={...legacy,logic:{
 // Inventory is complete for this phase and has no duplicate authoring ids.
 equal(new Set(CREATOR_GLOBAL_ELEMENT_IDS).size,CREATOR_GLOBAL_ELEMENT_IDS.length); equal(CREATOR_GLOBAL_ELEMENT_IDS.length,16);
 console.log("creator global/outside/advanced constraint tests passed");
+
+// Additional Phase 8 edge/geometry and cross-tool regression matrix.
+import "./test-creator-phase8-advanced";
